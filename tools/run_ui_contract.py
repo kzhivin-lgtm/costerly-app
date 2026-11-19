@@ -25,7 +25,7 @@ UNIT_TESTS = [
     "tests/test_agent_timing.py::test_isometric_membership_uses_primary_attachment_without_extra_requests",
     "tests/test_agent_timing.py::test_presentation_render_without_technical_match_never_creates_registry_object",
 ]
-BROWSER_SUITES = ["navigation.mjs", "calculation.mjs", "profile_save.mjs", "profile_recovery.mjs", "screen_recovery.mjs"]
+BROWSER_SUITES = ["navigation.mjs", "calculation.mjs", "profile_save.mjs", "profile_recovery.mjs", "screen_recovery.mjs", "version_refresh.mjs"]
 
 
 def main() -> int:

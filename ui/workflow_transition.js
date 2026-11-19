@@ -49,6 +49,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         admin: [".platform-admin-heading", ".st-key-platform_admin_sections", ".platform-admin-table-card"],
     };
     const routes = {
+        version_refresh: "upload",
         new_estimate: "upload",
         last_estimate: "file_review",
         file_review_to_objects: "objects",
@@ -91,6 +92,108 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
     let enabled = false;
     let pending = null;
     let displayed = null;
+    let hostBuild = null;
+    let versionTimer = null;
+    let pickerOpen = false;
+    let uploadStarted = false;
+    const refreshKey = "costerly.version-refresh.v1";
+
+    function uploadIsEmpty() {
+        return displayed?.screen === "upload" && displayed.versionRefreshSafe === true &&
+            !pending && !pickerOpen && !uploadStarted &&
+            !doc.querySelector('[data-stale="true"], #costerly-upload-processing-shell') &&
+            !Array.from(doc.querySelectorAll('[data-testid="stFileUploader"] input[type="file"]'))
+                .some(input => input.files?.length);
+    }
+
+    function buildsMatch() {
+        return Boolean(hostBuild && hostBuild === displayed?.metrics?.server_build_version);
+    }
+
+    function announceRefresh(id) {
+        post({type: "costerly:transition-click", transition: "version_refresh",
+              transitionId: id, sourceScreen: "upload", targetScreen: "upload",
+              workflowNavigation: true});
+    }
+
+    function checkVersion() {
+        doc.getElementById("costerly-version-check-status")?.remove();
+        coreWindow.clearTimeout(versionTimer);
+        versionTimer = null;
+        if (buildsMatch()) {
+            try { coreWindow.sessionStorage.removeItem(refreshKey); } catch (_) {}
+            return;
+        }
+        if (!uploadIsEmpty()) return;
+        if (hostBuild === null) {
+            // One deadline per ready receipt, cancelled on reply, departure or
+            // disposal. No polling or extra Streamlit rerun.
+            versionTimer = coreWindow.setTimeout(() => {
+                versionTimer = null;
+                if (!uploadIsEmpty()) return;
+                const id = coreWindow.crypto.randomUUID();
+                if (!begin("version_refresh", id)) return;
+                announceRefresh(id);
+                showFailure(pending, "version_unconfirmed");
+            }, 5000);
+            return;
+        }
+        const id = coreWindow.crypto.randomUUID();
+        if (!begin("version_refresh", id)) return;
+        pending.status.textContent = "Updating app…";
+        announceRefresh(id);
+        // The tab-scoped guard survives the full outer reload. Fail closed
+        // when storage is unavailable, rather than risk a reload loop.
+        try {
+            if (coreWindow.sessionStorage.getItem(refreshKey)) {
+                showFailure(pending, "version_unconfirmed");
+                return;
+            }
+            coreWindow.sessionStorage.setItem(refreshKey, displayed.metrics.server_build_version);
+        } catch (_) {
+            showFailure(pending, "version_unconfirmed");
+            return;
+        }
+        post({type: "costerly:workflow-navigation-reload", transitionId: id});
+    }
+
+    function guardUpload(event) {
+        if (displayed?.screen !== "upload" || !event.target.closest?.('[data-testid="stFileUploader"]')) return;
+        // Keep the native file-list remove/cancel controls usable. Only the
+        // picker/drop zone can start a new upload.
+        if (event.type === "click" && !event.target.closest('input[type="file"], [data-testid="stFileUploaderDropzone"]')) return;
+        if (event.type === "cancel") {
+            pickerOpen = false;
+            checkVersion();
+            return;
+        }
+        if (event.type === "change" && pickerOpen) {
+            pickerOpen = false;
+            uploadStarted = Boolean(event.target.files?.length);
+            if (!uploadStarted) checkVersion();
+            return;
+        }
+        if (buildsMatch()) {
+            if (event.type === "click" && event.target.matches('input[type="file"]')) pickerOpen = true;
+            if (event.type === "drop" && event.dataTransfer?.files?.length) uploadStarted = true;
+            return;
+        }
+        if (uploadStarted && event.type === "change") return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!pending && !doc.getElementById("costerly-version-check-status")) {
+            const status = doc.createElement("div");
+            status.id = "costerly-version-check-status";
+            status.setAttribute("role", "status");
+            status.textContent = uploadStarted
+                ? "The current upload is continuing. The app update will wait."
+                : "Checking app version…";
+            event.target.closest('[data-testid="stFileUploader"]').append(status);
+        }
+    }
+    // Capture prevents both the file picker and native drop from starting
+    // work until this tab has an acknowledged matching build.
+    for (const type of ["click", "drop", "change", "cancel"]) doc.addEventListener(type, guardUpload, true);
 
     function post(data) {
         coreWindow.top.postMessage({...data, traceId}, hostOrigin);
@@ -101,6 +204,10 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
             event.data?.type === "costerly:workflow-navigation-enabled" &&
             event.data.traceId === traceId && event.data.protocol === 1) {
             enabled = true;
+            // Empty means a supported older wrapper. Migrate it once using
+            // its existing correlated reload command, only on empty Upload.
+            hostBuild = String(event.data.buildVersion || "");
+            checkVersion();
         }
     }
     coreWindow.addEventListener("message", acceptHost);
@@ -153,7 +260,8 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         transition.failed = true;
         stopWatching(transition);
         transition.status.textContent = reason === "destination_not_ready"
-            ? "This page is taking longer to open." : "Could not open this page.";
+            ? "This page is taking longer to open." : reason === "version_unconfirmed"
+            ? "The app update is not ready yet. Reload to retry." : "Could not open this page.";
         const reload = doc.createElement("button");
         reload.type = "button";
         reload.textContent = "Reload page";
@@ -168,7 +276,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
 
     function begin(name, id) {
         const target = routes[name];
-        if (!enabled || pending || !target || !selectors[displayed?.screen]) return false;
+        if ((!enabled && name !== "version_refresh") || pending || !target || !selectors[displayed?.screen]) return false;
         const cover = doc.createElement("div");
         cover.id = "costerly-workflow-transition";
         cover.tabIndex = -1;
@@ -221,12 +329,33 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
     }
 
     function ready(message) {
+        if (pending?.name === "version_refresh") {
+            if (message.screen === "upload") return true;
+            // A server-authenticated departure (including expired auth) wins
+            // over the update cover. Never strand Login or an accepted job.
+            const refresh = pending;
+            displayed = message;
+            pickerOpen = false;
+            uploadStarted = false;
+            post({...message, transitionId: refresh.id});
+            close(refresh);
+            checkVersion();
+            return true;
+        }
         const transition = pending;
         if (!transition) {
             if (message.runId === displayed?.settledRun) return true;
             const marker = find("[data-costerly-render-id]");
             if (marker?.dataset.costerlyRenderId !== message.runId) return Boolean(displayed);
             displayed = message;
+            if (message.screen !== "upload") { pickerOpen = false; uploadStarted = false; }
+            else if (!doc.querySelector('[data-testid="stFileUploaderFile"]') &&
+                     !Array.from(doc.querySelectorAll('input[type="file"]')).some(input => input.files?.length)) {
+                // A fresh empty Upload receipt also covers native rejection
+                // and New Estimate without an intervening Processing screen.
+                uploadStarted = false;
+            }
+            checkVersion();
             return false;
         }
         if (transition.failed || message.runId === transition.from.runId) return true;
@@ -257,8 +386,10 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
                 });
             }
             displayed = {...message, settledRun: message.runId};
+            if (message.screen !== "upload") { pickerOpen = false; uploadStarted = false; }
             post({...message, transitionId: transition.id});
             close(transition);
+            checkVersion();
         };
         const schedule = () => {
             if (!transition.frame) transition.frame = coreWindow.requestAnimationFrame(check);
@@ -274,9 +405,13 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         traceId, revision, begin, ready,
         enabled: () => enabled,
         busy: () => Boolean(pending),
+        versionMatched: buildsMatch,
         fail: () => { if (pending) showFailure(pending, "navigation_control_unavailable"); },
         dispose: () => {
             coreWindow.removeEventListener("message", acceptHost);
+            coreWindow.clearTimeout(versionTimer);
+            doc.getElementById("costerly-version-check-status")?.remove();
+            for (const type of ["click", "drop", "change", "cancel"]) doc.removeEventListener(type, guardUpload, true);
             if (pending) close(pending);
         },
     };

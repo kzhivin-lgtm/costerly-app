@@ -10,10 +10,13 @@ const expiry=statePath('auth-expired');
 const old=readFileSync(fixturePath('legacy_wrapper.html'),'utf8');
 const current=readFileSync('cloudflare/index.html','utf8');
 const wrapper=html=>html.replace('data-src="https://core.costerly.ai/?embed=true"','data-src="http://127.0.0.1:8789/?embed=true"');
+let deliveredOld=false;
 const server=createServer((req,res)=>{
  const path=new URL(req.url,'http://127.0.0.1:8797');
  if(path.pathname.startsWith('/api/')) return res.writeHead(202).end();
- const html=path.searchParams.has('old')?old:current;
+ const serveOld=path.searchParams.has('old')&&!deliveredOld;
+ if(serveOld)deliveredOld=true;
+ const html=(serveOld?old:current).replace('<script>', '<script>window.wrapperFixtureVersion='+JSON.stringify(serveOld?'old':'current')+';</script><script>');
  res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}).end(wrapper(html));
 });
 await new Promise(resolve=>server.listen(8797,'127.0.0.1',resolve));
@@ -46,6 +49,8 @@ try {
    });
   });
   await page.goto('http://127.0.0.1:8797/'+(cfg.oldWrapper?'?old':''));
+  if(cfg.oldWrapper)await page.waitForFunction(()=>window.wrapperFixtureVersion==='current');
+  await page.locator('iframe.is-ready').waitFor();
   const frame=await (await page.locator('#costerly-app-frame').elementHandle()).contentFrame();
   const core=page.frameLocator('#costerly-app-frame');
   await core.getByRole('button',{name:'Last Estimate',exact:true}).waitFor();

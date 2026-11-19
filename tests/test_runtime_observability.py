@@ -392,7 +392,7 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "event.data.buildVersion" in wrapper
     assert "event.data.metrics && event.data.metrics.server_build_version" in wrapper
     assert 'mark("browser.build_mismatch"' in wrapper
-    assert 'recovery: "deferred_to_next_user_refresh"' in wrapper
+    assert 'recovery: "safe_upload_boundary"' in wrapper
     assert "reloadGuardKey" not in wrapper
     assert "pythonRuns: 0" in wrapper
     assert "python_runs: pendingTransition.pythonRuns" in wrapper

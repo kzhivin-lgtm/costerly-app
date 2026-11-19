@@ -92,7 +92,7 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "estimation-v2.6-explicit-membership-pairs-detection-v8.4.29";
+        const BUILD_VERSION = "estimation-v2.7-safe-version-refresh-detection-v8.4.29";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -149,6 +149,8 @@
         let ready = false;
         let resumePending = !navigator.onLine;
         let uploadSelectionPending = false;
+        let legacyCoreBlocked = false;
+        const legacyRefreshKey = "costerly.legacy-core-refresh.v1";
         const readyRunIds = new Set();
         const pendingTransitions = [];
         let coveredTransitionId = "";
@@ -393,6 +395,51 @@
             mask.classList.add("is-hidden");
           }
           persistTimeline();
+        }
+
+        function releaseLegacyCoreCover() {
+          if (!legacyCoreBlocked) return;
+          legacyCoreBlocked = false;
+          frame.inert = false;
+          frame.classList.add("is-ready");
+          mask.style.cssText = "";
+          mask.classList.add("is-hidden");
+          mask.setAttribute("aria-hidden", "true");
+          mask.removeAttribute("role");
+        }
+
+        function refreshLegacyCore(serverBuildVersion) {
+          // During independent deployments a new wrapper can meet a Core
+          // predating the safe-refresh protocol. Only its completed empty
+          // Upload receipt permits migration; other screens keep running.
+          if (legacyCoreBlocked) return;
+          legacyCoreBlocked = true;
+          ready = true;
+          window.clearTimeout(fallbackTimer);
+          frame.inert = true;
+          mask.classList.remove("is-hidden");
+          mask.removeAttribute("aria-hidden");
+          mask.setAttribute("role", "status");
+          mask.style.cssText = "display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;font:500 1rem system-ui;color:#392c47;";
+          mask.textContent = "Updating app…";
+          let canReload = false;
+          try {
+            canReload = !window.sessionStorage.getItem(legacyRefreshKey);
+            if (canReload) window.sessionStorage.setItem(legacyRefreshKey, serverBuildVersion);
+          } catch (_) {}
+          if (canReload) {
+            mark("browser.legacy_core_refresh", {screen: "upload"});
+            persistTimeline(true);
+            window.location.reload();
+            return;
+          }
+          mask.textContent = "The app update is not ready yet. Reload to retry.";
+          const retry = document.createElement("button");
+          retry.textContent = "Reload page";
+          retry.style.cssText = "margin-top:0.5rem;padding:0.5rem 1rem;cursor:pointer;";
+          retry.addEventListener("click", () => window.location.reload());
+          mask.append(retry);
+          retry.focus();
         }
 
         mark("browser.wrapper_start", {metadata: navigationMetadata()});
@@ -662,6 +709,7 @@
             if (event.data.workflowNavigationProtocol === 1) {
               frame.contentWindow.postMessage({
                 type: "costerly:workflow-navigation-enabled", protocol: 1, traceId,
+                buildVersion: BUILD_VERSION,
               }, appOrigin);
             }
             const completedTransitionId = String(event.data.transitionId || "");
@@ -703,6 +751,9 @@
               (event.data.metrics && event.data.metrics.server_build_version) ||
               ""
             );
+            // Auth expiry or a late accepted upload remains authoritative,
+            // even while an older Core is waiting for an available update.
+            if (screen !== "upload") releaseLegacyCoreCover();
             if (serverBuildVersion && serverBuildVersion !== BUILD_VERSION) {
               mark("browser.build_mismatch", {
                 screen,
@@ -710,10 +761,18 @@
                 metadata: {
                   wrapper_build: BUILD_VERSION,
                   server_build: serverBuildVersion,
-                  recovery: "deferred_to_next_user_refresh",
+                  recovery: "safe_upload_boundary",
                 },
               });
               persistTimeline();
+              if (!("versionRefreshSafe" in event.data) && screen === "upload" &&
+                  !uploadSelectionPending) {
+                refreshLegacyCore(serverBuildVersion);
+                return;
+              }
+            } else if (serverBuildVersion === BUILD_VERSION) {
+              try { window.sessionStorage.removeItem(legacyRefreshKey); } catch (_) {}
+              releaseLegacyCoreCover();
             }
             const appReadySentAt = Number(event.data.sentAt);
             const appReadyDeliveryMs = Number.isFinite(appReadySentAt)

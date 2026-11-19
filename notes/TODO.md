@@ -17,18 +17,45 @@ patches or paid reruns. Additional deploy b61b8364 (owner-added future key)
 preceded first success. Evidence in handoff workspace
 `outputs/lev1-v2.6-freeze-2026-11-19/REPORT_RU.md`.
 
-PENDING DESIGN/OWNER DECISION, P0, USER REQUEST, 2026-11-19. Ensure open tabs
-update after deployment rather than starting new work with a different wrapper
-version. Extend existing version/ready handshake (currently logs mismatch and
-defers to manual refresh), no polling/model stage. Proposed behavior: one full
+IMPLEMENTED LOCALLY, CI/PUBLICATION PENDING, P0, OWNER APPROVED, V2.7, 2026-11-19. Ensure open
+tabs update after deployment rather than starting new work with a different
+wrapper version. Owner explicitly authorized automatic refresh on version
+mismatch, retained login, no interruption of the current calculation, no
+Detection changes, verification and publication in chat "Labor V2", turn
+01a1f37e-cdac-7be2-9081-e2d39ed3232b. The subsequent attempt produced incoherent
+chat output and was stopped by the owner before any runtime changes or
+publication. Context recovered in the current chat; owner explicitly repeated the
+implementation, verification and publication instruction. Implementation active. This supersedes the earlier pending-owner-decision status, not the
+requirement to verify protected behavior before publication.
+Extend the existing version/ready handshake (currently logs mismatch and
+defers to manual refresh), no polling/model stage. Intended behavior: one full
 reload on empty Upload before accepting a new file, retain auth, enable upload
 only after matching versions. Defer during file transfer/Processing/unsaved
 edits to a safe New Estimate boundary; no reload loop. Old wrapper compatibility
-requires a bounded migration via existing supported reload message. Separately
-bind completion to the current upload/server result, not a leftover review.
-The report contains a proposed scenario matrix, not accepted UI behavior or an
-implemented fix. Protected UI contract requires before/after agreement before
-patching. No new block/version assigned by agent.
+requires a bounded migration via the existing supported reload message.
+Acceptance must cover matching/mismatched versions, retained login, active
+calculation and unsaved edits, reload failure/loop prevention, local and
+exact-SHA GitHub UI gates, and actual Core/wrapper builds after publication.
+Owner assigned runtime V2.7; no separate major.block.task number assigned.
+Local full gate passed: 396 checks, six browser suites, 156.650s. The first
+Profile Save run timed out after adding a worker; isolated and subsequent full
+runs passed without changing Profile. The original timeout cause remains
+unknown. New synthetic-browser cases cover both deployment orders, real browser
+auth-component token retention, processing/edits/file selection, expired auth,
+missing acknowledgement, unavailable storage, loop prevention and manual retry.
+The final upload-transfer guard adjustment passed all 10 dedicated cases;
+exact-SHA CI must cover the final complete source. No paid model runs or
+Detection/calculation/data changes. Authenticated production acceptance remains
+pending; automated fixture success is not owner acceptance. Evidence in handoff
+workspace outputs/version-refresh-v2.7/.
+
+PENDING, P0, DIAGNOSTIC FOLLOW-UP, 2026-11-19. Bind upload completion to the
+current upload/server result rather than a leftover File Review. The isolated
+production-JS replay confirms false completion from an old result; exact
+native callback loss in the original incident remains unknown. Track this
+outcome separately from V2.7 version refresh: refresh alone does not establish
+that the repeated-upload defect is fixed. Implementation scope remains to be
+agreed; no new work number or model calls authorized for this follow-up.
 
 COMPLETED IN V1.3.0.1, P0, owner acceptance on Lev1, 2026-11-17. Reveal a complete interactive destination when
 switching screens. The 20:15:23 recording shows parts of the previous

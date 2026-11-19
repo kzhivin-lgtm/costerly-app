@@ -802,6 +802,7 @@ def signal_app_ready_to_embed(
                 metrics: __METRICS__,
                 route: __ROUTE__,
                 workflowNavigationProtocol: 1,
+                versionRefreshSafe: __SCREEN__ === "upload",
                 sentAt: Date.now()
             };
             // Navigation timing retains the iframe's original URL after

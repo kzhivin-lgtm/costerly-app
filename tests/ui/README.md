@@ -7,8 +7,8 @@ The synthetic saved bench costs ILS 1,000; this is an interaction fixture,
 not a fresh Lev1 material or labor benchmark. The private V1.3.3 archive
 retains the real saved controls and their evidence.
 
-The protected behavior is defined in `notes/UI_GUIDELINES.md`. The five suites
-cover 54 normal transitions across desktop/mobile and an older open wrapper,
+The protected behavior is defined in `notes/UI_GUIDELINES.md`. The six suites
+cover 54 normal transitions across desktop/mobile and safe migration of an older open wrapper,
 Save/reopen in seven Profile paths, preload/read reuse, keyboard, actor access,
 expired auth, handled read/write failures, timeout/double click and recovery.
 Python checks cover the navigation/state/cache contracts and release verifier.
@@ -18,6 +18,11 @@ Calculation additionally covers a delayed new-estimate shell, full reruns during
 progress and after completion, one pricing table, editable Sheet Processing and
 Assembly hours, whole grouped money, failed Save/retry and persisted reopen.
 These checks use synthetic data and do not establish production acceptance.
+The version-refresh suite uses the real wrapper, workflow controller and browser
+auth component with synthetic screen markup. It covers both deployment orders,
+retained tab-session tokens, active processing/edits/file selection, missing
+acknowledgement, unavailable guard storage, one automatic attempt and manual
+recovery. It does not establish authenticated production acceptance.
 Navigation asserts
 that File Review and the reopened saved card display the same synthetic crop.
 

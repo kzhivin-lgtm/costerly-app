@@ -47,6 +47,28 @@ Use the exact-commit `UI release gate` and the verified publisher described in
 be active to enforce this independently of the agent. Check its real status;
 do not infer activation from the presence of the workflow or ruleset template.
 
+## V2.7 safe version refresh, approved 19 November 2026
+
+Owner approved automatic refresh on build mismatch, retaining login and the
+current calculation, with Detection unchanged. Previously mismatch only logged
+and waited for manual refresh. Use the existing ready/version handshake and
+correlated reload command. Preserve tab auth storage and sealed resume cookies.
+
+| Input / state | Action and visible result | Verification |
+|---|---|---|
+| Empty Upload, matching builds | Upload works immediately after ready acknowledgement | No reload or extra Python rerun |
+| Empty Upload, mismatched or supported old wrapper | Show Updating app, one full reload, retain login, confirm matching builds before upload | Current wrapper and migrated old wrapper |
+| File picker open or file transferring | Keep current action, defer refresh | Selection/drop survives mismatch |
+| Processing, estimation, saved result or unsaved edit | Keep current screen and state, defer until empty Upload | No reload, value and active job retained |
+| Repeated mismatch after reload, unavailable guard storage or missing acknowledgement | Block new Upload, show one actionable Reload page state | No automatic reload loop |
+| Auth expired | Existing Login recovery, no fabricated authenticated state | Existing auth and resume checks |
+
+No polling, background model call or refresh timer runs during calculations.
+A single five-second acknowledgement deadline exists only on empty Upload;
+reply, departure or controller disposal cancels it. A manual Reload page retry
+is allowed after an unsuccessful automatic update. Browser and production
+verification remain distinct from synthetic fixture results.
+
 ## Mandatory scenario-first workflow
 
 Do not begin an interface layout or interaction revision from the happy path
