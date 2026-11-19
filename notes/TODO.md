@@ -310,14 +310,20 @@ accepted first stage. The owner selected V1.3.2 as the next stage.
 
 ## Service credentials
 
-PENDING, P1, OWNER REQUEST, 2026-11-19. Switch Anthropic calls to the new
-"Anthropic Key 2" variable the owner added in Railway, because the previous key
-is approaching owner-reported expiry. Owner names this the next task after
-current UI investigation. Current code still reads ANTHROPIC_API_KEY; added
-credential was not activated or read by the agent. Exact variable name and
-production auth must be verified without exposing the value. Plan staged
-switch/verification before old-key retirement; do not revoke or broaden access
-under the current investigation. No new version/work number assigned.
+COMPLETED, P1, OWNER REQUEST, 2026-11-20. Anthropic Key2 rotation verified.
+Exactly one fresh Ada OCR/Detection control selected ANTHROPIC_API_KEY_2 in
+actual SDK client and passed:2 objects, exact02/03/05/07 +01/04/06/08, all8
+Views/evidence retained, bbox IoU1.0,43.360s. No auth errors. Local canonical
+ANTHROPIC_API_KEY now equals existing Key2; other Secrets fields/file mode
+preserved. Railway canonical variable references ${{ANTHROPIC_API_KEY_2}};
+exactly one change applied after passing control. Deployment
+1c1e8d7a-3d23-4374-a289-40465f402d98 ACTIVE/Deployment successful; public
+Core/wrapper still match V2.10. Runtime/model/schema unchanged, no new version.
+Original key retired from active application configuration, not deleted/revoked
+at provider. Values excluded from reports/Git/images. Keep the canonical
+variable name to allow future credential rotation without source changes.
+Evidence: /Users/qb/Documents/ChatGPT/Costerly/outputs/anthropic-key2-one-ada-20261119T201156Z/REPORT_RU.md,
+rotation-receipt.json, local-rotation-receipt.json, adda/run-01/.
 
 
 ## Object presentation previews
