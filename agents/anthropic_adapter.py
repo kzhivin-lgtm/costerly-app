@@ -92,6 +92,9 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
     partition_detection_presentation_render_components,
+    requires_technical_attachment,
+    project_attachment_only_hypotheses,
+    ATTACHMENT_ONLY_REPRESENTATION_KINDS,
     derive_detection_v5_dominant_page_attachment_edges,
     compile_detection_dimension_graph,
     normalize_empty_detection_envelope_chains,
@@ -191,7 +194,7 @@ DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION = (
     # shared View as merge evidence by itself.
     "detection_v8_4_7_star_hypothesis_components"
 )
-DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION = "detection_v8_4_8_parallel_membership"
+DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION = "detection_v8_4_8_parallel_membership_isometric_attachment_v1"
 DETECTION_V848_SAME_SHEET_REVIEW_PROMPT = (
     "Compare every listed pair. Use only the physical outline, major junctions, and connected "
     "module arrangement of the two named bodies. A colored overlay or neighboring strokes "
@@ -204,7 +207,8 @@ DETECTION_V848_GLOBAL_PAIR_PROOF_PROMPT = (
     "\n\nFor the global decision, find a common plan or section that supports each technical projection. "
     "In every visual evidence row, the first two source_fact_ids must be the registry_view IDs of the exact pair "
     "of technical Views, even if a printed number is mentioned. Cite visual geometry from both Views. "
-    "Do not include render Views in object_hypotheses. Decide render attachment separately from technical membership. "
+    "Do not include presentation_render or isometric_technical Views in object_hypotheses. "
+    "Decide their attachment separately, retaining the original View class and IDs. "
     "Check the plan and render for matching distinctive corner geometry and placement of terminal modules."
 )
 DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS = 180
@@ -3984,8 +3988,7 @@ def normalize_detection_v711_presentation_render_decisions(
     }
     render_ids = {
         group_id for group_id, group in object_groups.items()
-        if str(group.get("representation_kind") or "").strip().lower()
-        == "presentation_render"
+        if requires_technical_attachment(group.get("representation_kind"))
     }
     if not isinstance(decisions, list):
         raise ValueError("V7.11 presentation render decisions must be a list")
@@ -4161,9 +4164,16 @@ def review_detection_unattached_renders_on_same_sheet(
     crop_audit: list[dict[str, Any]] | None = None,
     coordinate_frames: dict[int, dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    # Isometrics use the primary Membership reply without extra recovery calls.
+    recovery_ids = {
+        group_id_mapping.get(str(group.get("group_id") or ""), str(group.get("group_id") or ""))
+        for group in visual_groups
+        if str(group.get("representation_kind") or "").strip().lower() == "presentation_render"
+    }
     pending = {
         row["render_group_id"] for row in primary_decisions
         if row["disposition"] in {"no_match", "unresolved"}
+        and row["render_group_id"] in recovery_ids
     }
     audit: dict[str, Any] = {"pending_count": len(pending), "sheets": [], "attachments": []}
     if not pending:
@@ -4195,8 +4205,7 @@ def review_detection_unattached_renders_on_same_sheet(
         render_crops = [crop for crop in crops if crop["group_id"] in targets]
         technical_crops = [
             crop for crop in crops
-            if str(groups[crop["group_id"]].get("representation_kind") or "").strip().lower()
-            != "presentation_render"
+            if not requires_technical_attachment(groups[crop["group_id"]].get("representation_kind"))
         ]
         technical_ids = {group_id_mapping[crop["group_id"]] for crop in technical_crops}
         visible_targets = {crop["group_id"] for crop in render_crops}
@@ -5217,6 +5226,7 @@ def run_detection_same_sheet_review(
     )
     audit = {
         "status": "invalid", "required_pair_count": len(pairs), "decisions": [],
+        "request_timing": dict(diagnostics),
         "request_finished_at": diagnostics["request_finished_at"],
         "provider": summarize_detection_provider_call(
             response=response, diagnostics=diagnostics, requested_model=model,
@@ -7771,7 +7781,7 @@ def build_detection_v714_conflict_membership_matrix(
         and group.get("evidence_class") == "object_evidence"
         and str(group.get("group_id") or "")
     }
-    excluded_kinds = {"presentation_render", "floor_plan"}
+    excluded_kinds = {*ATTACHMENT_ONLY_REPRESENTATION_KINDS, "floor_plan"}
     admitted_ids: set[str] = set()
     for decision in conflict_decisions:
         if not isinstance(decision, dict):
@@ -11560,7 +11570,7 @@ def run_anthropic_detection_visual_registry_agent(
     technical_membership = (
         split_membership and not v714_conflict_membership_active
         and len({row["page_number"] for row in object_views}) > 1
-        and all(row.get("representation_kind") != "presentation_render" for row in object_views)
+        and all(not requires_technical_attachment(row.get("representation_kind")) for row in object_views)
     )
     review_aliases: dict[str, str] = {}
     if split_membership:
@@ -11665,30 +11675,31 @@ def run_anthropic_detection_visual_registry_agent(
     if v637_ada_covered_pair_local_membership_active:
         review_prompt_with_membership_contract += (
             "\n\nV7.8 PRESENTATION RENDER OVERRIDE:\n"
-            "`K=presentation_render` means a photographic render or photo, not "
-            "a technical perspective. For a pair containing one, inspect only "
+            "`K=presentation_render` and `K=isometric_technical` are attachment-only "
+            "for object grouping. Preserve their original classes. For a pair containing one, inspect only "
             "concrete matching_topology or unique_geometry. Do not require a "
             "dimension, OCR label, material, construction criterion, or a second "
             "evidence type. One of those two facts is sufficient only when its "
             "observation names a distinctive configuration visible in both Views "
             "and cites exactly those two registry_view sources. Generic furniture "
             "type, colour, finish, room context, proximity or approximate pixel "
-            "proportions are never proof. A presentation render may appear in an "
-            "object_hypothesis only with at least one non-presentation technical "
-            "View.\n"
+            "proportions are never proof. Keep both attachment-only classes out of "
+            "object_hypotheses and use presentation_render_decisions for them.\n"
         )
     if not v69_criteria_reconciliation_active:
         review_prompt_with_membership_contract += (
             "\n\nV7.11 PRESENTATION RENDER DECISIONS:\n"
-            "For every `K=presentation_render` View, return exactly one row in "
+            "For every `K=presentation_render` or `K=isometric_technical` View, return exactly one row in "
             "`presentation_render_decisions`, even when the candidate technical "
-            "View is on another page. Use `attach` only for one non-render View "
+            "View is on another page. Use render_group_id for that attachment-only View "
+            "without changing its ID or class. Use `attach` only for a View whose class "
+            "is neither presentation_render nor isometric_technical, "
             "with exactly `matching_topology` or `unique_geometry` and a concrete "
             "configuration visible in both images. Use `no_match` when no such "
             "proof exists and `unresolved` only when pixels prevent comparison. "
             "For `no_match` or `unresolved`, set technical_group_id to an empty "
-            "string and evidence_type to `none`. Do not include presentation "
-            "renders in object_hypotheses: this decision list is their only "
+            "string and evidence_type to `none`. Do not include attachment-only "
+            "Views in object_hypotheses: this decision list is their only "
             "membership authority. Colour, finish, room context, proximity, "
             "material and approximate proportions are never proof.\n"
         )
@@ -11872,6 +11883,7 @@ def run_anthropic_detection_visual_registry_agent(
         {
             "max_tokens": max_tokens,
             "accepted": attempt_number == len(review_attempts),
+            "request_timing": dict(attempt_diagnostics),
             **summarize_detection_provider_call(
                 response=attempt_response,
                 diagnostics=attempt_diagnostics,
@@ -12429,8 +12441,7 @@ def run_anthropic_detection_visual_registry_agent(
         presentation_render_group_ids = {
             str(group.get("group_id") or "")
             for group in visual_map["visual_groups"]
-            if str(group.get("representation_kind") or "").strip().lower()
-            == "presentation_render"
+            if requires_technical_attachment(group.get("representation_kind"))
         }
         view_evidence_packages = build_detection_view_evidence_packages(
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
@@ -12527,10 +12538,14 @@ def run_anthropic_detection_visual_registry_agent(
                         normalized_evidence.append(normalized_evidence_row)
                     hypothesis["evidence"] = normalized_evidence
                 normalized_hypotheses.append(hypothesis)
+            normalized_hypotheses, attachment_projection_audit = project_attachment_only_hypotheses(
+                normalized_hypotheses, presentation_render_group_ids,
+            )
             accepted_hypotheses, object_hypothesis_audit = compile_detection_v5_object_hypotheses(
                 normalized_hypotheses, visual_groups=semantic_validation_groups,
                 allow_star_overlaps=v847_star_hypothesis_components_active,
             )
+            object_hypothesis_audit["attachment_only_projection"] = attachment_projection_audit
             semantic_facts = []
             for hypothesis in accepted_hypotheses:
                 if v637_ada_covered_pair_local_membership_active:
@@ -12673,6 +12688,12 @@ def run_anthropic_detection_visual_registry_agent(
             "decisions": presentation_render_decision_audit,
             "accepted_edge_count": len(presentation_render_edges),
             "rejected_generic_fact_count": len(generic_presentation_facts),
+            "attachment_policy": "isometric_technical_attachment_v1",
+            "attachment_view_kinds": {
+                str(group["group_id"]): group["representation_kind"]
+                for group in visual_map["visual_groups"]
+                if requires_technical_attachment(group.get("representation_kind"))
+            },
         }
         if v69_criteria_reconciliation_active:
             accepted_pairs = {

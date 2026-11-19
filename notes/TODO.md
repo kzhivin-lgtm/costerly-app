@@ -971,6 +971,19 @@ dimensions, cost allocation and price sources after each optimization.
 
 ## Lev1 Detection release regression
 
+ACTIVE IMPLEMENTATION, P0, OWNER APPROVED, 2026-11-19. Restore latest Labor
+V2.4 (`551577c3`) and retain `isometric_technical` as the original View class,
+but share render attachment rules: it cannot establish a commercial object
+without a proven non-attachment technical anchor. Use the existing Membership
+reply/attachment schema, no extra model stages or isometric recovery calls.
+Preserve Discovery, raw classes/IDs, OCR, Same-Sheet, Naming/Calculation evidence,
+and V2.4 hours editing/saving/rounding/warning removal/Calculation rendering.
+Unmatched isometrics are excluded from standalone packages, with audit retained;
+an isometric-only document cannot establish an object under the approved rule.
+Check attach/unmatched/ambiguous/no-anchor/multiple-object cases and saved Lev
+and Ada controls. This replaces the earlier proposed Same-Sheet authority rewrite;
+no such rewrite is authorized. Existing task/version remains V2.4.
+
 ACTIVE DIAGNOSIS, P0, USER REPORT, 2026-11-18. Restore Lev1's one-object result
 with its six drawing Views after the owner reported a six-object outlier following
 V2.2.3. The owner reports dozens of stable one-object cycles beforehand.
@@ -1161,10 +1174,11 @@ Owner prefers the small fallback over a broad authority rewrite; no runtime
 repair approved in this benchmark. Artifacts in the handoff workspace:
 `outputs/detection-v2.4-lev2-adda-five-2026-11-19/`.
 
-### Pending proposal: reuse existing Same-Sheet for incomplete proof coverage
+### Deferred proposal: reuse existing Same-Sheet for incomplete proof coverage
 
-PENDING OWNER DECISION, P0, 2026-11-19. Owner requested a minimal no-new-call
-repair proposal only; no implementation is authorized. Keep the current freeze.
+DEFERRED, P0, 2026-11-19. Superseded for the current iteration by the owner-approved
+V2.4 isometric attachment policy above. The Same-Sheet authority rewrite remains
+unapproved. Original proposal follows for history only.
 Propose a bounded fallback for an existing structurally valid Membership
 hypothesis rejected solely for incomplete pair-local coverage. Retain the
 existing minimum independent typed-pair requirement and all other validators.

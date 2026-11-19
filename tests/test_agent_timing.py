@@ -1513,12 +1513,52 @@ def test_ordinary_discovery_recovers_response_without_text(batched, recovery_has
         assert audit["empty_discovery_responses"][1]["attempt"] == "coverage_recovery"
 
 
-def test_presentation_render_without_technical_match_never_creates_registry_object():
+@pytest.mark.parametrize("matched", [True, False])
+def test_isometric_membership_uses_primary_attachment_without_extra_requests(matched):
+    proposal = _visual_registry_payload({"visual_groups": [
+        {"group_id": "iso", "page_number": 1, "location_hint": "left",
+         "visual_description": "technical isometric of stepped drawer cabinet",
+         "representation_kind": "isometric_technical"},
+        {"group_id": "front", "page_number": 1, "location_hint": "right",
+         "visual_description": "dimensioned elevation of stepped drawer cabinet",
+         "representation_kind": "orthographic_elevation"},
+    ]})
+    proposal.pop("document_scope")
+    review = {"object_hypotheses": [], "presentation_render_decisions": [{
+        "render_group_id": "iso", "technical_group_id": "front" if matched else "",
+        "disposition": "attach" if matched else "unresolved",
+        "evidence_type": "matching_topology" if matched else "none",
+        "visual_witness": "Both Views show the same stepped drawer base and offset panel junction.",
+    }]}
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", return_value=(_Response(), {
+            "request_started_at": "2026-11-19T00:00:00+00:00",
+            "request_finished_at": "2026-11-19T00:00:01+00:00",
+        })) as stream,
+        patch("agents.anthropic_adapter.extract_text_from_claude_response",
+              side_effect=[json.dumps(proposal), json.dumps(review)]),
+    ):
+        visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+            document_category="ordinary_object_set")
+    assert stream.call_count == 2
+    assert len(registry["objects"]) == 1
+    assert visual_map["visual_groups"][0]["representation_kind"] == "isometric_technical"
+    assert usage["raw_usage"]["excluded_presentation_render_group_ids"] == ([] if matched else ["view-001"])
+    policy = usage["raw_usage"]["semantic_ledger_audit"]["v7_11_presentation_render"]
+    assert policy["accepted_edge_count"] == int(matched)
+    assert policy["attachment_view_kinds"] == {"view-001": "isometric_technical"}
+
+
+@pytest.mark.parametrize("kind", ["presentation_render", "isometric_technical"])
+def test_presentation_render_without_technical_match_never_creates_registry_object(kind):
     proposal = _visual_registry_payload({
         "visual_groups": [{
             "group_id": "render", "page_number": 1, "location_hint": "centre",
             "visual_description": "photorealistic kitchen presentation image",
-            "representation_kind": "presentation_render",
+            "representation_kind": kind,
         }],
     })
     proposal.pop("document_scope")
@@ -1560,9 +1600,13 @@ def test_presentation_render_without_technical_match_never_creates_registry_obje
     assert usage["raw_usage"]["excluded_presentation_render_group_ids"] == ["view-001"]
     assert usage["raw_usage"]["presentation_render_component_audit"] == [{
         "group_ids": ["view-001"],
-        "disposition": "excluded_unattached_presentation_render",
-        "reason": "Presentation render/photo has no proven technical View in its component.",
+        "disposition": ("excluded_unattached_presentation_render" if kind == "presentation_render"
+                        else "excluded_unattached_isometric_technical"),
+        "reason": ("Presentation render/photo has no proven technical View in its component."
+                   if kind == "presentation_render" else
+                   "Attachment-only View has no proven technical anchor in its component."),
     }]
+    assert visual_map["visual_groups"][0]["representation_kind"] == kind
     assert usage["raw_usage"]["v6_14_document_scope_requested"] is False
 
 
@@ -2059,21 +2103,25 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
         content = kwargs["messages"][0]["content"][-1]["text"]
         if "candidate_region_decisions" in properties:
             payload = proposal
+            actor, start, finish = "discovery", "00", "01"
         else:
             concurrent_calls.wait()
             if "object_hypotheses" in properties:
                 calls["grouping"] = content
                 payload = review
+                actor, start, finish = "membership", "02", "04"
             else:
                 assert list(properties) == ["Q001", "Q002", "Q003"]
                 calls["pairs"] = content
                 payload = {key: {"decision": "same", "observation": "The cabinet plan and profiles align."}
                            for key in properties if not (missing_pair and key == "Q003")}
+                actor, start, finish = "same-sheet", "02", "07"
         response = _Response()
         response.payload = payload
         return response, {
-            "request_started_at": "2026-11-05T00:00:00+00:00",
-            "request_finished_at": "2026-11-05T00:00:01+00:00",
+            "request_id": f"req-{actor}",
+            "request_started_at": f"2026-11-05T00:00:{start}+00:00",
+            "request_finished_at": f"2026-11-05T00:00:{finish}+00:00",
         }
 
     def run():
@@ -2106,6 +2154,20 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
     assert "REQUIRED SAME-PAGE MEMBERSHIP QUEUE" not in calls["grouping"]
     assert usage["prompt_version"] == DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION
     assert len(usage["raw_usage"]["v8_4_8_same_sheet_review"]["decisions"]) == 3
+    membership_timing = usage["raw_usage"]["v5_9_review"]["request_timing"]
+    pairs_timing = usage["raw_usage"]["v8_4_8_same_sheet_review"]["request_timing"]
+    assert membership_timing == {
+        "request_id": "req-membership",
+        "request_started_at": "2026-11-05T00:00:02+00:00",
+        "request_finished_at": "2026-11-05T00:00:04+00:00",
+    }
+    assert pairs_timing == {
+        "request_id": "req-same-sheet",
+        "request_started_at": "2026-11-05T00:00:02+00:00",
+        "request_finished_at": "2026-11-05T00:00:07+00:00",
+    }
+    assert usage["raw_usage"]["request_started_at"] == "2026-11-05T00:00:00+00:00"
+    assert usage["raw_usage"]["request_finished_at"] == pairs_timing["request_finished_at"]
     assert (usage["input_tokens"], usage["output_tokens"]) == (300, 60)
     assert [item["visual_group_ids"] for item in registry["objects"]] == [[
         "view-001", "view-002", "view-003",
