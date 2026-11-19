@@ -2,7 +2,7 @@
 
 ## Workflow transitions
 
-PUBLISHED, OWNER LIVE TEST FAILED, ACTIVE DIAGNOSIS, P0, V2.9, 2026-11-19. Owner explicitly
+FIX PUBLISHED, OWNER RETEST PENDING AFTER FAILED LIVE TEST, P0, V2.9, 2026-11-19. Owner explicitly
 requires automatic page refresh with login retained, rejects periodic build
 polling, and assigns V2.9. Remove V2.8 client polling, retain its static file for legacy migration, send one build
 event over existing Core connection, preserve active work and one-reload guard.
@@ -58,9 +58,18 @@ per-tab session reproduced Login before the fix. Fix: one native bootstrap
 rerun/read after cookie rejection, preserve workflow, validate tab session by
 normal server auth; no polling, bypass or change to normal valid startup.
 Focused before failed; after passed, including revocation and fresh sign-in.
+Full local gate passed: 399 checks, seven browser suites, 166.949s. Exact-SHA
+GitHub gate 44541908050 passed, 139.743s. Protected publisher verified active
+mandatory enforcement and published 88df83cd. Railway ACTIVE/Deployment
+successful with the cookie-recovery title; public build b20261119141509
+verified. Current supplied trace has not yet emitted new-build recovery events;
+owner asked to observe the existing tab without manual refresh or new password.
+Owner screenshot at 16:22 Jerusalem still shows Login and same supplied ID.
+A new explicit Sign in in the same tab (no manual refresh) was requested to
+check the deployed repair; result pending. Latest owner-only new-build query
+hit a network ConnectTimeout, so it is not evidence of a new application error.
 This repairs a verified failure path; the origin of the stale production cookie
-and the actual contents of this owner's tab storage remain unknown. Full gates
-and new production acceptance pending. No Detection/calculation changes.
+and the actual contents of this owner's tab storage remain unknown. New owner production acceptance pending. No Detection/calculation changes.
 Artifacts:
 outputs/auth-resume-v2.9/owner-control/ in handoff workspace.
 

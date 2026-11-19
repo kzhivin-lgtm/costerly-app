@@ -1,5 +1,21 @@
 # Done Log
 
+V2.9 cookie/tab recovery published, owner retest pending, 2026-11-19.
+Owner supplied exact current trace 0a99f9e6-994e-4414-bfbc-9c689c8e0d42.
+Owner-only events confirmed fast cookie restore -> refresh_token_already_used
+(HTTP400) -> Login. Fresh sign-in/version reload alone passed locally; a stale
+used cookie overriding the valid newer tab session reproduced the failure.
+Fix 88df83cd retries existing tab bootstrap once after cookie rejection, without
+clearing tab storage/workflow; recovered tokens pass normal server auth/RLS.
+Rejection still reaches Login, no loop, extra polling or normal-click rerun.
+399 local checks/seven browser suites passed, 166.949s; exact-SHA gate
+44541908050 passed, 139.743s. Protected publisher verified active mandatory
+ruleset, Railway ACTIVE/Deployment successful; public build
+estimation-v2.9-b20261119141509-cookie-tab-recovery-detection-v8.4.29 verified.
+Current owner tab has not yet confirmed new-build recovery. Source of the stale
+cookie and current owner tab-storage contents unknown. No accepted checkpoint;
+Detection/calculation unchanged. Evidence: outputs/auth-resume-v2.9/.
+
 V2.9 owner-control deployment completed, LIVE ACCEPTANCE FAILED, 2026-11-19.
 Control c46e9809 changed only three build stamps, no behavior/model changes.
 Owner confirmed signed-in idle Upload before publication and reported Login
