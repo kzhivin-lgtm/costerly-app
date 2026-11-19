@@ -1,5 +1,17 @@
 # Done Log
 
+V2.9 owner-control deployment completed, LIVE ACCEPTANCE FAILED, 2026-11-19.
+Control c46e9809 changed only three build stamps, no behavior/model changes.
+Owner confirmed signed-in idle Upload before publication and reported Login
+afterward. Keep-login criterion fails; outer reload and current provider cause
+remain unknown. Local gate 397/seven suites/158.341s; exact-SHA gate 44534470231
+passed/148.620s. Protected publisher verified enforcement. Railway deployment
+4af57d84-f14b-4a30-b2b7-79c9b2b4b78a ACTIVE/Deployment successful, public stamp
+b20261119133205 verified. Historical owner trace has only the earlier rejection.
+Automatic approval review blocked broad recent telemetry due to other-session
+risk; narrow current-diagnosis approval or exact owner trace requested.
+No new accepted checkpoint. Evidence: outputs/auth-resume-v2.9/owner-control/.
+
 V2.9 published, builds verified, owner-session production acceptance pending,
 2026-11-19. Runtime d7c0bb25 (base 7aea0f6b) removes client version-file/startup/focus/30s polling.
 Static version file retained for one final old-V2.8 check: actual unchanged

@@ -2,7 +2,7 @@
 
 ## Workflow transitions
 
-PUBLISHED, BUILDS VERIFIED, OWNER AUTHENTICATED ACCEPTANCE PENDING, P0, V2.9, 2026-11-19. Owner explicitly
+PUBLISHED, OWNER LIVE TEST FAILED, ACTIVE DIAGNOSIS, P0, V2.9, 2026-11-19. Owner explicitly
 requires automatic page refresh with login retained, rejects periodic build
 polling, and assigns V2.9. Remove V2.8 client polling, retain its static file for legacy migration, send one build
 event over existing Core connection, preserve active work and one-reload guard.
@@ -39,6 +39,18 @@ behavior changes, model run or new work number. Publish after the owner confirms
 an idle signed-in Upload tab is ready. Pass: one automatic outer reload, no
 manual refresh or credentials, still signed in; correlate wrapper/server events.
 Do not count manual Cmd+R or an iframe-only navigation as this acceptance.
+Control c46e9809 (same behavior, new -b20261119133205- stamp) published after
+owner confirmed signed-in idle Upload. Local gate 397 checks/seven browser
+suites passed, 158.341s; exact-SHA GitHub gate 44534470231 passed, 148.620s.
+Protected publisher verified enforcement; Railway control deployment
+4af57d84-f14b-4a30-b2b7-79c9b2b4b78a ACTIVE/Deployment successful, public stamp
+verified. Owner then reports Login. Keep-login criterion FAILED, no accepted
+checkpoint; actual outer-reload event and current auth rejection cause UNKNOWN.
+Known owner trace 702f5960 has only the older V2.7 rejection, not this attempt.
+General latest-telemetry query rejected by automatic approval review because
+it could include other users; owner asked to approve a narrow last-five-minute
+login-event query. No speculative auth patch or repeated deployment. Artifacts:
+outputs/auth-resume-v2.9/owner-control/ in handoff workspace.
 
 SUPERSEDED BY V2.9, PUBLISHED HISTORY, P0, V2.8, 2026-11-19. Owner replaces
 auth-dependent refresh acceptance with simple forced page refresh after deploy,
