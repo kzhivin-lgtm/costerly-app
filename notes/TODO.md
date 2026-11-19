@@ -993,16 +993,21 @@ handoff workspace `outputs/detection-v2.4-isometric-repeatability-2026-11-19/REP
 This completes the requested experiment/diagnosis, not a stable Detection
 checkpoint or global accuracy acceptance. Existing V2.4 task retained.
 
-PUBLICATION AUTHORIZED, P0, V2.6, 2026-11-19. Owner explicitly assigned
-V2.5 to published isometric-attachment runtime `e0b20646` (originally labelled
-V2.4), V2.6 to the prepared explicit-pair change and then requested publication.
-Previous publication hold lifted. Pair implementation `ef7c2b5d` passed exact
-GitHub UI gate 44504638045. Only Core/wrapper release markers change to V2.6;
-Detection code and already verified provider controls are reused unchanged.
-No extra model calls needed for renumbering. Publish the new exact SHA only
-after its required gate, then verify actual Core/wrapper builds.
-100 focused checks, full local gate (396 checks/five browser suites), fresh
-Ada 2,2,2 and one correct Lev1/Lev2 each passed. Original approved scope: require
+PUBLISHED, BOUNDED FORMAT VERIFIED, OWNER ACCEPTANCE PENDING, P0, V2.6,
+2026-11-19. Owner explicitly approved publication and renumbered prior
+attachment release `e0b20646` as V2.5 (historical marker V2.4 retained).
+V2.6 runtime `fce5ffae` contains the explicit-pair fix `ef7c2b5d`; the only
+runtime difference from tested ef7c2b5d is the V2.6 build marker. 100 focused
+checks and five fresh controls passed: Ada 2,2,2 with exact 4+4 partitions,
+Lev1 one/all six Views, Lev2 one/all four Views. Each reply used explicit pair
+fields, one Membership attempt, no recovery. Controls are local-process
+provider trials on identical Detection code, not Railway UI/watcher tests.
+Final V2.6 local gate: 396 checks/five browser suites, 144.575s. Exact-SHA
+GitHub gate 44505984042 passed; protected publisher advanced main. Railway
+5da4c1f5-cbb6-4b91-82c2-2312e01f64b3 ACTIVE, Deployment successful. Actual Core
+and wrapper both report `estimation-v2.6-explicit-membership-pairs-detection-v8.4.29`.
+Sign in observed; authenticated production card acceptance not tested.
+No extra paid runs for renumbering, no new model stage. Original scope: require
 separate model evidence rows for A-B and A-C, no pooled three-View pair. Restore
 only V8.4.28 explicit group_id_a/group_id_b fields from `114a7b80`, canonical
 endpoint citations and the separate structural_witness role. Do not restore
@@ -1040,7 +1045,7 @@ and an unchanged known Ada split (five objects), which remains outside this
 exact-class policy. Fresh controls do not establish repeatability or global
 split repair. Authenticated production card acceptance remains untested.
 This replaces the proposed Same-Sheet rewrite; no such rewrite authorized.
-No new product work number or block: existing V2.4. Evidence in the handoff
+Owner assigned this existing release V2.5; old V2.4 records are aliases. Evidence in the handoff
 workspace: `outputs/object-card-v2.4-isometric-attachment-2026-11-19/REPORT.md`.
 
 ACTIVE DIAGNOSIS, P0, USER REPORT, 2026-11-18. Restore Lev1's one-object result

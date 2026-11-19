@@ -1,6 +1,23 @@
 # Detection Agent benchmark
 
-## V2.4 repeated fresh controls, 2026-11-19: 8/9 correct
+## V2.6 explicit pair fields, published 2026-11-19
+
+Runtime fce5ffae, same Detection code as validated ef7c2b5d. Restore two
+required View endpoint fields per evidence row, keeping pair coverage/grouping
+rules and third physical witness separate. 100 focused checks passed. Fresh
+local-process provider controls: Ada 2,2,2, exact {1,4,6,8}/{2,3,5,7}; Lev1
+one/all six Views; Lev2 one/all four Views. All endpoints explicit, no rejected
+coverage, no recovery. These five controls do not establish a stable failure
+rate or production watcher behavior. Original failed nine-run series retained.
+Final V2.6 local gate: 396 checks and five browser suites; exact-SHA full CI
+44505984042 passed. Protected publisher promoted fce5ffae. Railway deployment
+5da4c1f5-cbb6-4b91-82c2-2312e01f64b3 succeeded; actual Core/wrapper match V2.6.
+Production Sign in observed, authenticated card acceptance not checked.
+Owner renumbered prior e0b20646 attachment release to V2.5, preserving its
+historical V2.4 build marker and test records. Evidence in handoff workspace:
+`outputs/detection-v2.4-explicit-pairs-2026-11-19/REPORT_RU.md`.
+
+## V2.5 controls (then labelled V2.4), 2026-11-19: 8/9 correct
 
 Owner-authorized three trials per existing control, unchanged runtime `e0b20646`,
 no application writes or deployment. Lev1: 1,1,1 with all six Views. Lev2:

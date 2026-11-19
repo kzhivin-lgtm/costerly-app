@@ -1,5 +1,29 @@
 # Done Log
 
+V2.6 published, owner-confirmed release numbering, 2026-11-19.
+V2.5 now denotes prior isometric attachment runtime `e0b20646`, originally
+published with a V2.4 marker. Release tag preserves that exact source; it was
+not redeployed. V2.6 runtime `fce5ffae` restores explicit two-View Membership
+fields from V8.4.28, implementation `ef7c2b5d`. Grouping/coverage rules,
+Discovery/models, Same-Sheet, attachment rules, Labor/UI remain unchanged.
+Historical diff confirms V8.4.29 `420a7e4d` removed the pair fields/reader on
+13 Nov, before Labor V2. Pair endpoints now come from two required fields,
+never an ambiguous three-View citation list; physical witness remains separate.
+100 focused checks passed. Fresh local-process controls: Ada 2,2,2 with exact
+4+4 grouping; Lev1 one/six Views, Lev2 one/four Views. All pair fields complete,
+one Membership attempt each, no recovery. Final numbering changed only build
+markers and records, so those model trials were reused without paid reruns.
+Final local UI gate: 396 checks, five browser suites, 144.575s. Exact-SHA full
+CI 44505984042 passed. Protected publisher advanced main to fce5ffae.
+Railway 5da4c1f5-cbb6-4b91-82c2-2312e01f64b3 ACTIVE, Deployment successful.
+Actual Core and wrapper both show V2.6 explicit-membership-pairs marker;
+Sign in observed. Authenticated production card acceptance remains untested.
+An unrelated pending Railway setting was left untouched. No accepted global
+Detection checkpoint claimed; five controls do not establish a future error rate.
+Evidence: handoff workspace
+`outputs/detection-v2.4-explicit-pairs-2026-11-19/REPORT_RU.md` and
+`v2.6-release.json`. Unrelated Business research TODO remains uncommitted.
+
 V2.4 nine fresh Detection controls, 2026-11-19, runtime unchanged `e0b20646`.
 Owner explicitly authorized three trials each of Lev1/Lev2/Ada and froze code.
 Results: Lev1 1,1,1 (six Views each), Lev2 1,1,1 (four retained Views each),
