@@ -2,6 +2,34 @@
 
 ## Workflow transitions
 
+ACTIVE DIAGNOSIS, P0, USER REPORT, V2.6, 2026-11-19. First Lev1 succeeds,
+second repeated upload appears stuck at 3s. Retained trace 2dae9bae shows
+New Estimate/Upload ready, second drop 10:38:05.436 UTC and File Review ready
+10:38:08.745, but no new upload accepted/queued/worker/stages or completed RFQ.
+Original completed RFQ run_b7385e64ac514d6d9290e3f1ca068129 is preserved.
+Unchanged production guard isolated DOM replay proves that a stale File Review
+marker can falsely complete a new upload without any new Processing marker.
+This fits the event sequence; original native callback loss remains UNKNOWN,
+not a confirmed full transport root cause. Owner Cmd+R recovered Upload/auth;
+new trace 702f5960 confirms wrapper/Core V2.6. Before refresh wrapper was V2.4,
+but wrapper logic differs from V2.6 only by BUILD_VERSION. No model/runtime
+patches or paid reruns. Additional deploy b61b8364 (owner-added future key)
+preceded first success. Evidence in handoff workspace
+`outputs/lev1-v2.6-freeze-2026-11-19/REPORT_RU.md`.
+
+PENDING DESIGN/OWNER DECISION, P0, USER REQUEST, 2026-11-19. Ensure open tabs
+update after deployment rather than starting new work with a different wrapper
+version. Extend existing version/ready handshake (currently logs mismatch and
+defers to manual refresh), no polling/model stage. Proposed behavior: one full
+reload on empty Upload before accepting a new file, retain auth, enable upload
+only after matching versions. Defer during file transfer/Processing/unsaved
+edits to a safe New Estimate boundary; no reload loop. Old wrapper compatibility
+requires a bounded migration via existing supported reload message. Separately
+bind completion to the current upload/server result, not a leftover review.
+The report contains a proposed scenario matrix, not accepted UI behavior or an
+implemented fix. Protected UI contract requires before/after agreement before
+patching. No new block/version assigned by agent.
+
 COMPLETED IN V1.3.0.1, P0, owner acceptance on Lev1, 2026-11-17. Reveal a complete interactive destination when
 switching screens. The 20:15:23 recording shows parts of the previous
 screen alongside Upload and Objects and File Review before Continue.
@@ -141,6 +169,18 @@ Preserve revoked-access handling.
 
 DEFERRED, P1, V1.3.1. Extend fresh Upload/Processing transitions after the
 accepted first stage. The owner selected V1.3.2 as the next stage.
+
+## Service credentials
+
+PENDING, P1, OWNER REQUEST, 2026-11-19. Switch Anthropic calls to the new
+"Anthropic Key 2" variable the owner added in Railway, because the previous key
+is approaching owner-reported expiry. Owner names this the next task after
+current UI investigation. Current code still reads ANTHROPIC_API_KEY; added
+credential was not activated or read by the agent. Exact variable name and
+production auth must be verified without exposing the value. Plan staged
+switch/verification before old-key retirement; do not revoke or broaden access
+under the current investigation. No new version/work number assigned.
+
 
 ## Object presentation previews
 

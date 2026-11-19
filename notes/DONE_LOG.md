@@ -1,5 +1,21 @@
 # Done Log
 
+V2.6 repeated Lev1 UI incident, read-only diagnosis and manual recovery,
+2026-11-19. First RFQ run_b7385e64 succeeds. Second drop at 10:38:05.436 UTC
+gets File Review ready after 3.309s, no retained new server upload/worker or RFQ.
+Old trace 2dae9bae has V2.4 wrapper/V2.6 Core; mismatch handler defers to manual
+refresh. Wrapper source differs only by build marker, not the UI algorithm.
+Unchanged upload guard in isolated localhost DOM reproduces false completion
+from a stale File Review without new Processing. Initial about:blank test was
+invalid (no crypto.randomUUID), retained, then corrected to secure localhost.
+Exact native callback-loss cause remains unknown. Owner Cmd+R recovered Upload
+and auth; trace 702f5960 confirms both builds V2.6. Owner requests safe automatic
+version refresh; proposed scenario matrix remains unapproved, no implementation.
+Owner-added Anthropic Key 2/manual redeploy b61b8364 predates first success;
+code still uses ANTHROPIC_API_KEY, new key untouched, next task recorded.
+No model calls, runtime/settings changes or deployment. Source remains fce5ffae.
+Evidence: handoff workspace `outputs/lev1-v2.6-freeze-2026-11-19/REPORT_RU.md`.
+
 V2.6 published, owner-confirmed release numbering, 2026-11-19.
 V2.5 now denotes prior isometric attachment runtime `e0b20646`, originally
 published with a V2.4 marker. Release tag preserves that exact source; it was
