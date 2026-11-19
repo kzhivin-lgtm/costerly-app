@@ -42,7 +42,6 @@ from use_cases.material_normalization import canonical_material_display_name, ma
 from use_cases.price_source_taxonomy import source_family_for_catalog_family
 from use_cases.retry import read_with_retry
 from use_cases.detection_previews import saved_presentation_preview_ref
-from use_cases.labor_hours import overrides_from_lines, override_lines, validate_hours
 
 
 _ASSUMPTION_MATERIAL_DISPLAY_NAMES = {
@@ -550,7 +549,6 @@ def load_object_detail_data(
                 "rows": material_rows,
             },
         ],
-        "labor_hours_overrides": overrides_from_lines(lines_df),
         "self_cost": {
             "title": f"{object_row.get('object_name') or 'Object'} self cost (SC)",
             "vat_percent": vat_percent,
@@ -577,7 +575,6 @@ def load_object_detail_material_receipt(
     return {
         "sections": [{"key": "material", "rows": _object_detail_material_rows(saved_plan, lines, object_id)}],
         "quantity": _number(obj.get("quantity"), 1),
-        "labor_hours_overrides": overrides_from_lines(lines),
         "self_cost": {"excl_vat": obj.get("self_cost_ex_vat"), "vat": obj.get("vat_amount"),
                       "total": obj.get("self_cost_total")},
     }
@@ -1347,7 +1344,7 @@ def save_object_detail_material_edits(
         line["selection_key"]: line for line in plan.get("lines", ())
         if line.get("selection_key") and any(a.get("object_id") == object_id for a in line.get("allocations", ()))
     }
-    purchases, norm_rows, labor_hours = {}, {}, {}
+    purchases, norm_rows = {}, {}
     auto_purchase = set()
     original_quantity = _number(obj.get("quantity"), 1) or 1
     current_quantity = original_quantity
@@ -1367,12 +1364,6 @@ def save_object_detail_material_edits(
         field = edit.get("field")
         line_id = str(edit.get("lineId") or "")
         if field == "object_quantity" and line_id == "__object__":
-            continue
-        if field == "labor_hours":
-            from use_cases.labor_hours import BLOCKS
-            if line_id not in BLOCKS:
-                raise ValueError("This labor block is no longer available.")
-            labor_hours[line_id] = validate_hours(edit.get("value"))
             continue
         if not plan.get("parts_check_source"):
             raise ValueError("A saved material plan is required to edit materials.")
@@ -1432,10 +1423,6 @@ def save_object_detail_material_edits(
                 "quantity_per_item": quantity, "unit": unit, "source_line_id": None}
 
     if not norm_rows and not purchases and object_quantity is None:
-        upsert_rfq_estimate_lines(client, lines=override_lines(
-            labor_hours, estimate_id=estimate_id, object_id=object_id,
-            company_id=company_id, quantity=current_quantity,
-        ))
         receipt = Future()
         receipt.set_result(plan)
         return receipt
@@ -1443,10 +1430,6 @@ def save_object_detail_material_edits(
         raise ValueError("The saved material plan is not available yet. Try again when it is ready.")
     if object_quantity is not None and company_auth_enabled():
         assert_run_owned(client, str(obj["run_id"]), company_id)
-    upsert_rfq_estimate_lines(client, lines=override_lines(
-        labor_hours, estimate_id=estimate_id, object_id=object_id,
-        company_id=company_id, quantity=current_quantity,
-    ))
     from use_cases.estimation_runtime import queue_material_plan_recalculation
 
     return queue_material_plan_recalculation(

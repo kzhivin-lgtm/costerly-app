@@ -60,10 +60,9 @@ def test_assembly_remains_available_when_materials_are_pending_and_quantity_is_a
     assert 'Waiting for the Material Plan.' in html
     assert 'data-cost-band="sheet-processing"' in html
     assert 'data-cost-band="assembly"' in html
-    assert '₪300' in html and '₪75' in html and '₪375' in html
+    assert '₪300.00' in html and '₪75.00' in html and '₪375.00' in html
     assert '>Total<' in html
-    assert 'Some work needs review' not in html
-    assert 'outside this estimate' not in html
+    assert 'Some work needs review' in html
     assert 'Assembly breakdown' not in html
 
 
@@ -71,7 +70,7 @@ def test_labor_is_a_single_header_and_two_compact_work_rows():
     html = _labor_html({'status': 'waiting_for_materials'})
     assert html.count('object-detail-work-row') == 2
     assert html.count('object-detail-cost-band') == 1
-    assert '>Labor<br>pay<' in html
+    assert '>Labor pay<' in html
     assert '₪50/h' not in html and 'In-house labor</p>' not in html
     assert '>Subtotal<' not in html
 
@@ -80,64 +79,3 @@ def test_pending_labor_does_not_fabricate_zero_cost():
     html = _labor_html({'status': 'preparing'})
     assert 'Preparing Sheet Processing' in html and 'Preparing Assembly' in html
     assert '₪0' not in html
-
-
-def test_hours_save_roundtrip_is_per_item_and_does_not_change_sc_or_norms(monkeypatch):
-    import pandas as pd
-    from use_cases import estimation
-    from use_cases.labor_hours import overrides_from_lines
-    writes = []
-    monkeypatch.setattr(estimation, 'get_supabase_client', lambda: object())
-    monkeypatch.setattr(estimation, 'company_auth_enabled', lambda: False)
-    monkeypatch.setattr(estimation, '_object_material_context', lambda *a, **k: {
-        'company_id': 'company', 'run_id': 'run', 'quantity': 2})
-    monkeypatch.setattr(estimation, 'fetch_rfq_estimate_material_plan', lambda *a: pd.DataFrame())
-    monkeypatch.setattr(estimation, 'upsert_rfq_estimate_lines', lambda _, *, lines: writes.extend(lines))
-    monkeypatch.setattr(estimation, '_recalculate_object_estimate_totals', lambda *a, **k: (_ for _ in ()).throw(AssertionError('SC changed')))
-    estimation.save_object_detail_material_edits(estimate_id='estimate', object_id='object', edits=[
-        {'field': 'labor_hours', 'lineId': 'assembly', 'value': '40.5'},
-        {'field': 'labor_hours', 'lineId': 'sheet-processing', 'value': '0'},
-    ]).result()
-    saved = overrides_from_lines(pd.DataFrame(writes))
-    assert saved == {'assembly': '20.25', 'sheet-processing': '0'}
-    assert all(row['cost'] == 0 and row['hours'] is None and row['rate'] is None for row in writes)
-    from screens.estimation_labor_v1 import _cost_band
-    html = _cost_band('Assembly', '', _pay_metrics(Decimal(saved['assembly']) * 2), key='assembly')
-    assert '>40.5</div>' in html and '₪2\u202f025' in html and '₪506' in html and '₪2\u202f531' in html
-
-
-def test_manual_hours_validation_and_tenant_rejection(monkeypatch):
-    import pytest
-    from use_cases.labor_hours import validate_hours
-    from use_cases import estimation
-    for value in ('-1', '1.25', 'NaN', 'Infinity', '1000000.1', '', None):
-        with pytest.raises(ValueError):
-            validate_hours(value)
-    assert validate_hours('0') == 0 and validate_hours('1000000.0') == 1_000_000
-    monkeypatch.setattr(estimation, 'get_supabase_client', lambda: object())
-    monkeypatch.setattr(estimation, 'company_auth_enabled', lambda: True)
-    monkeypatch.setattr(estimation, 'assert_estimate_owned', lambda *a: (_ for _ in ()).throw(PermissionError('foreign')))
-    with pytest.raises(PermissionError):
-        estimation.save_object_detail_material_edits(estimate_id='foreign', object_id='object', edits=[
-            {'field': 'labor_hours', 'lineId': 'assembly', 'value': '1'}])
-
-
-def test_new_estimate_refresh_waits_for_durable_shell_without_masking_access(monkeypatch):
-    from concurrent.futures import Future
-    from threading import Event
-    from screens import objects
-    future = Future()
-    future.estimate_shell_ready = Event()
-    monkeypatch.setattr(objects.st, 'session_state', {'estimation_batch_future': future,
-        'objects_estimation_seed_rows': []})
-    reads = []
-    def load(estimate):
-        reads.append(estimate)
-        raise PermissionError('foreign')
-    monkeypatch.setattr(objects, '_load_objects_screen_data', load)
-    monkeypatch.setattr(objects, 'report_runtime_failure', lambda *a, **k: None)
-    assert objects._persisted_objects_state('new').data_error is None
-    assert reads == []
-    future.estimate_shell_ready.set()
-    assert 'foreign' in objects._persisted_objects_state('new').data_error
-    assert reads == ['new']

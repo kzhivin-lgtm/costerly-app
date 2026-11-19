@@ -515,8 +515,7 @@ def apply_object_detail_css() -> None:
         .object-detail-cost-band:not([open]) > .object-detail-cost-summary .object-detail-cost-label { display: none; }
         .object-detail-cost-summary .object-detail-table-head { min-height: 64px; align-self: stretch; }
         .object-detail-labor-band { margin-bottom: 24px; --detail-grid: var(--object-detail-cost-grid); }
-        .object-detail-labor-money-pair { grid-column: 3 / 6; display: grid; grid-template-columns: 1fr 1fr; align-self: stretch; }
-        .object-detail-labor-money-pair [data-labor-column] > span { transform: translateX(var(--labor-column-offset, 0px)); }
+        .object-detail-labor-table [data-labor-column="taxes"] { grid-column: 4 / span 2; }
         .object-detail-labor-table [data-labor-column="total"] { grid-column: 6; }
         .object-detail-labor-table .object-detail-table-head,
         .object-detail-work-row > summary .object-detail-table-cell { padding-inline: 7px; }
@@ -528,7 +527,6 @@ def apply_object_detail_css() -> None:
         }
         .object-detail-work-row .object-detail-cost-title::before { width: 6px; height: 6px; border-width: 1px; }
         .object-detail-work-row > summary .object-detail-cost-value { font: 400 13px/1.24 var(--font-sans); }
-        .object-detail-work-row > summary [data-labor-column="hours"] { padding-block: 3px; }
         .object-detail-labor-review { padding: 8px 12px; margin: 0; }
         .object-detail-work-body { padding: 12px; }
         .object-detail-work-body > .object-detail-elements-section { margin-bottom: 12px; }

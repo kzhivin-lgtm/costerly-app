@@ -5217,7 +5217,6 @@ def run_detection_same_sheet_review(
     )
     audit = {
         "status": "invalid", "required_pair_count": len(pairs), "decisions": [],
-        "request_timing": dict(diagnostics),
         "request_finished_at": diagnostics["request_finished_at"],
         "provider": summarize_detection_provider_call(
             response=response, diagnostics=diagnostics, requested_model=model,
@@ -11873,7 +11872,6 @@ def run_anthropic_detection_visual_registry_agent(
         {
             "max_tokens": max_tokens,
             "accepted": attempt_number == len(review_attempts),
-            "request_timing": dict(attempt_diagnostics),
             **summarize_detection_provider_call(
                 response=attempt_response,
                 diagnostics=attempt_diagnostics,

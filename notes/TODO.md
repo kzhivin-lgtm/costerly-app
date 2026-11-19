@@ -1072,6 +1072,80 @@ as a proven repair. No new paid calls, runtime/config changes or deployment.
 Details and exact run/hash groups: handoff workspace
 `outputs/detection-v2.4-lev1-five-2026-11-18/recurrence-cause-2026-11-19/REPORT.md`.
 
+### V2.2.2 rollback and six-run Lev1 comparison
+
+ACTIVE, P0, OWNER APPROVED, 2026-11-19. After checking prior experiments,
+owner explicitly resumed rollback to V2.2.2 (`4e69e5d7`) and six fresh Lev1
+trials. Restore the exact V2.2.2 runtime/tests in a forward commit, preserve
+current records and unrelated edits, pass the required publication gate, then
+compare fresh OCR/Detection outcomes on the same source PDF. No separate
+Detection/Membership repair. Records distinguish the previous V2.4 rebuild
+from V2.2.2 plus reapplied
+V2.2.3 changes, five fresh Lev1 trials on V2.4 (1,1,1,2,6), and six offline saved
+production replays. No six-fresh-trial batch on exact V2.2.2 is recorded.
+Starting production is V2.4 `551577c3`. Acceptance: published Core/wrapper
+V2.2.2 pair, six retained fresh trials with exact one-object/six-View checks.
+Subsequent gradual reapplication is the owner's intended direction; select
+the first isolated change after the benchmark, do not reapply everything now.
+
+### Fresh Lev2 and Ada stability benchmark
+
+STOPPED BY OWNER, P0, 2026-11-19. Owner asked to close the experiment and
+identify the first six-object outlier in the Labor V2 series: V2.2.3,
+18 Nov 13:27 Israel, `run_21b848b935834be5b6ede44048564719`.
+Stop audit found no remaining benchmark Python process; raw evidence remains
+preserved. No further trials, implementation or rollback authorized by that
+question. Original requested scope: run five fresh internal OCR + unchanged
+Detection trials per file on production source `551577c3`, no app persistence,
+Naming, Calculation or deployment. Controls from the protected V1.3.3 archive:
+Lev2 SHA b69e132814531862c1abbf2ea3910e0221ab013dd2d0fb184400149d6ec02b1d,
+one kitchen/four Views; Ada SHA
+09dc963c8b7c9aa341085ae4dbc1bbd31be606ad9f94c95136ecdc646183d4b3,
+two objects with exact View sets 1/4/6/8 and 2/3/5/7 (four Views each).
+Check drawing correspondence and exact partition, not counts alone. Retain all
+responses/failures and separate Discovery, Membership proof and compiler errors.
+Owner prefers the small fallback over a broad authority rewrite; no runtime
+repair approved in this benchmark. Artifacts in the handoff workspace:
+`outputs/detection-v2.4-lev2-adda-five-2026-11-19/`.
+
+### Pending proposal: reuse existing Same-Sheet for incomplete proof coverage
+
+PENDING OWNER DECISION, P0, 2026-11-19. Owner requested a minimal no-new-call
+repair proposal only; no implementation is authorized. Keep the current freeze.
+Propose a bounded fallback for an existing structurally valid Membership
+hypothesis rejected solely for incomplete pair-local coverage. Retain the
+existing minimum independent typed-pair requirement and all other validators.
+For same-page technical Views only, accept that already proposed grouping when
+the complete existing Same-Sheet matrix says `same` for every pair in the final
+candidate group, including the union after any existing qualified-star
+coalescence. Normalize IDs with the existing registry mapping. A missing,
+uncertain, different, duplicate or invalid pair cannot supply fallback coverage.
+Do not use transitive positive chains to invent groups, change render attachment,
+repair explicit Membership separation, or extend cross-page authority. Preserve
+Same-Sheet as its own evidence source in the existing audit; do not fabricate a
+typed geometry fact from its free-text observation.
+Read-only inspection confirms all 15 pairs are `same` in the V2.2.3 production
+failure and V2.4 internal failures 4/5, with all six Views already present in
+Membership hypotheses. This establishes predicate applicability, not an
+implemented/replayed repair or acceptance on genuine multi-object documents.
+Expected benefit: restore these proof-coverage splits without another model call
+or additional model wait (both existing calls are already awaited). Main risk:
+correlated false-positive Membership/Same-Sheet decisions can still merge items.
+Before implementation acceptance, use saved positive and genuine multi-object,
+contradictory, missing/uncertain-pair, render and cross-page controls offline.
+No runtime code, model call, deployment or new product version in this proposal.
+
+Owner follow-up, proposal discussion only: why ask Membership to repeat pair
+proofs already returned by Same-Sheet? Preferred design direction is one source
+of same-page technical pair decisions: consume existing Same-Sheet results
+directly and remove the duplicate same-page proof obligation from Membership.
+Keep document-level grouping/cross-page work and presentation attachment scoped
+separately. This supersedes the fallback as the agent's design recommendation,
+not as an approved implementation. Define how conflicting/non-transitive pair
+decisions affect grouping before changing the contract; a positive chain alone
+cannot establish a group containing a `different` pair. No extra provider calls.
+Runtime/request/schema changes remain unapproved; existing Detection freeze holds.
+
 ### Cancelled proposal: extra proof-verification stage
 
 CANCELLED BY OWNER, 2026-11-19. Extra verification stages/model passes were

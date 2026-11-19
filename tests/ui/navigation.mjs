@@ -164,19 +164,14 @@ try {
    reference.remove();
    return {
     hours:Math.abs(center(cells[1])-center(head.querySelector('[data-labor-column="hours"]'))),
-    pay:center(head.querySelector('[data-labor-column="pay"] > span')),
-    taxes:center(head.querySelector('[data-labor-column="taxes"] > span')),
-    start:center(head.querySelector('[data-labor-column="hours"]')),
-    end:center(head.querySelector('[data-labor-column="total"]')),
+    pay:Math.abs(center(cells[2])-center(head.querySelector('[data-labor-column="pay"]'))),
     total:Math.abs(center(cells[5])-center(head.querySelector('[data-labor-column="total"]'))),
     header:getComputedStyle(head).backgroundColor,
     originalColor,
     cell:getComputedStyle(head.children[0]).backgroundColor,
    };
   });
-  assert.ok(alignment.hours<1 && alignment.total<1 && alignment.taxes>alignment.pay,JSON.stringify(alignment));
-  const step=(alignment.end-alignment.start)/3;
-  assert.ok(Math.abs(alignment.pay-alignment.start-step)<1 && Math.abs(alignment.taxes-alignment.pay-step)<1,JSON.stringify(alignment));
+  assert.ok(alignment.hours<1 && alignment.pay<1 && alignment.total<1,JSON.stringify(alignment));
   assert.equal(alignment.header,alignment.originalColor);
   assert.equal(alignment.cell,'rgba(0, 0, 0, 0)');
   assert.equal(await labor.locator(':scope > summary .object-detail-cost-label').last().innerText(),'TOTAL');
@@ -191,9 +186,9 @@ try {
    await summary.press('Space');
    assert.equal(await band.evaluate(node=>node.open),initial);
   }
-  await sheet.locator(':scope > summary .object-detail-cost-title').click();
+  await sheet.locator(':scope > summary').click();
   await sheet.locator('.object-detail-elements > summary').click();
-  await assembly.locator(':scope > summary .object-detail-cost-title').click();
+  await assembly.locator(':scope > summary').click();
   assert.match(await assembly.innerText(),/Taxes & social/i);
   await page.screenshot({path:reportPath('object-cost-hierarchy-'+cfg.name+'.png'),fullPage:true});
   await materials.locator(':scope > summary').click();
