@@ -993,7 +993,16 @@ handoff workspace `outputs/detection-v2.4-isometric-repeatability-2026-11-19/REP
 This completes the requested experiment/diagnosis, not a stable Detection
 checkpoint or global accuracy acceptance. Existing V2.4 task retained.
 
-ACTIVE IMPLEMENTATION, P0, OWNER APPROVED, V2.4, 2026-11-19. Require
+PUBLICATION AUTHORIZED, P0, V2.6, 2026-11-19. Owner explicitly assigned
+V2.5 to published isometric-attachment runtime `e0b20646` (originally labelled
+V2.4), V2.6 to the prepared explicit-pair change and then requested publication.
+Previous publication hold lifted. Pair implementation `ef7c2b5d` passed exact
+GitHub UI gate 44504638045. Only Core/wrapper release markers change to V2.6;
+Detection code and already verified provider controls are reused unchanged.
+No extra model calls needed for renumbering. Publish the new exact SHA only
+after its required gate, then verify actual Core/wrapper builds.
+100 focused checks, full local gate (396 checks/five browser suites), fresh
+Ada 2,2,2 and one correct Lev1/Lev2 each passed. Original approved scope: require
 separate model evidence rows for A-B and A-C, no pooled three-View pair. Restore
 only V8.4.28 explicit group_id_a/group_id_b fields from `114a7b80`, canonical
 endpoint citations and the separate structural_witness role. Do not restore
@@ -1005,10 +1014,12 @@ been repaired by V8.4.28. Critical proof rules remain unchanged. No added model
 stage or automatic conversion of ambiguous old triples into invented pairs.
 Check schema/runtime 0/1/2/3/22 references, invalid endpoints, separate A-B/A-C,
 third witness, attachment non-bridging, controls and the full publication gate.
-Existing V2.4 task retained, no new product work number or block.
+Owner explicitly assigns this release V2.6; prior published attachment change
+is V2.5. Historical work references/actual old build markers remain preserved.
 
 PUBLISHED, BOUNDED POLICY VERIFIED, OWNER ACCEPTANCE PENDING, P0, OWNER APPROVED,
-V2.4, 2026-11-19. Restored latest Labor V2.4 (`551577c3`), candidate `e0b20646`.
+V2.5, 2026-11-19 (owner renumbering, originally labelled V2.4). Restored latest
+Labor V2.4 (`551577c3`), published runtime `e0b20646`.
 Retain `isometric_technical` as the original View class, but share render
 attachment rules: it cannot establish a commercial object without a proven
 non-attachment technical anchor. Existing primary Membership reply/schema only,
