@@ -2,9 +2,9 @@
 
 ## Workflow transitions
 
-ACTIVE IMPLEMENTATION, P0, OWNER APPROVED, V2.9, 2026-11-19. Owner explicitly
+PUBLISHED, BUILDS VERIFIED, OWNER AUTHENTICATED ACCEPTANCE PENDING, P0, V2.9, 2026-11-19. Owner explicitly
 requires automatic page refresh with login retained, rejects periodic build
-polling, and assigns V2.9. Remove V2.8 polling/version endpoint, send one build
+polling, and assigns V2.9. Remove V2.8 client polling, retain its static file for legacy migration, send one build
 event over existing Core connection, preserve active work and one-reload guard.
 Confirmed SDK experiment: a default background refresh rotates SDK tokens while
 Streamlit/browser keep older tokens and no browser write is queued. Disable
@@ -17,10 +17,24 @@ full UI gates and actual deployed build check. Provider rejection code from the
 original V2.7 incident remains unknown; do not claim its full historical cause.
 Auth regression uses production auth/ready/browser code and a stateful one-use
 synthetic provider, without production calls or paid recognition. Targeted
-checks passed; full gates/publication pending. Evidence in handoff workspace
+checks and full local gate passed: 397 checks, seven browser suites, 162.503s.
+Initial exact-SHA GitHub gate 44531868606 passed (137.604s tests), protected publisher
+verified active mandatory enforcement and advanced main to 7aea0f6b. Railway
+ACTIVE/Deployment successful, V2.9 title. Actual app.costerly.ai wrapper/Core
+both match estimation-v2.9-b20261119130539-session-resume-detection-v8.4.29.
+No version-file fetch in V2.9 wrapper. Compatibility file restored for already-
+open V2.8 clients: the unchanged V2.8 wrapper test made one legacy request,
+one full reload to V2.9 and no more version requests. Focused final check: 20
+passed. Final runtime d7c0bb25, exact-SHA gate 44532998438 passed (131.175s),
+protected publisher advanced main. Initial publish attempt hit a GitHub API
+network timeout; retry passed with all validations retained. Final production
+compatibility file verified, final Railway title ACTIVE/Deployment successful. Real owner authenticated production
+acceptance remains pending. The existing Core channel announces a new build
+when it connects to new Core, without a separate periodic version request.
+Evidence in handoff workspace
 outputs/auth-resume-v2.8/sdk-before.json and outputs/auth-resume-v2.9/.
 
-PUBLISHED, BUILDS VERIFIED, OWNER ACCEPTANCE PENDING, P0, V2.8, 2026-11-19. Owner replaces
+SUPERSEDED BY V2.9, PUBLISHED HISTORY, P0, V2.8, 2026-11-19. Owner replaces
 auth-dependent refresh acceptance with simple forced page refresh after deploy,
 without ending sessions or clearing browser auth, and explicitly assigns V2.8.
 Use one public static version check, no auth/Core/model request or upload gate.
@@ -57,7 +71,7 @@ patches or paid reruns. Additional deploy b61b8364 (owner-added future key)
 preceded first success. Evidence in handoff workspace
 `outputs/lev1-v2.6-freeze-2026-11-19/REPORT_RU.md`.
 
-PUBLISHED, OWNER LIVE TEST FAILED, AUTH DIAGNOSIS DEFERRED, P1, V2.7, 2026-11-19. Ensure open
+PUBLISHED, OWNER LIVE TEST FAILED, AUTH REPAIR IN V2.9, P1, V2.7, 2026-11-19. Ensure open
 tabs update after deployment rather than starting new work with a different
 wrapper version. Owner explicitly authorized automatic refresh on version
 mismatch, retained login, no interruption of the current calculation, no

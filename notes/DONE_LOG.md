@@ -1,5 +1,31 @@
 # Done Log
 
+V2.9 published, builds verified, owner-session production acceptance pending,
+2026-11-19. Runtime d7c0bb25 (base 7aea0f6b) removes client version-file/startup/focus/30s polling.
+Static version file retained for one final old-V2.8 check: actual unchanged
+V2.8 wrapper made one request and one reload to V2.9, then stopped polling.
+One build event over the existing Core connection triggers one safe full reload,
+with calculation, file selection/transfer and edits deferred until safe state.
+SDK auto-refresh had independently rotated tokens without browser persistence;
+reproduction confirmed that defect. Disable that writer and persist explicit
+refresh synchronously before ready/build announcement. Ordered writes protect
+new token/cookie and signed-out state. Revoked sessions still reach Login.
+397 local checks and seven browser suites passed, 162.503s. Stateful one-use
+synthetic provider: two expiry/refresh/reload/new-server-session cycles retained
+sign-in, revoked session rejected, zero version-file requests. Exact-SHA GitHub
+gate 44531868606 passed, 137.604s; final gate 44532998438 passed, 131.175s.
+Final focused version-contract checks: 20 passed. Protected publisher verified
+active ruleset and published final d7c0bb25 after one API timeout/retry.
+Final Railway ACTIVE/Deployment successful, title V2.9: migrate already-open
+V2.8 tabs to the event-driven wrapper. Public compatibility file verified.
+Actual fresh public wrapper/Core both
+report estimation-v2.9-b20261119130539-session-resume-detection-v8.4.29.
+Actual owner-session acceptance and idle old-tab migration remain unverified;
+build event is on new-Core connection, not a separate immediate broadcast.
+Original V2.7 provider rejection code remains unknown. Detection, calculation,
+schema and provider settings/credentials unchanged. Evidence: handoff workspace
+outputs/auth-resume-v2.9/.
+
 V2.8 published, builds verified, owner acceptance pending, 2026-11-19.
 Runtime 1f1ed8dd: direct public version-file polling, one full refresh after
 published build changes, no auth precheck or session-ending operation. Preserve
