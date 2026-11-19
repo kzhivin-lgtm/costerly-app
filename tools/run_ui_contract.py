@@ -25,7 +25,7 @@ UNIT_TESTS = [
     "tests/test_agent_timing.py::test_isometric_membership_uses_primary_attachment_without_extra_requests",
     "tests/test_agent_timing.py::test_presentation_render_without_technical_match_never_creates_registry_object",
 ]
-BROWSER_SUITES = ["navigation.mjs", "calculation.mjs", "profile_save.mjs", "profile_recovery.mjs", "screen_recovery.mjs", "version_refresh.mjs", "auth_resume.mjs"]
+BROWSER_SUITES = ["navigation.mjs", "calculation.mjs", "profile_save.mjs", "profile_recovery.mjs", "screen_recovery.mjs", "version_refresh.mjs", "auth_resume.mjs", "auth_reconnect.mjs"]
 
 
 def main() -> int:
@@ -74,6 +74,11 @@ def main() -> int:
             suite_state = state / Path(suite).stem
             suite_state.mkdir()
             env["COSTERLY_UI_STATE_DIR"] = str(suite_state)
+            if suite == "auth_reconnect.mjs":
+                # This scenario owns two real server processes, preserving
+                # one open browser form across their restart.
+                run(Path(suite).stem, ["node", str(ROOT / "tests/ui" / suite)])
+                continue
             server_log = (output / (Path(suite).stem + "-server.log")).open("w")
             server = subprocess.Popen([
                 sys.executable, "-m", "streamlit", "run", str(ROOT / "tests/ui" / ("auth_resume_fixture.py" if suite == "auth_resume.mjs" else "app_fixture.py")),

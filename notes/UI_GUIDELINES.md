@@ -59,11 +59,19 @@ ready receipt. No new timer, HTTP version request, worker or auth poll.
 | Core announces a newer build | One outer reload at safe Upload/Login |
 | Same or older Core during rollout | No reload, no repeated build announcement |
 | Active file picker/transfer, calculation or unsaved edit | Finish current action, reload at safe Upload |
+| Sign in submitted from a page whose server restarted | Consume the native submitted form once before browser bootstrap can discard its trigger; use the normal password, membership and Terms gates, then persist before update |
 | Expired access token with valid refresh session | Rotate explicitly, synchronously persist newest session before reload, restore signed-in state in new server session |
 | Older queued browser write | Ignore it, keep the latest rotated session |
 | Browser cannot persist the session | Keep current page, postpone reload, offer client-side Retry; no extra Python rerun |
 | Fast cookie rejected, this tab has a newer valid session | One browser bootstrap retry before Login; preserve workflow state and validate recovered tokens normally |
 | Provider rejects available cookie and tab sessions | Existing Login recovery, no access bypass or retry loop |
+
+Cold native login recovery runs only before session initialization, reads the
+existing submitted widget values in memory, and handles only the Sign in
+trigger. It does not persist or log passwords, resend warm callbacks, submit
+other forms, bypass provider/membership/Terms checks, or add polling/timers.
+The locked Streamlit native-widget interface is covered by a real two-process
+restart browser regression, not only a mocked callback.
 
 The server SDK must not refresh tokens in its own background timer. Streamlit
 owns refresh and passes its latest session write to the same ready component

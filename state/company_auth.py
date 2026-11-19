@@ -16,6 +16,8 @@ from supabase import create_client
 from supabase.lib.client_options import SyncClientOptions
 from supabase_auth.errors import AuthApiError, AuthError
 from postgrest.exceptions import APIError
+from streamlit.runtime.scriptrunner import get_script_run_ctx
+from streamlit.runtime.state.common import user_key_from_element_id
 
 from config import get_optional_secret
 from db.supabase_client import get_supabase_client
@@ -250,6 +252,41 @@ def _store_auth_session(session: object) -> None:
     # Also carry the latest write into the ready component. It commits to
     # browser storage synchronously before any deployment reload is announced.
     st.session_state._browser_auth_latest_write = dict(st.session_state._browser_auth_pending)
+
+
+def recover_sign_in_submit_after_reconnect() -> bool:
+    """Consume a native login submit whose callback vanished with the server.
+
+    On a fresh Streamlit session widget callbacks are not registered yet. Read
+    only the submitted login form before browser bootstrap can stop the run and
+    discard its trigger. Credentials follow the existing password-grant path.
+    Warm callbacks, other forms and ordinary startup do not repeat a sign-in.
+    """
+    if (
+        st.session_state.get("_browser_auth_initialized")
+        or st.session_state.get("auth_access_token")
+        or isinstance(st.session_state.get("_browser_auth_pending"), dict)
+    ):
+        return False
+    context = get_script_run_ctx()
+    if context is None:
+        return False
+    widgets = {
+        user_key_from_element_id(widget.id): widget
+        for widget in context.session_state.get_widget_states()
+    }
+    submit = widgets.get("FormSubmitter:company_login-Sign in")
+    if submit is None or not submit.trigger_value:
+        return False
+    email = widgets.get("login_email")
+    password = widgets.get("login_password")
+    if email is None or password is None or not email.string_value or not password.string_value:
+        return False
+    st.session_state.login_email = email.string_value
+    st.session_state.login_password = password.string_value
+    _submit_login()
+    st.session_state._browser_auth_initialized = True
+    return True
 
 
 def sync_browser_auth_session(

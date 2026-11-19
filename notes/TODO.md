@@ -58,6 +58,21 @@ per-tab session reproduced Login before the fix. Fix: one native bootstrap
 rerun/read after cookie rejection, preserve workflow, validate tab session by
 normal server auth; no polling, bypass or change to normal valid startup.
 Focused before failed; after passed, including revocation and fresh sign-in.
+Owner retry after that fix still failed. Exact owner trace at 14:28 UTC shows
+new Core, both cookie/tab tokens rejected, no server.action_completed for
+password Sign in, and native transition timeout. A real local server-restart
+experiment reproduced the actual missing case with the production form:
+one click on the old page -> zero password grants -> Login. The earlier
+Fixture sign in button did not exercise this cold/native callback loss.
+New fix consumes only a native Sign in submit on a fresh uninitialized server
+session before browser bootstrap can discard its trigger, using the existing
+_submit_login provider/membership/Terms gates. Warm callbacks and other forms
+are not replayed; credentials are not persisted/logged. Real restart after fix:
+one click, one password grant, one automatic outer reload, authenticated Upload.
+The actual production form replaces the old simplified fixture, and an eighth
+mandatory browser suite owns two real server processes to preserve this case.
+New helper unit checks passed. Full gates/publication/retest of this final
+reconnect fix pending; do not request another owner Sign in before deployment.
 Full local gate passed: 399 checks, seven browser suites, 166.949s. Exact-SHA
 GitHub gate 44541908050 passed, 139.743s. Protected publisher verified active
 mandatory enforcement and published 88df83cd. Railway ACTIVE/Deployment

@@ -28,6 +28,7 @@ from state.company_auth import (
     render_company_account,
     render_company_setup,
     render_login_or_signup,
+    recover_sign_in_submit_after_reconnect,
     render_password_reset,
     render_terms_acceptance,
     sync_browser_auth_session,
@@ -385,6 +386,9 @@ def _render_screen(
 def main() -> None:
     run_started_epoch_ms = round(time.time() * 1000, 3)
     init_started_at = time.perf_counter()
+    recovered_sign_in = (
+        company_auth_enabled() and recover_sign_in_submit_after_reconnect()
+    )
     init_state()
     st.session_state._runtime_run_sequence = (
         int(st.session_state.get("_runtime_run_sequence") or 0) + 1
@@ -441,6 +445,8 @@ def main() -> None:
                 "reset_session_ms": reset_session_ms,
             },
         )
+    if recovered_sign_in:
+        trace.event("server.auth.reconnected_sign_in_submit")
     emit_completed_action(st.session_state, trace)
     trace.event(
         "server.run_start",

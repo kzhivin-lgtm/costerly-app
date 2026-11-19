@@ -7,7 +7,7 @@ The synthetic saved bench costs ILS 1,000; this is an interaction fixture,
 not a fresh Lev1 material or labor benchmark. The private V1.3.3 archive
 retains the real saved controls and their evidence.
 
-The protected behavior is defined in `notes/UI_GUIDELINES.md`. The seven suites
+The protected behavior is defined in `notes/UI_GUIDELINES.md`. The eight suites
 cover 54 normal transitions across desktop/mobile and safe migration of an older open wrapper,
 Save/reopen in seven Profile paths, preload/read reuse, keyboard, actor access,
 expired auth, handled read/write failures, timeout/double click and recovery.
@@ -28,7 +28,10 @@ and verifies login in each new server session; genuine revocation still reaches
 Login. It rejects nonlocal socket IO. This is stronger than storing token bytes,
 but remains distinct from owner production acceptance. It also covers the real
 sign_in callback followed by a version reload and a used stale cookie with a
-newer valid tab session; rejected tab sessions still reach Login.
+newer valid tab session; rejected tab sessions still reach Login. The reconnect suite uses the actual
+production Sign in form/handler, stops the real server, starts a fresh process
+with a newer build, and requires one password grant, one automatic outer reload
+and signed-in Upload after that reload from one click on the old page.
 Navigation asserts
 that File Review and the reopened saved card display the same synthetic crop.
 

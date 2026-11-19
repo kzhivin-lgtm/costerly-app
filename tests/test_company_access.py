@@ -213,6 +213,71 @@ def test_fast_resume_skips_browser_component(monkeypatch):
     assert st.session_state._fast_resume_outcome == "restored"
 
 
+def test_reconnected_login_consumes_native_submit_once_before_bootstrap(monkeypatch):
+    from streamlit.proto.WidgetStates_pb2 import WidgetState
+    st = company_auth.st
+    st.session_state.clear()
+    widgets = [
+        WidgetState(id="$$ID-test-login_email", string_value="fixture@example.invalid"),
+        WidgetState(id="$$ID-test-login_password", string_value="SyntheticPassword1!"),
+        WidgetState(id="$$ID-test-FormSubmitter:company_login-Sign in", trigger_value=True),
+    ]
+    monkeypatch.setattr(company_auth, "get_script_run_ctx", lambda: SimpleNamespace(session_state=SimpleNamespace(get_widget_states=lambda: widgets)))
+    calls = []
+    def submit():
+        calls.append((st.session_state.login_email, st.session_state.login_password))
+        st.session_state.auth_access_token = "accepted-synthetic-session"
+    monkeypatch.setattr(company_auth, "_submit_login", submit)
+    assert company_auth.recover_sign_in_submit_after_reconnect()
+    assert calls == [("fixture@example.invalid", "SyntheticPassword1!")]
+    assert not company_auth.recover_sign_in_submit_after_reconnect()
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("state", [
+    {"_browser_auth_initialized": True},
+    {"auth_access_token": "existing-session"},
+    {"_browser_auth_pending": {"action": "store"}},
+    {"_browser_auth_pending": {"action": "clear"}},
+])
+def test_warm_login_does_not_replay_callbacks_or_inspect_credentials(monkeypatch, state):
+    company_auth.st.session_state.clear()
+    company_auth.st.session_state.update(state)
+    monkeypatch.setattr(company_auth, "get_script_run_ctx", lambda: (_ for _ in ()).throw(AssertionError("Warm runs must not inspect submitted credentials")))
+    assert not company_auth.recover_sign_in_submit_after_reconnect()
+
+
+def test_reconnected_other_form_cannot_trigger_password_signin(monkeypatch):
+    from streamlit.proto.WidgetStates_pb2 import WidgetState
+    company_auth.st.session_state.clear()
+    widgets = [
+        WidgetState(id="$$ID-test-login_email", string_value="fixture@example.invalid"),
+        WidgetState(id="$$ID-test-login_password", string_value="SyntheticPassword1!"),
+        WidgetState(id="$$ID-test-FormSubmitter:company_login-Forgot password?", trigger_value=True),
+    ]
+    monkeypatch.setattr(company_auth, "get_script_run_ctx", lambda: SimpleNamespace(session_state=SimpleNamespace(get_widget_states=lambda: widgets)))
+    monkeypatch.setattr(company_auth, "_submit_login", lambda: (_ for _ in ()).throw(AssertionError("No Sign in intent")))
+    assert not company_auth.recover_sign_in_submit_after_reconnect()
+
+
+def test_rejected_cold_signin_cannot_restore_an_old_cookie(monkeypatch):
+    from streamlit.proto.WidgetStates_pb2 import WidgetState
+    st = company_auth.st
+    st.session_state.clear()
+    widgets = [
+        WidgetState(id="$$ID-test-login_email", string_value="fixture@example.invalid"),
+        WidgetState(id="$$ID-test-login_password", string_value="WrongSyntheticPassword"),
+        WidgetState(id="$$ID-test-FormSubmitter:company_login-Sign in", trigger_value=True),
+    ]
+    monkeypatch.setattr(company_auth, "get_script_run_ctx", lambda: SimpleNamespace(session_state=SimpleNamespace(get_widget_states=lambda: widgets)))
+    monkeypatch.setattr(company_auth, "_submit_login", lambda: st.session_state.update(company_login_error="Check your email and password"))
+    monkeypatch.setattr(company_auth, "restore_resume_session", lambda _cookies: (_ for _ in ()).throw(AssertionError("A rejected explicit sign-in must not fall back to another cookie")))
+    assert company_auth.recover_sign_in_submit_after_reconnect()
+    assert company_auth.sync_browser_auth_session()
+    assert company_auth.current_company_access() is None
+    assert st.session_state.company_login_error == "Check your email and password"
+
+
 def test_rejected_cookie_recovers_newer_tab_session_without_discarding_work(monkeypatch):
     st = company_auth.st
     st.session_state.clear()
