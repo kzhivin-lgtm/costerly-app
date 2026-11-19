@@ -2,7 +2,7 @@
 
 ## Workflow transitions
 
-ACTIVE IMPLEMENTATION, P0, OWNER APPROVED, V2.8, 2026-11-19. Owner replaces
+PUBLISHED, BUILDS VERIFIED, OWNER ACCEPTANCE PENDING, P0, V2.8, 2026-11-19. Owner replaces
 auth-dependent refresh acceptance with simple forced page refresh after deploy,
 without ending sessions or clearing browser auth, and explicitly assigns V2.8.
 Use one public static version check, no auth/Core/model request or upload gate.
@@ -11,6 +11,18 @@ Login, retry/loop protection and unavailable-version-file recovery. Existing
 provider session-refresh AuthApiError remains a separate unconfirmed cause;
 this work does not authorize auth removal or new provider/credential changes.
 Contract: notes/UI_GUIDELINES.md V2.8; exact-SHA publication gate retained.
+Published runtime 1f1ed8dd. Local full gate: 396 checks, six browser suites,
+11 deploy-refresh scenarios, 150.850s. Exact-SHA GitHub gate 44525457335 passed,
+167.728s tests; protected publisher verified active remote enforcement and
+advanced main. Railway 98d3da5c-b07c-485e-9537-744996bd04be ACTIVE, Deployment
+successful, title V2.8: force page refresh after deployment without auth checks.
+Actual public wrapper, embedded Core and /version.json all report
+estimation-v2.8-forced-deploy-refresh-detection-v8.4.29. Observed initial older
+Core connection during rollout; a fresh connection confirmed both V2.8.
+No auth/Detection/calculation/data/credential changes. Refresh does not invoke
+logout, clear auth storage or call an auth endpoint. Real owner-tab V2.8
+acceptance remains pending; synthetic token preservation is separate evidence.
+Evidence: handoff workspace outputs/version-refresh-v2.8/release.json and logs.
 
 ACTIVE DIAGNOSIS, P0, USER REPORT, V2.6, 2026-11-19. First Lev1 succeeds,
 second repeated upload appears stuck at 3s. Retained trace 2dae9bae shows
@@ -27,7 +39,7 @@ patches or paid reruns. Additional deploy b61b8364 (owner-added future key)
 preceded first success. Evidence in handoff workspace
 `outputs/lev1-v2.6-freeze-2026-11-19/REPORT_RU.md`.
 
-PUBLISHED, OWNER LIVE TEST FAILED, ACTIVE DIAGNOSIS, P0, V2.7, 2026-11-19. Ensure open
+PUBLISHED, OWNER LIVE TEST FAILED, AUTH DIAGNOSIS DEFERRED, P1, V2.7, 2026-11-19. Ensure open
 tabs update after deployment rather than starting new work with a different
 wrapper version. Owner explicitly authorized automatic refresh on version
 mismatch, retained login, no interruption of the current calculation, no
@@ -75,7 +87,7 @@ V2.6, Core V2.7. Immediate cause of Login is the failed session refresh; provide
 rejection reason is UNKNOWN. Do not label it an automatic outer reload, a proven
 V2.7 auth regression, or successful production acceptance. Synthetic token storage
 retention did not cover this real session-refresh failure after server restart.
-Next: determine the refresh rejection reason before selecting a bounded repair.
+Auth diagnosis deferred while owner-directed V2.8 ships. Resume when the owner returns to session restoration or the provider error recurs on a current valid session; determine the rejection reason before selecting a repair.
 Incident evidence: outputs/version-refresh-v2.7/owner-live-test/after-upload-events.json
 in the handoff workspace. No runtime or auth settings changed by this diagnosis.
 

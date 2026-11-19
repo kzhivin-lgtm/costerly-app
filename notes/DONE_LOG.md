@@ -1,5 +1,20 @@
 # Done Log
 
+V2.8 published, builds verified, owner acceptance pending, 2026-11-19.
+Runtime 1f1ed8dd: direct public version-file polling, one full refresh after
+published build changes, no auth precheck or session-ending operation. Preserve
+ongoing calculation, file picker/transfer and edits until safe Upload/Login.
+No upload gate on Core/wrapper version mismatch; legacy tab migration includes
+Login. Auth, Detection, calculation, data and credentials unchanged.
+396 checks, six local browser suites including 11 refresh scenarios, 150.850s.
+Exact-SHA GitHub gate 44525457335 passed, 167.728s tests; publisher verified
+mandatory active remote ruleset and advanced main. Railway
+98d3da5c-b07c-485e-9537-744996bd04be ACTIVE/Deployment successful. Public wrapper,
+fresh Core and version.json all report V2.8 forced-deploy-refresh marker.
+Owner-session production acceptance pending. Earlier AuthApiError not fixed or
+claimed fixed. Separate Workers Builds still fails as on V2.6/V2.7; target Pages
+succeeds. Evidence: handoff workspace outputs/version-refresh-v2.8/.
+
 V2.7 published, production builds verified, owner acceptance pending, 2026-11-19.
 Source 1ca24099 adds safe build refresh through the existing workflow/ready
 handshake, retaining auth storage and deferring during active work. Both old
