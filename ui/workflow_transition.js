@@ -97,6 +97,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
     let pickerOpen = false;
     let uploadStarted = false;
     const refreshKey = "costerly.version-refresh.v1";
+    const announcedBuilds = new Set();
 
     function buildsMatch() {
         return Boolean(hostBuild && hostBuild === displayed?.metrics?.server_build_version);
@@ -108,13 +109,13 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
 
     function checkVersion() {
         postUploadState();
-        // V2.8 wrappers own deployment detection using a public static file.
-        // This compatibility path only migrates already-open older wrappers.
+        // Modern wrappers receive one build event over the existing Core
+        // connection. This branch only migrates already-open older wrappers.
         if (hostManagesDeployRefresh || buildsMatch()) {
             try { coreWindow.sessionStorage.removeItem(refreshKey); } catch (_) {}
             return;
         }
-        if (hostBuild === null || pending || pickerOpen || uploadStarted ||
+        if (displayed?.authStorageReady === false || hostBuild === null || pending || pickerOpen || uploadStarted ||
             !["upload", "login"].includes(displayed?.screen) ||
             displayed.versionRefreshSafe !== true ||
             doc.querySelector('#costerly-upload-processing-shell') ||
@@ -135,6 +136,20 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
             return;
         }
         post({type: "costerly:workflow-navigation-reload", transitionId: id});
+    }
+
+    function announceBuild(message) {
+        const build = String(message.metrics?.server_build_version || "");
+        if (!build || message.authStorageReady === false || announcedBuilds.has(build)) return;
+        announcedBuilds.add(build);
+        post({type:"costerly:build-available", buildVersion:build});
+    }
+
+    function resumeAuthWrite(message) {
+        if (message.runId !== displayed?.runId) return;
+        displayed.authStorageReady = true;
+        checkVersion();
+        announceBuild(message);
     }
 
     function trackUpload(event) {
@@ -160,7 +175,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
             // Empty means a supported older wrapper. Migrate it once using
             // its existing correlated reload command, only on empty Upload.
             hostBuild = String(event.data.buildVersion || "");
-            hostManagesDeployRefresh = event.data.deployRefreshProtocol === 1;
+            hostManagesDeployRefresh = event.data.buildSignalProtocol === 1;
             checkVersion();
         }
     }
@@ -293,6 +308,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
             pickerOpen = false;
             uploadStarted = false;
             post({...message, transitionId: refresh.id});
+            announceBuild(message);
             close(refresh);
             checkVersion();
             return true;
@@ -343,6 +359,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
             displayed = {...message, settledRun: message.runId};
             if (message.screen !== "upload") { pickerOpen = false; uploadStarted = false; }
             post({...message, transitionId: transition.id});
+            announceBuild(message);
             close(transition);
             checkVersion();
         };
@@ -357,7 +374,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
     }
 
     const controller = {
-        traceId, revision, begin, ready,
+        traceId, revision, begin, ready, announceBuild, resumeAuthWrite,
         enabled: () => enabled,
         busy: () => Boolean(pending),
         versionMatched: buildsMatch,

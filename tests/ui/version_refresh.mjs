@@ -7,7 +7,7 @@ import { chromium } from 'playwright';
 const source=readFileSync('cloudflare/index.html','utf8');
 const initialBuild=source.match(/const BUILD_VERSION = "([^"]+)"/)[1];
 const controller=readFileSync('ui/workflow_transition.js','utf8');
-const auth=readFileSync('ui/browser_session_component/index.html','utf8');
+const auth=readFileSync('ui/browser_session_component/index.html','utf8').replace('<script src="session_storage.js"></script>','<script>'+readFileSync('ui/browser_session_component/session_storage.js','utf8')+'</script>');
 const legacy=readFileSync(fixturePath('legacy_wrapper.html'),'utf8');
 let serverBuild=initialBuild, publishedBuild=initialBuild, scenario='matching', screen='upload', deliveries=0, versionReads=0;
 const coreServer=createServer((req,res)=>{
@@ -38,7 +38,7 @@ const coreServer=createServer((req,res)=>{
    metrics:{server_build_version:window.coreLegacy?'previous-core':build},route:{},workflowNavigationProtocol:1};
   if(!window.coreLegacy)receipt.versionRefreshSafe=['upload','login'].includes(screen);
   const workflow=window.__costerlyWorkflowTransition||workflowTransitionController(window,receipt.traceId,'test-source',receipt);
-  if(!workflow.ready(receipt))top.postMessage(receipt,'*');
+  if(!workflow.ready(receipt)){top.postMessage(receipt,'*');workflow.announceBuild(receipt);}
  };
  render(${JSON.stringify(screen)});
  </script>`;
@@ -51,10 +51,10 @@ const wrapperServer=createServer((req,res)=>{
  deliveries++;
  const outdated=['forever','guard_failure'].includes(scenario)||(['stale','legacy'].includes(scenario)&&deliveries===1);
  let html=scenario==='legacy'&&outdated?legacy:source;
- html=html.replace(/const BUILD_VERSION = "[^"]+"/,`const BUILD_VERSION = "${outdated?'previous-wrapper':publishedBuild}"`)
+ html=html.replace(/const BUILD_VERSION = "[^"]+"/,`const BUILD_VERSION = "${outdated?initialBuild.replace(/-b([0-9]{14})-/,(_,v)=>'-b'+String(BigInt(v)-1n)+'-'):publishedBuild}"`)
   .replace('data-src="https://core.costerly.ai/?embed=true"','data-src="http://127.0.0.1:8796/?embed=true"');
  if(scenario==='no_ack')html=html.replace('event.data.workflowNavigationProtocol === 1','false');
- html=html.replace('<script>', '<script>window.fixtureWrapperBuild='+JSON.stringify(outdated?'previous-wrapper':publishedBuild)+';</script><script>');
+ html=html.replace('<script>', '<script>window.fixtureWrapperBuild='+JSON.stringify(outdated?initialBuild.replace(/-b([0-9]{14})-/,(_,v)=>'-b'+String(BigInt(v)-1n)+'-'):publishedBuild)+';</script><script>');
  res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'}).end(html);
 });
 await Promise.all([new Promise(r=>coreServer.listen(8796,'127.0.0.1',r)),new Promise(r=>wrapperServer.listen(8797,'127.0.0.1',r))]);
@@ -69,10 +69,9 @@ async function matched(page){
  await page.waitForFunction(build=>window.fixtureWrapperBuild===build,publishedBuild);
  await ready(page);
 }
+const nextBuild=(n=1)=>initialBuild.replace(/-b([0-9]{14})-/,(_,stamp)=>'-b'+String(BigInt(stamp)+BigInt(n))+'-');
 async function detect(page){
- const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/version.json');
- await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
- await (await response).finished();
+ await (await coreFrame(page)).evaluate(build=>render(document.querySelector('[data-costerly-screen]').dataset.costerlyScreen,build),serverBuild);
  await page.evaluate(()=>new Promise(requestAnimationFrame));
 }
 async function boot(mode='matching',initialScreen='upload'){
@@ -99,7 +98,7 @@ try{
  await page.goto('http://127.0.0.1:8797/');await matched(page);frame=await coreFrame(page);
  await frame.waitForFunction(()=>window.restoredSession?.access_token==='synthetic-access');
  assert.deepEqual(await frame.evaluate(()=>restoredSession),tokens);assert.equal(deliveries,2);
- passed('Public version mismatch forced one reload; browser auth tokens retained');await page.close();
+ passed('One Core build event forced one reload; browser auth tokens retained');await page.close();
  for(const state of ['upload','login']){
   page=await boot('legacy',state);await matched(page);assert.equal(deliveries,2);
   passed('Already-open legacy wrapper migrated from '+state+' without an auth prerequisite');await page.close();
@@ -111,7 +110,7 @@ try{
  for(const state of ['processing','object_detail']){
   page=await boot('matching',state);await matched(page);frame=await coreFrame(page);
   if(state==='object_detail')await core(page).locator('#draft').fill('unsaved 42');
-  publishedBuild=serverBuild='synthetic-next-release';await detect(page);
+  publishedBuild=serverBuild=nextBuild();await detect(page);
   assert.equal(deliveries,1);
   if(state==='object_detail')assert.equal(await core(page).locator('#draft').inputValue(),'unsaved 42');
   screen='upload';await frame.evaluate(build=>render('upload',build),serverBuild);await matched(page);
@@ -119,7 +118,7 @@ try{
  }
  page=await boot();await matched(page);frame=await coreFrame(page);
  const chooser=page.waitForEvent('filechooser');await core(page).locator('input[type=file]').click();const selected=await chooser;
- publishedBuild=serverBuild='synthetic-next-file-release';await detect(page);assert.equal(deliveries,1);
+ publishedBuild=serverBuild=nextBuild(2);await detect(page);assert.equal(deliveries,1);
  await selected.setFiles({name:'test.pdf',mimeType:'application/pdf',buffer:Buffer.from('synthetic upload')});
  await frame.waitForFunction(()=>acceptedUploads===1);assert.equal(deliveries,1);
  await frame.evaluate(build=>render('processing',build),serverBuild);await ready(page);assert.equal(deliveries,1);
@@ -127,7 +126,7 @@ try{
  passed('File picker, accepted transfer and current calculation survived the pending update');await page.close();
  page=await boot('forever');await page.getByRole('button',{name:'Reload page',exact:true}).waitFor();
  assert.equal(deliveries,2);assert.notEqual(await page.locator('#costerly-app-frame').getAttribute('inert'),null);
- const reads=versionReads;await detect(page);assert.equal(deliveries,2);assert.ok(versionReads>reads);
+ await detect(page);assert.equal(deliveries,2);assert.equal(versionReads,0);
  scenario='matching';const navigation=page.waitForEvent('framenavigated',{predicate:f=>f===page.mainFrame()});
  await page.getByRole('button',{name:'Reload page',exact:true}).click();await navigation;await matched(page);assert.equal(deliveries,3);
  passed('One automatic attempt, no reload loop, explicit retry recovered');await page.close();
@@ -139,6 +138,7 @@ try{
  }
  page=await boot('guard_failure');await page.getByRole('button',{name:'Reload page',exact:true}).waitFor();assert.equal(deliveries,1);
  passed('Unavailable reload-guard storage offered manual retry without a loop');await page.close();
+ assert.equal(versionReads,0,'No periodic or startup version-file request');
  writeFileSync(reportPath('version-refresh.json'),JSON.stringify(results,null,2));console.log(JSON.stringify(results));
 }catch(error){
  if(lastPage&&!lastPage.isClosed()){await lastPage.screenshot({path:reportPath('version-refresh-failure.png')}).catch(()=>{});console.error({scenario,deliveries,body:await lastPage.locator('body').innerText().catch(()=>'(navigating)')});}

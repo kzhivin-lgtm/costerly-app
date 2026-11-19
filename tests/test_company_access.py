@@ -3724,7 +3724,7 @@ def test_password_recovery_route_forwards_only_fragment_session_to_app():
     assert 'params.get("refresh_token")' in component
     assert 'window.sessionStorage.setItem(\n                  recoveryStorageKey' in component
     assert 'window.sessionStorage.getItem(recoveryStorageKey)' in component
-    assert 'window.sessionStorage.removeItem(`${storageKey}:recovery`)' in component
+    assert "host.sessionStorage.removeItem(key + ':recovery')" in (Path(__file__).parents[1] / 'ui/browser_session_component/session_storage.js').read_text()
     assert "window.sessionStorage.removeItem(storageKey)" in component
 
 
@@ -4264,3 +4264,24 @@ def test_company_access_cache_is_invalidated_by_a_new_auth_session(monkeypatch):
     company_auth._store_auth_session(session)
 
     assert "_company_access_cache" not in state
+
+
+def test_server_auth_client_does_not_rotate_tokens_outside_browser_persistence(monkeypatch):
+    from datetime import datetime, timezone
+    import httpx
+    import supabase_auth._sync.gotrue_client as sdk
+    from supabase_auth.types import Session, User
+    monkeypatch.setattr(company_auth, "get_optional_secret", lambda name:
+                        "https://fixture.invalid" if name == "SUPABASE_URL" else "synthetic-anon")
+    def unexpected(*_args, **_kwargs):
+        raise AssertionError("A server auth client must not start a background refresh or network request")
+    monkeypatch.setattr(sdk, "Timer", unexpected)
+    monkeypatch.setattr(httpx.Client, "request", unexpected)
+    client = company_auth._auth_client()
+    user = User(id="00000000-0000-0000-0000-000000000001", app_metadata={},
+                user_metadata={}, aud="authenticated", created_at=datetime.now(timezone.utc))
+    session = Session(access_token="synthetic-access", refresh_token="synthetic-refresh",
+                      expires_at=int(time.time()) + 3600, expires_in=3600,
+                      token_type="bearer", user=user)
+    client.auth._save_session(session)
+    assert client.auth.get_session().refresh_token == "synthetic-refresh"

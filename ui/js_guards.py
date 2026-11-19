@@ -4,6 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from ui.browser_session import _AUTH_STORAGE_JS
+
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -769,11 +771,19 @@ def signal_app_ready_to_embed(
     metrics_json = json.dumps(metrics or {})
     route_json = json.dumps(route or {})
     reset_scroll_json = json.dumps(bool(reset_scroll))
+    pending = st.session_state.get("_browser_auth_latest_write")
+    auth_write = ({"action":"store", "requestId":pending.get("request_id"),
+                   "issuedAt":pending.get("issued_at", "0"), "session":pending.get("session"),
+                   "resumeBlob":pending.get("resume_blob")} if isinstance(pending, dict) else None)
+    auth_write_json = json.dumps(auth_write).replace("<", "\\u003c")
 
     components.html(
         """
         <script>
         (() => {
+            __AUTH_STORAGE_JS__
+            const authWrite = __AUTH_WRITE__;
+            const authStorageReady = !authWrite || applyCosterlyAuthWrite(window.parent, authWrite).ok;
             function installWorkflow(message) {
                 const coreWindow = window.parent;
                 const traceId = message.traceId;
@@ -802,6 +812,8 @@ def signal_app_ready_to_embed(
                 metrics: __METRICS__,
                 route: __ROUTE__,
                 workflowNavigationProtocol: 1,
+                authStorageReady,
+
                 versionRefreshSafe: ["upload", "login"].includes(__SCREEN__),
                 sentAt: Date.now()
             };
@@ -1436,6 +1448,7 @@ def signal_app_ready_to_embed(
 
             function sendReady(payload) {
                 window.top.postMessage(payload, "*");
+                currentWorkflow()?.announceBuild(payload);
             }
 
             function authStylesReady() {
@@ -1479,6 +1492,22 @@ def signal_app_ready_to_embed(
                 check();
             }
 
+            if (!authStorageReady) {
+                const doc = window.parent.document;
+                doc.getElementById("costerly-auth-save-error")?.remove();
+                const notice = doc.createElement("div");
+                notice.id = "costerly-auth-save-error";
+                notice.setAttribute("role", "alert");
+                notice.style.cssText = "position:fixed;bottom:48px;left:16px;z-index:2147483100;background:#fff;padding:12px;border:1px solid #aa5353;border-radius:8px;font:14px system-ui";
+                notice.textContent = "Your sign-in could not be saved. The page update is postponed. ";
+                const retry = doc.createElement("button"); retry.textContent = "Retry";
+                retry.onclick = () => {
+                    if (!applyCosterlyAuthWrite(window.parent, authWrite).ok) return;
+                    notice.remove(); message.authStorageReady = true;
+                    currentWorkflow()?.resumeAuthWrite(message);
+                };
+                notice.append(retry); doc.body.append(notice);
+            } else window.parent.document.getElementById("costerly-auth-save-error")?.remove();
             installTransitionObserver();
             releaseAuthShellWhenStable();
             announceWhenStyled();
@@ -1491,7 +1520,9 @@ def signal_app_ready_to_embed(
         .replace("__ROUTE__", route_json)
         .replace("__RESET_SCROLL__", reset_scroll_json)
         .replace("__WORKFLOW_REVISION__", json.dumps(_WORKFLOW_TRANSITION_REVISION))
-        .replace("__WORKFLOW_TRANSITION__", json.dumps(_WORKFLOW_TRANSITION_JS)),
+        .replace("__WORKFLOW_TRANSITION__", json.dumps(_WORKFLOW_TRANSITION_JS))
+        .replace("__AUTH_STORAGE_JS__", _AUTH_STORAGE_JS)
+        .replace("__AUTH_WRITE__", auth_write_json),
         height=0,
         width=0,
     )

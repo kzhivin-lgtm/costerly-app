@@ -47,6 +47,30 @@ Use the exact-commit `UI release gate` and the verified publisher described in
 be active to enforce this independently of the agent. Check its real status;
 do not infer activation from the presence of the workflow or ruleset template.
 
+## V2.9 one deployment event and retained login, approved 19 November 2026
+
+Owner explicitly requires a page refresh with the user still signed in and
+rejects periodic build polling. V2.9 replaces the V2.8 poll with one build
+announcement from Core over the existing browser connection, after a real
+ready receipt. No new timer, HTTP version request, worker or auth poll.
+
+| State / action | Required result |
+|---|---|
+| Core announces a newer build | One outer reload at safe Upload/Login |
+| Same or older Core during rollout | No reload, no repeated build announcement |
+| Active file picker/transfer, calculation or unsaved edit | Finish current action, reload at safe Upload |
+| Expired access token with valid refresh session | Rotate explicitly, synchronously persist newest session before reload, restore signed-in state in new server session |
+| Older queued browser write | Ignore it, keep the latest rotated session |
+| Browser cannot persist the session | Keep current page, postpone reload, offer client-side Retry; no extra Python rerun |
+| Provider genuinely revokes/rejects the session | Existing Login recovery, no access bypass |
+
+The server SDK must not refresh tokens in its own background timer. Streamlit
+owns refresh and passes its latest session write to the same ready component
+which announces a deployment; browser writes complete before the announcement.
+One shared JS writer orders store/clear/cookie commands. Read replies remain
+idempotent and write commands do not schedule a Python callback. Build IDs carry
+a UTC `-bYYYYMMDDhhmmss-` stamp so an older Core cannot reload a newer wrapper.
+
 ## V2.8 forced deploy refresh, approved 19 November 2026
 
 Owner requested simple forced refresh after deployment and explicitly assigned

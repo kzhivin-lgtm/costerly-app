@@ -13,6 +13,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import streamlit as st
 from supabase import create_client
+from supabase.lib.client_options import SyncClientOptions
 from supabase_auth.errors import AuthApiError, AuthError
 from postgrest.exceptions import APIError
 
@@ -210,7 +211,11 @@ def _auth_client():
     if not url or not key:
         raise RuntimeError("Company auth requires SUPABASE_URL and SUPABASE_ANON_KEY.")
     # Do not share an auth client across Streamlit users: its session is mutable.
-    return create_client(url, key)
+    # Streamlit owns the session. A short-lived SDK client must not rotate its
+    # refresh token in a background timer without updating browser persistence.
+    return create_client(url, key, options=SyncClientOptions(
+        auto_refresh_token=False, persist_session=False,
+    ))
 
 
 def _server_client():
@@ -233,6 +238,7 @@ def _store_auth_session(session: object) -> None:
     )
     st.session_state._browser_auth_pending = {
         "action": "store",
+        "issued_at": str(time.time_ns()),
         "request_id": secrets.token_urlsafe(12),
         "session": {
             "access_token": session.access_token,
@@ -241,6 +247,9 @@ def _store_auth_session(session: object) -> None:
         },
         "resume_blob": resume_blob,
     }
+    # Also carry the latest write into the ready component. It commits to
+    # browser storage synchronously before any deployment reload is announced.
+    st.session_state._browser_auth_latest_write = dict(st.session_state._browser_auth_pending)
 
 
 def sync_browser_auth_session(
@@ -315,6 +324,7 @@ def sync_browser_auth_session(
     result = browser_session_exchange(
         action=action,
         request_id=request_id,
+        issued_at=str(pending.get("issued_at") or "0") if isinstance(pending, dict) else "0",
         session=session,
         resume_blob=resume_blob,
         trace_id=trace_id,
@@ -501,6 +511,7 @@ def _clear_password_recovery(*, updated: bool) -> None:
         st.session_state._runtime_completed_action = completed_action
     st.session_state._browser_auth_pending = {
         "action": "clear",
+        "issued_at": str(time.time_ns()),
         "request_id": secrets.token_urlsafe(12),
         "session": None,
     }
@@ -913,6 +924,7 @@ def sign_out() -> None:
     clear_auth_session()
     st.session_state._browser_auth_pending = {
         "action": "clear",
+        "issued_at": str(time.time_ns()),
         "request_id": secrets.token_urlsafe(12),
         "session": None,
     }
@@ -1163,10 +1175,17 @@ def current_company_access(*, trace=None) -> CompanyAccess | None:
         if user is None:
             clear_auth_session()
             return None
-    except AuthApiError:
+    except AuthApiError as exc:
+        if trace is not None:
+            code = str(getattr(exc, "code", "") or "")
+            trace.event("server.auth.session_rejected", status="error", metadata={
+                "auth_error_code": code if re.fullmatch(r"[a-z0-9_]{1,80}", code) else "unknown",
+                "http_status": getattr(exc, "status", None),
+            })
         clear_auth_session()
         st.session_state._browser_auth_pending = {
             "action": "clear",
+            "issued_at": str(time.time_ns()),
             "request_id": secrets.token_urlsafe(12),
             "session": None,
         }

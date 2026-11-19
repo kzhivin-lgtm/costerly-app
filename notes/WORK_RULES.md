@@ -209,3 +209,10 @@ Avoid:
 - treating local console output as proof that production telemetry was stored.
 
 Short version: observable by default, correlated, private, and never UI-blocking.
+
+V2.9 deployment identity, 19 November 2026: the technical BUILD_VERSION in Core
+and wrapper includes a new UTC -bYYYYMMDDhhmmss- stamp for each runtime release.
+The browser reacts once to a newer Core announcement over its existing
+connection, not a periodic HTTP check. Keep the stamp synchronized with the
+human V<version> release title. Persist any rotated auth session before ready
+announces the new build; browser data retention alone is not login acceptance.

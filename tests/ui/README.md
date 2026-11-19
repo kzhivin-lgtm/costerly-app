@@ -7,7 +7,7 @@ The synthetic saved bench costs ILS 1,000; this is an interaction fixture,
 not a fresh Lev1 material or labor benchmark. The private V1.3.3 archive
 retains the real saved controls and their evidence.
 
-The protected behavior is defined in `notes/UI_GUIDELINES.md`. The six suites
+The protected behavior is defined in `notes/UI_GUIDELINES.md`. The seven suites
 cover 54 normal transitions across desktop/mobile and safe migration of an older open wrapper,
 Save/reopen in seven Profile paths, preload/read reuse, keyboard, actor access,
 expired auth, handled read/write failures, timeout/double click and recovery.
@@ -18,12 +18,15 @@ Calculation additionally covers a delayed new-estimate shell, full reruns during
 progress and after completion, one pricing table, editable Sheet Processing and
 Assembly hours, whole grouped money, failed Save/retry and persisted reopen.
 These checks use synthetic data and do not establish production acceptance.
-The version-refresh suite uses the real wrapper, workflow controller and browser
-auth component with synthetic screen markup. V2.8 covers the direct public
-version-file check, old-wrapper migration from Upload/Login, retained tab-session
-tokens, processing/edits/file selection, no upload gate when a Core acknowledgement
-or version file is unavailable, guard storage failure, one attempt and manual
-recovery. It does not establish authenticated production acceptance.
+The version-refresh suite uses the real wrapper and workflow controller with
+synthetic screens. V2.9 covers a single Core build event, old-tab migration,
+one reload, deferred active work, failure recovery and zero version-file reads.
+The auth-resume suite additionally uses production server auth, ready and
+browser persistence code with stateful single-use synthetic refresh tokens.
+It advances expiry twice, rotates each token, triggers automatic outer reload
+and verifies login in each new server session; genuine revocation still reaches
+Login. It rejects nonlocal socket IO. This is stronger than storing token bytes,
+but remains distinct from owner production acceptance.
 Navigation asserts
 that File Review and the reopened saved card display the same synthetic crop.
 

@@ -92,7 +92,7 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "estimation-v2.8-forced-deploy-refresh-detection-v8.4.29";
+        const BUILD_VERSION = "estimation-v2.9-b20261119130539-session-resume-detection-v8.4.29";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -151,11 +151,9 @@
         let uploadSelectionPending = false;
         let deployRefreshBlocked = false;
         const deployRefreshKey = "costerly.deploy-refresh.v1";
-        let pendingPublishedBuild = "";
+        let pendingServerBuild = "";
         let uploadInteractionBusy = false;
-        let versionPollTimer = null;
-        let versionRequest = null;
-        let pageClosed = false;
+        const receivedBuilds = new Set();
         const readyRunIds = new Set();
         const pendingTransitions = [];
         let coveredTransitionId = "";
@@ -446,50 +444,12 @@
           retry.focus();
         }
 
-        function maybeRefreshPublishedBuild() {
-          if (!pendingPublishedBuild || pendingPublishedBuild === BUILD_VERSION ||
+        function maybeRefreshServerBuild() {
+          if (!pendingServerBuild || pendingServerBuild === BUILD_VERSION ||
               uploadSelectionPending || uploadInteractionBusy || coveredTransitionId ||
               pendingTransitions.length || !["upload", "login"].includes(lastReadyScreen)) return;
-          forceDeployRefresh(pendingPublishedBuild);
+          forceDeployRefresh(pendingServerBuild);
         }
-
-        async function checkPublishedBuild() {
-          window.clearTimeout(versionPollTimer);
-          if (pageClosed || versionRequest) return;
-          if (!document.hidden && navigator.onLine) {
-            const request = new AbortController();
-            versionRequest = request;
-            try {
-              const response = await fetch("/version.json", {
-                cache: "no-store", credentials: "omit", signal: request.signal,
-              });
-              if (response.ok) {
-                const value = await response.json();
-                if (typeof value.build === "string" && /^[a-z0-9_.-]{1,160}$/.test(value.build)) {
-                  pendingPublishedBuild = value.build;
-                  if (value.build === BUILD_VERSION) {
-                    try { window.sessionStorage.removeItem(deployRefreshKey); } catch (_) {}
-                    releaseDeployCover();
-                  } else maybeRefreshPublishedBuild();
-                }
-              }
-            } catch (_) {
-              // An unavailable version file never blocks the live application.
-            } finally { versionRequest = null; }
-          }
-          if (!pageClosed) versionPollTimer = window.setTimeout(checkPublishedBuild, 30000);
-        }
-        // One small public-file request per visible tab every 30 seconds, plus
-        // focus/online recovery. No overlap; pagehide aborts and cancels it.
-        document.addEventListener("visibilitychange", () => {
-          if (!document.hidden) checkPublishedBuild();
-        });
-        window.addEventListener("online", checkPublishedBuild);
-        window.addEventListener("pagehide", () => {
-          pageClosed = true;
-          window.clearTimeout(versionPollTimer);
-          versionRequest?.abort();
-        }, {once: true});
 
         mark("browser.wrapper_start", {metadata: navigationMetadata()});
         if (frame) {
@@ -503,9 +463,24 @@
 
         window.addEventListener("message", (event) => {
           if (event.origin === appOrigin && event.source === frame.contentWindow &&
+              event.data?.type === "costerly:build-available" && event.data.traceId === traceId) {
+            const build = String(event.data.buildVersion || "");
+            if (receivedBuilds.has(build)) return;
+            receivedBuilds.add(build);
+            const order = value => Number(value.match(/-b([0-9]{14})-/)?.[1] || 0);
+            if (build === BUILD_VERSION) {
+              try { window.sessionStorage.removeItem(deployRefreshKey); } catch (_) {}
+              releaseDeployCover();
+            } else if (order(build) > order(BUILD_VERSION)) {
+              pendingServerBuild = build;
+              maybeRefreshServerBuild();
+            }
+            return;
+          }
+          if (event.origin === appOrigin && event.source === frame.contentWindow &&
               event.data?.type === "costerly:deploy-refresh-state" && event.data.traceId === traceId) {
             uploadInteractionBusy = event.data.busy === true;
-            maybeRefreshPublishedBuild();
+            maybeRefreshServerBuild();
             return;
           }
           if (event.origin === appOrigin && event.data?.type === "costerly:runtime-failure" &&
@@ -764,7 +739,7 @@
             if (event.data.workflowNavigationProtocol === 1) {
               frame.contentWindow.postMessage({
                 type: "costerly:workflow-navigation-enabled", protocol: 1, traceId,
-                buildVersion: BUILD_VERSION, deployRefreshProtocol: 1,
+                buildVersion: BUILD_VERSION, deployRefreshProtocol: 1, buildSignalProtocol: 1,
               }, appOrigin);
             }
             const completedTransitionId = String(event.data.transitionId || "");
@@ -912,7 +887,7 @@
             } else {
               revealApp("app_ready", screen);
             }
-            maybeRefreshPublishedBuild();
+            maybeRefreshServerBuild();
           }
         });
 
@@ -921,7 +896,6 @@
           mark("browser.app_ready_timeout", {status: "timeout"});
           revealApp("fallback");
         }, 8000);
-        checkPublishedBuild();
       })();
     </script>
   </body>

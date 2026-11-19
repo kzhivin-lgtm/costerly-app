@@ -2,6 +2,24 @@
 
 ## Workflow transitions
 
+ACTIVE IMPLEMENTATION, P0, OWNER APPROVED, V2.9, 2026-11-19. Owner explicitly
+requires automatic page refresh with login retained, rejects periodic build
+polling, and assigns V2.9. Remove V2.8 polling/version endpoint, send one build
+event over existing Core connection, preserve active work and one-reload guard.
+Confirmed SDK experiment: a default background refresh rotates SDK tokens while
+Streamlit/browser keep older tokens and no browser write is queued. Disable
+that independent writer; preserve explicit refresh and write its newest session
+before announcing reload. Earlier successful synthetic byte-retention tests did
+not cover this lifecycle. Acceptance: expiry/rotation -> automatic outer reload
+-> a new server session still signed in, twice; old writes cannot overwrite
+newer tokens; revoked sessions still rejected; zero version-file requests;
+full UI gates and actual deployed build check. Provider rejection code from the
+original V2.7 incident remains unknown; do not claim its full historical cause.
+Auth regression uses production auth/ready/browser code and a stateful one-use
+synthetic provider, without production calls or paid recognition. Targeted
+checks passed; full gates/publication pending. Evidence in handoff workspace
+outputs/auth-resume-v2.8/sdk-before.json and outputs/auth-resume-v2.9/.
+
 PUBLISHED, BUILDS VERIFIED, OWNER ACCEPTANCE PENDING, P0, V2.8, 2026-11-19. Owner replaces
 auth-dependent refresh acceptance with simple forced page refresh after deploy,
 without ending sessions or clearing browser auth, and explicitly assigns V2.8.

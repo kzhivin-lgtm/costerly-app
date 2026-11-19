@@ -25,7 +25,7 @@ UNIT_TESTS = [
     "tests/test_agent_timing.py::test_isometric_membership_uses_primary_attachment_without_extra_requests",
     "tests/test_agent_timing.py::test_presentation_render_without_technical_match_never_creates_registry_object",
 ]
-BROWSER_SUITES = ["navigation.mjs", "calculation.mjs", "profile_save.mjs", "profile_recovery.mjs", "screen_recovery.mjs", "version_refresh.mjs"]
+BROWSER_SUITES = ["navigation.mjs", "calculation.mjs", "profile_save.mjs", "profile_recovery.mjs", "screen_recovery.mjs", "version_refresh.mjs", "auth_resume.mjs"]
 
 
 def main() -> int:
@@ -76,7 +76,7 @@ def main() -> int:
             env["COSTERLY_UI_STATE_DIR"] = str(suite_state)
             server_log = (output / (Path(suite).stem + "-server.log")).open("w")
             server = subprocess.Popen([
-                sys.executable, "-m", "streamlit", "run", str(ROOT / "tests/ui/app_fixture.py"),
+                sys.executable, "-m", "streamlit", "run", str(ROOT / "tests/ui" / ("auth_resume_fixture.py" if suite == "auth_resume.mjs" else "app_fixture.py")),
                 "--global.developmentMode", "false", "--server.headless", "true",
                 "--server.address", "127.0.0.1", "--server.port", "8789",
                 "--browser.gatherUsageStats", "false",
