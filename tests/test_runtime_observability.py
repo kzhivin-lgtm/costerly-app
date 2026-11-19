@@ -24,6 +24,8 @@ def test_streamlit_and_cloudflare_build_versions_match():
     assert runtime.LABOR_BUILD_VERSION == wrapper_version.group(1)
     assert re.search(r"-b[0-9]{14}-", runtime.LABOR_BUILD_VERSION)
     assert 'fetch("/version.json"' not in wrapper
+    # Already-open V2.8 wrappers consume this once, then load event-driven V2.9.
+    assert json.loads(Path("cloudflare/version.json").read_text())["build"] == runtime.LABOR_BUILD_VERSION
     assert "COSTERLY_BUILD_VERSION" not in app_source
 
 

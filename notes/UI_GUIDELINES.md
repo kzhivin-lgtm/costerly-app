@@ -324,3 +324,9 @@ Before accepting a screen, verify:
 These references inform the rules above. They are not copied wholesale: Costerly AI
 uses only the parts that improve clarity, responsiveness, accessibility, and
 workflow reliability for its own product.
+
+V2.9 legacy migration: retain cloudflare/version.json with the current build
+for already-open V2.8 wrappers. Their final legacy check loads V2.9, whose
+wrapper does not read the file or schedule polling. Removing the file before
+those tabs migrate prevents their one-time update. New Core connections still
+use the build event; no new timer, request, callback or auth check is added.
