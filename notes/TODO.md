@@ -1398,21 +1398,36 @@ the first isolated change after the benchmark, do not reapply everything now.
 
 ### Fresh Lev2 and Ada stability benchmark
 
-DEPLOYMENT AUTHORIZED, OFFLINE VERIFIED, P0, V2.10, USER REQUEST, 2026-11-19.
-Shared Ada/LF1 membership normalization expands positive legacy group links to
-root-star pairs and preserves the original Membership JSON, all source rows,
-group assertions, derived-pair provenance and unresolved references. Explicit
-pair roles and witness/source roles remain intact; child edges retain one
-source identity and do not count as independent proofs. Prompts, request
-schemas, images and title-block context are unchanged. Saved replay: 40/40
-expected checks, 38 exact business partitions, two known semantic Ada failures
-unchanged. Historical Ada 5/8 become exact 2; all 16 production positives and
-six current LF1 controls retained. Five older LF1 packets hit the same prior
-render-contract incompatibility on published V2.9 and candidate. No paid calls.
-Candidate is based on published 88df83cd, excludes stopped auth HEAD 201cafeb.
-Owner authorized deployment to test production; fresh stability and production
-acceptance remain pending. Evidence: handoff workspace outputs/
-detection-multiway-normalization-20261119T184011Z/REPORT_RU.md and release-v2.10/.
+OWNER-ACCEPTED CHECKPOINT, FRESH CONTROLS PENDING, P0, V2.10, USER REQUEST,
+2026-11-19. Owner reports several production trials look reasonably good and
+requests a full checkpoint, then three fresh Ada trials. Preserve this version;
+do not generalize acceptance to every input. Exact owner run IDs unknown.
+Checkpoint record: notes/ESTIMATION_V2_10_ADA_LF1_NORMALIZATION_CHECKPOINT_2026_11_19.md.
+Shared Ada/LF1 membership normalization expands legacy positive
+group links to root-star pairs. Preserve complete original Membership payload,
+all source rows, group assertions, derived-pair provenance and unresolved refs.
+Explicit pairs retain roles; physical witnesses/printed sources do not become
+members. Child edges retain one source identity, not extra independent proof.
+Prompts, request schemas, images and title-block context unchanged.
+Release 0df74a4f based on published 88df83cd, stopped auth 201cafeb excluded.
+Exact-SHA GitHub UI release gate 44597565343 passed; protected publisher verified
+mandatory active enforcement and advanced main. Railway ec3ece54-c7a9-4198-bd01-
+82ec535a0406 Active. Actual app.costerly.ai Core and wrapper both match
+estimation-v2.10-b20261119192039-membership-normalization-detection-v8.4.29.
+Release checkout: /private/tmp/costerly-v1216-reapply.SWkBsY,
+branch codex/ada-lf1-normalization-v2.10. Saved replays 40/40 expected checks,
+38 correct partitions, two known semantic Ada errors unchanged. Legacy Ada
+5/8 become exact2; all16 production positives and six current LF1 controls
+retained. Five older LF1 inputs hit the same old render-contract incompatibility
+on published V2.9 and candidate; no missing evidence invented. Prior focused
+checks69 passed; existing broad UI callback static assertion fails on baseline
+too, unchanged. Release local gate:406 unit checks/seven browser suites passed,
+135.157s. Runtime normalizer hashes match the previously verified source.
+No paid calls. Fresh production Detection and owner acceptance remain pending.
+Verified deployment does not establish general Detection stability or login
+retention. Evidence: handoff workspace outputs/
+detection-multiway-normalization-20261119T184011Z/release-v2.10/
+release-receipt.json, REPORT.md, github-gate.json, publication.log and replays/.
 
 STOPPED BY OWNER, P0, 2026-11-19. Owner asked to close the experiment and
 identify the first six-object outlier in the Labor V2 series: V2.2.3,
