@@ -2,6 +2,7 @@
 
 from base64 import b64decode
 from collections import defaultdict
+from copy import deepcopy
 from io import BytesIO
 
 from PIL import Image
@@ -64,6 +65,7 @@ def ground_native_shell_proposal(plan, view, proposal):
         return max((contact(native[cid], native[other]) for other in ids), default=0)
 
     bays = {bid for bid, block in blocks.items() if block["basis"] == "drawer_and_pull_out_bay"}
+    grounding = []
     for bid, block in blocks.items():
         if block["basis"] == "assumed_lower_frame_split":
             upper_edge = min(native[cid]["bbox"][1] for cid in base[bid])
@@ -71,6 +73,22 @@ def ground_native_shell_proposal(plan, view, proposal):
                              if native[cid]["bbox"][1] + .4 * size(cid)[1] >= upper_edge - 3}
         elif block["basis"] == "mirror_upright":
             proposed[bid] = {cid for cid in proposed[bid] if shared(cid, base[bid]) >= .30 * max(size(cid))}
+        elif block["basis"] == "return_door_band":
+            left = min(native[cid]["bbox"][0] for cid in base[bid])
+            right = max(native[cid]["bbox"][2] for cid in base[bid])
+            margin = .04 * (right - left)
+            for cid in sorted(proposed[bid]):
+                box = native[cid]["bbox"]
+                center = (box[0] + box[2]) / 2
+                contact_length = shared(cid, base[bid])
+                if (not left - margin <= center <= right + margin
+                        and contact_length < max(12, .35 * min(size(cid)))):
+                    # An unsupported model claim must not occupy another
+                    # assembly's plane before native contact growth can own it.
+                    proposed[bid].remove(cid)
+                    grounding.append({"contour_id": cid, "claimed_block_id": bid,
+                        "reason": "outside_existing_assembly_plane_without_native_contact",
+                        "native_span_x": [left, right], "contact_length_px": contact_length})
 
     seed_span = {bid: (min(native[cid]["bbox"][0] for cid in base[bid] | proposed[bid]),
                        max(native[cid]["bbox"][2] for cid in base[bid] | proposed[bid])) for bid in bays}
@@ -136,7 +154,9 @@ def ground_native_shell_proposal(plan, view, proposal):
                 ids.discard(cid)
             proposed[matches[0]].add(cid)
 
-    return {**proposal, "add": {bid: sorted(ids) for bid, ids in proposed.items()}}
+    for row in grounding:
+        row["grounded_block_ids"] = sorted(bid for bid, ids in proposed.items() if row["contour_id"] in ids)
+    return {**proposal, "add": {bid: sorted(ids) for bid, ids in proposed.items()}, "grounding_review": grounding}
 
 
 def native_locator(objects, views, images, frames, invoke, request, payload):
@@ -201,6 +221,8 @@ def native_locator(objects, views, images, frames, invoke, request, payload):
         front_ids = {row["candidate_id"] for row in item["front"]["faces"] if row["view_id"] == vid}
         plan = complete_native_assemblies(plan, views[vid], front_ids=front_ids, **resolved)
         item["planner"] = close_display_envelopes(plan, vid)
+        item["planner"]["locator_source_proposal"] = deepcopy(reading)
+        item["planner"]["locator_grounding"] = deepcopy(proposal["grounding_review"])
         plan["reported_unresolved_edges"] = reading["unresolved"]
         if reading["validation_gaps"]:
             plan["locator_review_pending"] = reading["validation_gaps"]

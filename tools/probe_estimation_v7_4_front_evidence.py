@@ -43,6 +43,13 @@ Allowed stroke roles: hinged_door, cut_or_fixed, unresolved.
 "stroke_readings":[{"id":"Cxx","role":"hinged_door"}],
 "direct_labels":[{"id":"Cxx","role":"mirror","source_text":"as printed"}]}"""
 
+DIRECT_LABEL_CHECK = (
+    "Before returning, independently check every panel interior in the clean source for printed words naming "
+    "the component. Include every directly printed mirror label in direct_labels with its exact C contour ID "
+    "and source_text. Check the entire view for these direct labels separately from the leaders and stroke "
+    "pairs. Keep the same output schema and use only visible source evidence."
+)
+
 
 def _index(rows, expected, allowed_roles):
     result = {}

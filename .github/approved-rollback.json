@@ -1,9 +1,0 @@
-{
-  "version": "V1.2.21",
-  "source_commit": "c84ece4c959c75be41271b2221807e3df6579297",
-  "approved_by": "owner, 2026-11-20, explicit full production rollback to one-two-twenty-one",
-  "reason": "Historical Ada baseline before the first affected release, for owner testing and incremental restoration",
-  "diagnostic_runtime_sha256": "13c6abf6145b7b51c956d9703f8bd71d2a51600999ec06a411f2fe4543d2b109",
-  "diagnostic_approved_by": "owner, 2026-11-20: Да, только диагностический лог",
-  "diagnostic_scope": "Record canonical request fingerprint and actual provider response before Parts validation; no request, prompt, algorithm, pricing or UI changes"
-}

@@ -109,20 +109,6 @@ def apply_upload_css() -> None:
             text-align: center;
         }
 
-        .upload-screen__hero {
-            margin: 0;
-            color: var(--color-purple, var(--primitive-purple-900));
-            font-family: var(--font-hero);
-            font-size: 24px;
-            font-weight: 400;
-            font-synthesis: none;
-            letter-spacing: -0.045em;
-            line-height: 1.18;
-            text-align: center;
-            -webkit-font-smoothing: antialiased;
-            text-rendering: geometricPrecision;
-        }
-
         div[data-testid="stFileUploader"] {
             width: var(--upload-width) !important;
             max-width: var(--upload-width) !important;
@@ -244,13 +230,6 @@ def apply_upload_css() -> None:
         @media (max-width: 760px) {
             .upload-screen {
                 margin-top: -7px;
-            }
-
-            .upload-screen__hero {
-                font-size: clamp(20px, 6vw, 24px);
-                line-height: 1.18;
-                letter-spacing: -0.045em;
-                margin: 0;
             }
 
             div[data-testid="stFileUploader"] {

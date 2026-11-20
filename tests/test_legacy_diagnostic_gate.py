@@ -18,7 +18,8 @@ def pinned_candidate(tmp_path, monkeypatch):
     for name in names + ["pyproject.toml", "uv.lock", ".github/approved-rollback.json"]:
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes((root / name).read_bytes())
+        target.write_bytes(subprocess.check_output(["git", "show",
+            "7d631d354506df02b9fffe5830ab3fc463d79f58:" + name], cwd=root))
     for name in ["pyproject.toml", "uv.lock"]:
         baseline[name] = subprocess.check_output(["git", "show", gate.BASE + ":" + name], cwd=root)
 

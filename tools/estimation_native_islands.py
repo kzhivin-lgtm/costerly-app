@@ -83,6 +83,48 @@ def inside(p,poly):
     return hit
 
 
+def _edge_distance(point, polygon):
+    distances = []
+    for a, b in zip(polygon, polygon[1:] + polygon[:1]):
+        segment = delta(a, b)
+        length2 = dot(segment, segment)
+        fraction = max(0., min(1., dot(delta(a, point), segment) / length2)) if length2 else 0.
+        distances.append(dist(point, (a[0] + fraction * segment[0], a[1] + fraction * segment[1])))
+    return min(distances, default=float("inf"))
+
+
+def bind_arrow_tip(tip, root, candidates, *, tolerance=.75):
+    """Accept contour contact; resolve shared edges from the local arrow shaft.
+
+    Retain every geometric candidate even when no unique owner is supported.
+    The incoming side owns a tip terminating on its edge. If the shaft is
+    outside all contacting faces, a unique face just beyond the tip can own it.
+    """
+    distances = {face["id"]: _edge_distance(tip, face["polygon"]) for face in candidates}
+    contact = sorted(ident for ident, value in distances.items() if value <= tolerance)
+    interior = sorted(face["id"] for face in candidates
+                      if distances[face["id"]] > tolerance and inside(tip, face["polygon"]))
+    evidence = {"interior_hits": interior, "contact_hits": contact}
+    if not contact:
+        return {**evidence, "hits": interior, "binding_basis": "interior" if len(interior) == 1 else "unresolved"}
+    if len(contact) == 1:
+        return {**evidence, "hits": contact, "binding_basis": "boundary_contact"}
+    length = dist(tip, root)
+    if length:
+        step = min(length / 2, 2 * tolerance + .25)
+        direction = tuple(value / length for value in delta(tip, root))
+        for sign, basis in ((1, "boundary_incoming"), (-1, "boundary_forward")):
+            sample = tuple(tip[i] + sign * step * direction[i] for i in (0, 1))
+            hits = sorted(face["id"] for face in candidates if face["id"] in contact
+                          and inside(sample, face["polygon"])
+                          and _edge_distance(sample, face["polygon"]) > tolerance)
+            if len(hits) == 1:
+                return {**evidence, "hits": hits, "binding_basis": basis}
+            if hits:
+                break
+    return {**evidence, "hits": [], "binding_basis": "ambiguous_boundary"}
+
+
 def arrow_clusters(vectors):
     # Both arms meet the long shaft at its tip. The long shafts in one callout share a root.
     at_node = defaultdict(list)
@@ -189,9 +231,9 @@ def extract_islands(source_pdf, detection, geometry, key):
             candidates = [{"id": f"C{i:02}", "area": round(area, 1), "polygon": polygon, "bbox": bounds(polygon)}
                           for i, (area, polygon) in enumerate(faces, 1)]
             leaders = [
-                {"root": root, "tips": [{"xy": tip, "path": path,
-                    "hits": [face["id"] for face in candidates if inside(tip, face["polygon"])]}
-                    for tip, path, _ in sorted(group)]}
+                {"root": root, "tips": [{"xy": tip, "path": path, "arrowhead_paths": arms,
+                    **bind_arrow_tip(tip, root, candidates)}
+                    for tip, path, arms in sorted(group)]}
                 for root, group in sorted(arrow_clusters(lines).items())
                 if 0 <= root[0] <= pixels.width and 0 <= root[1] <= pixels.height
             ]

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="estimation-labor-v1.2.21-b20261120190513-parts-trace-detection-v8.4.29" />
+    <meta name="costerly-wrapper-version" content="estimation-v9.7-detection-v8.4.29" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -92,7 +92,7 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "estimation-labor-v1.2.21-b20261120190513-parts-trace-detection-v8.4.29";
+        const BUILD_VERSION = "estimation-v3.2-b20261120205510-source-bindings-detection-v8.4.29";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -147,8 +147,16 @@
         let fallbackTimer = null;
         let iframeLoadAtMs = null;
         let ready = false;
+        let resumePending = !navigator.onLine;
+        let uploadSelectionPending = false;
+        let deployRefreshBlocked = false;
+        const deployRefreshKey = "costerly.deploy-refresh.v1";
+        let pendingServerBuild = "";
+        let uploadInteractionBusy = false;
+        const receivedBuilds = new Set();
         const readyRunIds = new Set();
         const pendingTransitions = [];
+        let coveredTransitionId = "";
         let lastReadyScreen = "";
         let lastReadyRunId = "";
         let sendingTimeline = false;
@@ -280,6 +288,30 @@
           });
         }
 
+        function revalidateConnection() {
+          if (!resumePending || !navigator.onLine || document.hidden ||
+              uploadSelectionPending || pendingTransitions.length || coveredTransitionId ||
+              lastReadyScreen === "processing") return;
+          resumePending = false;
+          if (recoveryPath || confirmationPath || lastReadyScreen === "login") return;
+          // A disconnected Streamlit iframe can still show its old authorized
+          // page. Bootstrap against the server again at the current outer URL.
+          mark("browser.connection_resume", {screen: lastReadyScreen});
+          window.location.reload();
+        }
+
+        window.addEventListener("offline", () => { resumePending = true; });
+        window.addEventListener("online", () => {
+          resumePending = true;
+          revalidateConnection();
+        });
+        document.addEventListener("visibilitychange", revalidateConnection);
+        window.addEventListener("pageshow", (event) => {
+          if (!event.persisted) return;
+          resumePending = true;
+          revalidateConnection();
+        });
+
         window.addEventListener("popstate", () => {
           window.location.reload();
         });
@@ -368,6 +400,57 @@
           persistTimeline();
         }
 
+        function releaseDeployCover() {
+          if (!deployRefreshBlocked) return;
+          deployRefreshBlocked = false;
+          frame.inert = false;
+          frame.classList.add("is-ready");
+          mask.style.cssText = "";
+          mask.classList.add("is-hidden");
+          mask.setAttribute("aria-hidden", "true");
+          mask.removeAttribute("role");
+        }
+
+        function forceDeployRefresh(serverBuildVersion) {
+          // Full outer reload preserves browser auth storage and cookies.
+          // No auth request, logout, token clear or server rerun is issued here.
+          if (deployRefreshBlocked) return;
+          deployRefreshBlocked = true;
+          ready = true;
+          window.clearTimeout(fallbackTimer);
+          frame.inert = true;
+          mask.classList.remove("is-hidden");
+          mask.removeAttribute("aria-hidden");
+          mask.setAttribute("role", "status");
+          mask.style.cssText = "display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;font:500 1rem system-ui;color:#392c47;";
+          mask.textContent = "Updating app…";
+          let canReload = false;
+          try {
+            canReload = window.sessionStorage.getItem(deployRefreshKey) !== serverBuildVersion;
+            if (canReload) window.sessionStorage.setItem(deployRefreshKey, serverBuildVersion);
+          } catch (_) { canReload = false; }
+          if (canReload) {
+            mark("browser.deploy_refresh", {screen: lastReadyScreen, metadata: {target_build: serverBuildVersion}});
+            persistTimeline(true);
+            window.location.reload();
+            return;
+          }
+          mask.textContent = "The app update is not ready yet. Reload to retry.";
+          const retry = document.createElement("button");
+          retry.textContent = "Reload page";
+          retry.style.cssText = "margin-top:0.5rem;padding:0.5rem 1rem;cursor:pointer;";
+          retry.addEventListener("click", () => window.location.reload());
+          mask.append(retry);
+          retry.focus();
+        }
+
+        function maybeRefreshServerBuild() {
+          if (!pendingServerBuild || pendingServerBuild === BUILD_VERSION ||
+              uploadSelectionPending || uploadInteractionBusy || coveredTransitionId ||
+              pendingTransitions.length || !["upload", "login"].includes(lastReadyScreen)) return;
+          forceDeployRefresh(pendingServerBuild);
+        }
+
         mark("browser.wrapper_start", {metadata: navigationMetadata()});
         if (frame) {
           frame.addEventListener("load", () => {
@@ -379,6 +462,27 @@
         }
 
         window.addEventListener("message", (event) => {
+          if (event.origin === appOrigin && event.source === frame.contentWindow &&
+              event.data?.type === "costerly:build-available" && event.data.traceId === traceId) {
+            const build = String(event.data.buildVersion || "");
+            if (receivedBuilds.has(build)) return;
+            receivedBuilds.add(build);
+            const order = value => Number(value.match(/-b([0-9]{14})-/)?.[1] || 0);
+            if (build === BUILD_VERSION) {
+              try { window.sessionStorage.removeItem(deployRefreshKey); } catch (_) {}
+              releaseDeployCover();
+            } else if (order(build) > order(BUILD_VERSION)) {
+              pendingServerBuild = build;
+              maybeRefreshServerBuild();
+            }
+            return;
+          }
+          if (event.origin === appOrigin && event.source === frame.contentWindow &&
+              event.data?.type === "costerly:deploy-refresh-state" && event.data.traceId === traceId) {
+            uploadInteractionBusy = event.data.busy === true;
+            maybeRefreshServerBuild();
+            return;
+          }
           if (event.origin === appOrigin && event.data?.type === "costerly:runtime-failure" &&
               event.data.traceId === traceId) {
             reportBrowserFailure(event.data);
@@ -389,6 +493,7 @@
             event.data &&
             event.data.type === "costerly:rfq-upload-selected"
           ) {
+            uploadSelectionPending = true;
             mark("browser.rfq_upload_selected", {
               metadata: {
                 source: safeRouteValue(event.data.source),
@@ -403,6 +508,7 @@
             event.data &&
             event.data.type === "costerly:upload-callback-timeout"
           ) {
+            uploadSelectionPending = false;
             mark("browser.upload_callback_timeout", {
               status: "timeout",
               metadata: {
@@ -411,6 +517,7 @@
               },
             });
             if (ready) persistTimeline();
+            revalidateConnection();
             return;
           }
           if (
@@ -441,6 +548,13 @@
             window.history.replaceState(window.history.state, "", "/");
             return;
           }
+          if (event.origin === appOrigin &&
+              event.data?.type === "costerly:workflow-navigation-reload" &&
+              event.data.traceId === traceId && coveredTransitionId &&
+              event.data.transitionId === coveredTransitionId) {
+            window.location.reload();
+            return;
+          }
           if (
             event.origin === appOrigin &&
             event.data &&
@@ -459,14 +573,15 @@
               timeoutId: null,
               styledReported: false,
               stageReported: false,
+              covered: event.data.workflowNavigation === true && event.data.traceId === traceId,
             };
             pendingTransitions.push(pendingTransition);
+            if (pendingTransition.covered) coveredTransitionId = pendingTransition.id;
             if (pendingTransition.name === "new_estimate") {
               resetOuterRouteForNewEstimate();
             }
-            // V5.7.0 has one navigation owner: the existing Streamlit
-            // session. The wrapper records the intent but never hides or
-            // replaces its iframe during an internal route change.
+            // The live iframe owns navigation and visual readiness. The
+            // wrapper records the intent and keeps the public URL in sync.
             mark("browser.transition_click", {
               metadata: {
                 transition: pendingTransition.name,
@@ -493,6 +608,7 @@
                 },
               });
               if (ready) persistTimeline();
+              revalidateConnection();
             }, 15000);
             if (ready) persistTimeline();
             return;
@@ -620,12 +736,28 @@
             event.data.type === "costerly:app-ready" &&
             event.data.traceId === traceId
           ) {
+            if (event.data.workflowNavigationProtocol === 1) {
+              frame.contentWindow.postMessage({
+                type: "costerly:workflow-navigation-enabled", protocol: 1, traceId,
+                buildVersion: BUILD_VERSION, deployRefreshProtocol: 1, buildSignalProtocol: 1,
+              }, appOrigin);
+            }
+            const completedTransitionId = String(event.data.transitionId || "");
+            if (coveredTransitionId && completedTransitionId !== coveredTransitionId) return;
+            if (coveredTransitionId) coveredTransitionId = "";
             const runId = String(event.data.runId || "");
             if (runId && readyRunIds.has(runId)) return;
             if (runId) readyRunIds.add(runId);
             const screen = event.data.screen || "unknown";
             lastReadyScreen = screen;
             lastReadyRunId = runId;
+            if (screen !== "upload") {
+              uploadSelectionPending = false;
+              uploadInteractionBusy = false;
+            }
+            // The native connection already revalidated and painted a fresh
+            // screen while a transition was completing.
+            if (navigator.onLine) resumePending = false;
             const droppedHeaderTarget = pendingTransitions.find((item) => (
               screen === "upload" &&
               ["account", "admin", "projects"].includes(item.targetScreen)
@@ -650,6 +782,9 @@
               (event.data.metrics && event.data.metrics.server_build_version) ||
               ""
             );
+            // Auth expiry or a late accepted upload remains authoritative,
+            // even while an older Core is waiting for an available update.
+            if (!["upload", "login"].includes(screen)) releaseDeployCover();
             if (serverBuildVersion && serverBuildVersion !== BUILD_VERSION) {
               mark("browser.build_mismatch", {
                 screen,
@@ -657,7 +792,7 @@
                 metadata: {
                   wrapper_build: BUILD_VERSION,
                   server_build: serverBuildVersion,
-                  recovery: "deferred_to_next_user_refresh",
+                  recovery: "published_build_refresh",
                 },
               });
               persistTimeline();
@@ -718,17 +853,19 @@
               metadata.completed_action === "auth_sign_in" &&
               metadata.completed_action_status === "error";
             const transitionIndex = pendingTransitions.findIndex((item) => {
+              if (item.covered || completedTransitionId) return item.id === completedTransitionId;
               if (failedSignIn) return item.name === "sign_in";
               if (item.targetScreen) return item.targetScreen === screen;
               return (expectedScreens[item.name] || []).includes(screen);
             });
             if (transitionIndex >= 0) {
               const pendingTransition = pendingTransitions[transitionIndex];
+              if (screen === "upload") { uploadSelectionPending = false; uploadInteractionBusy = false; }
               if (!pendingTransition.readyReported) {
                 pendingTransition.readyReported = true;
                 mark("browser.transition_ready", {
                   screen,
-                  status: failedSignIn ? "error" : "ok",
+                  status: failedSignIn || screen !== (pendingTransition.targetScreen || screen) ? "error" : "ok",
                   duration_ms: performance.now() - pendingTransition.startedAt,
                   metadata: {
                     transition: pendingTransition.name,
@@ -750,6 +887,7 @@
             } else {
               revealApp("app_ready", screen);
             }
+            maybeRefreshServerBuild();
           }
         });
 

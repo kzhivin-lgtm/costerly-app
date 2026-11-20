@@ -19,7 +19,7 @@ from use_cases.estimation_artifacts import _upload_immutable_artifact, download_
 from use_cases.estimation_detection_context_v7 import build_context
 from use_cases.estimation_originals import ORIGINALS_BUCKET
 
-VERSION = "estimation-v9.38-parts-check"
+VERSION = "estimation-v3.2-parts-check"
 OPERATION = "estimation_v9_parts_check"
 _LOCK = RLock()
 _RUNNING = set()
@@ -316,7 +316,7 @@ def save_parts_sheet_layout(*, client, company_id, run_id, estimate_id, report, 
     })
 
 
-def load_parts_check(*, client, company_id, run_id, estimate_id):
+def load_parts_check(*, client, company_id, run_id, estimate_id, include_payload=True):
     """Load only a report attached to this tenant's exact estimate and upload."""
     estimates = (client.table("rfq_estimates").select("estimate_id").eq("company_id", company_id)
                  .eq("run_id", run_id).eq("estimate_id", estimate_id).limit(1).execute().data or [])
@@ -332,6 +332,9 @@ def load_parts_check(*, client, company_id, run_id, estimate_id):
     if event["status"] != "succeeded":
         return {"status": "failed", "stage": event["raw_usage"].get("failure_stage")}
     details = event["raw_usage"]
+    if not include_payload:
+        return {"status": "ready", "report_sha256": details["report_sha256"],
+                "part_rows": details["part_rows"], "input_ids": details.get("input_ids", ())}
     payload = _read_report_payload(client, company_id=company_id, run_id=run_id, estimate_id=estimate_id,
                                    digest=details["report_sha256"])
     return {"status": "ready", "payload": payload, "part_rows": details["part_rows"],

@@ -13,6 +13,14 @@ from use_cases.estimation_artifacts import persist_preview_artifact
 from use_cases.evidence_preview import crop_ocr_region_to_webp
 
 
+def saved_presentation_preview_ref(item: Mapping[str, Any]) -> str | None:
+    """Read the one persisted UI crop, shared by File Review and Calculation."""
+    for ref in item.get("evidence_page_refs") or []:
+        if isinstance(ref, Mapping) and isinstance(ref.get("preview_ref"), str):
+            return ref["preview_ref"] or None
+    return None
+
+
 def _source_pages(file_name: str, file_bytes: bytes, page_images: Sequence[bytes] | None) -> list[bytes]:
     if page_images:
         return list(page_images)

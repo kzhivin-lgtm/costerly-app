@@ -76,7 +76,7 @@ from use_cases.estimation_originals import (
     persist_estimation_original,
     stored_original_metadata,
 )
-from use_cases.detection_previews import create_detection_previews
+from use_cases.detection_previews import create_detection_previews, saved_presentation_preview_ref
 
 
 _DIAGNOSTICS_EXECUTOR = ThreadPoolExecutor(
@@ -1573,10 +1573,7 @@ def _normalize_object(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def _preview_ref(item: dict[str, Any]) -> str | None:
-    for ref in item.get("evidence_page_refs") or []:
-        if isinstance(ref, dict) and isinstance(ref.get("preview_ref"), str):
-            return ref["preview_ref"]
-    return None
+    return saved_presentation_preview_ref(item)
 
 
 def _split_notes(value: Any) -> list[str]:

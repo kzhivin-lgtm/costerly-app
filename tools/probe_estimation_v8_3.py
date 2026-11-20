@@ -19,6 +19,7 @@ from tools.estimation_native_islands import extract_islands
 from tools.estimation_native_opening_marks import mark_on_face, thin_strokes
 from tools.probe_estimation_v7_4_front_evidence import (
     SYSTEM as TYPED_FRONT,
+    DIRECT_LABEL_CHECK,
     bind_front_roles,
     execute_request,
     render_caption_image,
@@ -630,7 +631,10 @@ def review_elevations(invoke, views, frames, images, projections, front, protect
 
 def leader_packet(view):
     return {f"A{i:02}": {"root_px": list(map(round, row["root"])), "tips": [
-        {"xy_px": list(map(round, tip["xy"])), "contours": tip["hits"]} for tip in row["tips"]
+        {"xy_px": list(map(round, tip["xy"])), "root_px": list(row["root"]), "contours": tip["hits"],
+         **({"binding_basis": tip["binding_basis"], "contact_contours": tip["contact_hits"],
+             "interior_contours": tip["interior_hits"]} if "binding_basis" in tip else {})}
+        for tip in row["tips"]
     ]} for i, row in enumerate(view["arrows"], 1)}
 
 
@@ -662,7 +666,7 @@ def typed_map(view, clean, leaders):
     return image_block(buffer.getvalue())
 
 
-def read_marked(invoke, view, page, images, marks):
+def read_marked(invoke, view, page, images, marks, *, component_observations=None):
     from use_cases.estimation_cb_parts_coverage import retained_component_callouts
 
     vid = view["view_id"]
@@ -672,7 +676,12 @@ def read_marked(invoke, view, page, images, marks):
     clean = images[vid][1]
     mapped = typed_map(view, b64decode(clean["source"]["data"]), leaders)
     contours = {row["id"]: row["bbox"] for row in view["candidates"]}
-    context = {"view_id": vid, "leader_groups": leaders, "side_stroke_pairs": strokes}
+    # Keep contact proofs for deterministic ownership and the saved audit. The
+    # visual reader needs only the original concise geometric packet.
+    model_leaders = {aid: {"root_px": group["root_px"], "tips": [
+        {"xy_px": tip["xy_px"], "contours": tip["contours"]} for tip in group["tips"]]}
+        for aid, group in leaders.items()}
+    context = {"view_id": vid, "leader_groups": model_leaders, "side_stroke_pairs": strokes}
     content = [{"type": "text", "text": "Clean source view."}, clean,
                {"type": "text", "text": "Same view with geometry IDs."}, mapped, payload(context)]
     if captions := render_caption_image(page, view, leaders):
@@ -684,6 +693,7 @@ def read_marked(invoke, view, page, images, marks):
         {"type": "text", "text": "Use these isolated native contours and stroke pairs for stroke_readings. Each tile is one C contour."},
         image_block(render_stroke_image(view, strokes)),
     ])
+    content.append({"type": "text", "text": DIRECT_LABEL_CHECK})
 
     def bind(raw):
         if {r["id"] for r in raw["leader_readings"]} != leaders.keys():
@@ -692,8 +702,12 @@ def read_marked(invoke, view, page, images, marks):
         return {"readings": raw, "items": bound["items"], "issues": bound["issues"],
                 "marks": marks, "leaders": leaders}
 
-    result = invoke(f"marked-{vid}", provider_request(TYPED_FRONT, content, model="claude-haiku-5-5",
-                                                     max_tokens=2500), bind)
+    request = provider_request(TYPED_FRONT, content, model="claude-haiku-5-5", max_tokens=2500)
+    result = invoke(f"marked-{vid}", request, bind)
+    from tools.estimation_direct_label_review import reconcile_direct_labels, render_panel_tiles
+
+    result = reconcile_direct_labels(invoke, request, result, bind, view_id=vid,
+                                     findings=component_observations, panel_tiles=render_panel_tiles(page, view))
     features = retained_component_callouts(vid, result["readings"], leaders)
     for annotation in result["readings"]["leader_readings"]:
         if annotation["role"] != "cover" or not annotation["source_text"]:
@@ -708,7 +722,9 @@ def read_marked(invoke, view, page, images, marks):
 
 def read_labelled(invoke, view, frame, images):
     vid = view["view_id"]
-    content = images[vid] + [payload({"view_id": vid, "neutral_leader_candidates": view["arrows"]})]
+    arrows = [{"root": row["root"], "tips": [
+        {key: tip[key] for key in ("xy", "path", "hits")} for tip in row["tips"]]} for row in view["arrows"]]
+    content = images[vid] + [payload({"view_id": vid, "neutral_leader_candidates": arrows})]
     return invoke(f"labelled-{vid}", provider_request(EXPLICIT_FRONT, content, max_tokens=2500),
                   lambda raw: bind_island_faces(raw, {vid: frame}))["faces"]
 
@@ -783,7 +799,8 @@ def find_front_and_blocks(pdf, views, frames, images, invoke, island_map, front,
             view = views[vid]
             if marks:
                 # PyMuPDF page extraction is kept on the caller thread.
-                marked[vid], additions = read_marked(invoke, view, pdf[view["page"] - 1], images, marks)
+                marked[vid], additions = read_marked(invoke, view, pdf[view["page"] - 1], images, marks,
+                                                     component_observations=component_observations)
                 features.extend(additions)
             else:
                 calls[vid] = pool.submit(read_labelled, invoke, view, frames[vid], images)
@@ -800,6 +817,12 @@ def find_front_and_blocks(pdf, views, frames, images, invoke, island_map, front,
     )
     for oid, obj in objects.items():
         front_result = obj["front"]
+        front_result["direct_label_reviews"] = {
+            vid: source["direct_label_review"] for vid, source in marked.items()
+            if views[vid]["object_id"] == oid and "direct_label_review" in source}
+        front_result["audit"].extend(issue for vid, source in marked.items()
+                                     if views[vid]["object_id"] == oid for issue in source["issues"]
+                                     if issue.get("reason") == "front_role_review_pending")
         if component_observations is not None:
             front_result["typed_leaders"] = {vid: source["readings"]["leader_readings"]
                                               for vid, source in marked.items() if views[vid]["object_id"] == oid}

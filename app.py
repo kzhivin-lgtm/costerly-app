@@ -16,6 +16,7 @@ from observability.runtime import (
     configure_runtime_sink,
     emit_completed_action,
     new_runtime_trace,
+    report_runtime_failure,
 )
 from state.session import init_state, get_company_id
 from ui.screen_transition import screen_transition_marker_html
@@ -51,7 +52,10 @@ from ui.js_guards import (
     signal_app_ready_to_embed,
 )
 from ui.app_header import render_app_header
-from use_cases.latest_estimate import load_latest_file_review_route
+from use_cases.latest_estimate import (
+    load_latest_estimate_route_for_run,
+    load_latest_file_review_route,
+)
 from use_cases.platform_admin import (
     load_platform_access,
     record_authenticated_session_in_background,
@@ -294,13 +298,15 @@ def _browser_route(screen: str, *, company_id: str | None = None) -> dict[str, s
 
 
 def _signal_ready(trace, screen: str, *, company_id: str | None = None) -> None:
+    if screen == "account" and st.session_state.get("profile_ready_run_id") == trace.run_id:
+        return
     trace.set_screen(screen)
     trace.annotate(server_build_version=trace.build_version)
     trace.event("server.app_ready_component_enqueued")
     # Keep a stable, invisible source-screen marker in the Streamlit DOM.  It
     # is consumed by browser timing instrumentation only and has no CSS role.
     st.markdown(
-        screen_transition_marker_html(screen, build_version=trace.build_version),
+        screen_transition_marker_html(screen, build_version=trace.build_version, render_id=trace.run_id),
         unsafe_allow_html=True,
     )
     signal_app_ready_to_embed(
@@ -350,11 +356,16 @@ def _render_screen(
     elif screen == "account":
         if access is None or access.company_id != company_id:
             raise PermissionError("Company access changed. Please sign in again.")
+        def profile_ready(profile_trace):
+            _signal_ready(profile_trace, "account", company_id=company_id)
+            st.session_state.profile_ready_run_id = profile_trace.run_id
+
         render_company_account(
             access,
             platform_access=platform_access,
             trace=trace,
             render_header_controls=render_header_controls,
+            render_ready=profile_ready,
         )
     elif screen == "admin":
         if access is None or platform_access is None:
@@ -530,6 +541,8 @@ def main() -> None:
             _signal_ready(trace, "password_recovery")
             return
         if access is None:
+            # A session can expire after the browser has painted upload progress.
+            clear_upload_processing_shell()
             with trace.span("server.app_header_render"):
                 render_app_header()
             trace.set_screen("login")
@@ -811,6 +824,33 @@ def main() -> None:
                         run_id=requested_run_id,
                         estimate_id=requested_estimate_id,
                     )
+        if requested_screen == "objects" and requested_run_id and not requested_estimate_id:
+            # Objects initially publishes only the run while the worker saves
+            # its estimate shell. Reload should recover that estimate by run.
+            try:
+                route = load_latest_estimate_route_for_run(
+                    client if auth_enabled else get_supabase_client(),
+                    company_id,
+                    requested_run_id,
+                )
+            except Exception as exc:
+                report_runtime_failure(
+                    "objects.restore_saved_estimate", exc, trace=trace, rfq_run_id=requested_run_id,
+                )
+                route = None
+            if route:
+                requested_estimate_id = route["estimate_id"]
+                _remember_validated_workflow_access(
+                    company_id=company_id,
+                    run_id=requested_run_id,
+                    estimate_id=requested_estimate_id,
+                )
+            else:
+                st.session_state.screen = "file_review"
+                st.session_state.current_estimate_id = None
+                st.session_state.current_estimate_run_id = None
+            st.session_state.current_object_id = None
+
         object_detail_edit_line = st.query_params.get("od_edit_line")
         object_detail_edit_field = st.query_params.get("od_edit_field")
         object_detail_edit_value = st.query_params.get("od_edit_value")

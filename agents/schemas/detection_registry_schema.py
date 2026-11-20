@@ -59,6 +59,47 @@ SOURCE_DEGRADED_VISUAL_SEMANTIC_EVIDENCE_TYPES = frozenset({
     "visual_dimension_similarity",
 })
 PRESENTATION_RENDER_REPRESENTATION_KIND = "presentation_render"
+ATTACHMENT_ONLY_REPRESENTATION_KINDS = frozenset({
+    PRESENTATION_RENDER_REPRESENTATION_KIND, "isometric_technical",
+})
+
+
+def requires_technical_attachment(representation_kind: object) -> bool:
+    """Retain the View class while sharing render attachment behavior."""
+    return str(representation_kind or "").strip().lower() in ATTACHMENT_ONLY_REPRESENTATION_KINDS
+
+
+def project_attachment_only_hypotheses(
+    hypotheses: list[dict[str, Any]], attachment_group_ids: set[str],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Retain technical grouping proof without letting an attachment bridge it."""
+    projected, audit = [], []
+    for index, hypothesis in enumerate(hypotheses):
+        if not isinstance(hypothesis, dict) or not isinstance(hypothesis.get("group_ids"), list):
+            projected.append(hypothesis)
+            continue
+        if not all(isinstance(group_id, str) for group_id in hypothesis["group_ids"]):
+            projected.append(hypothesis)
+            continue
+        removed = set(hypothesis["group_ids"]).intersection(attachment_group_ids)
+        if not removed:
+            projected.append(hypothesis)
+            continue
+        members = [g for g in hypothesis["group_ids"] if g not in removed]
+        audit.append({"index": index, "attachment_group_ids": sorted(removed), "technical_group_ids": members})
+        if len(members) < 2:
+            continue
+        evidence = hypothesis.get("evidence")
+        if isinstance(evidence, list):
+            evidence = [row for row in evidence if not (
+                isinstance(row, dict) and (
+                    row.get("group_id_a") in removed or row.get("group_id_b") in removed
+                    or (isinstance(row.get("source_fact_ids"), list)
+                        and any(source == f"registry_view:{g}" for source in row["source_fact_ids"] for g in removed))
+                )
+            )]
+        projected.append({**hypothesis, "group_ids": members, "evidence": evidence})
+    return projected, audit
 
 DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
     "type": "array",
@@ -1904,6 +1945,7 @@ def compile_detection_v637_hypothesis_coverage_components(
     *,
     visual_groups: list[dict[str, Any]],
     allow_star_hypothesis_components: bool = False,
+    evidence_origins: dict[tuple[str, str, str, str], set[str]] | None = None,
 ) -> tuple[list[list[str]], dict[str, Any]]:
     """Accept a multi-view hypothesis only when local facts cover every View.
 
@@ -1960,6 +2002,26 @@ def compile_detection_v637_hypothesis_coverage_components(
                 "index": index,
                 "reason": "membership_hypothesis_requires_multiple_independent_local_pairs",
                 "group_ids": group_ids,
+                "local_fact_pairs": [list(pair) for pair in local_pairs],
+            })
+            continue
+        source_evidence_ids = {
+            origin
+            for pair in local_pairs
+            for fact in facts_by_pair[pair]
+            for origin in (
+                evidence_origins.get(
+                    (*pair, fact["evidence_type"], fact["observation"].strip()),
+                    {"external:" + repr((*pair, fact["evidence_type"], fact["observation"].strip()))},
+                ) if evidence_origins is not None else set()
+            )
+        }
+        if evidence_origins is not None and len(group_ids) > 2 and len(source_evidence_ids) < 2:
+            rejected.append({
+                "index": index,
+                "reason": "membership_hypothesis_requires_multiple_independent_source_facts",
+                "group_ids": group_ids,
+                "source_evidence_ids": sorted(source_evidence_ids),
                 "local_fact_pairs": [list(pair) for pair in local_pairs],
             })
             continue
@@ -3324,9 +3386,9 @@ def partition_detection_presentation_render_components(
     *,
     visual_groups: list[dict[str, Any]],
 ) -> tuple[list[list[str]], list[str], list[dict[str, Any]]]:
-    """Keep a presentation image only when a technical View proves its owner.
+    """Keep a render or technical isometric only with a proven technical owner.
 
-    A render or photograph is still a fixed visual Island and can carry a
+    An attachment-only View is still a fixed visual Island and can carry a
     concrete topology or geometry proof.  It cannot, however, manufacture a
     commercial object when every member of its final component is another
     presentation image.  This changes package admission only: it does not
@@ -3349,16 +3411,25 @@ def partition_detection_presentation_render_components(
         presentation_group_ids = [
             group_id for group_id in group_ids
             if representation_kind_by_group_id.get(group_id)
-            == PRESENTATION_RENDER_REPRESENTATION_KIND
+            in ATTACHMENT_ONLY_REPRESENTATION_KINDS
         ]
         if presentation_group_ids and len(presentation_group_ids) == len(group_ids):
             excluded_group_ids.extend(group_ids)
+            only_presentation_renders = all(
+                representation_kind_by_group_id[g] == PRESENTATION_RENDER_REPRESENTATION_KIND
+                for g in presentation_group_ids
+            )
             audit.append({
                 "group_ids": group_ids,
-                "disposition": "excluded_unattached_presentation_render",
+                "disposition": (
+                    "excluded_unattached_presentation_render"
+                    if only_presentation_renders
+                    else "excluded_unattached_isometric_technical"
+                ),
                 "reason": (
-                    "Presentation render/photo has no proven technical View "
-                    "in its component."
+                    "Presentation render/photo has no proven technical View in its component."
+                    if only_presentation_renders else
+                    "Attachment-only View has no proven technical anchor in its component."
                 ),
             })
             continue

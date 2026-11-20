@@ -13,6 +13,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import streamlit as st
 from supabase import create_client
+from supabase.lib.client_options import SyncClientOptions
 from supabase_auth.errors import AuthApiError, AuthError
 from postgrest.exceptions import APIError
 
@@ -210,7 +211,11 @@ def _auth_client():
     if not url or not key:
         raise RuntimeError("Company auth requires SUPABASE_URL and SUPABASE_ANON_KEY.")
     # Do not share an auth client across Streamlit users: its session is mutable.
-    return create_client(url, key)
+    # Streamlit owns the session. A short-lived SDK client must not rotate its
+    # refresh token in a background timer without updating browser persistence.
+    return create_client(url, key, options=SyncClientOptions(
+        auto_refresh_token=False, persist_session=False,
+    ))
 
 
 def _server_client():
@@ -233,6 +238,7 @@ def _store_auth_session(session: object) -> None:
     )
     st.session_state._browser_auth_pending = {
         "action": "store",
+        "issued_at": str(time.time_ns()),
         "request_id": secrets.token_urlsafe(12),
         "session": {
             "access_token": session.access_token,
@@ -241,6 +247,9 @@ def _store_auth_session(session: object) -> None:
         },
         "resume_blob": resume_blob,
     }
+    # Also carry the latest write into the ready component. It commits to
+    # browser storage synchronously before any deployment reload is announced.
+    st.session_state._browser_auth_latest_write = dict(st.session_state._browser_auth_pending)
 
 
 def sync_browser_auth_session(
@@ -275,6 +284,7 @@ def sync_browser_auth_session(
         not isinstance(pending, dict)
         and not st.session_state.get("_browser_auth_initialized")
         and not has_memory_session
+        and not st.session_state.get("_browser_auth_cookie_retry")
         and not recovery_requested
         and not confirmation_requested
     ):
@@ -315,6 +325,7 @@ def sync_browser_auth_session(
     result = browser_session_exchange(
         action=action,
         request_id=request_id,
+        issued_at=str(pending.get("issued_at") or "0") if isinstance(pending, dict) else "0",
         session=session,
         resume_blob=resume_blob,
         trace_id=trace_id,
@@ -501,6 +512,7 @@ def _clear_password_recovery(*, updated: bool) -> None:
         st.session_state._runtime_completed_action = completed_action
     st.session_state._browser_auth_pending = {
         "action": "clear",
+        "issued_at": str(time.time_ns()),
         "request_id": secrets.token_urlsafe(12),
         "session": None,
     }
@@ -522,6 +534,10 @@ def _abandon_password_recovery() -> None:
 
 
 def clear_auth_session() -> None:
+    profile_reads = st.session_state.get("company_profile_preload")
+    if isinstance(profile_reads, dict):
+        for entry in profile_reads.get("entries", {}).values():
+            entry["future"].cancel()
     for key in list(st.session_state.keys()):
         if key not in {
             "_app_boot_id",
@@ -909,6 +925,7 @@ def sign_out() -> None:
     clear_auth_session()
     st.session_state._browser_auth_pending = {
         "action": "clear",
+        "issued_at": str(time.time_ns()),
         "request_id": secrets.token_urlsafe(12),
         "session": None,
     }
@@ -1159,10 +1176,38 @@ def current_company_access(*, trace=None) -> CompanyAccess | None:
         if user is None:
             clear_auth_session()
             return None
-    except AuthApiError:
+    except AuthApiError as exc:
+        if trace is not None:
+            code = str(getattr(exc, "code", "") or "")
+            trace.event("server.auth.session_rejected", status="error", metadata={
+                "auth_error_code": code if re.fullmatch(r"[a-z0-9_]{1,80}", code) else "unknown",
+                "http_status": getattr(exc, "status", None),
+            })
+        if (
+            st.session_state.get("_browser_auth_sync_outcome") == "fast_resume_restored"
+            and not st.session_state.get("_browser_auth_cookie_retry")
+        ):
+            # A cookie is shared across tabs; this tab can hold a newer session.
+            # Retry the existing browser bootstrap once before clearing it.
+            # Keep workflow state and validate the recovered tokens normally.
+            for key in (
+                "auth_access_token", "auth_refresh_token", "auth_expires_at",
+                "_company_access_cache", "_browser_auth_initialized",
+                "_browser_auth_read_request", "_browser_auth_pending",
+                "_browser_auth_latest_write",
+            ):
+                st.session_state.pop(key, None)
+            st.session_state._browser_auth_cookie_retry = True
+            st.session_state._fast_resume_outcome = "rejected_cookie"
+            st.session_state._browser_auth_sync_outcome = "retrying_tab_session"
+            if trace is not None:
+                trace.event("server.auth.cookie_browser_retry", status="unknown")
+            st.rerun()
+            return None
         clear_auth_session()
         st.session_state._browser_auth_pending = {
             "action": "clear",
+            "issued_at": str(time.time_ns()),
             "request_id": secrets.token_urlsafe(12),
             "session": None,
         }
@@ -1731,6 +1776,7 @@ def _open_last_estimate(latest_route: dict[str, str] | None) -> None:
         st.session_state.header_last_estimate_error = "No previous estimate is available."
         return
     st.session_state.current_run_id = latest_route["run_id"]
+    st.session_state.pop("file_review_empty_estimate", None)
     estimate_id = str(latest_route.get("estimate_id") or "").strip()
     st.session_state.current_estimate_id = estimate_id or None
     st.session_state.current_estimate_run_id = latest_route["run_id"] if estimate_id else None
@@ -1780,10 +1826,13 @@ def render_company_account(
     platform_access=None,
     trace=None,
     render_header_controls=None,
+    render_ready=None,
 ) -> None:
     profile_kwargs = {"platform_access": platform_access}
     if render_header_controls is not None:
         profile_kwargs["render_header_controls"] = render_header_controls
+    if render_ready is not None:
+        profile_kwargs["render_ready"] = render_ready
 
     if trace is None:
         from screens.company_profile import render_company_profile

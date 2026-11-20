@@ -1,16 +1,26 @@
 """Sheet Processing comparison for the open Object Detail card."""
 
 from html import escape
+from decimal import Decimal, ROUND_HALF_UP
 import json
 import logging
 
 import streamlit as st
 
-from db.repositories import fetch_rfq_estimate_material_plan
+from db.repositories import (
+    fetch_company_overhead_settings, fetch_company_overhead_monthly,
+    fetch_rfq_estimate_material_plan,
+)
 from db.supabase_client import get_supabase_client
 from observability.runtime import report_runtime_failure
+from screens.block_assembly import assembly_breakdown_html
+from ui.object_detail_view import detail_elements_html, overhead_section_html, _money as display_money
+from use_cases.overhead_engine import estimate_object_overhead
+from use_cases.block_assembly import calculate_block_assembly
 from use_cases.estimation_labor_v1 import (
     LAYOUT_VERSION, SPLIT_ROLES, build_sheet_layout, describe_layout_issues, sheet_layout_basis,
+    labor_pay_metrics, sheet_pay_metrics, object_labor_metrics, load_object_labor,
+    DISPLAY_HOURLY_RATE, DISPLAY_PAYROLL_SHARE,
 )
 from use_cases.estimation_parts_check_runtime import load_parts_check
 from use_cases.machinery import load_sheet_processing_machinery
@@ -21,37 +31,16 @@ _LOG = logging.getLogger(__name__)
 
 
 def _calculate(client, *, identity):
-    company_id, run_id, estimate_id, object_id = identity
-    params = {"client": client, "company_id": company_id, "run_id": run_id, "estimate_id": estimate_id}
-    parts = load_parts_check(**params)
-    if parts["status"] != "ready":
-        return {"status": parts["status"]}
-    rows = fetch_rfq_estimate_material_plan(client, estimate_id)
-    if rows.empty:
-        return {"status": "waiting_for_materials"}
-    plan = rows.iloc[0].get("plan_payload") or {}
-    if plan.get("status") not in {"planned", "needs_review"}:
-        return {"status": "waiting_for_materials"}
-    report = json.loads(parts["payload"])
-    if object_id not in report["objects"]:
-        return {"status": "unavailable"}
-    source = plan.get("parts_check_source") or {}
-    if not source or any(source.get(k) != report.get(k) for k in (
-        "run_id", "estimate_id", "input_ids", "source_audit_sha256", "overlay_revision"
-    )):
-        return {"status": "different_revision"}
-    layout = report.get("sheet_layout") or {}
-    if layout.get("version") != LAYOUT_VERSION or layout.get("basis_sha256") != sheet_layout_basis(plan):
-        layout = build_sheet_layout(report, plan)
-    result = calculate_sheet_processing(
-        report, layout, plan, object_id=object_id, machinery=load_sheet_processing_machinery(client, company_id),
-    )
-    result["issues"] = describe_layout_issues(result["issues"], layout, report)
-    return {"status": "ready", "result": result}
+    return load_object_labor(client, identity=identity, parts_loader=load_parts_check,
+                             plan_loader=fetch_rfq_estimate_material_plan,
+                             machinery_loader=load_sheet_processing_machinery)
+
+
+
 
 
 def _money(amount):
-    return "—" if amount is None else f"₪{round(amount):,}"
+    return display_money(amount)
 
 
 def _sheets(quantity):
@@ -84,12 +73,56 @@ def _comparison_table(rows):
     )
 
 
-def _sheet_section(body, *, count_label=""):
+def _sheet_section(body, *, count_label="", metrics=None):
     counts = f'<span class="object-detail-cnc-count">{escape(count_label)}</span>' if count_label else ""
+    return _cost_band('Sheet Processing', counts + body, metrics, key='sheet-processing')
+
+
+_pay_metrics = labor_pay_metrics
+
+
+_sheet_pay_metrics = sheet_pay_metrics
+
+
+def _cost_band(title, body, metrics=None, *, key, open_by_default=False):
+    is_row = key != 'labor'
+
+    def metric(label, value, column, *, total=False):
+        value = '—' if value is None else value
+        css = 'object-detail-cost-total' if total else 'object-detail-cost-metric'
+        cell = 'object-detail-table-cell' if is_row else 'object-detail-table-head'
+        content = (f'<span class="object-detail-cost-value">{escape(str(value))}</span>' if is_row else
+                   f'<span class="object-detail-cost-label">{label}</span>'
+                   + (f'<span class="object-detail-cost-value">{escape(str(value))}</span>' if total else ''))
+        if is_row and column == 'hours' and metrics:
+            exact = str(metrics['hours'])
+            content = (
+                '<div class="object-detail-material-input" data-quantity-decimals="1">'
+                '<div class="object-detail-cell-input object-detail-cell-input--number"'
+                ' role="textbox" contenteditable="true" tabindex="0" inputmode="decimal"'
+                f' aria-label="{escape(title)} hours" data-field="labor_hours" data-line-id="{key}"'
+                f' data-original-value="{exact}">{value}</div></div>'
+            )
+        return f'<div class="{cell} {css}" data-labor-column="{column}">{content}</div>'
+
+    value = metrics or {}
+    fields = metric('Hours', str(value['hours'].quantize(Decimal('.1'), rounding=ROUND_HALF_UP)) if metrics else None, 'hours')
+    fields += '<div class="object-detail-labor-money-pair">'
+    fields += metric('Labor<br>pay', _money(value.get('pay')), 'pay')
+    fields += metric('Taxes &amp;<br>social', _money(value.get('taxes')), 'taxes') + '</div>'
+    fields += metric('Total', _money(value.get('total')), 'total', total=True)
+    classes = 'object-detail-work-row' if is_row else 'object-detail-table object-detail-cost-band object-detail-labor-table'
+    cell = 'object-detail-table-cell' if is_row else 'object-detail-table-head'
+    row = 'object-detail-table-row' if is_row else 'object-detail-table-head-row'
+    body_class = 'object-detail-work-body' if is_row else 'object-detail-labor-body'
     return (
-        '<details class="object-detail-elements object-detail-elements-section object-detail-cnc">'
-        f'<summary class="object-detail-section-title">Sheet Processing{counts}</summary>'
-        f'{body}</details>'
+        f'<details class="{classes}" data-cost-band="{key}"'
+        f' data-cost-unknown="{str(metrics is None).lower()}"'
+        f' data-cost-partial="{str(bool(value.get("partial"))).lower()}"'
+        + (' open' if open_by_default else '') + '>'
+        f'<summary class="{row} object-detail-cost-summary">'
+        f'<div class="{cell} object-detail-cost-title">{escape(title)}</div>{fields}</summary>'
+        f'<div class="{body_class}">{body}</div></details>'
     )
 
 
@@ -169,7 +202,7 @@ def _panel_saw_breakdown(panel_saw, *, tape_stock, tape_stock_complete, layout_c
     )
 
 
-def _comparison_html(result):
+def _comparison_html(result, *, elements_html='', metrics=None):
     work = result["work"]
     internal = result["in_house"]
     rows = internal["materials"]
@@ -180,7 +213,8 @@ def _comparison_html(result):
     route = result.get("in_house_route", "cnc")
     panel_saw = result.get("panel_saw")
     if not rows and not issues:
-        return _sheet_section('<p class="object-detail-cnc-caption">No sheet processing for this object.</p>')
+        return _sheet_section(elements_html + '<p class="object-detail-cnc-caption">No sheet processing for this object.</p>',
+                              metrics=metrics if metrics is not None else _sheet_pay_metrics(result))
     in_house_rows = panel_saw["materials"] if route == "panel_saw" else rows
     sheet_count = sum(row["sheets"] for row in in_house_rows)
     count_label = f"{_sheets(sheet_count)} {'sheet' if sheet_count == 1 else 'sheets'}"
@@ -298,8 +332,9 @@ def _comparison_html(result):
     )
     saw_details = _panel_saw_breakdown(panel_saw, tape_stock=tape_stock, tape_stock_complete=tape_stock_complete,
                                       layout_complete=layout_complete)
-    return _sheet_section(comparison + _supplier_stock_html(external["materials"])
-                          + (details if route == "cnc" else "") + saw_details, count_label=count_label)
+    return _sheet_section(elements_html + comparison + _supplier_stock_html(external["materials"])
+                          + (details if route == "cnc" else "") + saw_details, count_label=count_label,
+                          metrics=metrics if metrics is not None else _sheet_pay_metrics(result))
 
 
 def _estimate(value, complete):
@@ -308,13 +343,73 @@ def _estimate(value, complete):
     return f"{_money(value)} (subtotal)"
 
 
+_labor_pay_metrics = object_labor_metrics
+
+
+def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, quantity=1, overrides=None):
+    sheet_metrics, assembly_metrics, total = _labor_pay_metrics(state, quantity=quantity, overrides=overrides)
+    elements_html = detail_elements_html(elements, revision=overlay_revision, object_id=object_id)
+    if state['status'] == 'ready':
+        sheet = _comparison_html(state['result'], elements_html=elements_html, metrics=sheet_metrics)
+    else:
+        messages = {
+            'preparing': 'Preparing Sheet Processing…', 'running': 'Waiting for Parts Check.',
+            'waiting_for_materials': 'Waiting for the Material Plan.',
+            'different_revision': 'Waiting for matching Parts Check and Materials.',
+            'failed': 'Parts Check failed.', 'unavailable': 'Parts Check is unavailable for this object.',
+            'read_failed': 'Sheet Processing could not be loaded.',
+        }
+        sheet = _sheet_section(elements_html + f'<p class="object-detail-cnc-caption">{messages[state["status"]]}</p>')
+    assembly = state.get('assembly')
+    if assembly is not None:
+        assembly_body = assembly_breakdown_html(assembly, quantity=quantity, payroll_share=DISPLAY_PAYROLL_SHARE, inline=True)
+        if not assembly['blocks']:
+            assembly_body = '<p class="object-detail-cnc-caption">No assembly blocks in Parts Check.</p>'
+    else:
+        message = 'Preparing Assembly…' if state['status'] == 'preparing' else 'Assembly is unavailable.'
+        assembly_body = f'<p class="object-detail-cnc-caption">{message}</p>'
+    body = sheet + _cost_band('Assembly', assembly_body, assembly_metrics, key='assembly')
+    return '<div class="object-detail-labor-band">' + _cost_band('Labor', body, total, key='labor', open_by_default=True) + '</div>'
+
+
+def _overhead_html(state, *, identity, material_cost, material_partial=False, quantity=1, overrides=None):
+    company_id, run_id, estimate_id, object_id = identity
+    context = state.get("overhead_context", {"status": "read_failed"})
+    overhead = {"status": context["status"], "object_id": object_id}
+    if context["status"] == "ready":
+        _, _, total = _labor_pay_metrics(state, quantity=quantity, overrides=overrides)
+        overhead = estimate_object_overhead(
+            company_id=company_id, estimate_id=estimate_id, object_id=object_id,
+            settings=context["settings"], overhead_monthly=context["monthly"],
+            labor_hours=total["hours"] if total else None,
+            labor_cost=total["total"] if total else None, material_cost=material_cost,
+            partial=material_partial or bool(total and total["partial"]),
+        )
+    return overhead_section_html({**overhead, "estimate_id": estimate_id, "run_id": run_id})
+
+
+def _load_overhead_context(client, company_id):
+    """Read the existing company inputs within the existing parallel fragment."""
+    settings = fetch_company_overhead_settings(client, company_id)
+    monthly = fetch_company_overhead_monthly(client, company_id)
+    return {"status": "ready", "settings": settings.iloc[0].to_dict() if not settings.empty else {},
+            "monthly": monthly.iloc[0].to_dict() if not monthly.empty else {}}
+
+
 @st.fragment(parallel=True)
-def render_labor_v1(*, company_id, run_id, estimate_id, object_id):
+def render_labor_v1(*, company_id, run_id, estimate_id, object_id, elements=None, overlay_revision=None,
+                    quantity=1, overrides=None, material_cost=0, material_partial=False):
     identity = company_id, run_id, estimate_id, object_id
     cache = st.session_state.setdefault("labor_v1_comparisons", {})
     view = st.empty()
-    if identity not in cache:
-        view.markdown(_sheet_section('<p class="object-detail-cnc-caption">Preparing Sheet Processing…</p>'), unsafe_allow_html=True)
+    overhead_view = st.empty()
+    overhead_view.markdown(overhead_section_html({"status": "loading", "object_id": object_id}), unsafe_allow_html=True)
+    state = cache.get(identity)
+    if not state or "assembly" not in state:
+        view.markdown(
+            _labor_html({'status': 'preparing'}, elements=elements, overlay_revision=overlay_revision,
+                        object_id=object_id, quantity=quantity, overrides=overrides), unsafe_allow_html=True,
+        )
         try:
             state = _calculate(get_supabase_client(), identity=identity) if run_id else {"status": "unavailable"}
         except Exception as exc:
@@ -322,17 +417,18 @@ def render_labor_v1(*, company_id, run_id, estimate_id, object_id):
             _LOG.exception("Could not calculate Labor V1 for estimate %s", estimate_id)
             state = {"status": "read_failed"}
         if state["status"] == "ready":
-            cache[identity] = state["result"]
-    if identity in cache:
-        html = _comparison_html(cache[identity])
-    else:
-        messages = {
-            "running": "Waiting for Parts Check.",
-            "waiting_for_materials": "Waiting for the Material Plan.",
-            "different_revision": "Waiting for matching Parts Check and Materials.",
-            "failed": "Parts Check failed.",
-            "unavailable": "Parts Check is unavailable for this object.",
-            "read_failed": "Sheet Processing could not be loaded.",
-        }
-        html = _sheet_section(f'<p class="object-detail-cnc-caption">{messages[state["status"]]}</p>')
-    view.markdown(html, unsafe_allow_html=True)
+            cache[identity] = state
+    # Labor is visible before the separate company read. Loading Overhead must
+    # not replace its input nodes or wait in the Materials/navigation path.
+    view.markdown(_labor_html(state, elements=elements, overlay_revision=overlay_revision,
+                             object_id=object_id, quantity=quantity, overrides=overrides), unsafe_allow_html=True)
+    if "overhead_context" not in state:
+        try:
+            state["overhead_context"] = _load_overhead_context(get_supabase_client(), company_id)
+        except Exception as exc:
+            report_runtime_failure("overhead.load", exc, rfq_run_id=run_id,
+                                   estimate_id=estimate_id, object_id=object_id)
+            _LOG.exception("Could not load Overhead for estimate %s", estimate_id)
+    overhead_view.markdown(_overhead_html(state, identity=identity, material_cost=material_cost,
+                                         material_partial=material_partial, quantity=quantity,
+                                         overrides=overrides), unsafe_allow_html=True)

@@ -22,6 +22,13 @@ UNIT_TESTS = [
     "tests/test_overhead_restore.py",
     "tests/test_isometric_attachment_policy.py",
     "tests/test_detection_explicit_pairs.py",
+    "tests/test_estimation_arrow_contacts.py", "tests/test_estimation_direct_label_review.py",
+    "tests/test_parts_diagnostic_trace.py",
+    "tests/test_estimation_front_structure.py", "tests/test_estimation_object_inventory.py",
+    "tests/test_estimation_v9_inventory.py", "tests/test_estimation_parts_check_runtime.py",
+    "tests/test_estimation_cb_geometry_parts.py", "tests/test_estimation_display_parts.py",
+    "tests/test_estimation_cb_material_demand.py",
+    "tests/test_estimation_locator_plane.py",
     "tests/test_agent_timing.py::test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping",
     "tests/test_agent_timing.py::test_isometric_membership_uses_primary_attachment_without_extra_requests",
     "tests/test_agent_timing.py::test_presentation_render_without_technical_match_never_creates_registry_object",
@@ -34,10 +41,6 @@ def main() -> int:
     parser.add_argument("--browser-only", action="store_true")
     parser.add_argument("--output", type=Path, default=ROOT / ".ui-artifacts")
     args = parser.parse_args()
-    if (ROOT / ".github/approved-rollback.json").exists():
-        sys.path.insert(0, str(ROOT))
-        from tools.run_legacy_rollback import run_rollback_gate
-        return run_rollback_gate(args.output.resolve())
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     state = output / "state"

@@ -129,3 +129,13 @@ that test existed in V1.2.21. The newer test file is retained in the repository
 for subsequent restoration. Original V1.2.21 Sheet Processing/CNC, material,
 auth, route, persistence and observability checks plus publication protection
 remain required. No present-day recognition stability is inferred from CI.
+
+## V3.2 modern runtime restored
+
+On20November2026 the owner approved V3.2 from the modern V3.1 base. The
+temporary approved-rollback.json is removed and the ordinary full runner is
+active again. Historical diagnostic-gate tests read their pinned7d631d35 fixture,
+not today's runtime. The normal mandatory gate additionally covers native arrow
+contact, contour-owned label transcription, complete source coverage, preserved
+raw diagnostics and the dependent Parts/geometry/material contracts. The legacy
+rollback sections above describe history, not the active V3.2 publication path.

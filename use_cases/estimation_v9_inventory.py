@@ -72,13 +72,14 @@ def _component(item_id, role, source, *, quantity=None, attached=()):
 
 
 def _leader_blocks(source, blocks, inside):
-    """Return the possible owner set for every original arrow tip."""
-    return [
-        {block["id"] for block in blocks if any(
-            inside(tip["xy_px"], polygon) for polygon in
-            block.get("envelopes", {}).get(source["view_id"], {}).get("polygons_px", ()))}
-        for tip in source["tips"]
-    ]
+    """Return possible owners using the same native tip-contact rule as Front."""
+    from tools.estimation_native_islands import bind_arrow_tip
+
+    polygons = [(block["id"], polygon) for block in blocks for polygon in
+                block.get("envelopes", {}).get(source["view_id"], {}).get("polygons_px", ())]
+    faces = [{"id": str(index), "polygon": polygon} for index, (_, polygon) in enumerate(polygons)]
+    return [{polygons[int(ident)][0] for ident in bind_arrow_tip(
+        tip["xy_px"], tip.get("root_px", tip["xy_px"]), faces)["hits"]} for tip in source["tips"]]
 
 
 def bind_native_components(inventory, analyze):
@@ -431,6 +432,9 @@ def check_parts(analyze, inventory_with_parts, parts):
     report["unassigned_source_findings"] = inventory_with_parts["unassigned_source_findings"]
     for oid, obj in inventory_with_parts["objects"].items():
         result = report["objects"][oid]
+        result["direct_label_reviews"] = deepcopy(analyze["objects"][oid]["front"].get("direct_label_reviews", {}))
+        result["locator_source_proposal"] = deepcopy(analyze["objects"][oid]["planner"].get("locator_source_proposal", {}))
+        result["locator_grounding"] = deepcopy(analyze["objects"][oid]["planner"].get("locator_grounding", []))
         part_blocks = parts["objects"][oid]["blocks"]
         envelopes = {row["block_id"]: row["envelope"] for row in part_blocks if "envelope" in row}
         for block in result["blocks"]:

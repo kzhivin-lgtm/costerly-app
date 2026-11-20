@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import base64
-from concurrent.futures import CancelledError, Future
+from concurrent.futures import CancelledError, Future, ThreadPoolExecutor
+from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
 from html import escape
@@ -15,9 +16,11 @@ from urllib.parse import urlsplit
 from uuid import uuid4
 
 import streamlit as st
+from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from db.company_access import assert_company_owner
 from db.supabase_client import get_supabase_client
+from observability.runtime import LABOR_BUILD_VERSION, new_runtime_trace
 from agents.schemas.price_source_schema import CANONICAL_UNIT_CODES, PRICE_SOURCE_CATEGORIES
 from styles.company_profile import apply_company_profile_css
 from styles.object_detail import apply_object_detail_css
@@ -1114,6 +1117,7 @@ def _render_owner_machinery(
                     pricing_method="quote_only",
                 )
         st.session_state.pop(f"company_machinery_snapshot:{access.company_id}", None)
+        _invalidate_profile_read(access, "machinery")
         st.session_state.pop(draft_state_key, None)
         st.session_state[f"company_machinery_notice:{access.company_id}"] = (
             "Machinery saved"
@@ -1144,11 +1148,9 @@ def _render_machinery(access: CompanyAccess) -> None:
     snapshot = st.session_state.get(snapshot_key)
     if not isinstance(snapshot, dict):
         try:
-            snapshot = {
-                "rows": list_company_machinery(access),
-                "suppliers": list_company_suppliers(access),
-                "services": list_supplier_services(access),
-            }
+            snapshot = _profile_prepared_read(
+                access, "machinery", lambda: _fetch_profile_machinery(access),
+            )
             st.session_state[snapshot_key] = snapshot
         except Exception:
             st.error("Machinery settings are unavailable right now. Try again after the database update")
@@ -1164,7 +1166,7 @@ def _render_machinery(access: CompanyAccess) -> None:
     _render_owner_machinery(access, machine_rows, services, supplier_names)
 
 
-def load_company_profile(access: CompanyAccess) -> dict:
+def _fetch_company_profile(access: CompanyAccess) -> dict:
     rows = (
         get_supabase_client().table("companies")
         .select(PROFILE_COLUMNS)
@@ -1175,6 +1177,10 @@ def load_company_profile(access: CompanyAccess) -> dict:
     if not rows:
         raise PermissionError("Company profile is unavailable.")
     return rows[0]
+
+
+def load_company_profile(access: CompanyAccess) -> dict:
+    return _profile_prepared_read(access, "company", lambda: _fetch_company_profile(access))
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -1401,6 +1407,7 @@ def save_company_profile(access: CompanyAccess, values: dict[str, object]) -> di
     rows = result.data or []
     if len(rows) != 1 or str(rows[0].get("company_id")) != fresh.company_id:
         raise RuntimeError("The company profile was not saved.")
+    _invalidate_profile_read(fresh, "company")
     return rows[0]
 
 
@@ -1430,6 +1437,7 @@ def save_company_metrics(
     if not monthly_rows:
         client.table("overhead_monthly").insert(monthly_payload).execute()
     _load_company_metrics_by_id.clear()
+    _invalidate_object_overhead_context(fresh.company_id)
 
 
 def save_company_pricing(access: CompanyAccess, values: dict[str, object]) -> None:
@@ -1456,6 +1464,23 @@ def save_company_pricing(access: CompanyAccess, values: dict[str, object]) -> No
             **payload,
         }).execute()
     _load_company_metrics_by_id.clear()
+    _invalidate_object_overhead_context(fresh.company_id)
+
+
+def _invalidate_object_overhead_context(company_id: str) -> None:
+    affected = set()
+    for identity, comparison in st.session_state.get("labor_v1_comparisons", {}).items():
+        if str(identity[0]) == str(company_id):
+            comparison.pop("overhead_context", None)
+            affected.add(identity[2])
+    for estimate_id, data in st.session_state.get("objects_estimation_data_cache", {}).items():
+        if str(data.get("company_id")) == str(company_id):
+            affected.add(estimate_id)
+    for (estimate_id, _), data in st.session_state.get("object_detail_data_cache", {}).items():
+        if str(data.get("company_id")) == str(company_id):
+            affected.add(estimate_id)
+    st.session_state.setdefault("objects_estimation_cache_dirty", set()).update(affected)
+    st.session_state.setdefault("object_detail_data_cache_dirty", set()).update(affected)
 
 
 def save_company_contacts(
@@ -1485,11 +1510,16 @@ def save_company_contacts(
     rows = result.data or []
     if len(rows) != 1 or str(rows[0].get("company_id")) != fresh.company_id:
         raise RuntimeError("The company profile was not saved.")
+    _invalidate_profile_read(fresh, "company")
     return rows[0]
 
 
 def load_company_members(access: CompanyAccess) -> list[dict]:
     fresh = _current_access(access)
+    return _profile_prepared_read(fresh, "members", lambda: _fetch_company_members(fresh))
+
+
+def _fetch_company_members(fresh: CompanyAccess) -> list[dict]:
     client = get_supabase_client()
     rows = (
         client.table("company_members")
@@ -1545,7 +1575,9 @@ def load_company_employees(access: CompanyAccess) -> list[dict]:
     # ``_owner_access`` immediately before writing.
     if access.role != "owner" or not access.company_id:
         raise PermissionError("Only the company owner can access employee costs.")
-    return _load_company_employees_by_id(str(access.company_id))
+    return _profile_prepared_read(
+        access, "employees", lambda: _load_company_employees_by_id(str(access.company_id)),
+    )
 
 
 def add_company_employee(
@@ -1583,6 +1615,7 @@ def add_company_employee(
     if len(rows) != 1 or str(rows[0].get("company_id")) != fresh.company_id:
         raise RuntimeError("The worker was not added.")
     _load_company_employees_by_id.clear()
+    _invalidate_profile_read(fresh, "employees")
     return rows[0]
 
 
@@ -1697,6 +1730,7 @@ def update_company_employee(
     ):
         raise RuntimeError("The worker was not updated.")
     _load_company_employees_by_id.clear()
+    _invalidate_profile_read(fresh, "employees")
     return rows[0]
 
 
@@ -1721,6 +1755,7 @@ def archive_company_employee(access: CompanyAccess, employee_id: str) -> dict:
     ):
         raise RuntimeError("The worker was not removed.")
     _load_company_employees_by_id.clear()
+    _invalidate_profile_read(fresh, "employees")
     return rows[0]
 
 
@@ -1878,6 +1913,7 @@ def _save_company_logo(
         previous_reference=previous_reference,
         trace=trace,
     )
+    _invalidate_profile_read(fresh, "company")
 
 
 def _render_company_logo_card(
@@ -1956,7 +1992,7 @@ def _render_company_logo_card(
 
                 if uploaded_file is not None and selected_file is None:
                     _pending_company_logo(uploaded_file, trace=trace)
-                    st.rerun()
+                    _rerun_profile_fragment()
             elif current_logo is not None:
                 st.markdown(_logo_preview_html(current_logo), unsafe_allow_html=True)
 
@@ -2003,7 +2039,7 @@ def _render_company_logo_card(
                         int(st.session_state.get("_company_logo_uploader_version") or 0) + 1
                     )
                     st.session_state._company_logo_notice = "Company logo saved"
-                    st.rerun()
+                    _rerun_profile_fragment()
 
 
 def _price_source_supplier(source: dict) -> str:
@@ -2466,20 +2502,82 @@ def _poll_price_lists_projections(access: CompanyAccess) -> tuple[dict, dict, di
     return results, errors, futures
 
 
-def _start_post_overhead_warmup(access: CompanyAccess, *, trace=None) -> None:
-    """Begin the next Profile workload only after Overhead has rendered.
+_PROFILE_READ_EXECUTOR = ThreadPoolExecutor(max_workers=3, thread_name_prefix="profile-read")
+_PROFILE_READ_TTL_SECONDS = 60
 
-    Price Lists is deliberately first because it has the longest independent
-    read set. This reuses its accepted projection futures, does not render the
-    fragment, and does not add polling or callbacks to the Overhead tab.
-    """
-    if access.role != "owner":
-        return
-    state = _price_lists_projection_state(access)
+
+def _profile_preload_state(access: CompanyAccess) -> dict:
+    identity = (str(access.company_id), str(access.user_id), str(access.role))
+    state = st.session_state.get("company_profile_preload")
+    if not isinstance(state, dict) or state.get("identity") != identity:
+        if isinstance(state, dict):
+            for entry in state["entries"].values():
+                entry["future"].cancel()
+        state = {"identity": identity, "entries": {}}
+        st.session_state.company_profile_preload = state
+    return state
+
+
+def _invalidate_profile_read(access: CompanyAccess, name: str) -> None:
+    entry = _profile_preload_state(access)["entries"].pop(name, None)
+    if entry:
+        entry["future"].cancel()
+
+
+def _profile_prepared_read(access: CompanyAccess, name: str, loader: Callable):
+    entries = _profile_preload_state(access)["entries"]
+    entry = entries.get(name)
+    if entry and time.monotonic() - entry["started_at"] < _PROFILE_READ_TTL_SECONDS:
+        try:
+            return deepcopy(entry["future"].result())
+        except Exception:
+            entries.pop(name, None)
+            raise
+    if entry:
+        entry["future"].cancel()
+    value = loader()
+    future = Future()
+    future.set_result(value)
+    entries[name] = {"future": future, "started_at": time.monotonic()}
+    return deepcopy(value)
+
+
+def _fetch_profile_machinery(access: CompanyAccess) -> dict:
+    return {
+        "rows": list_company_machinery(access),
+        "suppliers": list_company_suppliers(access),
+        "services": list_supplier_services(access),
+    }
+
+
+def _start_post_overhead_warmup(access: CompanyAccess, *, trace=None) -> None:
+    """Warm the remaining reads after Overhead, once per resource and identity."""
+    entries = _profile_preload_state(access)["entries"]
+    loaders = {
+        "company": lambda: _fetch_company_profile(access),
+        "members": lambda: _fetch_company_members(access),
+        "machinery": lambda: _fetch_profile_machinery(access),
+    }
+    if access.role == "owner":
+        loaders["employees"] = lambda: _load_company_employees_by_id(str(access.company_id))
+    for name, loader in loaders.items():
+        entry = entries.get(name)
+        if entry and time.monotonic() - entry["started_at"] < _PROFILE_READ_TTL_SECONDS:
+            continue
+        if entry:
+            entry["future"].cancel()
+        entries[name] = {
+            "future": _PROFILE_READ_EXECUTOR.submit(loader),
+            "started_at": time.monotonic(),
+        }
+    state = _price_lists_projection_state(access) if access.role == "owner" else None
     if trace is not None:
         trace.event(
             "server.profile_post_overhead_warmup_started",
-            metadata={"price_list_futures": len(state["futures"])},
+            metadata={
+                "profile_futures": len(entries),
+                "price_list_futures": len(state["futures"]) if state else 0,
+            },
         )
 
 
@@ -4752,6 +4850,7 @@ def _render_users(access: CompanyAccess) -> None:
             started_at = time.perf_counter()
             try:
                 remove_company_member(access, member_id)
+                _invalidate_profile_read(access, "members")
                 st.session_state._company_user_remove_id = ""
                 st.session_state._company_user_removed = True
                 st.session_state.company_profile_tab = "Users"
@@ -5201,7 +5300,7 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                 )
         if delete_cancelled:
             st.session_state["_labor_delete_employee_id"] = ""
-            st.rerun()
+            _rerun_profile_fragment()
         if confirmed:
             try:
                 action_started_at = time.perf_counter()
@@ -5217,7 +5316,7 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                 }
                 st.session_state["_labor_delete_employee_id"] = ""
                 st.session_state["_labor_employee_archived"] = True
-                st.rerun()
+                _rerun_profile_fragment()
             except (PermissionError, ValueError) as exc:
                 st.error(str(exc))
             except Exception:
@@ -5431,7 +5530,7 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
             cancelled = False
     if cancelled:
         st.session_state["_labor_form_reset_pending"] = True
-        st.rerun()
+        _rerun_profile_fragment()
     if submitted:
         try:
             gross_monthly_salary = 0.0
@@ -5513,7 +5612,7 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
             st.session_state[
                 "_labor_employee_updated" if editing else "_labor_employee_added"
             ] = True
-            st.rerun()
+            _rerun_profile_fragment()
         except ValueError as exc:
             st.error(str(exc))
         except PermissionError:
@@ -5538,12 +5637,19 @@ def _open_platform_admin_screen() -> None:
     set_screen("admin")
 
 
+def _rerun_profile_fragment() -> None:
+    context = get_script_run_ctx(suppress_warning=True)
+    scope = "fragment" if context and context.fragment_ids_this_run else "app"
+    st.rerun(scope=scope)
+
+
 def render_company_profile(
     access: CompanyAccess,
     *,
     platform_access=None,
     trace=None,
     render_header_controls: Callable[[], None] | None = None,
+    render_ready: Callable | None = None,
 ) -> None:
     phase_started_at = time.perf_counter()
 
@@ -5579,6 +5685,40 @@ def render_company_profile(
     render_screen_header(render_profile_title, render_header_controls)
     finish_phase("server.company_profile_header", "p_header_ms")
 
+    _render_profile_tabs(access, trace=trace, render_ready=render_ready)
+
+
+@st.fragment
+def _render_profile_tabs(
+    access: CompanyAccess, *, trace=None, render_ready: Callable | None = None,
+) -> None:
+    context = get_script_run_ctx(suppress_warning=True)
+    fragment_rerun = bool(context and context.fragment_ids_this_run)
+    if fragment_rerun and render_ready is not None:
+        trace = new_runtime_trace(
+            session_state=st.session_state,
+            requested_trace_id=None,
+            screen="account",
+            started_at=time.perf_counter(),
+            build_version=LABOR_BUILD_VERSION,
+        )
+        try:
+            access = _current_access(access)
+        except PermissionError:
+            st.rerun(scope="app")
+
+    phase_started_at = time.perf_counter()
+
+    def finish_phase(name: str, summary_key: str) -> None:
+        nonlocal phase_started_at
+        finished_at = time.perf_counter()
+        if trace is not None:
+            duration_ms = (finished_at - phase_started_at) * 1000
+            trace.event(name, duration_ms=duration_ms)
+            trace.annotate(**{summary_key: round(duration_ms, 3)})
+        phase_started_at = finished_at
+
+    st.markdown('<span data-costerly-profile-fragment="true"></span>', unsafe_allow_html=True)
     expenses_tab, labor_tab, pricing_tab, machinery_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(
         [
             "Overhead Expenses",
@@ -5594,6 +5734,11 @@ def render_company_profile(
         on_change="rerun",
     )
     finish_phase("server.company_profile_tabs", "p_tabs_ms")
+    if trace is not None:
+        trace.annotate(
+            profile_tab=str(st.session_state.get("company_profile_tab") or "Overhead Expenses"),
+            profile_fragment=fragment_rerun,
+        )
 
     if expenses_tab.open:
         with expenses_tab:
@@ -5630,6 +5775,8 @@ def render_company_profile(
         except Exception:
             st.error("Company profile is unavailable right now. Try again in a moment.")
             finish_phase("server.company_profile_content", "p_body_ms")
+            if render_ready is not None:
+                render_ready(trace)
             return
 
         if contacts_tab.open:
@@ -5660,3 +5807,5 @@ def render_company_profile(
                     _render_price_lists(access, trace=trace)
 
     finish_phase("server.company_profile_content", "p_body_ms")
+    if render_ready is not None:
+        render_ready(trace)

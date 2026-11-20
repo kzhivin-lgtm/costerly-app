@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+import hashlib
 import json
+from pathlib import Path
+
+from ui.browser_session import _AUTH_STORAGE_JS
 
 import streamlit as st
 import streamlit.components.v1 as components
+
+
+_WORKFLOW_TRANSITION_JS = Path(__file__).with_name("workflow_transition.js").read_text(encoding="utf-8")
+_WORKFLOW_TRANSITION_REVISION = hashlib.sha256(_WORKFLOW_TRANSITION_JS.encode()).hexdigest()[:16]
 
 
 _MOVE_CARET_TO_END = """
@@ -25,6 +33,7 @@ _MOVE_CARET_TO_END = """
 
 def install_workflow_header_alignment_guard(
     title_selector: str = "h1.workflow-title",
+    *, even_labor_columns: bool = False,
 ) -> None:
     """Align the fixed workflow actions to the rendered workflow-title center."""
     title_selector_json = json.dumps(title_selector)
@@ -36,6 +45,7 @@ def install_workflow_header_alignment_guard(
             const parentDoc = parentWindow.document;
             const CLEANUP_KEY = "__costerlyWorkflowHeaderAlignmentCleanup";
             const titleSelector = __TITLE_SELECTOR__;
+            const evenLaborColumns = __EVEN_LABOR_COLUMNS__;
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
 
@@ -70,6 +80,25 @@ def install_workflow_header_alignment_guard(
 
             function align() {
                 frameId = null;
+                if (evenLaborColumns) {
+                    // Reuse this guard's existing coalesced render/resize
+                    // callback. No additional observer, timer or app rerun.
+                    for (const row of parentDoc.querySelectorAll('.object-detail-labor-table .object-detail-cost-summary')) {
+                        const hours = row.querySelector('[data-labor-column="hours"]');
+                        const total = row.querySelector('[data-labor-column="total"]');
+                        if (!hours || !total || !row.getClientRects().length) continue;
+                        const center = node => { const r = node.getBoundingClientRect(); return r.x + r.width / 2; };
+                        const start = center(hours), step = (center(total) - start) / 3;
+                        for (const [index, column] of ['pay', 'taxes'].entries()) {
+                            const cell = row.querySelector(`[data-labor-column="${column}"]`);
+                            if (!cell) continue;
+                            const offset = `${(start + step * (index + 1) - center(cell)).toFixed(2)}px`;
+                            if (cell.style.getPropertyValue('--labor-column-offset') !== offset) {
+                                cell.style.setProperty('--labor-column-offset', offset);
+                            }
+                        }
+                    }
+                }
                 const { title, actions } = targets();
                 if (!title || !actions) return;
 
@@ -144,7 +173,8 @@ def install_workflow_header_alignment_guard(
             };
         })();
         </script>
-        """.replace("__TITLE_SELECTOR__", title_selector_json),
+        """.replace("__TITLE_SELECTOR__", title_selector_json)
+        .replace("__EVEN_LABOR_COLUMNS__", json.dumps(even_labor_columns)),
         height=0,
         width=0,
     )
@@ -741,11 +771,38 @@ def signal_app_ready_to_embed(
     metrics_json = json.dumps(metrics or {})
     route_json = json.dumps(route or {})
     reset_scroll_json = json.dumps(bool(reset_scroll))
+    pending = st.session_state.get("_browser_auth_latest_write")
+    auth_write = ({"action":"store", "requestId":pending.get("request_id"),
+                   "issuedAt":pending.get("issued_at", "0"), "session":pending.get("session"),
+                   "resumeBlob":pending.get("resume_blob")} if isinstance(pending, dict) else None)
+    auth_write_json = json.dumps(auth_write).replace("<", "\\u003c")
 
     components.html(
         """
         <script>
         (() => {
+            __AUTH_STORAGE_JS__
+            const authWrite = __AUTH_WRITE__;
+            const authStorageReady = !authWrite || applyCosterlyAuthWrite(window.parent, authWrite).ok;
+            function installWorkflow(message) {
+                const coreWindow = window.parent;
+                const traceId = message.traceId;
+                if (!traceId || coreWindow === coreWindow.top) return null;
+                if (coreWindow.__costerlyWorkflowTransition?.traceId === traceId &&
+                    coreWindow.__costerlyWorkflowTransition.revision === __WORKFLOW_REVISION__) {
+                    return coreWindow.__costerlyWorkflowTransition;
+                }
+                // Timers and DOM observers must survive replacement of this
+                // Streamlit component iframe during the next rerun.
+                const script = coreWindow.document.createElement("script");
+                script.textContent = __WORKFLOW_TRANSITION__
+                    + ";workflowTransitionController(window, " + JSON.stringify(traceId) + ", "
+                    + JSON.stringify(__WORKFLOW_REVISION__) + ", " + JSON.stringify(message) + ");";
+                coreWindow.document.head.append(script);
+                script.remove();
+                return coreWindow.__costerlyWorkflowTransition;
+            }
+
             const transitionHandlerKey = "__costerlyRuntimeTransitionHandlerV1";
             const message = {
                 type: "costerly:app-ready",
@@ -754,8 +811,25 @@ def signal_app_ready_to_embed(
                 runId: __RUN_ID__,
                 metrics: __METRICS__,
                 route: __ROUTE__,
+                workflowNavigationProtocol: 1,
+                authStorageReady,
+
+                versionRefreshSafe: ["upload", "login"].includes(__SCREEN__),
                 sentAt: Date.now()
             };
+            // Navigation timing retains the iframe's original URL after
+            // Streamlit clears query parameters and a server session restarts.
+            try {
+                const navigation = window.parent.performance.getEntriesByType("navigation")[0];
+                const hostTrace = new URL(navigation?.name || window.parent.location.href)
+                    .searchParams.get("obs_trace");
+                if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(hostTrace || "")) {
+                    message.metrics.server_trace_id = message.traceId;
+                    message.traceId = hostTrace;
+                }
+            } catch (_) {}
+            const workflow = installWorkflow(message);
+            const currentWorkflow = () => window.parent.__costerlyWorkflowTransition || workflow;
             const resetScrollOnReady = __RESET_SCROLL__;
 
             function currentScreen() {
@@ -764,6 +838,11 @@ def signal_app_ready_to_embed(
             }
 
             function transitionName(control) {
+                if (currentScreen() === "account" &&
+                    control.matches('[role="tab"][aria-selected="false"]') &&
+                    control.closest(".st-key-company_profile_tab")) {
+                    return "profile_tab_change";
+                }
                 const hasControlKey = (key) => Boolean(
                     control.closest(`.st-key-${key}`) ||
                     control.closest(`[class*="st-key-${key}_recovery"]`)
@@ -787,15 +866,9 @@ def signal_app_ready_to_embed(
                     if (currentScreen() === "projects") return "projects_to_upload";
                     return "new_estimate";
                 }
-                if (control.closest(".st-key-header_last_estimate")) {
-                    // Last Estimate is a cached Streamlit callback. The
-                    // generic outer transition shell can outlive a valid
-                    // click and has produced client-only timeouts with zero
-                    // Python runs. Let the callback render File Review
-                    // directly instead of covering it with that shell.
-                    return null;
+                if (hasControlKey("header_last_estimate")) {
+                    return currentWorkflow()?.enabled() ? "last_estimate" : null;
                 }
-                if (hasControlKey("header_last_estimate")) return null;
                 if (control.closest(".st-key-open_company_account") || hasControlKey("open_company_account")) {
                     if (currentScreen() === "upload") return "upload_to_profile";
                     if (currentScreen() === "admin") return "admin_to_profile";
@@ -879,6 +952,7 @@ def signal_app_ready_to_embed(
                     object_detail_to_objects: "objects",
                     object_detail_approve_to_objects: "objects",
                     upload_to_profile: "account",
+                    profile_tab_change: "account",
                     profile_to_upload: "upload",
                     upload_to_admin: "admin",
                     profile_to_admin: "admin",
@@ -1182,11 +1256,14 @@ def signal_app_ready_to_embed(
                     const parentDocument = parentWindow.document;
                     const previous = parentWindow[transitionHandlerKey];
                     if (previous) parentDocument.removeEventListener("click", previous, false);
-                    const handler = (event) => {
-                        const control = event.target && event.target.closest
-                            ? event.target.closest("button, a")
-                            : null;
-                        if (!control) return;
+                    const handler = (event, selectedControl = null) => {
+                        const control = selectedControl || (
+                            event.target && event.target.closest
+                                ? event.target.closest("button, a")
+                                : null
+                        );
+                        if (!control || control.disabled || event.defaultPrevented ||
+                            event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
                         const transition = transitionName(control);
                         if (!transition) return;
                         const bridgeKey = String(control.dataset.streamlitBridgeKey || "");
@@ -1206,26 +1283,71 @@ def signal_app_ready_to_embed(
                             )).find((button) => String(button.textContent || "").trim()
                                 === "Back to Objects") || null;
                         }
-                        if (bridgeButton) event.preventDefault();
-                        parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
-                        parentDocument.documentElement.scrollTop = 0;
-                        parentDocument.body.scrollTop = 0;
+                        if (currentWorkflow()?.busy()) {
+                            event.preventDefault();
+                            return;
+                        }
                         const transitionId = crypto.randomUUID();
+                        const covered = currentWorkflow()?.begin(transition, transitionId);
+                        if (bridgeButton || (covered && bridgeKey)) event.preventDefault();
+                        if (!covered) {
+                            parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
+                            parentDocument.documentElement.scrollTop = 0;
+                            parentDocument.body.scrollTop = 0;
+                        }
                         window.top.postMessage({
                             type: "costerly:transition-click",
                             transition,
                             transitionId,
                             sourceScreen: currentScreen(),
                             targetScreen: targetScreenFor(transition),
+                            traceId: message.traceId,
+                            workflowNavigation: Boolean(covered),
                         }, "*");
-                        observeTargetScreen(transition, transitionId);
+                        if (!covered) observeTargetScreen(transition, transitionId);
                         if (bridgeButton) bridgeButton.click();
+                        else if (covered && bridgeKey) currentWorkflow()?.fail();
                     };
                     parentWindow[transitionHandlerKey] = handler;
                     parentDocument.addEventListener("click", handler, {
                         capture: false,
                         passive: false,
                     });
+                    // Streamlit tabs select on pointerdown and stop the click
+                    // event. Their configured on_change performs a full rerun.
+                    const tabHandlerKey = transitionHandlerKey + "ProfileTabs";
+                    const previousTabHandler = parentWindow[tabHandlerKey];
+                    if (previousTabHandler) {
+                        parentDocument.removeEventListener("pointerdown", previousTabHandler, true);
+                        parentDocument.removeEventListener("keydown", previousTabHandler, true);
+                    }
+                    const tabHandler = (event) => {
+                        const tab = event.target.closest?.('.st-key-company_profile_tab [role="tab"]');
+                        if (!tab || currentScreen() !== "account") return;
+                        let selected = tab;
+                        if (event.type === "keydown") {
+                            const group = tab.closest(".st-key-company_profile_tab");
+                            const tabs = Array.from(group.querySelectorAll('[role="tab"]'));
+                            const index = tabs.indexOf(tab);
+                            const offsets = {ArrowLeft: -1, ArrowRight: 1};
+                            if (event.key in offsets) {
+                                selected = tabs[(index + offsets[event.key] + tabs.length) % tabs.length];
+                            } else if (event.key === "Home") {
+                                selected = tabs[0];
+                            } else if (event.key === "End") {
+                                selected = tabs[tabs.length - 1];
+                            } else if (event.key !== "Enter" && event.key !== " ") {
+                                return;
+                            }
+                        }
+                        if (selected?.getAttribute("aria-selected") === "false" &&
+                            selected.getAttribute("aria-disabled") !== "true") {
+                            handler(event, selected);
+                        }
+                    };
+                    parentWindow[tabHandlerKey] = tabHandler;
+                    parentDocument.addEventListener("pointerdown", tabHandler, {capture: true, passive: false});
+                    parentDocument.addEventListener("keydown", tabHandler, {capture: true, passive: false});
                 } catch (_) {}
             }
 
@@ -1300,6 +1422,7 @@ def signal_app_ready_to_embed(
 
             function postReady() {
                 try { installRuntimeFailureListeners(); } catch (_) {}
+                if (currentWorkflow()?.ready(message)) return;
 
                 if (resetScrollOnReady) {
                     const parentWindow = window.parent;
@@ -1320,17 +1443,12 @@ def signal_app_ready_to_embed(
                     parentWindow.setTimeout(reset, 250);
                 }
 
-                try {
-                    window.parent.postMessage(message, "*");
-                } catch (error) {}
+                sendReady(message);
+            }
 
-                try {
-                    window.parent.parent.postMessage(message, "*");
-                } catch (error) {}
-
-                try {
-                    window.top.postMessage(message, "*");
-                } catch (error) {}
+            function sendReady(payload) {
+                window.top.postMessage(payload, "*");
+                currentWorkflow()?.announceBuild(payload);
             }
 
             function authStylesReady() {
@@ -1374,6 +1492,22 @@ def signal_app_ready_to_embed(
                 check();
             }
 
+            if (!authStorageReady) {
+                const doc = window.parent.document;
+                doc.getElementById("costerly-auth-save-error")?.remove();
+                const notice = doc.createElement("div");
+                notice.id = "costerly-auth-save-error";
+                notice.setAttribute("role", "alert");
+                notice.style.cssText = "position:fixed;bottom:48px;left:16px;z-index:2147483100;background:#fff;padding:12px;border:1px solid #aa5353;border-radius:8px;font:14px system-ui";
+                notice.textContent = "Your sign-in could not be saved. The page update is postponed. ";
+                const retry = doc.createElement("button"); retry.textContent = "Retry";
+                retry.onclick = () => {
+                    if (!applyCosterlyAuthWrite(window.parent, authWrite).ok) return;
+                    notice.remove(); message.authStorageReady = true;
+                    currentWorkflow()?.resumeAuthWrite(message);
+                };
+                notice.append(retry); doc.body.append(notice);
+            } else window.parent.document.getElementById("costerly-auth-save-error")?.remove();
             installTransitionObserver();
             releaseAuthShellWhenStable();
             announceWhenStyled();
@@ -1384,7 +1518,11 @@ def signal_app_ready_to_embed(
         .replace("__RUN_ID__", run_id_json)
         .replace("__METRICS__", metrics_json)
         .replace("__ROUTE__", route_json)
-        .replace("__RESET_SCROLL__", reset_scroll_json),
+        .replace("__RESET_SCROLL__", reset_scroll_json)
+        .replace("__WORKFLOW_REVISION__", json.dumps(_WORKFLOW_TRANSITION_REVISION))
+        .replace("__WORKFLOW_TRANSITION__", json.dumps(_WORKFLOW_TRANSITION_JS))
+        .replace("__AUTH_STORAGE_JS__", _AUTH_STORAGE_JS)
+        .replace("__AUTH_WRITE__", auth_write_json),
         height=0,
         width=0,
     )
@@ -1436,12 +1574,16 @@ def clear_upload_processing_shell() -> None:
         """
         <script>
         (() => {
-            const parentDoc = window.parent.document;
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
             const shell = parentDoc.getElementById('costerly-upload-processing-shell');
             if (shell) shell.remove();
 
             parentDoc.documentElement.classList.remove('costerly-upload-processing-shell-active');
             parentDoc.body.classList.remove('costerly-upload-processing-shell-active');
+            parentWindow.clearInterval(parentWindow.__costerlyProcessingElapsedTimerV5);
+            parentWindow.__costerlyProcessingElapsedTimerV5 = null;
+            parentWindow.__costerlyProcessingElapsedStartedAtV5 = null;
         })();
         </script>
         """,
@@ -1463,6 +1605,7 @@ def scroll_parent_to_top() -> None:
                 const parentWindow = window.parent;
                 const parentDoc = parentWindow.document;
 
+                if (parentWindow.__costerlyWorkflowTransition?.busy()) return;
                 function scrollTopNow() {
                     parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
                     parentDoc.documentElement.scrollTop = 0;
@@ -1980,7 +2123,7 @@ def install_object_detail_input_guard(
             };
             const draft = new Map();
             let activeSave = null;
-            const materialField = field => field === "required_material" || field === "purchase_quantity";
+            const materialField = field => field === "required_material" || field === "purchase_quantity" || field === "labor_hours";
             const editKey = ctx => JSON.stringify([ctx.field, ctx.lineId]);
             const materialValue = input => String(editableValue(input) || "").trim().replace(",", ".");
             const validAmount = raw => /^(?:\\d+(?:\\.\\d{0,4})?|\\.\\d{1,4})$/.test(raw)
@@ -1994,7 +2137,8 @@ def install_object_detail_input_guard(
             const contextFor = input => ({input, field: input.dataset.field, lineId: input.dataset.lineId});
             const objectQuantityContext = input => ({input, field: "object_quantity", lineId: "__object__"});
             const invalidMaterial = () => objectQuantityInput()?.getAttribute("aria-invalid") === "true" ||
-                materialRows().some(row => row.querySelector('[aria-invalid="true"]'));
+                materialRows().some(row => row.querySelector('[aria-invalid="true"]')) ||
+                !!parentDoc.querySelector('[data-field="labor_hours"][aria-invalid="true"]');
             const updateSaveControls = message => {
                 const button = saveButton();
                 if (!button) return;
@@ -2133,6 +2277,18 @@ def install_object_detail_input_guard(
                     setRowCost(row, Number(base.total || 0) + delta);
                     formulaDelta += delta;
                 }
+                const materialHeader = parentDoc.querySelector("[data-material-section-total]");
+                if (materialHeader) {
+                    const known = projected.filter(({base}) => base.total != null);
+                    const sum = known.reduce((total, {base, cost}) => total + (base.locked
+                        ? Number(base.total) + (base.policy_basis === "coatings" ? coatingDelta : materialDelta)
+                            * Number(base.policy_percent || 0) / 100
+                        : cost), 0);
+                    materialHeader.textContent = known.length || !projected.length ? formatMoney(sum) : "—";
+                    materialHeader.dataset.overheadMaterialCost = String(sum);
+                    const label = materialHeader.parentElement.querySelector(".object-detail-cost-label");
+                    if (label) label.textContent = known.length === projected.length ? "Total" : "Subtotal";
+                }
                 const final = parentDoc.querySelector(".object-detail-final");
                 if (!final || !Number.isFinite(Number(final.dataset.baseCost))) return;
                 const cost = (Number(final.dataset.baseCost) * count + materialDelta + formulaDelta) / nextCount;
@@ -2166,12 +2322,15 @@ def install_object_detail_input_guard(
                 const row = input.closest("[data-material-preview]");
                 const purchase = ctx.field === "purchase_quantity";
                 const wholeStock = purchase && row && ["sheet", "linear_stock", "piece"].includes(rowPreview(row).purchase_kind);
-                const valid = validAmount(raw) && (!wholeStock || Number.isInteger(amount)) && (!objectQuantity ||
-                    (amount === Math.round(amount * 1000) / 1000 && amount <= 1_000_000));
+                const laborHours = ctx.field === "labor_hours";
+                const valid = laborHours
+                    ? /^(?:\\d+(?:\\.\\d?)?|\\.\\d)$/.test(raw) && amount >= 0 && amount <= 1_000_000
+                    : validAmount(raw) && (!wholeStock || Number.isInteger(amount)) && (!objectQuantity ||
+                        (amount === Math.round(amount * 1000) / 1000 && amount <= 1_000_000));
                 if (!valid) {
                     if (reportInvalid) {
                         input.setAttribute("aria-invalid", "true");
-                        updateSaveControls(objectQuantity
+                        updateSaveControls(laborHours ? "Enter hours from 0 to 1,000,000 with one decimal place." : objectQuantity
                             ? "Enter a positive object quantity with up to three decimal places."
                             : wholeStock ? "Enter a whole number of purchase units."
                             : "Enter a positive quantity with up to four decimal places.");
@@ -2194,7 +2353,101 @@ def install_object_detail_input_guard(
                 }
                 if (reportInvalid) setEditableValue(input, objectQuantity ? raw : quantityText(raw, input));
                 previewMaterials();
+                previewLabor();
                 updateSaveControls();
+            }
+
+            function previewLabor() {
+                if (!parentDoc.querySelector('[data-field="labor_hours"]')) return;
+                const quantity = objectQuantityInput();
+                const count = Number(quantity?.dataset.originalValue || 1);
+                const nextCount = Number(draft.get(editKey({field: "object_quantity", lineId: "__object__"}))?.value ?? count);
+                let total = 0;
+                let totalHours = 0;
+                let knownRows = 0;
+                for (const row of parentDoc.querySelectorAll('.object-detail-work-row')) {
+                    const input = row.querySelector('[data-field="labor_hours"]');
+                    if (!input) continue;
+                    const pending = draft.get(editKey(contextFor(input)));
+                    if (row.dataset.costUnknown === "true" && !pending) continue;
+                    knownRows += 1;
+                    const hours = pending ? Number(pending.value) : Number(input.dataset.originalValue) * nextCount / count;
+                    if (input !== parentDoc.activeElement && input.getAttribute("aria-invalid") !== "true") {
+                        setEditableValue(input, hours.toFixed(1));
+                    }
+                    const pay = Math.round(hours * 50 * 100) / 100;
+                    const taxes = Math.round(pay * 0.25 * 100) / 100;
+                    for (const [column, value] of Object.entries({pay, taxes, total: pay + taxes})) {
+                        const cell = row.querySelector(`[data-labor-column="${column}"] .object-detail-cost-value`);
+                        if (cell) cell.textContent = formatMoney(value);
+                    }
+                    total += pay + taxes;
+                    totalHours += hours;
+                }
+                const cell = parentDoc.querySelector('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value');
+                if (!knownRows) return;
+                if (cell) cell.textContent = formatMoney(total);
+                previewOverhead(totalHours, total);
+            }
+
+            function overheadHost(ready = true) {
+                const host = parentDoc.querySelector('[data-overhead-summary]');
+                return host?.dataset.overheadObjectId === String(OBJECT_ID) &&
+                    host.dataset.overheadEstimateId === String(ESTIMATE_ID) &&
+                    host.dataset.overheadRunId === String(RUN_ID) &&
+                    (!ready || host.dataset.overheadReady === "true") ? host : null;
+            }
+
+            function previewOverhead(hours, laborCost) {
+                const host = overheadHost();
+                if (!host || !Number.isFinite(hours)) return;
+                const capacity = Number(host.dataset.overheadCapacity);
+                if (!(capacity > 0)) return;
+                const round = value => Math.round(value * 100) / 100;
+                const rows = [...host.querySelectorAll('.object-detail-table-row[data-line-id]')];
+                const setCost = (row, cost) => {
+                    row.dataset.overheadCost = String(cost);
+                    row.querySelector('.object-detail-row-cost').textContent = formatMoney(cost);
+                };
+                let monthly = 0;
+                for (const row of rows.filter(row => row.dataset.overheadMonthly !== "" && Number.isFinite(Number(row.dataset.overheadMonthly)))) {
+                    const amount = round(Number(row.dataset.overheadMonthly) * hours / capacity);
+                    setCost(row, amount);
+                    row.children[2].textContent = `${hours.toFixed(1).replace(/[.]0$/, "")}h / ${capacity}h`;
+                    monthly += amount;
+                }
+                const materials = parentDoc.querySelector('[data-material-section-total]');
+                const materialCost = Number(materials?.dataset.overheadMaterialCost ?? host.dataset.overheadMaterialCost);
+                const reserveBase = hours > 0 ? materialCost + laborCost + monthly : 0;
+                let cost = monthly;
+                for (const row of rows.filter(row => row.dataset.overheadPercent !== "" && Number.isFinite(Number(row.dataset.overheadPercent)))) {
+                    const amount = round(reserveBase * Number(row.dataset.overheadPercent) / 100);
+                    setCost(row, amount);
+                    cost += amount;
+                }
+                cost = round(cost);
+                const vat = round(cost * Number(host.dataset.overheadVat) / 100);
+                for (const [field, amount] of Object.entries({cost, subtotal: cost, vat, total: round(cost + vat)})) {
+                    const cell = host.querySelector(`[data-metric="${field}"] .object-detail-section-value`);
+                    if (cell) cell.textContent = formatMoney(amount);
+                }
+                const final = parentDoc.querySelector('.object-detail-final[data-full-cost="true"]');
+                if (final) {
+                    const quantity = objectQuantityInput();
+                    const edit = quantity && draft.get(editKey(objectQuantityContext(quantity)));
+                    const count = Number(edit?.value ?? quantity?.dataset.originalValue ?? 1);
+                    const net = round((materialCost + laborCost + cost) / count);
+                    const tax = round(net * Number(final.dataset.vatPercent || 0) / 100);
+                    setFinal("excl_vat", net);
+                    setFinal("vat", tax);
+                    setFinal("total", round(net + tax));
+                }
+                for (const group of host.querySelectorAll('.object-detail-group')) {
+                    const cell = group.querySelector('summary .object-detail-group-total:last-child');
+                    const sum = [...group.querySelectorAll('[data-overhead-cost]')]
+                        .reduce((sum, row) => sum + Number(row.dataset.overheadCost), 0);
+                    if (cell) cell.textContent = formatMoney(sum);
+                }
             }
 
             function submitDraft(approveAfterSave = false) {
@@ -2217,6 +2470,7 @@ def install_object_detail_input_guard(
             }
 
             function saveMaterialDraft(event) {
+                if (event.target?.closest?.('[data-field="labor_hours"]')) event.preventDefault();
                 if (event.target?.closest?.(".object-detail-material-save")) submitDraft();
             }
 
@@ -2243,6 +2497,13 @@ def install_object_detail_input_guard(
                 for (const edit of submitted) {
                     const key = editKey(edit);
                     if (Number(draft.get(key)?.value) === Number(edit.value)) draft.delete(key);
+                }
+                const previousQuantity = Number(objectQuantityInput()?.dataset.originalValue || 1);
+                for (const input of parentDoc.querySelectorAll('[data-field="labor_hours"]')) {
+                    const perItem = result.labor_hours_overrides?.[input.dataset.lineId];
+                    input.dataset.originalValue = String(perItem != null
+                        ? Number(perItem) * Number(result.quantity)
+                        : Number(input.dataset.originalValue) * Number(result.quantity) / previousQuantity);
                 }
                 const quantity = objectQuantityInput();
                 if (quantity && result.quantity != null) {
@@ -2275,7 +2536,12 @@ def install_object_detail_input_guard(
                     }
                 }
                 const final = parentDoc.querySelector(".object-detail-final");
-                if (final) final.dataset.baseCost = result.self_cost.excl_vat ?? "";
+                if (final) {
+                    final.dataset.baseCost = result.self_cost.excl_vat ?? "";
+                    final.dataset.fullCost = String(result.cost_policy === "object_costs_v3_1");
+                    const subtotal = final.querySelector('[data-full-cost-subtotal]');
+                    if (subtotal) subtotal.hidden = !result.self_cost.partial;
+                }
                 for (const field of ["excl_vat", "vat", "total"]) {
                     const node = parentDoc.querySelector(`[data-final="${field}"]`);
                     if (node) node.textContent = result.self_cost[field] == null ? "—" : formatMoney(result.self_cost[field]);
@@ -2287,6 +2553,7 @@ def install_object_detail_input_guard(
                 }
                 saveButton()?.setAttribute("data-saved", "");
                 previewMaterials();
+                previewLabor();
                 updateSaveControls();
                 const performance = parentWindow.performance;
                 performance.clearMeasures("object-detail-save");
@@ -2609,7 +2876,7 @@ def install_object_detail_input_guard(
                 }
                 const ctx = inputContext(event);
                 if (!ctx) return;
-                if (ctx.field === "required_material" || ctx.field === "purchase_quantity") {
+                if (materialField(ctx.field)) {
                     stageMaterialEdit(ctx, true);
                     return;
                 }
@@ -2640,7 +2907,7 @@ def install_object_detail_input_guard(
                         value: normalizeInputValue(input),
                         originalValue: input.dataset.originalValue ?? normalizeInputValue(input),
                     })).filter((edit) => edit.line_id && edit.field && edit.value !== edit.originalValue &&
-                        edit.field !== "required_material" && edit.field !== "purchase_quantity");
+                        !materialField(edit.field));
                 });
                 return edits;
             }
@@ -2771,10 +3038,21 @@ def install_object_detail_input_guard(
             parentDoc.addEventListener("click", confirmDiscard, true);
             parentWindow.__costerlyObjectDetailDraft = {
                 snapshotEdits,
+                pendingEdits: () => [...draft.values()],
                 context: {runId: RUN_ID, estimateId: ESTIMATE_ID, objectId: OBJECT_ID},
             };
 
+            // One bounded wait for this card's asynchronous Overhead block.
+            // Reconcile edits made while company inputs were loading, then stop.
+            const overheadReady = new parentWindow.MutationObserver(() => {
+                const host = overheadHost(false);
+                if (!host || host.dataset.overheadStatus === "loading") return;
+                overheadReady.disconnect();
+                if (overheadHost() && draft.size) { previewMaterials(); previewLabor(); }
+            });
+
             parentWindow[HANDLER_KEY] = () => {
+                overheadReady.disconnect();
                 parentDoc.removeEventListener("focusin", handleFocus, true);
                 parentDoc.removeEventListener("pointerdown", handleNumericPointerDown, true);
                 parentDoc.removeEventListener("keydown", handleKeydown, true);
@@ -2794,6 +3072,10 @@ def install_object_detail_input_guard(
             };
             seedInputBaselines();
             seedRowBaselines();
+            if (overheadHost() && draft.size) { previewMaterials(); previewLabor(); }
+            else if (!overheadHost(false) || overheadHost(false).dataset.overheadStatus === "loading") {
+                overheadReady.observe(parentDoc.body, {childList: true, subtree: true});
+            }
         })();
         </script>
         """
@@ -3771,7 +4053,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         return;
                     }
                     beginFileReviewTransition(activeProcessingStage());
-                    if (fileReviewIsActive()) {
+                    if (fileReviewIsActive() && (window[RFQ_UPLOAD_CYCLE_ID_KEY] ||
+                        window[PROCESSING_COMPLETE_TRANSITION_ID_KEY]) &&
+                        !window.__costerlyWorkflowTransition?.busy()) {
                         const transitionId = window[PROCESSING_COMPLETE_TRANSITION_ID_KEY]
                             || startTransition(
                                 'processing_to_file_review',

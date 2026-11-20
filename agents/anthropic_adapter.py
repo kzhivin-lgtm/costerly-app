@@ -92,6 +92,9 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
     partition_detection_presentation_render_components,
+    requires_technical_attachment,
+    project_attachment_only_hypotheses,
+    ATTACHMENT_ONLY_REPRESENTATION_KINDS,
     derive_detection_v5_dominant_page_attachment_edges,
     compile_detection_dimension_graph,
     normalize_empty_detection_envelope_chains,
@@ -191,7 +194,20 @@ DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION = (
     # shared View as merge evidence by itself.
     "detection_v8_4_7_star_hypothesis_components"
 )
-DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION = "detection_v8_4_8_parallel_membership"
+DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION = "detection_v8_4_8_parallel_membership_isometric_attachment_explicit_pairs_v1"
+DETECTION_MEMBERSHIP_PAIR_FIELDS = ("group_id_a", "group_id_b")
+DETECTION_EXPLICIT_PAIR_MEMBERSHIP_PROMPT = (
+    "\n\nEXPLICIT MEMBERSHIP PAIRS:\n"
+    "Each positive evidence row names exactly one pair in group_id_a and group_id_b. "
+    "Both fields contain one distinct listed View ID, and both Views belong to that hypothesis. "
+    "If View A matches B and C, write separate evidence rows for A-B and A-C, each with "
+    "its own concrete visual observation. Never put three Views into one pair or infer "
+    "every possible pair from a group. Cover every hypothesis member with a supported pair. "
+    "The runtime cites the two endpoints automatically. Optional source_fact_ids cite only "
+    "printed source facts, not registry_view IDs. Any third physical witness belongs in "
+    "structural_witness, not in the pair fields. These output-field instructions override "
+    "generic citation instructions."
+)
 DETECTION_V848_SAME_SHEET_REVIEW_PROMPT = (
     "Compare every listed pair. Use only the physical outline, major junctions, and connected "
     "module arrangement of the two named bodies. A colored overlay or neighboring strokes "
@@ -204,7 +220,8 @@ DETECTION_V848_GLOBAL_PAIR_PROOF_PROMPT = (
     "\n\nFor the global decision, find a common plan or section that supports each technical projection. "
     "In every visual evidence row, the first two source_fact_ids must be the registry_view IDs of the exact pair "
     "of technical Views, even if a printed number is mentioned. Cite visual geometry from both Views. "
-    "Do not include render Views in object_hypotheses. Decide render attachment separately from technical membership. "
+    "Do not include presentation_render or isometric_technical Views in object_hypotheses. "
+    "Decide their attachment separately, retaining the original View class and IDs. "
     "Check the plan and render for matching distinctive corner geometry and placement of terminal modules."
 )
 DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS = 180
@@ -3964,6 +3981,119 @@ def restore_detection_membership_view_ids(payload: Any, aliases: dict[str, str])
     return restore(payload)
 
 
+def normalize_detection_membership_pair_evidence(
+    evidence: dict[str, Any], *, hypothesis_group_ids: set[str],
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """Normalize one identified pair; expand group relations before this step."""
+    evidence = copy.deepcopy(evidence)
+    endpoints = [evidence.pop(field, "") for field in DETECTION_MEMBERSHIP_PAIR_FIELDS]
+    if not all(isinstance(endpoint, str) for endpoint in endpoints):
+        return None, []
+    cited_view_ids = sorted(set(endpoints))
+    if (
+        len(cited_view_ids) != len(DETECTION_MEMBERSHIP_PAIR_FIELDS)
+        or not set(cited_view_ids).issubset(hypothesis_group_ids)
+    ):
+        return None, cited_view_ids
+    citations = [f"registry_view:{view_id}" for view_id in cited_view_ids]
+    citations.extend(
+        source_id for source_id in evidence.get("source_fact_ids") or []
+        if isinstance(source_id, str) and not source_id.startswith("registry_view:")
+    )
+    if (
+        evidence.get("evidence_type") == "direct_shared_structure"
+        and isinstance(witness := evidence.get("structural_witness"), dict)
+        and isinstance(witness.get("witness_view_id"), str)
+        and witness["witness_view_id"]
+    ):
+        citations.append(f"registry_view:{witness['witness_view_id']}")
+    evidence["source_fact_ids"] = list(dict.fromkeys(citations))
+    return {
+        "group_id_a": cited_view_ids[0], "group_id_b": cited_view_ids[1], **evidence,
+    }, cited_view_ids
+
+
+def normalize_detection_membership_evidence(
+    evidence: object, *, hypothesis_group_ids: set[str],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Preserve a source assertion and represent its participants as a star.
+
+    Explicit endpoints identify one pair. Legacy registry-view citations can
+    identify a multi-View assertion; printed sources and a third-view witness
+    retain their evidence roles rather than becoming additional participants.
+    Nothing is inferred from prose or from the containing hypothesis alone.
+    """
+    audit: dict[str, Any] = {
+        "source_evidence": copy.deepcopy(evidence),
+        "source_evidence_id": "membership:" + _sha256_text(_canonical_json(evidence)),
+        "status": "unresolved", "participants": [], "derived_pairs": [],
+        "unresolved_view_references": [],
+    }
+    if not isinstance(evidence, dict):
+        audit["reason"] = "evidence_not_object"
+        return [], audit
+    if not all(isinstance(evidence.get(k), str) and evidence[k].strip()
+               for k in ("evidence_type", "strength", "observation")):
+        audit["reason"] = "evidence_fields_invalid"
+        return [], audit
+    endpoints = [evidence.get(field) for field in DETECTION_MEMBERSHIP_PAIR_FIELDS]
+    explicit = any(value is not None and value != "" for value in endpoints)
+    citations = evidence.get("source_fact_ids")
+    if citations is not None and (
+        not isinstance(citations, list) or not all(isinstance(s, str) for s in citations)
+    ):
+        audit["reason"] = "source_citations_invalid"
+        return [], audit
+    cited_views = list(dict.fromkeys(
+        s.removeprefix("registry_view:") for s in citations or []
+        if s.startswith("registry_view:")
+    ))
+    witness = evidence.get("structural_witness")
+    witness_id = witness.get("witness_view_id") if isinstance(witness, dict) else None
+    third_witness = (
+        witness_id if evidence.get("evidence_type") == "direct_shared_structure"
+        and isinstance(witness, dict) and witness.get("kind") == "third_view_shows_both"
+        else None
+    )
+    if explicit:
+        if not all(isinstance(v, str) and v for v in endpoints):
+            audit["reason"] = "explicit_endpoints_invalid"
+            return [], audit
+        participants = list(dict.fromkeys(endpoints))
+    else:
+        participants = [v for v in cited_views if v != third_witness]
+    audit["participants"] = participants
+    audit["unresolved_view_references"] = [
+        v for v in cited_views if v not in participants and v != third_witness
+    ]
+    if len(participants) < 2 or not set(participants).issubset(hypothesis_group_ids):
+        audit["reason"] = "participants_not_distinct_hypothesis_members"
+        return [], audit
+    # A complete-view witness is the anchor of its contains-partial relations.
+    if (
+        not explicit and isinstance(witness, dict)
+        and witness.get("kind") == "endpoint_complete_view_contains_partial"
+        and witness_id in participants
+    ):
+        participants = [witness_id, *(v for v in participants if v != witness_id)]
+        audit["participants"] = participants
+    root, *members = participants
+    facts = []
+    for member in members:
+        row = copy.deepcopy(evidence)
+        row["group_id_a"], row["group_id_b"] = root, member
+        fact, pair = normalize_detection_membership_pair_evidence(
+            row, hypothesis_group_ids=hypothesis_group_ids,
+        )
+        if fact is not None:
+            facts.append(fact)
+            audit["derived_pairs"].append(pair)
+    audit["status"] = "expanded" if len(facts) > 1 else "paired"
+    if audit["unresolved_view_references"]:
+        audit["status"] = "paired_with_unresolved_references"
+    return facts, audit
+
+
 def normalize_detection_v711_presentation_render_decisions(
     decisions: object,
     *,
@@ -3984,8 +4114,7 @@ def normalize_detection_v711_presentation_render_decisions(
     }
     render_ids = {
         group_id for group_id, group in object_groups.items()
-        if str(group.get("representation_kind") or "").strip().lower()
-        == "presentation_render"
+        if requires_technical_attachment(group.get("representation_kind"))
     }
     if not isinstance(decisions, list):
         raise ValueError("V7.11 presentation render decisions must be a list")
@@ -4161,9 +4290,16 @@ def review_detection_unattached_renders_on_same_sheet(
     crop_audit: list[dict[str, Any]] | None = None,
     coordinate_frames: dict[int, dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    # Isometrics use the primary Membership reply without extra recovery calls.
+    recovery_ids = {
+        group_id_mapping.get(str(group.get("group_id") or ""), str(group.get("group_id") or ""))
+        for group in visual_groups
+        if str(group.get("representation_kind") or "").strip().lower() == "presentation_render"
+    }
     pending = {
         row["render_group_id"] for row in primary_decisions
         if row["disposition"] in {"no_match", "unresolved"}
+        and row["render_group_id"] in recovery_ids
     }
     audit: dict[str, Any] = {"pending_count": len(pending), "sheets": [], "attachments": []}
     if not pending:
@@ -4195,8 +4331,7 @@ def review_detection_unattached_renders_on_same_sheet(
         render_crops = [crop for crop in crops if crop["group_id"] in targets]
         technical_crops = [
             crop for crop in crops
-            if str(groups[crop["group_id"]].get("representation_kind") or "").strip().lower()
-            != "presentation_render"
+            if not requires_technical_attachment(groups[crop["group_id"]].get("representation_kind"))
         ]
         technical_ids = {group_id_mapping[crop["group_id"]] for crop in technical_crops}
         visible_targets = {crop["group_id"] for crop in render_crops}
@@ -5217,6 +5352,7 @@ def run_detection_same_sheet_review(
     )
     audit = {
         "status": "invalid", "required_pair_count": len(pairs), "decisions": [],
+        "request_timing": dict(diagnostics),
         "request_finished_at": diagnostics["request_finished_at"],
         "provider": summarize_detection_provider_call(
             response=response, diagnostics=diagnostics, requested_model=model,
@@ -7771,7 +7907,7 @@ def build_detection_v714_conflict_membership_matrix(
         and group.get("evidence_class") == "object_evidence"
         and str(group.get("group_id") or "")
     }
-    excluded_kinds = {"presentation_render", "floor_plan"}
+    excluded_kinds = {*ATTACHMENT_ONLY_REPRESENTATION_KINDS, "floor_plan"}
     admitted_ids: set[str] = set()
     for decision in conflict_decisions:
         if not isinstance(decision, dict):
@@ -11560,7 +11696,7 @@ def run_anthropic_detection_visual_registry_agent(
     technical_membership = (
         split_membership and not v714_conflict_membership_active
         and len({row["page_number"] for row in object_views}) > 1
-        and all(row.get("representation_kind") != "presentation_render" for row in object_views)
+        and all(not requires_technical_attachment(row.get("representation_kind")) for row in object_views)
     )
     review_aliases: dict[str, str] = {}
     if split_membership:
@@ -11665,30 +11801,31 @@ def run_anthropic_detection_visual_registry_agent(
     if v637_ada_covered_pair_local_membership_active:
         review_prompt_with_membership_contract += (
             "\n\nV7.8 PRESENTATION RENDER OVERRIDE:\n"
-            "`K=presentation_render` means a photographic render or photo, not "
-            "a technical perspective. For a pair containing one, inspect only "
+            "`K=presentation_render` and `K=isometric_technical` are attachment-only "
+            "for object grouping. Preserve their original classes. For a pair containing one, inspect only "
             "concrete matching_topology or unique_geometry. Do not require a "
             "dimension, OCR label, material, construction criterion, or a second "
             "evidence type. One of those two facts is sufficient only when its "
             "observation names a distinctive configuration visible in both Views "
             "and cites exactly those two registry_view sources. Generic furniture "
             "type, colour, finish, room context, proximity or approximate pixel "
-            "proportions are never proof. A presentation render may appear in an "
-            "object_hypothesis only with at least one non-presentation technical "
-            "View.\n"
+            "proportions are never proof. Keep both attachment-only classes out of "
+            "object_hypotheses and use presentation_render_decisions for them.\n"
         )
     if not v69_criteria_reconciliation_active:
         review_prompt_with_membership_contract += (
             "\n\nV7.11 PRESENTATION RENDER DECISIONS:\n"
-            "For every `K=presentation_render` View, return exactly one row in "
+            "For every `K=presentation_render` or `K=isometric_technical` View, return exactly one row in "
             "`presentation_render_decisions`, even when the candidate technical "
-            "View is on another page. Use `attach` only for one non-render View "
+            "View is on another page. Use render_group_id for that attachment-only View "
+            "without changing its ID or class. Use `attach` only for a View whose class "
+            "is neither presentation_render nor isometric_technical, "
             "with exactly `matching_topology` or `unique_geometry` and a concrete "
             "configuration visible in both images. Use `no_match` when no such "
             "proof exists and `unresolved` only when pixels prevent comparison. "
             "For `no_match` or `unresolved`, set technical_group_id to an empty "
-            "string and evidence_type to `none`. Do not include presentation "
-            "renders in object_hypotheses: this decision list is their only "
+            "string and evidence_type to `none`. Do not include attachment-only "
+            "Views in object_hypotheses: this decision list is their only "
             "membership authority. Colour, finish, room context, proximity, "
             "material and approximate proportions are never proof.\n"
         )
@@ -11696,6 +11833,8 @@ def run_anthropic_detection_visual_registry_agent(
         review_prompt_with_membership_contract = load_detection_v848_technical_membership_prompt()
     elif split_membership:
         review_prompt_with_membership_contract += DETECTION_V848_GLOBAL_PAIR_PROOF_PROMPT
+    if v637_ada_covered_pair_local_membership_active:
+        review_prompt_with_membership_contract += DETECTION_EXPLICIT_PAIR_MEMBERSHIP_PROMPT
     review_crops = [dict(row, group_id=review_aliases[row["group_id"]]) for row in membership_crops] if review_aliases else membership_crops
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=review_crops,
@@ -11715,6 +11854,17 @@ def run_anthropic_detection_visual_registry_agent(
         membership_review_schema["properties"]["conflict_pair_decisions"] = (
             DETECTION_V714_CONFLICT_PAIR_DECISIONS_SCHEMA
         )
+    if v637_ada_covered_pair_local_membership_active:
+        evidence_schema = membership_review_schema["properties"]["object_hypotheses"]["items"]["properties"]["evidence"]["items"]
+        evidence_schema["required"].remove("source_fact_ids")
+        for endpoint in DETECTION_MEMBERSHIP_PAIR_FIELDS:
+            evidence_schema["required"].append(endpoint)
+            evidence_schema["properties"][endpoint] = {
+                "type": "string", "enum": sorted(
+                    row["group_id"] for row in review_groups
+                    if row.get("evidence_class") == "object_evidence"
+                ),
+            }
     v641_review_exact_input_tokens: int | None = None
     _notify_detection_stage(
         stage_callback,
@@ -11872,6 +12022,7 @@ def run_anthropic_detection_visual_registry_agent(
         {
             "max_tokens": max_tokens,
             "accepted": attempt_number == len(review_attempts),
+            "request_timing": dict(attempt_diagnostics),
             **summarize_detection_provider_call(
                 response=attempt_response,
                 diagnostics=attempt_diagnostics,
@@ -12429,8 +12580,7 @@ def run_anthropic_detection_visual_registry_agent(
         presentation_render_group_ids = {
             str(group.get("group_id") or "")
             for group in visual_map["visual_groups"]
-            if str(group.get("representation_kind") or "").strip().lower()
-            == "presentation_render"
+            if requires_technical_attachment(group.get("representation_kind"))
         }
         view_evidence_packages = build_detection_view_evidence_packages(
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
@@ -12463,6 +12613,14 @@ def run_anthropic_detection_visual_registry_agent(
             view_evidence_packages
         )
         semantic_facts_outside_dimension_queue: list[dict[str, Any]] = []
+        membership_evidence_origins: dict[tuple[str, str, str, str], set[str]] = {}
+        membership_evidence_normalization_audit: dict[str, Any] = {
+            "version": "multiway_membership_pairs_v1",
+            "source_payload": json.loads(review_raw_text),
+            "source_hypotheses": copy.deepcopy(payload.get("object_hypotheses", [])),
+            "group_id_mapping": dict(group_id_mapping),
+            "entries": [],
+        } if v637_ada_covered_pair_local_membership_active else {}
         if v69_criteria_reconciliation_active:
             semantic_facts = normalize_detection_v69_semantic_fact_ids(
                 [*v69_criteria_facts, *v69_reconciliation_facts],
@@ -12510,6 +12668,10 @@ def run_anthropic_detection_visual_registry_agent(
                             normalized_evidence.append(evidence)
                             continue
                         normalized_evidence_row = copy.deepcopy(evidence)
+                        if v637_ada_covered_pair_local_membership_active:
+                            for endpoint in DETECTION_MEMBERSHIP_PAIR_FIELDS:
+                                view_id = str(normalized_evidence_row.get(endpoint) or "")
+                                normalized_evidence_row[endpoint] = group_id_mapping.get(view_id, view_id)
                         if v635_ada_pair_local_membership_active:
                             normalized_evidence_row["source_fact_ids"] = (
                                 _normalize_source_degraded_registry_view_ids(
@@ -12527,12 +12689,45 @@ def run_anthropic_detection_visual_registry_agent(
                         normalized_evidence.append(normalized_evidence_row)
                     hypothesis["evidence"] = normalized_evidence
                 normalized_hypotheses.append(hypothesis)
+            if v637_ada_covered_pair_local_membership_active:
+                # Preserve every assertion before projection/validation, including
+                # relations that need attachment handling or missing proof.
+                source_relations = []
+                group_assertions = []
+                for hi, source_hypothesis in enumerate(normalized_hypotheses):
+                    if not isinstance(source_hypothesis, dict):
+                        continue
+                    raw_members = source_hypothesis.get("group_ids")
+                    members = list(dict.fromkeys(
+                        g for g in (raw_members if isinstance(raw_members, list) else [])
+                        if isinstance(g, str)
+                    ))
+                    group_assertions.append({
+                        "hypothesis_index": hi,
+                        "participants": members,
+                        "asserted_pairs": [[members[0], g] for g in members[1:]],
+                        "status": "assertion_requires_pair_evidence",
+                    })
+                    raw_evidence = source_hypothesis.get("evidence")
+                    for ei, source_evidence in enumerate(raw_evidence if isinstance(raw_evidence, list) else []):
+                        _, source_audit = normalize_detection_membership_evidence(
+                            source_evidence, hypothesis_group_ids=set(members),
+                        )
+                        source_audit.update(hypothesis_index=hi, evidence_index=ei)
+                        source_relations.append(source_audit)
+                membership_evidence_normalization_audit.update(
+                    source_relations=source_relations, group_assertions=group_assertions,
+                )
+            normalized_hypotheses, attachment_projection_audit = project_attachment_only_hypotheses(
+                normalized_hypotheses, presentation_render_group_ids,
+            )
             accepted_hypotheses, object_hypothesis_audit = compile_detection_v5_object_hypotheses(
                 normalized_hypotheses, visual_groups=semantic_validation_groups,
                 allow_star_overlaps=v847_star_hypothesis_components_active,
             )
+            object_hypothesis_audit["attachment_only_projection"] = attachment_projection_audit
             semantic_facts = []
-            for hypothesis in accepted_hypotheses:
+            for hypothesis_index, hypothesis in enumerate(accepted_hypotheses):
                 if v637_ada_covered_pair_local_membership_active:
                     hypothesis_group_ids = set(hypothesis["group_ids"])
                     for evidence_index, evidence in enumerate(hypothesis["evidence"]):
@@ -12546,30 +12741,36 @@ def run_anthropic_detection_visual_registry_agent(
                             # provider's colloquial "direct" wording before
                             # the established semantic validator evaluates it.
                             evidence["strength"] = "standard"
-                        cited_view_ids = sorted({
-                            source_id.removeprefix("registry_view:")
-                            for source_id in evidence.get("source_fact_ids") or []
-                            if isinstance(source_id, str)
-                            and source_id.startswith("registry_view:")
-                            and source_id.removeprefix("registry_view:") in hypothesis_group_ids
+                        pair_facts, evidence_audit = normalize_detection_membership_evidence(
+                            evidence, hypothesis_group_ids=hypothesis_group_ids,
+                        )
+                        evidence_audit.update({
+                            "hypothesis_index": hypothesis_index,
+                            "evidence_index": evidence_index,
+                            "hypothesis_group_ids": sorted(hypothesis_group_ids),
+                            "normalized_facts": copy.deepcopy(pair_facts),
                         })
-                        if len(cited_view_ids) != 2:
+                        membership_evidence_normalization_audit["entries"].append(evidence_audit)
+                        if not pair_facts:
                             semantic_facts_outside_dimension_queue.append({
-                                "reason": "v6_36_hypothesis_evidence_requires_exactly_two_local_views",
+                                "reason": "membership_evidence_retained_unresolved",
                                 "hypothesis_group_ids": sorted(hypothesis_group_ids),
                                 "evidence_index": evidence_index,
-                                "cited_view_ids": cited_view_ids,
+                                "source_evidence_id": evidence_audit["source_evidence_id"],
+                                "normalization_reason": evidence_audit.get("reason"),
                             })
-                            continue
-                        pair = tuple(cited_view_ids)
-                        semantic_facts.append({
-                            "group_id_a": pair[0], "group_id_b": pair[1], **evidence,
-                        })
-                        if pair not in candidate_q_final_pairs:
-                            semantic_facts_outside_dimension_queue.append({
-                                "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
-                                "group_id_a": pair[0], "group_id_b": pair[1],
-                            })
+                        for pair_fact in pair_facts:
+                            pair = (pair_fact["group_id_a"], pair_fact["group_id_b"])
+                            key = (*pair, pair_fact["evidence_type"], pair_fact["observation"].strip())
+                            membership_evidence_origins.setdefault(key, set()).add(
+                                evidence_audit["source_evidence_id"]
+                            )
+                            semantic_facts.append(pair_fact)
+                            if pair not in candidate_q_final_pairs:
+                                semantic_facts_outside_dimension_queue.append({
+                                    "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
+                                    "group_id_a": pair[0], "group_id_b": pair[1],
+                                })
                 else:
                     root, *members = hypothesis["group_ids"]
                     for member in members:
@@ -12666,6 +12867,24 @@ def run_anthropic_detection_visual_registry_agent(
             fact for fact in accepted_semantic_facts
             if fact not in generic_presentation_facts
         ]
+        if v637_ada_covered_pair_local_membership_active:
+            accepted_keys = {
+                (f["group_id_a"], f["group_id_b"], f["evidence_type"], f["observation"].strip())
+                for f in accepted_semantic_facts
+            }
+            for entry in membership_evidence_normalization_audit["entries"]:
+                entry["accepted_pairs"] = [
+                    [f["group_id_a"], f["group_id_b"]]
+                    for f in entry["normalized_facts"]
+                    if (f["group_id_a"], f["group_id_b"], f["evidence_type"], f["observation"].strip())
+                    in accepted_keys
+                ]
+            membership_evidence_normalization_audit["semantic_rejections"] = copy.deepcopy(
+                semantic_ledger_audit["rejected"]
+            )
+            semantic_ledger_audit["membership_evidence_normalization"] = (
+                membership_evidence_normalization_audit
+            )
         presentation_render_edges = build_detection_presentation_render_edges(
             presentation_render_facts, page_by_group_id,
         )
@@ -12673,6 +12892,12 @@ def run_anthropic_detection_visual_registry_agent(
             "decisions": presentation_render_decision_audit,
             "accepted_edge_count": len(presentation_render_edges),
             "rejected_generic_fact_count": len(generic_presentation_facts),
+            "attachment_policy": "isometric_technical_attachment_v1",
+            "attachment_view_kinds": {
+                str(group["group_id"]): group["representation_kind"]
+                for group in visual_map["visual_groups"]
+                if requires_technical_attachment(group.get("representation_kind"))
+            },
         }
         if v69_criteria_reconciliation_active:
             accepted_pairs = {
@@ -12712,7 +12937,11 @@ def run_anthropic_detection_visual_registry_agent(
                     allow_star_hypothesis_components=(
                         v847_star_hypothesis_components_active
                     ),
+                    evidence_origins=membership_evidence_origins,
                 )
+            )
+            membership_evidence_normalization_audit["coverage_rejections"] = copy.deepcopy(
+                membership_audit["rejected"]
             )
             positive_relation_edges = [
                 *supporting_relation_edges,
