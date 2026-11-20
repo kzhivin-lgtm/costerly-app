@@ -7514,6 +7514,15 @@ cause from the local screenshot alone.
   Likely upstream trigger: changed fresh marked-view-001/Haiku semantic reading;
   exact failed raw reply was not retained, so omission vs failed binding unknown.
   Independent Inventory Review still sees mirrors but cannot restore ownership.
+  Further confirmed: exact nonmirror Front components identical; correct C16/C19
+  labels cannot be lost by binder (no competing stroke/tip roles,54 checks).
+  Empty direct_labels or null source_text pass with zero issues and0 mirrors:
+  incomplete semantic response is accepted and downstream cycle continues.
+  Twelve historical marked calls are independent; dispatcher AST unchanged.
+  Leading trigger is changed fresh Haiku reading, not proven source-code change.
+  Mirror-leader representation hypothesis ruled out for this Ada's geometry.
+  Exact failed raw JSON and historical HTTP image bytes unavailable; do not
+  claim a specific provider/internal model change. Evidence in same causal report.
   Old corner_casework guard is the failure multiplier, not a complete account
   of why earlier successful readings changed. Do not conclude all old runs bad.
   Owner sees Overhead; full V3.1 acceptance still blocked by incomplete Ada.
