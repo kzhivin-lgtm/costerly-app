@@ -7489,9 +7489,14 @@ cause from the local screenshot alone.
   Existing parallel Labor fragment renders independent Labor/Overhead areas;
   one-shot DOM observer reconciles edits during the company read and stops on
   resolution/error or editor teardown. User approved the new V3 block/version.
-  Verification in progress: formula parity and focused server checks; desktop/
-  mobile Save/reopen/Objects aggregate passed the focused browser scenario.
-  Full UI release gate and matching deployed builds still required.
+  DEPLOYED, awaiting owner production acceptance, not an accepted checkpoint.
+  Runtime f051b8cc:419 unit checks, seven browser suites, exact-SHA GitHub gate
+  and active remote no-bypass rule verified. Desktop/mobile saved SC and Objects
+  agree; ready-screen Overhead renders after the navigation cover detaches.
+  Railway8281f753-034b-4a16-9d82-1ac804d9e4bb ACTIVE; public wrapper/Core
+  match estimation-v3.1-b20261119231652-restore-overhead-detection-v8.4.29.
+  Owner check: reopen saved estimate, verify three components/full SC, edit/save/
+  reopen hours and matching Objects. No new recognition required. Paid calls0.
   Evidence: handoff workspace outputs/overhead-v3.1-20261120/.
 - Add deterministic delivery and installation pricing from project subtotal / overhead settings.
 - Improve catalog matching: save matched material/labor rows and mark weak matches as `needs_review`.
