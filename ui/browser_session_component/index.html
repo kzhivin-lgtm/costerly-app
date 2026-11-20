@@ -2,7 +2,6 @@
 <html lang="en">
   <head><meta charset="utf-8" /></head>
   <body>
-    <script src="session_storage.js"></script>
     <script>
       (() => {
         const storageKey = "costerly.supabase.session.v1";
@@ -10,7 +9,6 @@
         const resumeCookieName = "__Host-costerly-resume-v1";
         const resumeCookieMaxAge = 30 * 60;
         let lastValue = null;
-        let lastReadRequest = null;
 
         function iframePerformanceNow() {
           try {
@@ -156,9 +154,6 @@
         }
 
         function reply(args) {
-          const readKey = [args.requestId, args.recoveryRequested, args.confirmationRequested].join(':');
-          if (lastReadRequest === readKey) return;
-          lastReadRequest = readKey;
           const readStartedAt = iframePerformanceNow();
           const recoverySession = args.recoveryRequested ? readRecoverySession() : null;
           const confirmationSession = args.confirmationRequested
@@ -221,8 +216,18 @@
             component_script_evaluated_ms: componentScriptEvaluatedAt,
           });
           startupPhase(args, "auth_component_render", iframeNavigationTiming());
-          if (args.action === "store" || args.action === "clear") {
-            applyCosterlyAuthWrite(window.parent, args);
+          try {
+            if (args.action === "store" && args.session) {
+              window.sessionStorage.setItem(storageKey, JSON.stringify(args.session));
+              storeResumeCookie(args.resumeBlob);
+            } else if (args.action === "clear") {
+              window.sessionStorage.removeItem(storageKey);
+              window.sessionStorage.removeItem(`${storageKey}:recovery`);
+              window.sessionStorage.removeItem(confirmationStorageKey);
+              clearResumeCookie();
+            }
+          } catch (_) {
+            // Storage failure falls back to the normal sign-in screen.
           }
           if (args.action === "read") {
             reply(args);

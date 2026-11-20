@@ -10,7 +10,7 @@ SCREEN_MARKER_PREFIX = "costerly-screen-"
 
 
 def screen_transition_marker_html(
-    screen: str, *, build_version: str | None = None, render_id: str | None = None,
+    screen: str, *, build_version: str | None = None,
 ) -> str:
     """Return a non-layout marker for every rendered application screen."""
     safe_screen = "".join(
@@ -20,10 +20,8 @@ def screen_transition_marker_html(
         char for char in str(build_version or "unknown").lower()
         if char.isalnum() or char in {"_", "-", "."}
     ) or "unknown"
-    safe_render_id = "".join(char for char in (render_id or "") if char.isalnum() or char == "-")
-    render_attribute = f' data-costerly-render-id="{safe_render_id}"' if safe_render_id else ""
     return (
         f'<div id="{SCREEN_MARKER_PREFIX}{safe_screen}" '
         f'data-costerly-screen="{safe_screen}" '
-        f'data-costerly-core-build="{safe_build}"{render_attribute} style="display:none"></div>'
+        f'data-costerly-core-build="{safe_build}" style="display:none"></div>'
     )

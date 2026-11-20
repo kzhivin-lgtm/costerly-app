@@ -373,6 +373,49 @@ this limitation in acceptance, and investigate a separate UI-only isolation
 method before promising an exclusively single-object pixel crop. Do not alter
 Naming or calculation evidence to hide this source-layout limitation.
 
+## Objects Estimation workflow and proposal revisions
+
+COMPLETED RESEARCH, P1, USER REQUEST, 2026-11-20. Investigate the Objects
+Estimation page layout, workflow, labels, completion feedback, proposal
+downloads and project revisions, starting from the owner's screenshot.
+Read current implementation and historical 3.16.2/3.16.4 decisions, checked
+the current GitHub Final Approval handler, researched seven primary design
+sources and prepared a proposed scenario matrix plus an interactive concept.
+Research completion is not design acceptance or real-user usability proof.
+Local concept checks passed for review/price gating, immediate input-confirm,
+versioned example PDFs, repeat download, revision deduplication, automatic
+project allocations, 320px reflow and the alternative guided action.
+Report: /Users/qb/Documents/ChatGPT/Costerly/outputs/
+objects-estimation-ux-20261120/REPORT_RU.md. No new work number or runtime
+version assigned; no application, production or model-call changes.
+
+PENDING DESIGN AGREEMENT, P1, USER REQUEST, same outcome. Make the goal of
+the page explicit: review all objects, explicitly confirm current customer
+prices (including keeping suggestions), then generate a client proposal.
+Show numbered stages and truthful completion/current/future states, return
+from each object approval, and retain access to the last generated PDF.
+Owner asks to remove the Parts Check control here; purchasing-list export
+remains later scope 3.16.5, no replacement export approved. Existing vertical
+gap/column alignment requirements below remain in scope when implemented.
+Evaluate Back + Confirm prices + Generate proposal, with generation visible
+before it is available and a concrete visible reason for blocking. Modal
+yes/no, Final Approval naming and the exact button arrangement were discussed
+as alternatives, not a finalized specification. Preserve suggested/manual
+price behavior, full-cost/subtotal distinction, separate project allocations,
+saved-estimate reuse, tenant access and accepted navigation responsiveness.
+Owner wants the same Project and a new sequential version for each completed
+changed revision, with repeat download and prior documents preserved.
+Current same-estimate idempotence does not implement that revision loop.
+Agent recommendation, NOT OWNER APPROVED: Confirm prices records acceptance,
+Generate proposal freezes the version/PDF, and edits invalidate only affected
+reviews and price confirmation, rather than repeating all cost reviews after
+any price edit. Shared material-plan dependencies can affect several objects.
+Do not mark historical 3.16.2/3.16.4 superseded until the replacement contract
+is accepted. No new storage architecture, release, work number/block or
+publication is authorized by this research. Next: agree the concrete scenario
+matrix and revision semantics, then verify authoritative numbering before
+implementation. Evidence and alternatives are in the report above.
+
 ## Estimate recovery
 
 IMPLEMENTED IN V1.2.25, P1. Restore the material editor on Object Detail
@@ -7489,10 +7532,103 @@ cause from the local screenshot alone.
   Existing parallel Labor fragment renders independent Labor/Overhead areas;
   one-shot DOM observer reconciles edits during the company read and stops on
   resolution/error or editor teardown. User approved the new V3 block/version.
-  Verification in progress: formula parity and focused server checks; desktop/
-  mobile Save/reopen/Objects aggregate passed the focused browser scenario.
-  Full UI release gate and matching deployed builds still required.
+  DEPLOYED, awaiting owner production acceptance, not an accepted checkpoint.
+  Runtime f051b8cc:419 unit checks, seven browser suites, exact-SHA GitHub gate
+  and active remote no-bypass rule verified. Desktop/mobile saved SC and Objects
+  agree; ready-screen Overhead renders after the navigation cover detaches.
+  Railway8281f753-034b-4a16-9d82-1ac804d9e4bb ACTIVE; public wrapper/Core
+  match estimation-v3.1-b20261119231652-restore-overhead-detection-v8.4.29.
+  Owner sees Overhead; full acceptance blocked by diagnosed Ada material geometry.
+  Owner check after repair: verify three components/full SC, edit/save/
+  reopen hours and matching Objects. No new recognition required. Paid calls0.
   Evidence: handoff workspace outputs/overhead-v3.1-20261120/.
+- ACTIVE, P1, USER REQUEST, Ada Display cabinet missing material costs,
+  2026-11-20. Mechanism and version effects verified; exact historical onset
+  trigger UNKNOWN. Owner forbids speculative repairs; explicit V1.2.23 rollback
+  was subsequently authorized20Nov for owner testing.
+  Paid diagnostics authorized. Prompt strengthening is not an accepted repair.
+  Owner now fixes PDF/crops/Detection as identical: stop input/archive
+  comparisons, investigate algorithm changes only. Latest closure checks17
+  routing/request/parsing/binding/assembly functions unchanged13Nov–current;
+  remote main f051b8cc confirmed. No rejected-mirror filter active on Ada,
+  opening-pair grounding retains input roles;21 raw replies show no mirror
+  label moved into another output field. Historical onset still UNKNOWN.
+  Owner authorized the provider support inquiry, then explicitly rejected
+  mailbox access. Gmail connector returned USER_NOT_LOGGED_IN; no mailbox
+  data read and no message sent. Do not request/retry Gmail access. Support
+  draft onset-investigation/PROVIDER_TRACE_REQUEST_DRAFT.txt remains unsent;
+  official Console route only if resumed. Owner clarified: asks the last actual
+  correct full Ada calculation, NOT the last checkpoint. Answer is Labor
+  V1.2.23/Estimation9.38,17Nov17:04 Israel, estimate suffix20261117150118:
+  Vanity2883.88 + Corner9101.88 =11985.76 ILS ex VAT,14143.20 incl VAT.
+  These are legacy Materials-owned SC, not current Materials+Labor+Overhead.
+  V1.2.21 is only the earlier checkpoint, not the requested last good run;
+  fresh control also failed, so it is not a verified rollback remedy.
+  Current requested history is relative to V1.2.23 through live V3.1/f051b8cc;
+  public version.json and remote main reconfirmed. UPDATE20Nov: owner explicitly
+  confirmed full production rollback to V1.2.23/582343a1, then fresh Ada testing
+  and gradual restoration of later releases. Rollback ACTIVE/P1. Preserve the
+  later contract/tests and no-bypass publication rule, validate the exact legacy
+  runtime with its original regression tests. No recognition fix claimed.
+  Database records and Anthropic Key2 remain intact; fresh test is required.
+  Do not infer provider regression or treat omission permissibility
+  as the answer to why the behavior changed after the successful series.
+  Month audit20Oct–20Nov:50 saved Detection successes,3 failed calls,
+  25 Estimation attempts/22 uploads,22 hash-verified Parts reports.
+  Earlier16 successful Parts really had19 measurements; each has its own
+  fresh marked request. Preserve those verified successes.
+  Strong boundary: SAME run0208ed33,17Nov17:04 success vs19:18 failure,
+  identical PDF/Detection/immutable inputs/native geometry. Actual Railway
+  V1.2.23/582343a1 covered BOTH. V1.2.24 later selected prior saved success;
+  V3.1/Overhead did not exist yet. Two fresh20Nov uploads repeat the failure.
+  Early model reply can omit direct labels; empty direct_labels accepted,
+  planner loses centre block; corner_casework rejects whole cabinet,
+ 19 measurements→0,7 unpriced requirements. Independent review cannot
+  recreate the earlier missing block.54 binding/100 Assembly checks preserve
+  correct readings/reports. Current exact historical failed raw is unavailable.
+  Full source comparison, isolated Git exports: V9.17/2a4a548d,
+  V9.33/adaa7de9, V1.2.21/c84ece4c, V1.2.23/582343a1.
+  Eight full Parts/Materials raw-reply replays: EVERY version gives7 blocks,
+ 19 measurements,133 parts with complete reading,6/0/130 with incomplete.
+  NEW concrete change: V9.37/ffdbd9fb,14Nov22:23 commit,22:24:53 Railway
+  success (GitHub environment costerly/staging). pending_sheet now retains
+  known sheet material with unit/quantity null instead of per-piece fallback.
+  One FIXED bad Parts before/after exact commit: base27256→1456 ILS,
+  missing prices1→7, geometry0 in both. Prior amount is a controlled replay
+  with today's catalog, NOT an actual historical healthy cost. The old
+  algorithm priced six geometry-less groups at200 ILS/piece. Fixed GOOD
+  Parts stays6722.09/0 unpriced on both sides. This code change explains
+  visible blanks when geometry is missing, not why a fresh reading changed.
+  Parent/commit finished-glass V1.2.19 control both1456/7 unpriced, excluded
+  as the source of that price transition.
+  NEW fully fresh ORIGINAL-instruction version comparison,18 paid calls:
+  same17Nov successful immutable input/PDF/Detection/current frozen catalog.
+  V1.2.21 now FAILS:6/0/130,7 unpriced,base1456 (1543.36 with policies).
+  V1.2.23 now PASSES benchmark:7/19/133,0 unpriced,base8586.68 (9101.88).
+  All9 stages fresh each; no prompt modification. Compiled contexts equal,
+ 8/9 exact wire requests equal; only downstream Native Locator differs.
+  Direct-label-only reciprocal crossover,4 offline controls: old6→7 blocks,
+  new7→6, every other raw field/reply retained within each recording.
+  Detection owning code (entire agents dir, rfq_processing, originals,
+  Detection context compiler) unchanged13Nov–17Nov; same source event and
+  input_payload at the actual boundary. Later19Nov changes cannot cause it.
+  Historical PDF overlay jobs do not overlap the failing early read. Scope
+  and hashes of source/export/wire comparisons retained in evidence.
+  Earlier generic completeness instruction8/8 plus one full fresh focused
+  Parts matched all15 material rows and9101.88; diagnostic evidence only,
+  not approval or proof of a reliable production repair. Inventory retains
+  reviewed_with_open_findings/source_inventory_verified=false.
+  Total50 paid calls,1.052676 USD at configured project rates, not invoice.
+  The initial local JSON set/string pricing artifact was invalid, corrected
+  with identical59 family codes; its results remain excluded.
+  Exact first historical failed raw/HTTP bytes and direct Railway config/
+  process history are unavailable; do not invent provider drift or a culprit
+  commit for the onset of incomplete semantic replies. No new runtime edits,
+  production writes, rollback or publish. V3.1 full acceptance still blocked.
+  Evidence: workspace outputs/ada-materials-v3.1-diagnosis-20261120/
+  onset-investigation/VERSION_COMPARISON_RU.md, full-version-matrix.json,
+  fixed-report-pricing/, fresh-unmodified/, direct-label-crossovers/,
+  nov14-target-deployments.json, month-audit/REPORT_RU.md, paid-call-ledger.json.
 - Add deterministic delivery and installation pricing from project subtotal / overhead settings.
 - Improve catalog matching: save matched material/labor rows and mark weak matches as `needs_review`.
 - Run estimation for all detected objects, not only the first object.

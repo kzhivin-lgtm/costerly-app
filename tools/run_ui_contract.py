@@ -34,6 +34,10 @@ def main() -> int:
     parser.add_argument("--browser-only", action="store_true")
     parser.add_argument("--output", type=Path, default=ROOT / ".ui-artifacts")
     args = parser.parse_args()
+    if (ROOT / ".github/approved-rollback.json").exists():
+        sys.path.insert(0, str(ROOT))
+        from tools.run_legacy_rollback import run_rollback_gate
+        return run_rollback_gate(args.output.resolve())
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     state = output / "state"

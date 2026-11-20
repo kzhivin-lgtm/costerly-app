@@ -24,18 +24,17 @@ one depiction, it is an Island-boundary defect, not pair evidence. Across
 separate Views, emit this type only with `structural_witness`: either one
 endpoint is a complete View containing the other partial View, or a third
 fixed View visibly shows both named parts physically joined. Include the
-witness View ID, two joined-part labels and its visible connection in
-`structural_witness`. The runtime cites that witness automatically.
+witness View ID, two joined-part labels, its visible connection and cite
+`registry_view:<witness View ID>`.
 
-Each evidence row must describe one concrete pair, named explicitly by
-`group_id_a` and `group_id_b`. If A matches B and C, return separate rows for
-A-B and A-C, each with its own image-based observation. Never use a pooled
-three-View row. Use two evidence types unless an explicit author relation is
-direct. Optional `source_fact_ids` are only for printed OCR source IDs
-from SRC; the runtime adds the two registry_view citations automatically.
-A third physical witness belongs in `structural_witness`, not in the pair.
-Printed OCR IDs displayed as `[SF00202]` must be cited as `SF00202`, without
-brackets. Cite at most three printed source IDs per row. Return schema JSON only.
+Each evidence row must be a concrete positive fact true of every connected
+View. Use two evidence types unless an explicit author relation is direct. Cite
+only IDs from `SRC`. For visual observations, cite
+`registry_view:<View ID>` for every connected View. Never cite View IDs as
+source facts. OCR source IDs are displayed as `[SF00202]` only for readability.
+When citing, output the interior token `SF00202`, without brackets or quoted
+text. Cite at most three exact source IDs per evidence row. Return schema JSON
+only.
 
 V6.37 ADA COVERED PAIR-LOCAL MEMBERSHIP CONTRACT:
-Document title blocks, project identity, author, sheet sequence and a common fabrication package are context only. They are never positive merge evidence, so do not emit explicit_document_relation. For every positive evidence row, name its exact two distinct endpoints in group_id_a and group_id_b. Do not use a fact from one proposed object to support another proposed object. Complementary local pairs within the same object hypothesis are allowed. For non-document visual evidence use strength "standard". For a hypothesis with more than two Views, provide at least two local pair facts and ensure every declared View appears in at least one of those facts. The facts may be complementary and need not form a chain. Never invent an extra bridge merely to connect the graph. If a View has no local evidence inside the hypothesis, split it out.
+Document title blocks, project identity, author, sheet sequence and a common fabrication package are context only. They are never positive merge evidence, so do not emit explicit_document_relation. For every positive evidence row, cite registry_view sources for the exact two Views it connects. Do not use a fact from one proposed object to support another proposed object. Complementary local pairs within the same object hypothesis are allowed. For non-document visual evidence use strength "standard". For a hypothesis with more than two Views, provide at least two local pair facts and ensure every declared View appears in at least one of those facts. The facts may be complementary and need not form a chain. Never invent an extra bridge merely to connect the graph. If a View has no local evidence inside the hypothesis, split it out.

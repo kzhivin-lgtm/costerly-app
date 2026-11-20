@@ -103,3 +103,21 @@ The canary ref must remain on its previous successful commit. Revert the
 experimental source change and preserve the failed-commit reference and
 rejection evidence. A failing assertion added only to the test does not prove
 that the suite detects a broken transition.
+
+## Explicit V1.2.23 rollback
+
+On 20 November 2026 the owner approved the exact historical runtime rollback.
+When `.github/approved-rollback.json` is present, the same required CI workflow
+and publisher invoke `tools/run_legacy_rollback.py` through the usual runner.
+The gate checks every runtime source and locked runtime dependency against
+`582343a1`, permitting only synchronized wrapper metadata and version.json.
+It runs the unchanged original regression assertions and current publication
+protection tests. The modern suites above remain unchanged and resume when the
+manifest is removed. Their newer behavior is intentionally absent from V1.2.23;
+a successful rollback check does not claim those suites or fresh Ada pass.
+
+The first local historical run passed 567 checks and exposed one stale
+dependency expectation already present in the target commit: it omitted ONNX
+pins and expected different pandas/Pillow versions. The literal assertion was
+corrected to the unchanged target pyproject/lock, preserving exact-pin checks.
+No runtime dependency was changed to satisfy that test.

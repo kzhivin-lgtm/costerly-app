@@ -355,3 +355,24 @@ for already-open V2.8 wrappers. Their final legacy check loads V2.9, whose
 wrapper does not read the file or schedule polling. Removing the file before
 those tabs migrate prevents their one-time update. New Core connections still
 use the build event; no new timer, request, callback or auth check is added.
+
+## Owner-approved historical rollback, 20 November 2026
+
+The owner explicitly confirmed full production rollback to Labor V1.2.23,
+`582343a125ab0ee32fefcc6b85aeeb3398dc649b`, to test fresh Ada before restoring
+later releases incrementally. This deliberately returns navigation, auth,
+Detection grouping and Materials-owned Self Cost to that version. Later
+Overhead/full-SC/auto-refresh behavior is not retained. Existing database records
+and provider configuration remain intact. Historical successful and failed Ada
+runs both occurred on this source, so rollback is not a proven recognition fix.
+
+The alternative, a selective speculative repair, was rejected by the owner.
+All later contract and test definitions remain retained. The no-bypass remote
+rule and exact-commit publisher remain required. The approved-rollback manifest
+activates an exact-source and dependency-identity check plus original historical
+regressions and publisher tests. It rejects every other runtime source. This is
+an explicit historical baseline exception, not acceptance of V1.3.3-V3.1 behavior.
+Remove the manifest before restoring later changes and use the full modern suite.
+Fresh authenticated production acceptance belongs to the owner after deployment.
+Rollback of this deployment is the prior V3.1 `f051b8cc`; stored totals are not
+rewritten as part of this code deployment.

@@ -68,7 +68,7 @@ def render_object_detail_screen(
     _material_editor(context)
     if revision := data.get("overlay_revision"):
         _overlay_links(context, company_id, str(revision))
-    install_workflow_header_alignment_guard("h1.object-detail-title", even_labor_columns=True)
+    install_workflow_header_alignment_guard("h1.object-detail-title")
 
 
 def _current_object_detail_context() -> ObjectDetailContext | None:
@@ -179,13 +179,8 @@ def _render_object_detail(
         object_detail_view.detail_sections_html(data),
         unsafe_allow_html=True,
     )
-    material_rows = next((section["rows"] for section in data["sections"] if section["key"] == "material"), [])
-    amounts = [row.get("total", row.get("cost")) for row in material_rows]
     render_labor_v1(company_id=company_id, run_id=context.run_id, estimate_id=context.estimate_id,
-                    object_id=context.object_id, elements=data.get("elements"), overlay_revision=data.get("overlay_revision"),
-                    quantity=data.get('quantity', 1), overrides=data.get('labor_hours_overrides'),
-                    material_cost=sum(float(value) for value in amounts if value is not None),
-                    material_partial=any(value is None for value in amounts))
+                    object_id=context.object_id, elements=data.get("elements"), overlay_revision=data.get("overlay_revision"))
     st.markdown(
         object_detail_view.detail_summary_html(
             data,
@@ -267,13 +262,10 @@ def _overlay_links(context: ObjectDetailContext, company_id: str, revision: str)
 @st.fragment
 def _material_editor(context: ObjectDetailContext) -> None:
     """Handle explicit saves without replacing the Object Detail DOM."""
+    key = (context.estimate_id, context.object_id)
+    results = st.session_state.setdefault("object_detail_material_edit_results", {})
     if _current_object_detail_context() != context:
         return
-    key = (context.estimate_id, context.object_id)
-    results = st.session_state.get("object_detail_material_edit_results")
-    if results is None:
-        results = {}
-        st.session_state.object_detail_material_edit_results = results
     # The component returns the last submitted draft. Present the previous
     # receipt first, then acknowledge a new draft through a second render.
     request = material_edit_bridge(result=results.get(key), key="object_detail_material_edit", default=None)
@@ -302,8 +294,6 @@ def _material_editor(context: ObjectDetailContext) -> None:
             rows=object_detail_view.material_preview_rows(data),
             self_cost=data["self_cost"],
             quantity=data["quantity"],
-            labor_hours_overrides=data.get("labor_hours_overrides", {}),
-            cost_policy=data.get("cost_policy"),
         )
         result["timing"] = {
             "validation": round((submitted - started) * 1000),
@@ -314,7 +304,7 @@ def _material_editor(context: ObjectDetailContext) -> None:
         result["error"] = str(exc)
     except Exception:
         _LOG.exception("Could not save material edits for estimate %s", context.estimate_id)
-        result["error"] = "Could not save changes. Your edits are still here."
+        result["error"] = "Could not save material changes. Your edits are still here."
     results[key] = result
     st.rerun(scope="fragment")
 

@@ -213,10 +213,6 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
             else _money(row.get("monthly_cost"))
         )
         monthly_cost_kind = "percent" if monthly_cost_display else "money"
-        if section.get("readonly"):
-            return [_escape(row.get("item")), monthly_cost_value,
-                    _escape(row.get("allocation")),
-                    f'<span class="object-detail-row-cost">{_money(row.get("cost"))}</span>']
         return [
             _escape(row.get("item")),
             _input_html(monthly_cost_value, monthly_cost_kind, "monthly_cost"),
@@ -293,7 +289,7 @@ def material_preview_rows(data: dict[str, object]) -> list[dict[str, object]]:
             for row in section["rows"]]
 
 
-def _table_html(section: dict[str, object], *, collapse_title: str | None = None) -> str:
+def _table_html(section: dict[str, object]) -> str:
     """Render a grouped cost table from normalized estimate rows."""
     columns = section["columns"]
     rows = section["rows"]
@@ -302,23 +298,11 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
     table_class = f"object-detail-table object-detail-table--cols-{column_count}"
     material_table = tuple(columns) == MATERIAL_PURCHASE_COLUMNS
     header_cells = []
-    known_totals = [float(row['total']) for row in rows
-                    if isinstance(row.get('total'), (int, float)) and math.isfinite(row['total'])]
-    subtotal = sum(known_totals) if known_totals or not rows else None
-    partial = len(known_totals) != len(rows)
-    for index, column in enumerate(columns):
+    for column in columns:
         label = _escape(column)
-        extra_class = ''
-        if collapse_title and index == 0:
-            label = _escape(collapse_title)
-            extra_class = ' object-detail-cost-title'
-        elif collapse_title and index == len(columns) - 1:
-            label = (f'<span class="object-detail-cost-label">{"Subtotal" if partial else "Total"}</span>'
-                     f'<span class="object-detail-cost-value" data-material-section-total>{_money(subtotal)}</span>')
-            extra_class = ' object-detail-cost-total'
         if material_table and column in {"Purchase unit", "Unit price"}:
             label = f'<span>{label.replace(" ", "<br> ", 1)}</span>'
-        header_cells.append(f'<div class="object-detail-table-head{extra_class}">{label}</div>')
+        header_cells.append(f'<div class="object-detail-table-head">{label}</div>')
     header = "".join(header_cells)
 
     body_parts: list[str] = []
@@ -330,13 +314,6 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
                 f'<div class="object-detail-table-row" data-section="materials" data-material-preview="{_escape(json.dumps(preview))}">'
                 + "".join(f'<div class="object-detail-table-cell">{value}</div>' for value in values)
                 + "</div>"
-            )
-        if collapse_title:
-            return (
-                f'<details class="{table_class} object-detail-cost-band object-detail-materials-band" '
-                f'data-section="{_escape(section_key)}" open>'
-                f'<summary class="object-detail-table-head-row object-detail-cost-summary">{header}</summary>'
-                f'<div class="object-detail-cost-body">{"".join(body_parts)}</div></details>'
             )
         return (
             f'<div class="{table_class}" data-section="{_escape(section_key)}">'
@@ -365,16 +342,11 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
             values = _row_values(section, row)
             policy_percent = row.get("policy_percent") if row.get("locked") else ""
             policy_percent_attr = html.escape(str(policy_percent or ""), quote=True)
-            overhead_attrs = (
-                f' data-overhead-monthly="{html.escape(str(row.get("monthly_amount", "")), quote=True)}"'
-                f' data-overhead-percent="{html.escape(str(row.get("reserve_percent", "")), quote=True)}"'
-                if section_key == "overhead" else ""
-            )
             body_parts.append(
                 '<div class="object-detail-table-row" '
                 f'data-line-id="{_escape(row.get("line_id"))}" '
                 f'data-section="{_escape(section_key)}" '
-                f'data-policy-percent="{policy_percent_attr}"{overhead_attrs}>'
+                f'data-policy-percent="{policy_percent_attr}">'
                 + "".join(f'<div class="object-detail-table-cell">{value}</div>' for value in values)
                 + "</div>"
             )
@@ -390,11 +362,6 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
 
 def _section_html(section: dict[str, object]) -> str:
     """Render one cost section with metrics and a grouped table."""
-    if tuple(section['columns']) == MATERIAL_PURCHASE_COLUMNS:
-        return (
-            '<section class="object-detail-section object-detail-section--cols-6" data-section="material">'
-            + _table_html(section, collapse_title=str(section['title'])) + '</section>'
-        )
     metrics = "".join(_metric_html(label, value) for label, value in section["metrics"])
     column_count = len(section["columns"])
     metric_offset = ""
@@ -418,12 +385,8 @@ def _final_html(data: dict[str, object]) -> str:
     summary = data["self_cost"]
     return (
         f'<div class="object-detail-final" data-vat-percent="{_escape(summary.get("vat_percent", 18))}" '
-        f'data-full-cost="{str(data.get("cost_policy") == "object_costs_v3_1").lower()}" '
         f'data-base-cost="{_escape(summary["excl_vat"])}">'
         f'<div class="object-detail-final-title">{_escape(summary["title"])}</div>'
-        '<div data-full-cost-subtotal class="object-detail-cnc-caption" style="grid-column:1 / -1"'
-        + ('' if summary.get('partial') else ' hidden') + '>Subtotal: some costs are still awaiting calculation</div>'
-        +
         '<div>'
         '<div class="object-detail-final-label">Excl. VAT</div>'
         f'<div class="object-detail-final-value" data-final="excl_vat">{_money(summary["excl_vat"])}</div>'
@@ -437,51 +400,6 @@ def _final_html(data: dict[str, object]) -> str:
         f'<div class="object-detail-final-value object-detail-final-total" data-final="total">{_money(summary["total"])}</div>'
         '</div>'
         '</div>'
-    )
-
-
-def overhead_section_html(result: dict[str, object]) -> str:
-    """Restore the existing Overhead table, with Profile-owned inputs."""
-    rows = []
-    for line in result.get("lines", []):
-        raw = line.get("raw_agent_json") or {}
-        percent = raw.get("percent")
-        rows.append({
-            "group": line["group_name"], "line_id": line["line_id"],
-            "item": line["item_name"], "monthly_cost": line["monthly_cost"],
-            "monthly_cost_display": f"{_number_text(percent)}%" if percent is not None else None,
-            "allocation": line["allocation_basis"], "cost": line["cost"],
-            "monthly_amount": line["monthly_cost"] if percent is None else "",
-            "reserve_percent": percent if percent is not None else "",
-        })
-    messages = {
-        "loading": "Preparing Overhead…", "pending_labor": "Waiting for Labor hours",
-        "missing_capacity": "Company production capacity is not configured",
-        "invalid_basis": "Overhead needs valid labor and material amounts",
-        "read_failed": "Overhead could not be loaded. Reopen this object to retry",
-    }
-    ready = result.get("status") == "ready"
-    section = {
-        "key": "overhead", "title": "Overhead", "readonly": True,
-        "columns": ["Group", "Monthly cost", "Allocation", "Cost"], "rows": rows,
-        "metrics": [("Subtotal" if result.get("partial") else "Cost", result.get("cost") if ready else "—"),
-                    ("VAT", result.get("vat") if ready else "—"),
-                    ("Total", result.get("total") if ready else "—")],
-    }
-    message = messages.get(result.get("status"), "From Profile → Overhead Expenses and Pricing Cost")
-    if ready and result.get("partial"):
-        message = "Subtotal based on the available Materials and Labor"
-    return (
-        f'<div data-overhead-summary data-overhead-ready="{str(ready).lower()}"'
-        f' data-overhead-status="{_escape(result.get("status", "loading"))}"'
-        f' data-overhead-object-id="{_escape(result.get("object_id", ""))}"'
-        f' data-overhead-estimate-id="{_escape(result.get("estimate_id", ""))}"'
-        f' data-overhead-run-id="{_escape(result.get("run_id", ""))}"'
-        f' data-overhead-capacity="{_escape(result.get("capacity_hours", ""))}"'
-        f' data-overhead-material-cost="{_escape(result.get("material_cost", ""))}"'
-        f' data-overhead-vat="{_escape(result.get("vat_percent", 18))}">'
-        + _section_html(section)
-        + f'<p class="object-detail-cnc-caption">{_escape(message)}</p></div>'
     )
 
 

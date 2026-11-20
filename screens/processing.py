@@ -325,7 +325,6 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
     time.sleep(0.22)
 
     st.session_state.current_run_id = run_id
-    st.session_state.file_review_empty_estimate = (company_id, str(run_id))
     # `Last Estimate` is File Review, not necessarily an estimate shell. Keep
     # its exact completed run ready for the header after the user starts a new
     # upload, so the action can use the session cache above before any query.
