@@ -1,6 +1,7 @@
 """Produce and publish Parts Check from the immutable File Review handoff."""
 
 from contextlib import contextmanager
+from copy import deepcopy
 from datetime import UTC, datetime
 from hashlib import sha256
 import json
@@ -74,6 +75,19 @@ def _request_provider(company_id, run_id, estimate_id, file_name, usage_events):
         if getattr(response, "usage", None) is None:
             event["total_cost_usd"] = None
         usage_events.append(event)
+        # Diagnostic evidence only. Keep request, validation and pricing unchanged.
+        try:
+            from agents.anthropic_adapter import _prepare_claude_request
+
+            effective_request = _prepare_claude_request(deepcopy(request))
+            event["raw_usage"]["request_fingerprint"] = sha256(json.dumps(
+                effective_request, sort_keys=True, separators=(",", ":"),
+                ensure_ascii=False, allow_nan=False,
+            ).encode()).hexdigest()
+            event["raw_usage"]["provider_request_id"] = str(getattr(response, "_request_id", "") or "")
+            event["raw_usage"]["provider_response"] = response.model_dump(mode="json")
+        except Exception as trace_error:
+            event["raw_usage"]["diagnostic_error"] = type(trace_error).__name__
         try:
             if response.stop_reason != "end_turn":
                 raise PartsCheckRequestError(stage, "incomplete_response")

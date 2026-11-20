@@ -7619,13 +7619,80 @@ cause from the local screenshot alone.
   absolute latest successful run V1.2.23. Existing failed fresh V1.2.21 control
   remains recorded; do not claim present-day stability. No further deploy or
   model call. Evidence: outputs/ada-latest-historical-version-20261120/selection.json.
-  OWNER APPROVAL20Nov: explicit full rollback to V1.2.21/c84ece4c. ACTIVE/P1,
-  preparing strict source restoration, historical regression and exact-SHA CI
-  before protected promotion. Block Assembly/expired-overlay changes from
+  OWNER APPROVAL20Nov: explicit full rollback to V1.2.21/c84ece4c.
+  DEPLOYED, PENDING OWNER ACCEPTANCE/P1: publication1bc0098f, Railway
+  deployment7948556392 success20Nov17:46:46UTC, protected exact-SHA CI passed.
+  Local564 historical+18 publication checks passed;455 runtime files and
+  runtime dependency pins match c84ece4c. Fresh public wrapper/Core both
+  estimation-labor-v1.2.21-finished-mirrors-detection-v8.4.29, trace
+  fa62661c-27db-4c22-94e8-4c9e3d8b9125. Isolated browser shows Sign in;
+  owner auth/fresh Ada not tested. No paid calls or business-data writes.
+  Evidence: handoff workspace outputs/rollback-v1.2.21-20261120/release.json. Block Assembly/expired-overlay changes from
   V1.2.23 are intentionally removed; Sheet Processing/CNC and original mirror
   costing remain. Provider Key2 and existing database totals stay intact.
   This supersedes the V9.7 proposal; no additional paid recognition is needed
   for publication. Owner fresh Ada acceptance follows matching live builds.
+  OWNER RESULT/APPROVAL20Nov: latest V1.2.21 production run reportedly has the
+  same deficit. Owner now explicitly requests full old Estimation V9.7/c7056886
+  deployment for comparison, followed by incremental restoration. ACTIVE/P1,
+  full runtime restoration and corresponding original regressions through the
+  existing exact-SHA gate/publisher. Preserve Key2, DB/catalog/profile data and
+  all later test definitions. No new paid calls needed. V9.7's fresh1/3 result
+  stays recorded; deployment is a controlled historical comparison, not a fix.
+  Owner also asks how identical failures can persist outside code. Identical
+  marked-view requests yielded complete vs empty direct_labels on old source,
+  confirming present output variation; historical onset/provider regression
+  remains unproven. No V9.7 recognition change authorized by this deployment.
+  CURRENT OWNER DIRECTION20Nov: no code/prompt/model/condition changes and no
+  deployment. V9.7 publication STOPPED, local preparation only. Investigate our
+  actions around last complete Ada17Nov17:05 and first defect19:18; owner does
+  not accept provider-bug speculation as the lead. Audit actual Costerly chat
+  tool actions as well as Git, deployment, config/data and restored-run path.
+  Expanded audit of53 Costerly session files found zero recorded agent/tool
+  events between17:05 and19:18; main commit582343a1 remained active. Historical
+  user message19:20:54 explicitly reports internet disconnect/laptop closed,
+  Login recovery then Last Estimate→Review→Continue unexpectedly recomputed.
+  Initial and restored launches use the same job, including a fresh DB OCR read;
+  source inspection rejects the simple missing-OCR-on-restore explanation.
+  OWNER HYPOTHESIS20Nov: a saved defective calculation survives deployments.
+  VERIFIED mechanism in deployed V1.2.21: Parts report reuse is scoped to
+  company/run/estimate, checks input IDs and source hash, and has no build-version
+  condition. Reopening the same saved estimate can therefore preserve its defect.
+  REJECTED as the sole explanation of the latest fresh failure: run5dc281ad has
+  nine new model events20Nov17:55:04–17:56:12UTC; saved Parts and Material Plan
+  both point to its new estimate20261120175147, with24/130 matching part rows.
+  The new plan itself contains the incomplete geometry and hardware-only costs.
+  First17Nov defective estimate also has fresh model calls and a distinct saved
+  report. Do not confuse report reuse with provider prompt caching (tokens0).
+  NEW ESTIMATE isolation check requested by owner20Nov: inspected exact deployed
+  V1.2.21 source. Header callback resets run/estimate/source/launch/detail state,
+  clears workflow query parameters and advances upload-widget generation.
+  Last Estimate retains only the prior File Review snapshot under its old run;
+  newly processed uploads receive server UUID run IDs. Parts reuse is scoped
+  to company/run/estimate, detail caches to estimate/object, material reads and
+  overrides to estimate. Six existing targeted historical tests PASS (3.52s):
+  reset, retained widgets, detail/prefetch reset, header callback, outer route,
+  saved Parts ownership/content. These are local checks, not owner acceptance.
+  Production verification: New Estimate -> upload Ada -> File Review Continue ->
+  completed Objects. Compare previous/new run and estimate IDs, fresh per-stage
+  usage, Parts report identity, Material Plan source and both visible object
+  identities. Do not infer isolation from a spinner, delay or matching sums.
+  OWNER RUN VERIFIED20Nov20:48 Israel: owner clarified the latest message meant
+  inspect their new run, not launch another. No additional paid calls launched.
+  Public version.json still V1.2.21. Fresh runb9c93bdc started20:42:01, new
+  estimate20261120184303, two new revision1 inputs linked to new OCR event.
+  Nine fresh Parts model calls20:43:24–20:44:37, all succeeded/cache-read0.
+  Parts, Material Plan source, both saved object records and all material
+  lines belong to the new run/estimate, with no norm/purchase overrides.
+  Vanity now2883.88ex,24 parts/7 dimensions/no unpriced; Display1543.36ex,
+ 130 parts/6 blocks/0 dimensions/7 unpriced. Thus fresh generation reproduces
+  the cabinet defect; same-saved-report reuse does not explain this run.
+  Live browser rendering was unavailable (no attached Chrome/native service),
+  so this verifies server records, not the owner's visible DOM. Read-only
+  evidence /private/tmp/costerly-ada-owner-new-estimate-20261120T184303/summary.json.
+  Evidence in /private/tmp/costerly-ada-hypotheses-20261120/. No new paid calls.
+
+
 
 
 
@@ -7697,6 +7764,27 @@ cause from the local screenshot alone.
   onset-investigation/VERSION_COMPARISON_RU.md, full-version-matrix.json,
   fixed-report-pricing/, fresh-unmodified/, direct-label-crossovers/,
   nov14-target-deployments.json, month-audit/REPORT_RU.md, paid-call-ledger.json.
+  DIAGNOSTIC RELEASE APPROVED20Nov: owner explicitly approved only diagnostic
+  logging on current V1.2.21. Runtime algorithms, prompts, conditions and pricing
+  stay fixed. New isolated worktree codex/parts-diagnostic-v1.2.21 preserves the
+  stopped dirty V9.7 checkout. Existing private usage event records canonical
+  request SHA256, provider request ID and full provider response before parsing
+  and binding. Logging failure cannot change the original calculation outcome.
+  No extra model call or database schema change. Exact legacy gate pins the
+  complete diagnostic runtime file hash, checks every other historical file and
+  dependency pin, and executes historical assertions against the candidate file.
+  Publication still requires exact-SHA GitHub UI release gate and publisher.
+  Local gate PASS:570 historical candidate-runtime regressions +24 publication
+  and strict diagnostic-policy checks. Exact-SHA GitHub CI pending; production
+  remains publication1bc0098f until promotion and Core/wrapper verification. No recognition fix
+  claimed. Offline controls: four sequential Parts pipelines confirmed no sticky
+  degradation; two actual historical input revisions reconstructed7/19/133 with
+  fixed full replies. Context differs only by input UUIDs; only island-map's
+  reconstructed request changes, marked reader and the other seven stay equal.
+  This corrects any blanket statement that all historical requests were equal;
+  no original17Nov HTTP capture exists. Proposal's five offline controls preserve
+  original requests/outcomes for complete, omitted, malformed, truncated and
+  trace-error cases. Evidence /private/tmp/costerly-ada-hypotheses-20261120/.
 - Add deterministic delivery and installation pricing from project subtotal / overhead settings.
 - Improve catalog matching: save matched material/labor rows and mark weak matches as `needs_review`.
 - Run estimation for all detected objects, not only the first object.
