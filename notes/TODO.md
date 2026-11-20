@@ -7500,21 +7500,27 @@ cause from the local screenshot alone.
   reopen hours and matching Objects. No new recognition required. Paid calls0.
   Evidence: handoff workspace outputs/overhead-v3.1-20261120/.
 - ACTIVE, P1, USER REQUEST, Ada Display cabinet missing material costs,
-  2026-11-20. Diagnosis requested first; repair/deploy not yet authorized.
-  Current run0fbcec90: all130 parts lack length/width; six block envelopes
-  unresolved. Exact offline native audit hash matches saved Parts Check.
-  All19 printed dimension anchors remain available. Confirmed early guard in
-  tools/estimation_casework_geometry.py:170 requires exactly one mirror_upright;
-  saved plan has none, so all six blocks lose geometry before measurements.
-  Full17Nov Ada control0208ed33 has same missing role,129 unsized parts and
-  identical Materials costs (Vanity2883.88, Display1543.36). Owning geometry/
-  demand files unchanged from V2.10. Do not attribute this incident to Overhead.
-  Owner sees Overhead; full V3.1 financial acceptance blocked by incomplete Ada
-  input costs. UI gate did not cover full saved Ada geometry completeness.
-  Next proposed repair: independently measure supported blocks, preserve all
-  evidence/links; do not merely drop mirror guard or invent missing dimensions.
-  Verification must cover full saved Ada plus LF1/LF2, no new paid calls now.
-  Evidence: workspace outputs/ada-materials-v3.1-diagnosis-20261120/REPORT_RU.md.
+  2026-11-20. Causal investigation only; NO repair/deploy/new paid calls.
+  Initial guard diagnosis was insufficient to explain the regression.
+  Compared12 full saved Ada reports13-17Nov: first11 retain seven Display
+  blocks; next loses the centre block and all geometry. Strong boundary pair:
+  same run0208ed33,17Nov17:01 vs19:16 Asia/Jerusalem. PDF, Detection event,
+  both input_payloads and native geometry identical; models/prompt unchanged.
+  Accepted Front mirror roles C16/C19 disappear; blocks7→6, priced Materials
+  9101.88→1543.36 ILS. Current20Nov run0fbcec90 repeats that failed structure.
+  Controlled offline replays: removing only two direct mirror readings gives
+  blocks7→6; removing only mirror_upright from saved successful plan gives
+  resolved envelope measurements19→0 on unchanged code. Both confirmed.
+  Likely upstream trigger: changed fresh marked-view-001/Haiku semantic reading;
+  exact failed raw reply was not retained, so omission vs failed binding unknown.
+  Independent Inventory Review still sees mirrors but cannot restore ownership.
+  Old corner_casework guard is the failure multiplier, not a complete account
+  of why earlier successful readings changed. Do not conclude all old runs bad.
+  Owner sees Overhead; full V3.1 acceptance still blocked by incomplete Ada.
+  All repair suggestions deferred by explicit owner instruction. No evidence
+  authorizes replacing Geometry or weakening the mirror guard at this stage.
+  Evidence: workspace outputs/ada-materials-v3.1-diagnosis-20261120/
+  CAUSAL_COMPARISON_RU.md and boundary/causal replay artifacts.
 - Add deterministic delivery and installation pricing from project subtotal / overhead settings.
 - Improve catalog matching: save matched material/labor rows and mark weak matches as `needs_review`.
 - Run estimation for all detected objects, not only the first object.
