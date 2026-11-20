@@ -121,3 +121,11 @@ dependency expectation already present in the target commit: it omitted ONNX
 pins and expected different pandas/Pillow versions. The literal assertion was
 corrected to the unchanged target pyproject/lock, preserving exact-pin checks.
 No runtime dependency was changed to satisfy that test.
+
+The owner subsequently approved the V1.2.21 source `c84ece4c` on the same date.
+The manifest and strict source check now pin that version. Its original
+regression suite omits `test_block_assembly.py`, because neither the feature nor
+that test existed in V1.2.21. The newer test file is retained in the repository
+for subsequent restoration. Original V1.2.21 Sheet Processing/CNC, material,
+auth, route, persistence and observability checks plus publication protection
+remain required. No present-day recognition stability is inferred from CI.

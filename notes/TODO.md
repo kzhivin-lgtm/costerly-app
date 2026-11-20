@@ -7567,7 +7567,75 @@ cause from the local screenshot alone.
   Current requested history is relative to V1.2.23 through live V3.1/f051b8cc;
   public version.json and remote main reconfirmed. UPDATE20Nov: owner explicitly
   confirmed full production rollback to V1.2.23/582343a1, then fresh Ada testing
-  and gradual restoration of later releases. Rollback ACTIVE/P1. Preserve the
+  and gradual restoration of later releases. Rollback DEPLOYED/P1, owner
+  acceptance pending: publication447b4892, Railway deployment7941308058 success;
+  fresh production wrapper/Core both V1.2.23. OWNER TEST20Nov reproduced
+  the deficit: latest saved Vanity2883.88, Display1543.36 ex VAT. Historical
+  recheck confirms V1.2.23 really produced the17Nov good sums2883.88/9101.88
+  (primary object rows, Parts hash cfbd6c58 and matching runtime trace/build;
+  Railway7856929105 active before the calculation). The same version also
+  produced a later failure; it is not an established stable recovery baseline.
+  Owner now explicitly asks for a stable recovery version, including whether
+  V1.2.22 qualifies. Stable baseline remains UNKNOWN: V1.2.22 was previously
+  rolled back after a stuck Detection report; V1.2.21 fresh unchanged control
+  also produced the material deficit. Do not label either stable or redeploy
+  another candidate solely because its version precedes the first saved failure.
+  Stable-base search20Nov: full historical map found V9.7/c7056886 with two
+  consecutive complete Ada production calculations after Railway7763599278
+  active13Nov11:05:46UTC, before V9.8 active11:59:20UTC. Both preserved2/7
+  blocks,24/133 rows,7/19 block measurements, zero unpriced rows, equal cost
+  line sums2409.87/8575.88. Three fresh unchanged-code repeats completed all
+  nine original model stages and Material Engine each:1/3 complete. Corner
+  block/dimension/part outcomes6/0/102,7/19/133,6/0/129. REJECT V9.7 as a
+  stable recovery base. Marked-view request hashes are identical across all
+  three repeats and prior V1.2.21/V1.2.23 controls; replies direct_labels=[] /
+  C16+C19 /[]. No provider-root-cause inference.27 new authorized Anthropic
+  calls, configured project costUSD0.761693; no OCR, production writes or deploy.
+  Initial summary reporter failed after saving complete pipeline/material
+  results, cost-dictionary aggregation corrected and all summaries recovered
+  locally, no repeat API calls. Evidence saved in handoff workspace
+  outputs/ada-stable-version-search-20261120/summary.json. Stable deployable
+  current-stability version still UNKNOWN; do not select releases by lucky
+  fresh repeats. OWNER CLARIFICATION: asks to choose a historically repeated
+  successful baseline, not to replace that criterion with today's trials.
+  Historical anchor CONFIRMED: Estimation V9.7/c7056886. Direct reread of both
+  original estimates confirms identical net self costs2409.87/8575.88, totals
+  2843.65/10119.54 incl VAT, stored13Nov13:11/13:14 Israel; separate uploads,
+  Parts157 rows each and full cabinet geometry. Original object names differ
+  but object IDs/Parts match. Evidence: historical-provenance.json in the same
+  artifact folder. Recommend this exact commit as a historical rollback anchor;
+  current 1/3 result is preserved and does not negate historical success.
+  No V9.7 deployment performed; production remains V1.2.23.
+  LATEST OWNER STEERING: find the MOST RECENT historical error-free run/base,
+  do not keep selecting V9.7 solely for exact-commit repeat counts. A fresh
+  filename-independent read of24 stored Parts events for the Ada document
+  confirms latest full success17Nov17:04:57 on V1.2.23/582343a1, followed by
+  the first same-release defect. The latest confirmed release BEFORE that
+  affected release is V1.2.21/c84ece4c: Ada Parts finished17Nov14:51:38 Israel,
+  current read of original object records confirms net2883.88/9101.88, VAT
+  totals3402.98/10740.22,2/7 blocks,24/133 rows, cabinet19 dimensions. Exact
+  Railway window14:42:41–15:24:01 Israel. No full Ada calculation exists in
+  the V1.2.22 window. Historical pre-defect anchor is V1.2.21, separately from
+  absolute latest successful run V1.2.23. Existing failed fresh V1.2.21 control
+  remains recorded; do not claim present-day stability. No further deploy or
+  model call. Evidence: outputs/ada-latest-historical-version-20261120/selection.json.
+  OWNER APPROVAL20Nov: explicit full rollback to V1.2.21/c84ece4c. ACTIVE/P1,
+  preparing strict source restoration, historical regression and exact-SHA CI
+  before protected promotion. Block Assembly/expired-overlay changes from
+  V1.2.23 are intentionally removed; Sheet Processing/CNC and original mirror
+  costing remain. Provider Key2 and existing database totals stay intact.
+  This supersedes the V9.7 proposal; no additional paid recognition is needed
+  for publication. Owner fresh Ada acceptance follows matching live builds.
+
+
+
+
+  Owner stopped current-run checking and requested historical version proof.
+  No repair, new deploy or paid call authorized by that verification request.
+  Evidence: outputs/ada-v1223-owner-latest-20261120/historical-good-confirmation.json.
+  Local568+18 checks and exact-SHA
+  GitHub gate passed, no-bypass ruleset verified by publisher. No new paid calls
+  or database writes. Evidence: outputs/rollback-v1.2.23-20261120/release.json. Preserve the
   later contract/tests and no-bypass publication rule, validate the exact legacy
   runtime with its original regression tests. No recognition fix claimed.
   Database records and Anthropic Key2 remain intact; fresh test is required.

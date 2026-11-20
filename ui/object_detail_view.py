@@ -437,11 +437,11 @@ def _elements_table(rows, label, *, priced=False):
     )
 
 
-def _elements_html(groups: object, *, revision: object = None, object_id: object = None, assembly_details: str = "") -> str:
+def _elements_html(groups: object, *, revision: object = None, object_id: object = None) -> str:
     """Show the part tables inside independent Elements and block disclosures."""
     if not isinstance(groups, list):
         groups = []
-    if not groups and not revision and not assembly_details:
+    if not groups and not revision:
         return ""
     sections = []
     for group in groups:
@@ -467,7 +467,7 @@ def _elements_html(groups: object, *, revision: object = None, object_id: object
         '<div class="object-detail-elements-section">'
         '<details class="object-detail-elements">'
         '<summary class="object-detail-section-title">Elements</summary>'
-        f'<div class="object-detail-element-groups">{"".join(sections)}{assembly_details}</div>'
+        f'<div class="object-detail-element-groups">{"".join(sections)}</div>'
         f'</details>{controls}</div>'
     )
 
@@ -587,12 +587,11 @@ def hero_html(data: dict[str, object]) -> str:
     )
 
 
-def detail_sections_html(data: dict[str, object]) -> str:
-    return "".join(_section_html(section) for section in data["sections"])
-
-
-def detail_elements_html(groups: object, *, revision: object, object_id: object, assembly_details: str = "") -> str:
-    return _elements_html(groups, revision=revision, object_id=object_id, assembly_details=assembly_details)
+def detail_sections_html(data: dict[str, object], *, object_id: object) -> str:
+    return (
+        "".join(_section_html(section) for section in data["sections"])
+        + _elements_html(data.get("elements"), revision=data.get("overlay_revision"), object_id=object_id)
+    )
 
 
 def detail_summary_html(

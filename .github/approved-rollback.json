@@ -1,6 +1,6 @@
 {
-  "version": "V1.2.23",
-  "source_commit": "582343a125ab0ee32fefcc6b85aeeb3398dc649b",
-  "approved_by": "owner, 2026-11-20, explicit full production rollback",
-  "reason": "Test the historical Ada calculation before restoring later releases incrementally"
+  "version": "V1.2.21",
+  "source_commit": "c84ece4c959c75be41271b2221807e3df6579297",
+  "approved_by": "owner, 2026-11-20, explicit full production rollback to one-two-twenty-one",
+  "reason": "Historical Ada baseline before the first affected release, for owner testing and incremental restoration"
 }

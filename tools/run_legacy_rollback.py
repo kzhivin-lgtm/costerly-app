@@ -1,6 +1,6 @@
 """Exact historical rollback gate. Modern contract remains intact for later releases.
 
-Owner explicitly approved the full V1.2.23 rollback on 20 November 2026.
+Owner explicitly approved the full V1.2.21 rollback on 20 November 2026.
 This route accepts only that historical runtime, not arbitrary failing changes.
 Remove approved-rollback.json before restoring or changing runtime behavior.
 """
@@ -15,12 +15,12 @@ import time
 from io import BytesIO
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = "582343a125ab0ee32fefcc6b85aeeb3398dc649b"
-BUILD = "estimation-labor-v1.2.23-block-assembly-detection-v8.4.29"
+BASE = "c84ece4c959c75be41271b2221807e3df6579297"
+BUILD = "estimation-labor-v1.2.21-finished-mirrors-detection-v8.4.29"
 GATE_TOOLS = {"tools/configure_ui_gate.py", "tools/promote_ui_release.py",
               "tools/run_ui_contract.py", "tools/ui_gate_plan.py", "tools/run_legacy_rollback.py"}
 TESTS = [
-    "test_agent_timing.py", "test_block_assembly.py", "test_company_access.py",
+    "test_agent_timing.py", "test_company_access.py",
     "test_deployment_dependencies.py", "test_estimation_labor_v1.py",
     "test_estimation_parts_check_runtime.py", "test_estimation_runtime.py",
     "test_estimation_object_to_estimate.py", "test_estimation_object_to_estimate_builder.py",
@@ -37,7 +37,7 @@ def _git(*args: str) -> bytes:
 
 def verify_runtime() -> dict:
     manifest = json.loads((ROOT / ".github/approved-rollback.json").read_text())
-    assert manifest["source_commit"] == BASE and manifest["version"] == "V1.2.23", manifest
+    assert manifest["source_commit"] == BASE and manifest["version"] == "V1.2.21", manifest
     baseline = set(_git("ls-tree", "-r", "--name-only", BASE).decode().splitlines())
     tracked = set(_git("ls-files").decode().splitlines())
     errors = []
@@ -73,7 +73,7 @@ def verify_runtime() -> dict:
         normalized.append(candidate)
     for package in old_lock["package"]:
         assert package in normalized, "Runtime lock changed: "+package["name"]
-    assert not errors, "Runtime differs from approved V1.2.23: "+", ".join(errors)
+    assert not errors, "Runtime differs from approved V1.2.21: "+", ".join(errors)
     return {"source_commit": BASE, "build": BUILD, "runtime_files_verified": verified,
             "exceptions": ["wrapper meta version synchronized", "static version.json added", "UI-test-only dependency group"]}
 
@@ -85,7 +85,7 @@ def run_rollback_gate(output: Path) -> int:
               "commit":_git("rev-parse", "HEAD").decode().strip(), "stages":[]}
     try:
         report["identity"] = verify_runtime()
-        print("Verified exact V1.2.23 runtime and runtime dependency pins", flush=True)
+        print("Verified exact V1.2.21 runtime and runtime dependency pins", flush=True)
         reference = output/"historical-source"
         reference.mkdir(exist_ok=True)
         with tarfile.open(fileobj=BytesIO(_git("archive", BASE))) as archive:

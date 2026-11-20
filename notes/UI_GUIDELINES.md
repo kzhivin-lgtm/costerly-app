@@ -376,3 +376,17 @@ Remove the manifest before restoring later changes and use the full modern suite
 Fresh authenticated production acceptance belongs to the owner after deployment.
 Rollback of this deployment is the prior V3.1 `f051b8cc`; stored totals are not
 rewritten as part of this code deployment.
+
+### Superseding V1.2.21 rollback approval
+
+Later on 20 November the owner explicitly approved rollback to Labor V1.2.21,
+`c84ece4c959c75be41271b2221807e3df6579297`, replacing V1.2.23 as the historical
+control. The exact-source gate is repinned to this commit; newer test definitions
+and the mandatory remote publication rule remain retained. V1.2.21 predates
+Block Assembly and the V1.2.23 expired-progress-overlay recovery, so both return
+to their original historical behavior. Sheet Processing/CNC and the per-piece
+finished-mirror calculation remain. No database totals or provider configuration
+are rewritten. Modern behavior restoration still requires removing the legacy
+manifest and running the full modern suite. Fresh Ada and authenticated UI
+acceptance remain pending, and failed fresh controls are not erased. Immediate
+code rollback reference is the published V1.2.23 `447b4892`.

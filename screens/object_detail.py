@@ -176,11 +176,11 @@ def _render_object_detail(
             ),
         )
     st.markdown(
-        object_detail_view.detail_sections_html(data),
+        object_detail_view.detail_sections_html(data, object_id=context.object_id),
         unsafe_allow_html=True,
     )
     render_labor_v1(company_id=company_id, run_id=context.run_id, estimate_id=context.estimate_id,
-                    object_id=context.object_id, elements=data.get("elements"), overlay_revision=data.get("overlay_revision"))
+                    object_id=context.object_id)
     st.markdown(
         object_detail_view.detail_summary_html(
             data,
