@@ -47,6 +47,9 @@ document-heading axes and the existing PDF URL. Local metrics folding must not
 rerun/read/write, survives markup replacement and full navigation, and remains
 restricted to the already-loaded platform-admin visibility. V2.2 compatibility,
 authentication and transition suites stay obligatory and unchanged.
+Fixed coordinates and dimensions remain strict. The intrinsically sized VAT
+box alone uses frozen V2.2 typography rendered on the current platform, rather
+than requiring Linux system fonts to have macOS glyph widths.
 
 ## Run
 

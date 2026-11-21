@@ -369,6 +369,11 @@ canary, requiring UI release gate from GitHub Actions (15368), with no
 bypass actors and force-push/deletion protection. Publication verifies the
 exact SHA and the active remote rule. Normal Git credentials suffice for
 policy reads; the temporary admin token is only for initial installation.
+Owner addition21November2026: the implementing agent owns exact-SHA CI
+monitoring through its terminal outcome, reads failure logs directly and
+continues with each corrected candidate without waiting for forwarded email.
+Persisted in AGENTS.md and exercised with direct GitHub job/log reads during
+V2.3. No separate notification system or scheduled task is introduced.
 
 The first complete local run passed in 102.829 s. The first successful
 Linux CI job took 167 s including setup (128.341 s test execution), run

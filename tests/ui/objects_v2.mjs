@@ -44,6 +44,7 @@ try{
  const generate=()=>core.getByRole('button',{name:'GENERATE PROPOSAL',exact:true});
  assert(await set().isDisabled());assert(await generate().isDisabled());
  assert.equal(await core.getByRole('button',{name:'Parts Check',exact:true}).count(),0);
+ await frame.evaluate(()=>document.fonts.ready);
  report.geometry=await frame.evaluate(()=>{
   const box=node=>{const b=node.getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,height:b.height};};
   const controls=document.querySelector('[class*="st-key-costerly_header_controls"]');
@@ -75,6 +76,15 @@ try{
  assert(await core.getByRole('button',{name:'Project Summary',exact:true}).isDisabled());
  assert(await core.getByRole('button',{name:'Download Proposal',exact:true}).isDisabled());
  const baseline=JSON.parse(readFileSync(fixturePath('objects_v22_geometry.json'),'utf8'));
+ // Preserve strict coordinates and dimensions. Only the intrinsically sized VAT
+ // text box uses frozen V2.2 typography rendered with this platform's fonts,
+ // rather than treating macOS glyph widths as a Linux layout requirement.
+ const intrinsicWidths=await frame.evaluate(references=>Object.fromEntries(Object.entries(references).map(([selector,reference])=>{
+  const host=document.createElement('div');host.style.cssText='position:fixed;left:-10000px;top:0;visibility:hidden;';
+  const shadow=host.attachShadow({mode:'closed'});shadow.innerHTML=reference.html;document.body.append(host);
+  try{return[selector,shadow.firstElementChild.getBoundingClientRect().width];}finally{host.remove();}
+ })),baseline.intrinsic_width_references);
+ report.intrinsicWidths=intrinsicWidths;
  report.protectedGeometry={};report.serviceHitAreas=[];
  for(const width of [1440,2536]){
   await page.setViewportSize({width,height:1244});
@@ -89,7 +99,8 @@ try{
    const heading=box(document.querySelector('.objects-pricing-summary-title'));
    return{preserved,lines,end,action,docs,heading};
   },Object.keys(baseline.viewports[width]));
-  for(const [selector,expected] of Object.entries(baseline.viewports[width]))for(const [axis,value] of Object.entries(expected)){
+  for(const [selector,expected] of Object.entries(baseline.viewports[width]))for(const [axis,recorded] of Object.entries(expected)){
+   const value=axis==='width'&&selector in intrinsicWidths?intrinsicWidths[selector]:recorded;
    assert(Math.abs(actual.preserved[selector][axis]-value)<.1,JSON.stringify({width,selector,axis,expected:value,actual:actual.preserved[selector][axis]}));
   }
   assert(Math.abs(actual.lines[0]-actual.lines[1])<1);

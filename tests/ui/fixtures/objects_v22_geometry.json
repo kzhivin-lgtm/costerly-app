@@ -1,5 +1,11 @@
 {
   "baseline_commit": "d02d3b58129639bc892e41bae9e7467f01b125b8",
+  "intrinsic_width_references": {
+    ".objects-pricing-summary-vat": {
+      "source": "V2.2 locked Streamlit Markdown Source Sans inheritance and styles/objects.py summary title/value rules. VAT is intrinsically sized; render unchanged typography on the same platform.",
+      "html": "<div style='all:initial;display:inline-block;font-family:\"Source Sans\",sans-serif'><div style='font-size:20px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;margin:0 0 16px 0'>VAT 18%</div><div style='font-family:\"IBM Plex Mono\",ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:18px;line-height:1.2;font-weight:700'>₪264</div></div>"
+    }
+  },
   "viewports": {
     "1440": {
       "h1.workflow-title": {

@@ -26,3 +26,10 @@ change. Identify protected behavior and its regression evidence before editing;
 do not weaken or omit an existing check to publish a candidate. Verify the exact
 published Core/wrapper versions after rollout. The owner does not need to repeat
 this requirement for each deployment.
+
+Own release-check monitoring after every candidate push. Track the exact SHA's
+GitHub Actions UI release gate until it reaches a terminal result, read failed
+job logs directly, and report the cause and next action without waiting for the
+owner to forward an email. Continue monitoring each corrected candidate. A
+pending or failed check never permits publication. This uses existing GitHub
+checks and the publisher, without a separate notification or monitoring system.
