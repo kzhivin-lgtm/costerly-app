@@ -50,7 +50,10 @@ try{
   const metrics=document.querySelector('.objects-cycle-metrics');
   const title=document.querySelector('h1.workflow-title');
   const buttons=[...document.querySelectorAll('.st-key-objects_actions button')];
-  return{title:box(title),controls:box(controls),metrics:box(metrics),buttons:buttons.map(box),projectInput:box(document.querySelector('.objects-pricing-project-cost-cell .objects-pricing-price-input')),qty:box(document.querySelector('.objects-pricing-quantity-input'))};
+  return{title:box(title),controls:box(controls),metrics:box(metrics),buttons:buttons.map(box),projectInput:box(document.querySelector('.objects-pricing-project-cost-cell .objects-pricing-price-input')),qty:box(document.querySelector('.objects-pricing-quantity-input')),
+   stages:box(document.querySelector('.objects-workflow-stages')),tableHead:box(document.querySelector('.objects-pricing-header')),
+   summary:box(document.querySelector('.objects-pricing-summary')),summaryTitle:box(document.querySelector('.objects-pricing-summary-title')),
+   summaryValues:[...document.querySelectorAll('[data-summary-field]')].map(box),stageColors:[...document.querySelectorAll('.objects-workflow-stages strong')].map(node=>getComputedStyle(node).color)};
  });
  await page.screenshot({path:reportPath('objects-v2-initial.png'),fullPage:true});
  assert(report.geometry.controls.y>report.geometry.title.y);
@@ -58,6 +61,15 @@ try{
  assert(Math.abs(report.geometry.metrics.y+report.geometry.metrics.height/2-report.geometry.controls.y-report.geometry.controls.height/2)<2,JSON.stringify(report.geometry));
  assert.equal(report.geometry.buttons.length,3);assert(Math.max(...report.geometry.buttons.map(b=>b.width))-Math.min(...report.geometry.buttons.map(b=>b.width))<2);
  assert.equal(report.geometry.projectInput.width,162);assert(Math.abs(report.geometry.projectInput.x-report.geometry.qty.x)<4);
+ const geometry=report.geometry;
+ assert.equal(geometry.stages.y-geometry.controls.y-geometry.controls.height,50);
+ assert.equal(geometry.tableHead.y-geometry.stages.y-geometry.stages.height,50);
+ const topSpace=geometry.summaryTitle.y-geometry.summary.y;
+ const bottomSpace=geometry.buttons[0].y-Math.max(...geometry.summaryValues.map(box=>box.y+box.height));
+ assert(Math.abs(topSpace-bottomSpace)<=4,JSON.stringify({topSpace,bottomSpace}));
+ assert(geometry.stageColors.every(color=>color===geometry.stageColors[0]),JSON.stringify(geometry.stageColors));
+ assert(!/subtotal/i.test(await core.locator('body').innerText()));
+ assert(!(await core.locator('[title]').evaluateAll(nodes=>nodes.map(node=>node.title).join(' '))).match(/subtotal/i));
  await page.screenshot({path:reportPath('objects-v2-initial.png'),fullPage:true});
  await move(core.getByRole('link',{name:/^review$/i}),'object_detail');
  await core.locator('.object-detail-title').first().waitFor();
@@ -88,7 +100,7 @@ try{
  assert.deepEqual(errors,[]);report.errors=errors;
  await page.screenshot({path:reportPath('objects-v2-generated.png'),fullPage:true});
  writeFileSync(reportPath('objects-v2.json'),JSON.stringify(report,null,2));
- console.log('Objects V2 passed: real header/footer, approval, unchanged price persistence, invalidation, proposal failure/retry, latest-price proposal, unchanged allocation axis.');
+ console.log('Objects V2.1 passed: 50px stage gaps, readable stages, balanced totals/footer, retired copy, original approval/persistence/proposal flow and input allocation axis.');
 }catch(error){
  for(const page of browser.contexts().flatMap(context=>context.pages())){
   await page.screenshot({path:reportPath('objects-v2-latest-failure.png'),fullPage:true});

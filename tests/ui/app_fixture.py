@@ -72,6 +72,8 @@ def read_objects(_client, estimate_id):
   lag_file=(STATE / 'slow-objects-read')
   if lag_file.exists():
    sleep(float(lag_file.read_text().removesuffix('s')))
+ if st.session_state.get('screen')=='objects':
+  sleep(float(scenario().get('objects_refresh_delay',0)))
  record('objects '+estimate_id)
  totals=json.loads(totals_path.read_text()) if totals_path.exists() else {}
  approvals=json.loads((STATE / 'object-approvals.json').read_text()) if (STATE / 'object-approvals.json').exists() else {}

@@ -54,6 +54,14 @@ def apply_objects_css() -> None:
         .stApp:has(.objects-estimation-header)
         .st-key-objects_live_pricing[data-stale="true"],
         .stApp:has(.objects-estimation-header)
+        .st-key-costerly_screen_header[data-stale="true"],
+        .stApp:has(.objects-estimation-header)
+        .st-key-costerly_screen_header [data-stale="true"],
+        .stApp:has(.objects-estimation-header)
+        .st-key-objects_actions[data-stale="true"],
+        .stApp:has(.objects-estimation-header)
+        .st-key-objects_actions [data-stale="true"],
+        .stApp:has(.objects-estimation-header)
         .st-key-objects_live_pricing [data-testid="stElementContainer"][data-stale="true"] {
             opacity: 1 !important;
             transition: none !important;
@@ -493,8 +501,12 @@ def apply_objects_css() -> None:
             gap: 24px !important;
         }
         .st-key-objects_header_stages {
-            /* Keep the original pricing table's document Y after moving metrics. */
-            padding-bottom: 16.1875px;
+            /* The existing header gap is 8px: 8 + 42 = 50px above stages. */
+            padding-top: 42px;
+        }
+        .st-key-objects_live_pricing .objects-pricing-card {
+            /* Two existing 16px block gaps plus 18px give 50px below stages. */
+            margin-top: 18px;
         }
         .st-key-objects_header_metrics .objects-cycle-metrics {
             flex-wrap: nowrap;
@@ -520,7 +532,7 @@ def apply_objects_css() -> None:
             gap: 10px;
             padding: 0;
             margin: 0;
-            color: rgba(42, 31, 44, 0.58);
+            color: var(--color-text-strong);
         }
         .objects-stage-marker {
             flex: 0 0 30px;
@@ -529,7 +541,7 @@ def apply_objects_css() -> None:
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid rgba(42, 31, 44, 0.18);
+            border: 1px solid rgba(42, 31, 44, 0.4);
             border-radius: 50%;
             font-family: var(--font-mono);
             font-size: 14px;
@@ -569,8 +581,7 @@ def apply_objects_css() -> None:
             text-transform: none !important;
         }
         .st-key-objects_actions {
-            /* Retain the original bottom action row after removing Parts Check. */
-            padding-top: 72px;
+            padding-top: 0;
         }
         .stApp .st-key-objects_actions [class*="st-key-objects_generate_proposal_"] button,
         .stApp .st-key-objects_actions .st-key-final_approval_approved button {

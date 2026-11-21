@@ -25,13 +25,18 @@ async function boot(value={},width=1280){
 }
 try{
  for(const name of ['fresh-active','fresh-done','fresh-shell-ready','labor-hours.json','full-cost-totals.json','full-cost-lines.json','auth-expired'])rmSync(statePath(name),{force:true});
- const fresh=await boot({fresh_calculation:true});
+ const fresh=await boot({fresh_calculation:true,objects_refresh_delay:1.2});
  await fresh.core.locator('.objects-pricing-table').waitFor();
  await fresh.frame.evaluate(()=>{
   window.calculationFrames=[];window.calculationSample=true;
   const sample=()=>{
    if(!window.calculationSample)return;
+   const opacity=selector=>{let node=document.querySelector(selector),value=1;if(!node)return null;for(;node;node=node.parentElement)value*=Number(getComputedStyle(node).opacity);return value;};
    calculationFrames.push({tables:document.querySelectorAll('.objects-pricing-table').length,
+    headerOpacity:opacity('.st-key-costerly_screen_header'),
+    metricsOpacity:opacity('.objects-cycle-metrics'),
+    stagesOpacity:opacity('.objects-workflow-stages'),
+    footerOpacity:opacity('.st-key-objects_actions button'),
     error:document.body.innerText.includes('Estimate is not available to this company.')});
    requestAnimationFrame(sample);
   };sample();
@@ -42,6 +47,7 @@ try{
  await fresh.core.getByRole('link',{name:/^(Done|Review)$/i}).waitFor();
  report.fresh=await fresh.frame.evaluate(()=>{window.calculationSample=false;return calculationFrames;});
  assert.ok(report.fresh.every(row=>row.tables<=1&&!row.error));
+ assert.ok(report.fresh.every(row=>['headerOpacity','metricsOpacity','stagesOpacity','footerOpacity'].every(key=>row[key]===null||row[key]===1)),JSON.stringify(report.fresh.filter(row=>Object.keys(row).some(key=>key.endsWith('Opacity')&&row[key]!==null&&row[key]<1)).slice(0,4)));
  assert.equal((readFileSync(journal,'utf8').match(/fresh worker started/g)||[]).length,1);
  assert.ok(!readFileSync(journal,'utf8').includes('ERROR ownership read before shell'));
  assert.equal(await fresh.core.locator('[data-testid="stException"]').count(),0);

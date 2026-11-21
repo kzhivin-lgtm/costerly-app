@@ -75,3 +75,27 @@ v8.4.29 at10:47:22UTC, wrapper/health HTTP200. Verification used fresh Login;
 owner authenticated saved-project acceptance remains pending. No new accepted
 checkpoint and no model calls. Complete receipt: owner workspace
 outputs/objects-v2-release-20261121/release.json.
+
+## Objects V2.1 owner amendments,21November2026
+
+The owner confirms V2 delivery but has not accepted its visual result. The
+requested revision is named Objects V2.1. The former absolute vertical-position
+constraint is replaced only by50px gaps above/below stages and a tighter footer.
+The unchanged title, horizontal axes, input dimensions and all calculations stay
+protected. Latest steering cancels the reported wide input activation fix: do
+not change input markup, focus/click handlers, saving, normalization or requests.
+
+| State/action | V2.1 acceptance |
+| --- | --- |
+| Initial/future/current/completed stages | Every label/number readable; preserve actual review/confirmation/generation state |
+| Existing refresh or full rerun, slow read included | Header metrics/stages and footer retain normal opacity; no new refresh mechanism |
+| Desktop header layout |50CSS px from navigation rail to stages and from stages to table headings |
+| Bottom actions | Remove72px extra spacer; retain three equal buttons and approximately equal space around totals |
+| Partial saved costs and allocation hints | No visible Subtotal word or tooltip; preserve values and internal partial/readiness state |
+| Input editing and navigation | Original mechanics and persistence unchanged, existing regression scenarios retained |
+
+The opacity regression was reproduced on V2 with an existing calculation/rerun
+fixture and1.2s local read delay. The new metrics/stages faded below opacity1;
+the existing central table already opts out of Streamlit's stale fade. Extend
+that same scoped CSS treatment to the Objects header/footer. No callback,
+request, timer, observer, cache or polling change is required.

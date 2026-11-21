@@ -66,6 +66,11 @@ def _sale_input_html(value: object, *, overridden: bool = False) -> str:
     )
 
 
+def _suggestion(value: object) -> str:
+    """Keep existing allocation suggestions without the retired UI wording."""
+    return _escape(str(value or "").replace("objects subtotal", "object prices"))
+
+
 def _quantity(value: object) -> str:
     """Format quantities as whole units in the pricing table."""
     if value is None or value == "":
@@ -143,7 +148,7 @@ def _row_html(
         f'<div class="objects-pricing-price objects-pricing-self-cost-cell">{self_cost_html}</div>'
         '<div class="objects-pricing-sale-cell">'
         f'{_sale_input_html(row.get("sale_price_unit"), overridden=bool(row.get("sale_price_overridden")))}'
-        f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
+        f'<div class="objects-pricing-suggestion">{_suggestion(row.get("suggestion"))}</div>'
         '</div>'
         f'<div class="objects-pricing-price objects-pricing-sale-total-cell">{sale_total_html}</div>'
         '<div class="objects-pricing-action-cell"'
@@ -174,7 +179,7 @@ def _project_cost_row_html(
         '</div>'
         '<div class="objects-pricing-project-cost-cell">'
         f'{_sale_input_html(row.get("sale_price_unit"), overridden=bool(row.get("sale_price_overridden")))}'
-        f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
+        f'<div class="objects-pricing-suggestion">{_suggestion(row.get("suggestion"))}</div>'
         '</div>'
         '</div>'
     )
@@ -312,8 +317,8 @@ def _smooth_progress_percent(row: dict[str, object]) -> int:
 
 def _self_cost_unit_html(row: dict[str, object]) -> str:
     if row.get("cost_partial") and row.get("self_cost_unit") not in {None, "", "review_required"}:
-        return (f'<span title="Subtotal: some costs are still awaiting calculation">'
-                f'{_money(row.get("self_cost_unit"))}<small> Subtotal</small></span>')
+        return (f'<span title="Some costs are still awaiting calculation">'
+                f'{_money(row.get("self_cost_unit"))}</span>')
     if _row_status(row) == "review_required":
         if row.get("self_cost_unit") in {None, "", "review_required"}:
             return "review"

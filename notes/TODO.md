@@ -432,6 +432,23 @@ production acceptance remains pending; no accepted UI checkpoint yet.
 No new work number/block assigned; this is the approved interface continuation
 of historical3.16.2/3.16.4, not a new costing/model release.
 
+ACTIVE, P1, USER REQUEST, Objects V2.1,21November2026. Owner confirms V2
+arrived but reports fading metrics/stages/buttons, insufficient stage contrast,
+stages too close to navigation, excess gap before bottom actions and unwanted
+Subtotal copy. Implement50CSS px above and below the stages, readable future
+stages, stable header/footer opacity during existing refreshes, remove the
+visible Subtotal word (including allocation suggestions/tooltips), and remove
+the extra72px above footer actions so totals have balanced surrounding space.
+LATEST OWNER CORRECTION: no input mechanics changes. The earlier wide input
+activation request is CANCELLED for this iteration, not an approved input fix.
+Preserve all input markup/handlers, requests/persistence, formulas, values,
+row dimensions/horizontal axes, title and existing workflow gating. Only
+approved vertical spacing and display copy may affect the central render.
+No new callback/timer/observer/polling or work-number block. Use the existing
+local full gate, exact-SHA CI and protected publisher. V2 is the rollback source;
+production acceptance remains pending. Contract amendments:
+notes/OBJECTS_V2_UI_CONTRACT_2026_11_21.md.
+
 DEFERRED, P1, USER REQUEST, same research outcome: sequential versions of the
 same Project for changed revisions, retained prior PDFs and repeat download.
 Current same-estimate idempotence does not implement the revision loop. The
