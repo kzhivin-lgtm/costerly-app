@@ -353,10 +353,11 @@ def _self_cost_unit_html(row: dict[str, object]) -> str:
     )
 
 
-def _summary_html(summary: dict[str, object]) -> str:
+def _summary_html(summary: dict[str, object], *, proposal_pdf_url: str | None = None) -> str:
     """Render project-level price summary."""
     return (
         '<div class="objects-pricing-summary">'
+        f'{_downloads_html(proposal_pdf_url)}'
         '<div aria-hidden="true"></div>'
         '<div class="objects-pricing-summary-price">'
         '<div class="objects-pricing-summary-title">Project Price</div>'
@@ -375,25 +376,19 @@ def _summary_html(summary: dict[str, object]) -> str:
 
 
 def _downloads_html(proposal_pdf_url: str | None) -> str:
-    if not proposal_pdf_url:
-        return ""
-    safe_url = html.escape(proposal_pdf_url, quote=True)
+    pdf_icon = '<span class="objects-document-icon objects-document-icon--pdf" aria-hidden="true">PDF</span>'
+    download = (
+        f'<a class="objects-document-button" href="{html.escape(proposal_pdf_url, quote=True)}" '
+        f'target="_blank" rel="noopener noreferrer" download>{pdf_icon}Download Proposal</a>'
+        if proposal_pdf_url else
+        f'<button class="objects-document-button" type="button" disabled>{pdf_icon}Download Proposal</button>'
+    )
     return (
         '<div class="objects-pricing-downloads">'
-        '<div class="objects-pricing-download-block objects-pricing-download-block--proposal">'
-        '<div class="objects-pricing-download-title">Client Proposal</div>'
-        f'<a class="objects-pricing-download-button" href="{safe_url}" target="_blank" '
-        'rel="noopener noreferrer" download>'
-        '<span class="objects-pricing-download-pill">Download PDF</span>'
-        '</a>'
-        '</div>'
-        '<div class="objects-pricing-download-block objects-pricing-download-block--summary">'
-        '<div class="objects-pricing-download-title">Project Summary</div>'
-        '<span class="objects-pricing-download-button objects-pricing-download-button--disabled" '
-        'aria-disabled="true">'
-        '<span class="objects-pricing-download-pill">Download XLS</span>'
-        '</span>'
-        '</div>'
+        '<button class="objects-document-button" type="button" disabled>'
+        '<span class="objects-document-icon objects-document-icon--summary" aria-hidden="true">≡</span>'
+        'Project Summary</button>'
+        f'{download}'
         '</div>'
     )
 
@@ -465,8 +460,7 @@ def _pricing_table_html(
         '<div class="objects-pricing-table">'
         f'{object_rows}'
         f'{project_cost_rows}'
-        f'{_downloads_html(proposal_pdf_url)}'
-        f'{_summary_html(summary)}'
+        f'{_summary_html(summary, proposal_pdf_url=proposal_pdf_url)}'
         '</div>'
         '</div>'
     )

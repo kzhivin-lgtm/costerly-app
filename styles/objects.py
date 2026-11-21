@@ -258,7 +258,16 @@ def apply_objects_css() -> None:
         }
 
         .objects-pricing-row--project-cost .objects-pricing-price-input {
-            width: 162px;
+            width: 122px;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .objects-pricing-row--project-cost {
+            /* Prevent native click-to-caret from choosing the nearby editing
+               host when the click is outside its visible border. */
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .objects-pricing-row--project-cost .objects-pricing-suggestion {
@@ -479,8 +488,8 @@ def apply_objects_css() -> None:
                 min-width: 900px;
             }
         }
-        /* Objects V2: only the header rail, stage strip and footer actions.
-           Pricing rows, fields, project allocations and totals above are unchanged. */
+        /* Objects V2 presentation. V2.3 adds local metrics folding and document
+           controls; the approved service-field CSS scope is defined above. */
         .st-key-costerly_screen_header:has(.objects-estimation-header) {
             gap: 8px !important;
         }
@@ -518,8 +527,8 @@ def apply_objects_css() -> None:
         }
         .objects-workflow-stages {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            align-items: center;
+            grid-template-columns: max-content minmax(16px, 1fr) max-content minmax(16px, 1fr) max-content;
+            align-items: start;
             min-height: 51px;
             padding: 0 !important;
             margin: 0 !important;
@@ -527,8 +536,11 @@ def apply_objects_css() -> None:
             gap: 24px;
         }
         .objects-workflow-stages li {
+            display: contents;
+        }
+        .objects-stage-group {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 10px;
             padding: 0;
             margin: 0;
@@ -548,13 +560,16 @@ def apply_objects_css() -> None:
         }
         .objects-workflow-stages li:not(:last-child)::after {
             content: "";
+            display: block;
             height: 1px;
             min-width: 16px;
-            flex: 1;
+            width: 100%;
+            margin-top: 15px;
             background: rgba(42, 31, 44, 0.18);
         }
         .objects-workflow-stages strong {
             display: block;
+            padding-top: 5px;
             font-size: 15px;
             font-weight: 600;
             line-height: 1.3;
@@ -583,6 +598,99 @@ def apply_objects_css() -> None:
         .st-key-objects_actions {
             padding-top: 0;
         }
+
+        .objects-technical-metrics {
+            position: relative;
+            min-height: 30px;
+            display: flex;
+            align-items: center;
+            width: max-content;
+        }
+        .stApp .objects-metrics-toggle {
+            position: absolute;
+            left: -22px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            min-width: 20px;
+            height: 30px;
+            min-height: 30px;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            color: rgba(42, 31, 44, 0.7);
+            box-shadow: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .objects-metrics-chevron {
+            width: 7px;
+            height: 7px;
+            border-right: 1.5px solid currentColor;
+            border-bottom: 1.5px solid currentColor;
+            transform: rotate(225deg);
+        }
+        .st-key-objects_header_metrics[data-metrics-collapsed="true"] .objects-cycle-metrics {
+            display: none;
+        }
+        .st-key-objects_header_metrics[data-metrics-collapsed="true"] .objects-metrics-chevron {
+            transform: rotate(45deg);
+        }
+
+        .objects-pricing-summary .objects-pricing-downloads {
+            position: absolute;
+            top: 46px;
+            left: 0;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 292px;
+            min-width: 0;
+            padding: 0;
+            border: 0;
+        }
+        .objects-pricing-summary .objects-document-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            flex: none;
+            width: 126px;
+            height: 34px;
+            min-height: 34px;
+            padding: 8px 9px;
+            border: 1px solid #d4ced8;
+            border-radius: 7px;
+            background: #f7f5f8;
+            color: #6f6578;
+            opacity: 1;
+            font-family: var(--font-sans);
+            font-size: 11.5px;
+            line-height: 1.3;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        .objects-pricing-summary .objects-document-button:last-child { width: 158px; }
+        .objects-document-icon {
+            position: relative;
+            flex: none;
+            width: 14px;
+            height: 17px;
+            border: 1px solid currentColor;
+            border-radius: 2px;
+            font: 12px/15px var(--font-mono);
+            text-align: center;
+        }
+        .objects-document-icon--pdf {
+            width: 18px;
+            height: 21px;
+            padding-top: 8px;
+            font-size: 6px;
+            line-height: 11px;
+        }
         .stApp .st-key-objects_actions [class*="st-key-objects_generate_proposal_"] button,
         .stApp .st-key-objects_actions .st-key-final_approval_approved button {
             text-transform: uppercase !important;
@@ -590,7 +698,9 @@ def apply_objects_css() -> None:
         @media (max-width: 760px) {
             .st-key-objects_header_toolbar { flex-wrap: wrap !important; }
             .st-key-objects_header_metrics .objects-cycle-metrics { flex-wrap: wrap; }
-            .objects-workflow-stages { gap: 8px; }
+            .objects-workflow-stages { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+            .objects-stage-group { min-width: 0; }
+            .objects-pricing-summary .objects-pricing-downloads { width: 158px; flex-direction: column; gap: 6px; }
             .objects-workflow-stages strong { font-size: 12px; }
             .objects-workflow-stages small { font-size: 11px; }
             .objects-workflow-stages li:not(:last-child)::after { display: none; }

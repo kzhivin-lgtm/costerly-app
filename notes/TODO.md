@@ -481,6 +481,31 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+ACTIVE IMPLEMENTATION, P1, OWNER-APPROVED DESIGN, Objects V2.3,21November2026.
+Owner accepted the revised mockup and authorized presentation changes only,
+with the sole interaction correction of input-only Delivery/Installation hit
+areas. CSS-only selection scoping proved sufficient on both desktops, keeping
+the input-handler and V2.2 navigation/protection sources unchanged. Reference: owner's
+13:21:44 screenshot. Preserve the title, table/rows and exact Project Price/VAT/
+Project Total positions. Stage labels: Review Objects / Confirm Set Prices /
+Generate Proposal; retain only the review count below stage1. Equal connector
+lengths and gaps, last stage aligned to the Estimating button's right edge.
+Add a local up/down chevron before the inline metrics without moving their
+original position. Owner correction21November2026: technical owner-only metrics,
+no visible Dashboard label, collapsed state contains only the fixed arrow.
+Menu-button, arrow and metrics vertical centers share one horizontal axis.
+Project Summary/Download Proposal button centers share the totals-heading axis;
+show a compact outlined icon-button version, leaving totals fixed.
+Show proposed narrower Delivery/Installation fields (122px versus162px)
+and input-only focus area; value/persistence mechanics remain protected.
+Add Project Summary and Download Proposal
+with PDF icon to the left of totals under Installation, without moving totals.
+Both appear unavailable in the shown Estimating state. This is a control-design
+request, not implicit approval to implement deferred3.16.5 procurement/XLS export.
+Prototype: thread visualization objects-estimation-refinement.html; full desktop
+capture and geometry kept beside it. Full local/remote gate and served-version
+verification required before V2.3 publication; no new accepted checkpoint.
+
 COMPLETED RESEARCH, P1, USER REQUEST, 2026-11-20. Investigate the Objects
 Estimation page layout, workflow, labels, completion feedback, proposal
 downloads and project revisions, starting from the owner's screenshot.

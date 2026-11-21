@@ -18,3 +18,11 @@ runtime commit to main or bypass the remote rule. Existing Core and wrapper
 build/version checks still apply after deployment. Report test evidence and
 the actual remote enforcement state separately; a local hook or CI file alone
 does not establish an obligatory remote barrier.
+
+Standing owner rule,21November2026: every release preserves all previously
+accepted behavior and checkpoints, not only the feature being added. New
+requirements are additive unless the owner explicitly approves a before/after
+change. Identify protected behavior and its regression evidence before editing;
+do not weaken or omit an existing check to publish a candidate. Verify the exact
+published Core/wrapper versions after rollout. The owner does not need to repeat
+this requirement for each deployment.

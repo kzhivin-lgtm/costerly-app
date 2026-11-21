@@ -40,6 +40,14 @@ navigation. Cancelled confirmation retains edits; active uploads/calculations
 block reload. The existing telemetry records protocol ACK and cover start/end,
 and click/ready records explicitly say whether the route was covered.
 
+Objects V2.3 adds a V2.2 geometry witness at1440/2536 desktop widths. It verifies
+fixed title/table/object rows/totals/footer, service-field boundary clicks at
+1/4/8px on all four sides, inside-field editing/persistence, equal stage lines,
+document-heading axes and the existing PDF URL. Local metrics folding must not
+rerun/read/write, survives markup replacement and full navigation, and remains
+restricted to the already-loaded platform-admin visibility. V2.2 compatibility,
+authentication and transition suites stay obligatory and unchanged.
+
 ## Run
 
 From the repository root, with uv and Node 24:

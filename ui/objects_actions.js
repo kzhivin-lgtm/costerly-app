@@ -22,7 +22,6 @@
                 third.removeAttribute("aria-current");
                 if (allReviewed) second.setAttribute("aria-current", "step");
                 second.querySelector('.objects-stage-marker').textContent = "2";
-                second.querySelector('small').textContent = "Keep or edit suggested prices";
                 third.dataset.state = "future";
                 third.querySelector('.objects-stage-marker').textContent = "3";
             }
@@ -31,5 +30,31 @@
     // Observe existing input events only to update the new header/footer.
     // Original input handlers, requests, normalization and rows stay untouched.
     doc.addEventListener("input", invalidate, true);
-    host[key] = () => doc.removeEventListener("input", invalidate, true);
+    const metricsHost = doc.querySelector('.st-key-objects_header_metrics');
+    function applyMetricsView() {
+        if (!metricsHost) return;
+        const collapsed = host.__costerlyObjectsMetricsCollapsed === true;
+        metricsHost.dataset.metricsCollapsed = String(collapsed);
+        const button = metricsHost.querySelector('.objects-metrics-toggle');
+        if (button) {
+            button.setAttribute('aria-expanded', String(!collapsed));
+            button.setAttribute('aria-label', collapsed ? 'Expand technical metrics' : 'Collapse technical metrics');
+        }
+    }
+    function toggleMetrics(event) {
+        if (!event.target.closest?.('.objects-metrics-toggle') || !metricsHost?.contains(event.target)) return;
+        host.__costerlyObjectsMetricsCollapsed = host.__costerlyObjectsMetricsCollapsed !== true;
+        applyMetricsView();
+    }
+    // Only reconcile the existing metrics subtree when its 1.5s progress
+    // fragment replaces markup. No timer, request, persistence or Python rerun.
+    const metricsObserver = metricsHost ? new host.MutationObserver(applyMetricsView) : null;
+    metricsObserver?.observe(metricsHost, {childList: true, subtree: true});
+    doc.addEventListener('click', toggleMetrics);
+    applyMetricsView();
+    host[key] = () => {
+        doc.removeEventListener("input", invalidate, true);
+        doc.removeEventListener('click', toggleMetrics);
+        metricsObserver?.disconnect();
+    };
 })();

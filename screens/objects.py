@@ -752,7 +752,7 @@ def _render_objects_actions(
     with st.container(key="objects_actions"):
         col_back, col_set, col_generate = st.columns(3, gap="small")
     col_back.button(
-        "Back to file review",
+        "Back to File Review",
         type="secondary",
         use_container_width=True,
         on_click=_back_to_file_review_with_ready_cache,
@@ -760,7 +760,7 @@ def _render_objects_actions(
     )
 
     col_set.button(
-        "Set prices", key="objects_set_prices", type="secondary",
+        "Set Prices", key="objects_set_prices", type="secondary",
         use_container_width=True, disabled=proposal_ready or not ready,
         on_click=_set_objects_prices, kwargs={"estimate_id": str(estimate_id or "")},
     )
@@ -948,7 +948,10 @@ def render_objects_screen(
     # Emit the target screen before even queueing the worker. Streamlit marks
     # prior elements stale while a rerun is in flight, so submitting work first
     # could leave File Review visibly beneath a new Objects heading.
-    header_slots = objects_workflow.render_objects_header("Objects Estimation", render_header_controls)
+    header_slots = objects_workflow.render_objects_header(
+        "Objects Estimation", render_header_controls,
+        show_metrics=st.session_state.get("_platform_access") is not None,
+    )
     # The File Review callback already populated visible seed rows. Queue
     # persistence only after the native destination header exists, so a click
     # never waits for worker setup before Objects starts replacing File Review.

@@ -18,6 +18,15 @@ and remote enforcement state are tracked in TODO and `tests/ui/README.md`.
 
 ## Protected workflow behavior and release checks
 
+Standing owner rule,21November2026: every deployment preserves previously
+accepted product behavior and verified progress. New work does not supersede
+earlier accepted requirements. Identify the affected checkpoints and regression
+scenarios before editing; retain existing tests and verify both the new outcome
+and protected behavior on the exact candidate. Only an explicit owner-approved
+before/after decision can change a protected requirement. This applies to every
+release without another reminder. Publication still requires the full mandatory
+gate, actual remote enforcement and served Core/wrapper verification below.
+
 - Saved File Review → Continue opens the original completed estimate and does
   not launch a new Parts Check or paid model call.
 - Object presentation uses Detection's saved crop for the same company, run
@@ -81,6 +90,21 @@ the same obligatory full release gate. Record compatibility, recovery and cover
 start/end using the existing Core/wrapper channel; persist covered on click and
 ready events. Historical wrappers cannot record new event types before update.
 Each published UI release has a distinct public number and stamped build.
+
+## Objects V2.3 presentation scope, approved 21 November 2026
+
+Approved desktop mockup changes only stage copy/equal connectors, a local
+owner-only metrics chevron and document controls beside fixed totals. Keep
+title/table/object rows/ordinary inputs/totals/footer coordinates from V2.2.
+Delivery/Installation fields become122px wide with focus only inside their
+border; CSS selection scoping may correct native click-to-caret outside them.
+Do not change any price normalization, calculation, persistence, confirmation,
+generation, authentication or V2.2 compatibility/transition handler.
+Project Summary remains its existing disabled export placeholder; Download
+Proposal exposes the existing PDF URL, with no new exporter or request.
+Metrics collapse stays local across existing progress markup updates, with no
+timer, Python rerun, network request or persistent data write. Its one DOM
+observer is restricted to the metrics subtree and disconnected on cleanup.
 
 ## V3.1 full object cost, approved 20 November 2026
 

@@ -31,21 +31,22 @@ def stages_html(data: dict, *, prices_set: bool, proposal_ready: bool, confirmat
     reviewed = sum(bool(row.get("reviewed")) for row in rows)
     all_reviewed = bool(rows) and reviewed == len(rows)
     current = 4 if proposal_ready else 1 if not all_reviewed else 3 if prices_set else 2
-    labels = ("Review objects", "Confirm prices", "Generate proposal")
-    details = (f"{reviewed} of {len(rows)} reviewed" if rows else "", "Prices set" if prices_set else "Keep or edit suggested prices",
-               "Proposal ready" if proposal_ready else "Create a client proposal PDF")
+    labels = ("Review Objects", "Confirm Set Prices", "Generate Proposal")
+    details = (f"{reviewed} of {len(rows)} reviewed" if rows else "", "", "")
     steps = []
     for number, (label, detail) in enumerate(zip(labels, details), 1):
         state = "complete" if number < current else "current" if number == current else "future"
         marker = "✓" if number < current else str(number)
         aria = ' aria-current="step"' if number == current else ""
         steps.append(f'<li data-stage="{number}" data-state="{state}"{aria}>'
-                     f'<span class="objects-stage-marker">{marker}</span><div><strong>{label}</strong>'
-                     f'<small>{html.escape(detail)}</small></div></li>')
+                     f'<div class="objects-stage-group"><span class="objects-stage-marker">{marker}</span>'
+                     f'<div><strong>{label}</strong>'
+                     + (f'<small>{html.escape(detail)}</small>' if detail else "")
+                     + '</div></div></li>')
     return f'<ol class="objects-workflow-stages" data-confirmation-id="{int(confirmation_id)}" aria-label="Proposal preparation">' + "".join(steps) + '</ol>'
 
 
-def render_objects_header(title: str, render_header_controls: Callable[[], None] | None) -> ObjectsHeaderSlots:
+def render_objects_header(title: str, render_header_controls: Callable[[], None] | None, *, show_metrics: bool = True) -> ObjectsHeaderSlots:
     # The exact existing title markup and primary container remain unchanged.
     with st.container(key="costerly_screen_header"):
         with st.container(key="costerly_screen_header_primary"):
@@ -54,8 +55,10 @@ def render_objects_header(title: str, render_header_controls: Callable[[], None]
             if render_header_controls is not None:
                 with st.container(key="objects_header_controls", width="content"):
                     render_header_controls()
-            with st.container(key="objects_header_metrics", width="content"):
-                metrics = st.empty()
+            metrics = None
+            if show_metrics:
+                with st.container(key="objects_header_metrics", width="content"):
+                    metrics = st.empty()
         with st.container(key="objects_header_stages"):
             stages = st.empty()
             stages.html(stages_html({}, prices_set=False, proposal_ready=False))
@@ -64,7 +67,13 @@ def render_objects_header(title: str, render_header_controls: Callable[[], None]
 
 def update_header(slots: ObjectsHeaderSlots, *, metrics_html: str, data: dict, estimate_id: str | None) -> None:
     proposal_ready = bool(st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id)))
-    slots.metrics.html(metrics_html, width="content")
+    if slots.metrics is not None:
+        slots.metrics.html(
+            '<div class="objects-technical-metrics">'
+            '<button type="button" class="objects-metrics-toggle" aria-expanded="true" '
+            'aria-label="Collapse technical metrics"><span class="objects-metrics-chevron" aria-hidden="true"></span></button>'
+            + metrics_html + '</div>' if metrics_html else "", width="content",
+        )
     slots.stages.html(stages_html(data, prices_set=prices_are_set(estimate_id, data), proposal_ready=proposal_ready,
                                  confirmation_id=st.session_state.get("objects_price_confirmation_id", 0)))
 
