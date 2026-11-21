@@ -1,14 +1,14 @@
 # Costerly
 
-Current UI release: **Objects V2.3**,21November2026, runtime `3a192b29`.
-Approved stage labels/equal lines, local owner-only metrics chevron and document
-controls beside fixed totals. Delivery/Installation focus only inside their
-122px borders, using CSS; existing price handlers and business logic are retained.
+Current UI release: **Objects V2.4**,21November2026, runtime `a8b08ba5`.
+Approved top-right menu with metrics below, body raised26px, Set Prices stage
+and stacked half-width document controls with Excel/PDF icons. Existing fields,
+price handlers, costing and business logic are retained.
 V2.2 compatibility/transition protection is unchanged. Full local and exact-SHA
 GitHub gates passed531 checks and nine browser suites. Served Core/wrapper match;
 enabled protection and durable compatibility logging verified on production Login.
-Owner authenticated V2.3 acceptance pending; no new accepted checkpoint.
-[Contract](notes/UI_GUIDELINES.md#objects-v23-presentation-scope-approved-21-november-2026),
+Owner authenticated V2.4 acceptance pending; no new accepted checkpoint.
+[Contract](notes/UI_GUIDELINES.md),
 [evidence and backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
 Accepted Estimation checkpoint: **V3.2**,21November2026, runtime `07ac05d2`.

@@ -1,5 +1,23 @@
 # Done Log
 
+Objects V2.4 approved presentation deployed21November2026, OWNER AUTHENTICATED
+ACCEPTANCE PENDING. Runtime `a8b08ba5afea684876f14277f9e2476c42f80410`, build
+`objects-v2.4-b20261121142957-layout-estimation-v3.2-detection-v8.4.29`.
+Native menu top-right, its center4px below the title, metrics8px below the menu;
+body rises26px, stage2 Set Prices, stacked half-Back-width Excel/PDF controls.
+Only scoped CSS/copy/icon changes. Seven protected files and nine functions
+unchanged from V2.3; controller/auth/input/business mechanics retained. No new
+observer/timer/request/rerun. Collapse retains arrow position through CSS.
+Clean exact-SHA local531/nine271.398s and CI531/nine262.055s pass (288s job),
+run44914438240/job136876907436/artifact14711790131.142 normal transitions,
+zero uncovered frames;48 outside-field probes, both desktop geometries and
+original persistence/confirmation/generation failure/retry/PDF scenarios pass.
+Publisher verified active no-bypass27499066. Core7964787563 success14:38:40UTC;
+real served Core/wrapper/meta/version match14:39:55UTC, HTTP200, unchanged
+protection revision7c34ff18617435dd enabled and compatible/protocol1 durable.
+Public Login verified, owner project acceptance pending. No paid calls or new
+checkpoint. Evidence .ui-artifacts/objects-v24-release/.
+
 Objects V2.3 approved presentation deployed21November2026, OWNER AUTHENTICATED
 ACCEPTANCE PENDING. Runtime `3a192b2995293fceda2553b3e2659cecadf70371`, build
 `objects-v2.3-b20261121132650-layout-estimation-v3.2-detection-v8.4.29`.

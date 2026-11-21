@@ -2,7 +2,7 @@
 
 ## Workflow transitions
 
-Current production UI is Objects V2.3 (`3a192b29`), carrying the V2.2 protection
+Current production UI is Objects V2.4 (`a8b08ba5`), carrying the V2.2 protection
 below unchanged. Public Login confirms revision7c34ff18617435dd/enabled=true
 and a durable compatible/protocol1 event. Owner authenticated acceptance remains
 pending; the V2.3 presentation outcome is tracked in its existing section below.
@@ -491,10 +491,10 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-ACTIVE IMPLEMENTATION, P1, OWNER-APPROVED DESIGN AND PUBLICATION, Objects V2.4,21November2026.
+DEPLOYED, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING, Objects V2.4,21November2026.
 Owner approved the final desktop sketch including both spacing corrections
 and explicitly requested deployment under a new version. Move the
-navigation rail to the top right with its vertical center on the unchanged
+navigation rail to the top right with its center4px below the unchanged
 Objects Estimation title axis. Place the existing technical chevron/metrics
 directly below the rail; collapse still leaves only the fixed arrow. Reclaim
 the former toolbar row so stages, table, summary and actions move upward
@@ -504,7 +504,7 @@ under Installation, each exactly half the Back to File Review button width;
 Project Summary uses an Excel icon and Download Proposal keeps PDF. Retain
 three bottom actions. Owner revision21November2026: lower the entire body below
 the fixed title/menu/metrics by24px from the first V2.4 sketch to relieve the
-crowded header. Stage top margin is42px, resulting in a26px rise versus V2.3.
+crowded header. Sketch stage top margin is42px, resulting in a26px rise versus V2.3.
 Latest owner correction: lower the menu/technical-metrics pair together by4px,
 retaining their8px gap and keeping the title and entire body fixed. Menu top is
 15px within the header, its center now4px below the title center by design.
@@ -517,6 +517,28 @@ blocks move up exactly26px versus V2.3 with existing x/width retained, document 
 measure154.66px versus309.33px Back, equal stage lines and stable collapsed
 arrow pass. Full desktop PNG2636x1404 and geometry are saved beside the sketch.
 This is mockup verification only, not a production/interaction acceptance claim.
+
+[verified] Published runtime `a8b08ba5afea684876f14277f9e2476c42f80410`, build
+`objects-v2.4-b20261121142957-layout-estimation-v3.2-detection-v8.4.29`.
+Production changes are CSS plus stage copy and the Excel icon markup. Existing
+render/header slots and all input/business handlers are unchanged. Seven
+protected source files are byte-identical and nine functions AST-identical to
+V2.3, including controller/auth persistence, pricing rows and confirmation basis.
+Metrics collapse reserves its width with visibility:hidden so its arrow does
+not jump under the right-aligned menu; no new callback/observer/timer/request.
+Focused42 checks and full clean exact-SHA local531/nine271.398s pass. Exact-SHA
+GitHub531/nine262.055s pass,288s job including setup, run44914438240,
+job136876907436, artifact14711790131.142 normal transitions/zero uncovered
+frames,48 outside-field probes and original saved-price/confirmation/generation
+failure/retry/PDF URL scenarios pass. Geometry retains all original x/width/
+height and applies only the approved26px body lift, title/menu+4px and8px rail/
+metrics gap, stacked half-width documents. No paid calls or new export feature.
+Protected publisher reverified active no-bypass27499066. Core7964787563
+succeeded14:38:40UTC. Actual Core/wrapper/meta/version endpoint match V2.4 at
+14:39:55UTC, HTTP200; unchanged protection revision7c34ff18617435dd is enabled
+and compatible/protocol1 is durable under the new build. This anonymous Login
+probe is not owner authenticated acceptance. Evidence .ui-artifacts/objects-v24-release/.
+No new accepted checkpoint; V3.2 costing and V1.3.3 behavior remain protected.
 
 DEPLOYED, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING, Objects V2.3,21November2026.
 Owner accepted the revised mockup and authorized presentation changes only,
