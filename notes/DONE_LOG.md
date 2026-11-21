@@ -1,5 +1,16 @@
 # Done Log
 
+Objects V2.1 deployment verified21November2026, owner visual acceptance PENDING.
+Runtimeeea8a576 implements50px stage gaps, readable future steps, stable header/
+footer opacity, tighter totals/actions and no visible Subtotal on Objects. Input
+mechanics/markup functions, screen callbacks, Estimation/finalization unchanged.
+Owner cancelled the reported input-activation fix before any input patch.
+Local531/eight165.327s, exact-SHA CI531/eight163.382s, active no-bypass27499066.
+Slow-read rerun witness:538 frames with opacity1. Both desktop geometries pass.
+Railway7962557286 success11:15:29UTC; actual Core/wrapper/meta/version endpoint
+match stamped V2.1, HTTP200, at11:16:28UTC. No new model calls or checkpoint.
+Contract: notes/OBJECTS_V2_UI_CONTRACT_2026_11_21.md; evidence .ui-artifacts/objects-v21-release/.
+
 Objects V2 deployment verified21November2026, owner UI acceptance PENDING.
 Runtime4825750f over accepted V3.2 changes only Objects header/footer. Original
 central renderer/input JS/estimation/finalization sources and pricing CSS are

@@ -99,3 +99,17 @@ fixture and1.2s local read delay. The new metrics/stages faded below opacity1;
 the existing central table already opts out of Streamlit's stale fade. Extend
 that same scoped CSS treatment to the Objects header/footer. No callback,
 request, timer, observer, cache or polling change is required.
+
+V2.1 deployment verified: runtimeeea8a576, local531/eight165.327s and exact-SHA
+GitHub531/eight163.382s, trusted check
+https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44897861353/job/136827258918
+Protected publisher verified active no-bypass ruleset27499066. Railway deployment
+7962557286 succeeded11:15:29UTC, Cloudflare Pages6c02350a-2df6-4e71-bb9d-24b88a1bbfe9.
+The actual Core ready/build event, wrapper script, meta and version.json matched
+objects-v2.1-b20261121110918-estimation-v3.2-detection-v8.4.29 at11:16:28UTC, HTTP200.
+Full-gate slow-read witness538 frames, min opacity1 for header/metrics/stages/
+footer. Both50px gaps and balanced footer passed on1440px and2536px desktops.
+Original input JS, screen callbacks, estimation/finalization and input markup
+function AST remain unchanged. Live witness uses Login; owner saved-project
+visual acceptance remains pending. No new accepted checkpoint or model calls.
+Receipt/screenshot: .ui-artifacts/objects-v21-release/.

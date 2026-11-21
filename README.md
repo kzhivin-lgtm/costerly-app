@@ -1,7 +1,8 @@
 # Costerly
 
-Current UI release: **Objects V2**,21November2026, runtime `4825750f`.
-Header/footer only; protected central pricing layout and handlers unchanged.
+Current UI release: **Objects V2.1**,21November2026, runtime `eea8a576`.
+Stage spacing/contrast, stable refresh opacity, tighter footer and Objects copy.
+Input mechanics, values and calculations unchanged.
 Full local/CI gates and matching live builds verified; owner UI acceptance pending.
 [Scope and evidence](notes/OBJECTS_V2_UI_CONTRACT_2026_11_21.md).
 

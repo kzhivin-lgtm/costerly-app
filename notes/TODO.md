@@ -398,8 +398,8 @@ Report: /Users/qb/Documents/ChatGPT/Costerly/outputs/
 objects-estimation-ux-20261120/REPORT_RU.md. No new work number or runtime
 version assigned; no application, production or model-call changes.
 
-ACTIVE OWNER ACCEPTANCE, DEPLOYED, P1, USER REQUEST,21November2026,
-release name Objects V2. Final desktop drawing accepted; this explicit deploy
+COMPLETED DEPLOYMENT HISTORY, P1, USER REQUEST,21November2026,
+release name Objects V2. Visual acceptance was not granted; V2.1 follows below. Final desktop drawing accepted; this explicit deploy
 approval supersedes the earlier static-only/no-deploy experiment. The rejected
 first concept is not an implementation checkpoint. Keep the exact existing
 Objects Estimation title. Native navigation moves below it; visible Total lap /
@@ -432,7 +432,7 @@ production acceptance remains pending; no accepted UI checkpoint yet.
 No new work number/block assigned; this is the approved interface continuation
 of historical3.16.2/3.16.4, not a new costing/model release.
 
-ACTIVE, P1, USER REQUEST, Objects V2.1,21November2026. Owner confirms V2
+ACTIVE OWNER ACCEPTANCE, DEPLOYED, P1, USER REQUEST, Objects V2.1,21November2026. Owner confirms V2
 arrived but reports fading metrics/stages/buttons, insufficient stage contrast,
 stages too close to navigation, excess gap before bottom actions and unwanted
 Subtotal copy. Implement50CSS px above and below the stages, readable future
@@ -444,9 +444,15 @@ activation request is CANCELLED for this iteration, not an approved input fix.
 Preserve all input markup/handlers, requests/persistence, formulas, values,
 row dimensions/horizontal axes, title and existing workflow gating. Only
 approved vertical spacing and display copy may affect the central render.
-No new callback/timer/observer/polling or work-number block. Use the existing
-local full gate, exact-SHA CI and protected publisher. V2 is the rollback source;
-production acceptance remains pending. Contract amendments:
+No new callback/timer/observer/polling or work-number block. DEPLOYED eea8a576
+through the existing protected publisher, active ruleset27499066/no bypass.
+Local531/eight suites165.327s, exact-SHA CI531/eight163.382s. Slow-read test
+measured opacity1 in all538 frames. Geometry50/50px and balanced totals/footer
+passed at1440 and2536px. Input handlers, markup functions, screen callbacks,
+estimation and finalization unchanged. Railway7962557286 success11:15:29UTC;
+actual Core/wrapper/meta/version.json match V2.1 at11:16:28UTC, HTTP200.
+V2 is the rollback source; owner authenticated visual acceptance pending, no
+new accepted checkpoint. Evidence: .ui-artifacts/objects-v21-release/. Contract amendments:
 notes/OBJECTS_V2_UI_CONTRACT_2026_11_21.md.
 
 DEFERRED, P1, USER REQUEST, same research outcome: sequential versions of the
