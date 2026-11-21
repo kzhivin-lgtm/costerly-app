@@ -408,3 +408,13 @@ are rewritten. Modern behavior restoration still requires removing the legacy
 manifest and running the full modern suite. Fresh Ada and authenticated UI
 acceptance remain pending, and failed fresh controls are not erased. Immediate
 code rollback reference is the published V1.2.23 `447b4892`.
+
+Repair witness21November2026: runtime8df3721c, local531/eight214.889s,
+GitHub531/eight220.613s,142 transition cases and zero pending-frame exposure.
+https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44901597084/job/136838471140
+Original controller rejected by the restored-document regression. Active remote
+no-bypass ruleset27499066 verified at publication. Production anonymous Login
+reproduced disabled/lost correlation before rollout and retained enabled/same
+correlation through two document navigations afterward, with actual new controller
+revision4c6d0f78dce7133d. Live builds match. Authenticated owner acceptance remains
+pending; do not infer it from this witness or mark a new accepted checkpoint.

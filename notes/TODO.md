@@ -2,28 +2,36 @@
 
 ## Workflow transitions
 
-ACTIVE DIAGNOSIS, P0, USER REPORT,21November2026. Restore the accepted
-continuous transition shield across ALL supported pages and Profile/tab paths.
-Owner supplied12:22:50 and13:24:01 videos showing unmasked intermediate markup,
-including plain unstyled old Object Detail after Approve. Admin-entry latency
-remains explicitly deferred; do not reopen that optimization. Input mechanics,
-values, costing/persistence and the accepted V2.1 layout stay protected.
-The existing gate ran, but navigation.mjs only requires some covered frames and
-no simultaneous roots; a single partially rendered/unstyled screen can pass.
-Local reproduction confirmed true iframe document navigation changes referrer
-from wrapper to Core and leaves workflow controller present but enabled=false.
-Fresh anonymous production Login does have the controller enabled, so this is
-not a universal missing script. Exact link to the owner's browser state still
-needs production witness; current native Chrome is inaccessible to CUA.
-Context loss reproduced with and without the original trace query. The latter
-also loses wrapper correlation. Minimal candidate retains verified parent
-origin/trace in Core sessionStorage, derives actual ancestor origin from the
-browser, and retains the existing origin/source/trace/protocol ACK checks.
-No input handler or auth/pricing state changed. Strengthen continuous-cover tests,
-including restored/direct iframe documents, slow reads, Approve, Profile and
-existing error/recovery paths. Do not infer live acceptance from the green gate.
-Evidence: .ui-artifacts/transition-diagnosis/ and supplied local videos.
-No new work number/block or version assigned by this diagnosis.
+ACTIVE OWNER ACCEPTANCE, P0, DEPLOYED, USER REPORT,21November2026. Restore
+continuous shielding across all supported pages/Profile; Admin-entry latency
+optimization remains deferred. Owner videos12:22:50/13:24:01 show unmasked
+intermediate markup, including old Object Detail losing styles after Approve.
+Confirmed root: full Core-document navigation changes referrer to Core and can
+remove obs_trace. The old controller then rejects the actual wrapper ACK and
+stays disabled. Ordinary server-state-reset tests retain the original document
+and did not cover this lifecycle. Old gate also required only some covered frames
+and no mixed roots, rather than continuous protection until correlated ready.
+Repair8df3721c retains verified per-tab UI origin/trace, uses actual browser
+ancestor origin, preserves existing source/origin/trace/protocol ACK checks and
+records the actual ready emit time. Input handlers, pricing/auth state, costing,
+V2.1 layout and Admin latency unchanged. Negative control with the original
+controller is rejected after a rendered Upload restores its document; no network
+or setup failure counted as the negative result. A first full candidatec09b4b4f
+was blocked by a new-test navigation race;8df3721c explicitly awaits the new URL
+and document, with all coverage assertions retained.
+Local full gate531/eight214.889s; exact-SHA CI531/eight220.613s. Navigation matrix
+142 transitions (fresh/legacy/mobile/restored document), Profile tabs and all
+header/footer/sign-out routes, delayed reads, zero uncovered frames before ready.
+Publisher verified active no-bypass ruleset27499066 and promoted only8df3721c.
+Railway7963076741 success12:06UTC, Pagesf54e43c1-bd48-40a4-8510-1a4344b64ca4;
+actual Core/wrapper/meta/version endpoint match stamped navigation-shield build,
+HTTP200 at12:08:29UTC. Anonymous production baseline before rollout reproduced
+loss (revisiona1123c3f88dd4374, enabled=false, trace lost). After rollout both real
+document reloads retain enabled=true and the original wrapper trace (new revision
+4c6d0f78dce7133d). This verifies production bootstrap, not the owner's authenticated
+project. Owner live acceptance pending; no new accepted checkpoint. Existing
+broken tabs may need one complete outer-tab reload to establish the new context.
+Evidence: .ui-artifacts/navigation-shield-release/. No new work block/number.
 
 PUBLISHED, OWNER LIVE TEST FAILED, ACTIVE DIAGNOSIS, P0, V2.9, 2026-11-19. Owner explicitly
 requires automatic page refresh with login retained, rejects periodic build

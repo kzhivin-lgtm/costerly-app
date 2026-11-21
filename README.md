@@ -1,8 +1,11 @@
 # Costerly
 
-Current UI release: **Objects V2.1**,21November2026, runtime `eea8a576`.
+Current UI release: **Objects V2.1**,21November2026, runtime `8df3721c`.
 Stage spacing/contrast, stable refresh opacity, tighter footer and Objects copy.
 Input mechanics, values and calculations unchanged.
+Navigation shielding now survives Core document restoration;142 transition cases
+require continuous coverage until ready. Production context restoration verified,
+owner authenticated acceptance pending.
 Full local/CI gates and matching live builds verified; owner UI acceptance pending.
 [Scope and evidence](notes/OBJECTS_V2_UI_CONTRACT_2026_11_21.md).
 

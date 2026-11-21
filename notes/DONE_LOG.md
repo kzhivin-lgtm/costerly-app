@@ -1,5 +1,19 @@
 # Done Log
 
+Objects V2.1 navigation-shield repair deployed21November2026, OWNER ACCEPTANCE PENDING.
+Runtime8df3721c fixes lost wrapper origin/trace after full iframe document navigation.
+The earlier gate did not cover that lifecycle and allowed a single unstyled screen.
+Verified per-tab UI context and actual ancestor origin retain the original ACK
+checks. No input mechanics, pricing/auth state, layout or Admin-latency change.
+Original controller negative control rejected; first full candidatec09 blocked by
+a test navigation race, then fixed await without weakening assertions. Local
+531/eight214.889s, exact-SHA CI531/eight220.613s,142 transitions/zero uncovered frames.
+Protected publisher verified active no-bypass27499066. Railway7963076741 success;
+public builds match, HTTP200. Anonymous production before/after verifies disabled/
+lost trace versus enabled/preserved trace after two real document reloads. Owner
+authenticated project still requires acceptance. No paid calls or new checkpoint.
+Evidence: .ui-artifacts/navigation-shield-release/.
+
 Objects V2.1 deployment verified21November2026, owner visual acceptance PENDING.
 Runtimeeea8a576 implements50px stage gaps, readable future steps, stable header/
 footer opacity, tighter totals/actions and no visible Subtotal on Objects. Input
