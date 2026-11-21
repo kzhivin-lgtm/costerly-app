@@ -14,6 +14,8 @@ ROOT = Path(__file__).parents[1]
 
 
 def test_streamlit_and_cloudflare_build_versions_match():
+    # The production browser-event endpoint normalizes longer names to unknown.
+    assert runtime._SAFE_NAME.fullmatch(runtime.LABOR_BUILD_VERSION)
     app_source = (ROOT / "app.py").read_text()
     wrapper = (ROOT / "cloudflare/index.html").read_text()
 
