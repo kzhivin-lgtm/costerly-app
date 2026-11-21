@@ -74,7 +74,8 @@ def read_objects(_client, estimate_id):
    sleep(float(lag_file.read_text().removesuffix('s')))
  record('objects '+estimate_id)
  totals=json.loads(totals_path.read_text()) if totals_path.exists() else {}
- return pd.DataFrame([{**row,**totals.get(row['object_id'],{})} for row in sample['objects'] if row['estimate_id']==estimate_id])
+ approvals=json.loads((STATE / 'object-approvals.json').read_text()) if (STATE / 'object-approvals.json').exists() else {}
+ return pd.DataFrame([{**row,**totals.get(row['object_id'],{}),**({'approved':approvals[row['object_id']]} if row['object_id'] in approvals else {})} for row in sample['objects'] if row['estimate_id']==estimate_id])
 def read_plans(_client, estimate_id):
  rows=[row for row in sample['plans'] if row['estimate_id']==estimate_id]
  if scenario().get('labor_ready'):
@@ -120,7 +121,10 @@ file_review._source_bytes_for_objects_plan = no_estimation
 estimation.get_supabase_client = Client
 estimation._assert_screen_estimate_access = lambda *a, **kw: None
 estimation.fetch_rfq_object_estimates = read_objects
-estimation.fetch_rfq_estimate_pricing_overrides = lambda *_: pd.DataFrame()
+def read_price_overrides(*_):
+ filename=STATE / 'objects-prices.json'
+ return pd.DataFrame(json.loads(filename.read_text()) if filename.exists() else [])
+estimation.fetch_rfq_estimate_pricing_overrides = read_price_overrides
 estimation.fetch_rfq_estimate_material_plan = read_plans
 objects.get_supabase_client = Client
 objects._data_with_object_routes = lambda data, **_: data
@@ -216,6 +220,23 @@ from use_cases.platform_admin import PlatformAccess
 config_path=(STATE / 'scenario.json')
 def scenario():
  return json.loads(config_path.read_text()) if config_path.exists() else {}
+if scenario().get('objects_v2'):
+ objects._objects_price_input_config=lambda:('http://127.0.0.1:8798','fixture-anon','fixture-token')
+ object_detail.get_supabase_client=Client
+ object_detail.fetch_rfq_object_detail_draft=lambda *a,**kw:[]
+ def approve_saved_object(**kwargs):
+  assert kwargs['estimate_id']==estimate_id and kwargs['object_id']=='object-001'
+  (STATE / 'object-approvals.json').write_text(json.dumps({'object-001':True}))
+ object_detail.approve_object_estimate=approve_saved_object
+ def generate_proposal(**kwargs):
+  assert kwargs['company_id']==company_id and kwargs['estimate_id']==estimate_id and kwargs['run_id']==run_id
+  current=estimation.load_objects_estimation_data(estimate_id)
+  if (STATE / 'generation-failure').exists():raise RuntimeError('Controlled proposal failure')
+  record('proposal generated')
+  (STATE / 'generated-proposal.json').write_text(json.dumps(current,default=str))
+  return {'project_id':'project-one','version_id':'version-one','proposal_pdf_url':'data:application/pdf;base64,JVBERi0xLjQ='}
+ objects.final_approval=generate_proposal
+ objects.load_estimate_proposal_url=lambda **_:('data:application/pdf;base64,JVBERi0xLjQ=' if (STATE / 'generated-proposal.json').exists() else None)
 def guarded_load(screen, data):
  settings=scenario()
  record('load '+screen)

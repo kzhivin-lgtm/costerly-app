@@ -471,6 +471,119 @@ def apply_objects_css() -> None:
                 min-width: 900px;
             }
         }
+        /* Objects V2: only the header rail, stage strip and footer actions.
+           Pricing rows, fields, project allocations and totals above are unchanged. */
+        .st-key-costerly_screen_header:has(.objects-estimation-header) {
+            gap: 8px !important;
+        }
+        .st-key-objects_header_controls [class*="st-key-costerly_header_controls"] {
+            position: static !important;
+            top: auto !important;
+            right: auto !important;
+            transform: none !important;
+            opacity: 1 !important;
+            max-width: none !important;
+        }
+        .st-key-objects_header_controls,
+        .st-key-objects_header_metrics {
+            flex: 0 0 auto !important;
+        }
+        .st-key-objects_header_toolbar {
+            align-items: center !important;
+            gap: 24px !important;
+        }
+        .st-key-objects_header_stages {
+            /* Keep the original pricing table's document Y after moving metrics. */
+            padding-bottom: 16.1875px;
+        }
+        .st-key-objects_header_metrics .objects-cycle-metrics {
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            font-size: 11px;
+            gap: 16px;
+            padding: 0;
+            margin: 0;
+        }
+        .objects-workflow-stages {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            align-items: center;
+            min-height: 51px;
+            padding: 0 !important;
+            margin: 0 !important;
+            list-style: none;
+            gap: 24px;
+        }
+        .objects-workflow-stages li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0;
+            margin: 0;
+            color: rgba(42, 31, 44, 0.58);
+        }
+        .objects-stage-marker {
+            flex: 0 0 30px;
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(42, 31, 44, 0.18);
+            border-radius: 50%;
+            font-family: var(--font-mono);
+            font-size: 14px;
+        }
+        .objects-workflow-stages li:not(:last-child)::after {
+            content: "";
+            height: 1px;
+            min-width: 16px;
+            flex: 1;
+            background: rgba(42, 31, 44, 0.18);
+        }
+        .objects-workflow-stages strong {
+            display: block;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        .objects-workflow-stages small {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+        .objects-workflow-stages [data-state="current"] {
+            color: var(--color-text-strong);
+        }
+        .objects-workflow-stages [data-state="current"] .objects-stage-marker {
+            background: var(--color-accent);
+            border-color: var(--color-accent);
+            color: white;
+        }
+        .objects-workflow-stages [data-state="complete"] .objects-stage-marker {
+            color: #2F8D48;
+            border-color: #2F8D48;
+        }
+        .stApp .st-key-objects_actions button {
+            text-transform: none !important;
+        }
+        .st-key-objects_actions {
+            /* Retain the original bottom action row after removing Parts Check. */
+            padding-top: 72px;
+        }
+        .stApp .st-key-objects_actions [class*="st-key-objects_generate_proposal_"] button,
+        .stApp .st-key-objects_actions .st-key-final_approval_approved button {
+            text-transform: uppercase !important;
+        }
+        @media (max-width: 760px) {
+            .st-key-objects_header_toolbar { flex-wrap: wrap !important; }
+            .st-key-objects_header_metrics .objects-cycle-metrics { flex-wrap: wrap; }
+            .objects-workflow-stages { gap: 8px; }
+            .objects-workflow-stages strong { font-size: 12px; }
+            .objects-workflow-stages small { font-size: 11px; }
+            .objects-workflow-stages li:not(:last-child)::after { display: none; }
+        }
         </style>
         """,
         unsafe_allow_html=True,

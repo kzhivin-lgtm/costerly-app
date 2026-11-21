@@ -15,7 +15,7 @@ const server=createServer((req,res)=>{
  if(new URL(req.url,'http://localhost').pathname!=='/')return res.writeHead(204).end();
  deliveries++;
  const build=JSON.parse(readFileSync(config,'utf8')).build;
- const html=source.replace(firstBuild,build).replace('data-src="https://core.costerly.ai/?embed=true"','data-src="http://127.0.0.1:8789/?embed=true"');
+ const html=source.replaceAll(firstBuild,build).replace('data-src="https://core.costerly.ai/?embed=true"','data-src="http://127.0.0.1:8789/?embed=true"');
  res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}).end(html);
 });
 await new Promise(r=>server.listen(8797,'127.0.0.1',r));

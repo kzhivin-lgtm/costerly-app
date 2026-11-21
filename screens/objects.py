@@ -16,7 +16,7 @@ from ui.js_guards import (
     install_workflow_header_alignment_guard,
 )
 from ui import objects_pricing
-from ui.layout import render_post_upload_header
+from ui import objects_workflow
 from ui.screen_transition import (
     OBJECTS_MARKER_ID,
 )
@@ -25,6 +25,7 @@ from use_cases.estimation_runtime import submit_prepared_estimation_job
 from use_cases.estimation_parts_check_runtime import load_estimation_cycle_cost, load_parts_check
 from use_cases.object_detail_runtime import submit_object_detail_prefetch
 from use_cases.final_approval import final_approval
+from ui.objects_workflow import pricing_signature
 from use_cases.estimation_progress import EstimationCycle, clear_estimate_progress, get_estimate_progress
 from use_cases.proposal_pdf import load_estimate_proposal_url
 from db.supabase_client import get_supabase_client
@@ -472,6 +473,7 @@ def _render_pricing_table(
     estimate_id: str | None,
     run_id: str | None,
     company_id: str | None = None,
+    header_slots: objects_workflow.ObjectsHeaderSlots | None = None,
 ) -> None:
     """Render the Objects Estimation pricing table."""
     rows = _rows_with_approved_overlay(data["rows"])
@@ -500,6 +502,12 @@ def _render_pricing_table(
             except Exception:
                 costs[key] = None
         cost_usd = costs[key]
+    metrics_html = objects_pricing.cycle_metrics_html(
+        rows, elapsed=elapsed, ready_seconds=cycle.ready_seconds if cycle else {},
+        cost_usd=cost_usd, running=running,
+    ) if estimate_id else ""
+    if header_slots is not None:
+        objects_workflow.update_header(header_slots, metrics_html=metrics_html, data={**data, "rows": rows}, estimate_id=estimate_id)
     st.markdown(
         objects_pricing.pricing_table_html(
             rows=rows,
@@ -507,11 +515,7 @@ def _render_pricing_table(
             summary=data["summary"],
             estimate_id=estimate_id,
             run_id=run_id,
-            cycle_html=objects_pricing.cycle_metrics_html(
-                rows, elapsed=elapsed, ready_seconds=cycle.ready_seconds if cycle else {},
-                cost_usd=cost_usd,
-                running=running,
-            ) if estimate_id else "",
+            cycle_html="" if header_slots is not None else metrics_html,
             proposal_pdf_url=(
                 st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id))
                 if estimate_id
@@ -666,6 +670,12 @@ def _prefetch_completed_object_details(
 def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) -> None:
     """Freeze the estimate and keep its proposal available on Objects."""
     try:
+        basis = st.session_state.get("objects_set_price_basis", {}).get(estimate_id)
+        if not basis:
+            raise ValueError("Select Set prices before generating the proposal")
+        saved = _persisted_objects_state(estimate_id)
+        if saved.data_error or saved.cache_warning or not objects_workflow.prices_are_set(estimate_id, saved.data):
+            raise ValueError("Prices changed. Select Set prices again")
         result = final_approval(
             company_id=company_id,
             run_id=run_id,
@@ -673,11 +683,28 @@ def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) 
         )
     except Exception as exc:
         st.session_state.final_approval_error = str(exc)
-        return
-    st.session_state.final_approval_error = None
-    st.session_state.setdefault("proposal_pdf_urls_by_estimate", {})[estimate_id] = result.get(
-        "proposal_pdf_url"
-    )
+    else:
+        st.session_state.final_approval_error = None
+        st.session_state.setdefault("proposal_pdf_urls_by_estimate", {})[estimate_id] = result.get(
+            "proposal_pdf_url"
+        )
+
+
+def _set_objects_prices(*, estimate_id: str) -> None:
+    """Accept the saved pricing basis without altering any price or cost."""
+    try:
+        state = _persisted_objects_state(estimate_id)
+        if state.data_error or state.cache_warning:
+            raise ValueError("Could not reload the saved prices. Try again")
+        if not _final_approval_ready(state.data):
+            raise ValueError("Approve every object before setting prices")
+        st.session_state.setdefault("objects_set_price_basis", {})[estimate_id] = pricing_signature(state.data)
+        st.session_state["objects_price_confirmation_id"] = st.session_state.get("objects_price_confirmation_id", 0) + 1
+        _cache_routed_objects_data(estimate_id=estimate_id, data=state.data, data_error=None)
+        st.session_state["final_approval_error"] = None
+    except Exception as exc:
+        st.session_state.setdefault("objects_set_price_basis", {}).pop(estimate_id, None)
+        st.session_state["final_approval_error"] = str(exc)
 
 
 def _load_existing_proposal_url(*, company_id: str, estimate_id: str | None) -> None:
@@ -716,30 +743,33 @@ def _render_objects_actions(
     data: dict[str, object],
 ) -> None:
     """Render bottom navigation actions for Objects Estimation."""
-    col_back, col_generate = st.columns(2, gap="small")
     proposal_ready = bool(
         st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id))
     )
 
+    prices_set = objects_workflow.prices_are_set(estimate_id, data)
+    ready = bool(run_id and estimate_id and _final_approval_ready(data))
+    with st.container(key="objects_actions"):
+        col_back, col_set, col_generate = st.columns(3, gap="small")
     col_back.button(
-        "BACK TO FILE REVIEW",
+        "Back to file review",
         type="secondary",
         use_container_width=True,
         on_click=_back_to_file_review_with_ready_cache,
         args=(company_id,),
     )
 
+    col_set.button(
+        "Set prices", key="objects_set_prices", type="secondary",
+        use_container_width=True, disabled=proposal_ready or not ready,
+        on_click=_set_objects_prices, kwargs={"estimate_id": str(estimate_id or "")},
+    )
     col_generate.button(
-        "APPROVED" if proposal_ready else "FINAL APPROVAL",
-        key="final_approval_approved" if proposal_ready else "final_approval",
+        "GENERATE PROPOSAL",
+        key="final_approval_approved" if proposal_ready else f"objects_generate_proposal_{st.session_state.get('objects_price_confirmation_id', 0)}",
         type="primary",
         use_container_width=True,
-        disabled=proposal_ready or not (run_id and estimate_id and _final_approval_ready(data)),
-        help=(
-            None
-            if proposal_ready or (run_id and estimate_id and _final_approval_ready(data))
-            else "Review and approve every object before Final Approval"
-        ),
+        disabled=proposal_ready or not ready or not prices_set,
         on_click=_complete_final_approval,
         kwargs={
             "company_id": company_id,
@@ -776,6 +806,7 @@ def _render_objects_table_content(
     run_id: str | None,
     screen_state: ObjectsScreenState,
     company_id: str | None = None,
+    header_slots: objects_workflow.ObjectsHeaderSlots | None = None,
 ) -> None:
     """Render the messages and pricing table that may change during Estimation."""
     _render_objects_messages(
@@ -784,12 +815,13 @@ def _render_objects_table_content(
         cache_warning=screen_state.cache_warning,
     )
     data = _data_with_progress(screen_state.data, estimate_id)
-    _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id, company_id=company_id)
+    _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id, company_id=company_id, header_slots=header_slots)
 
 
 def _render_live_objects_content(
     *, estimate_id: str | None, run_id: str | None, company_id: str,
     initial_state: ObjectsScreenState, live: bool,
+    header_slots: objects_workflow.ObjectsHeaderSlots | None = None,
 ) -> None:
     """Safely refresh persisted Estimation rows without mutating React-owned DOM."""
     future_before = st.session_state.get("estimation_batch_future")
@@ -831,6 +863,7 @@ def _render_live_objects_content(
             estimate_id=estimate_id,
             run_id=run_id,
             company_id=company_id,
+            header_slots=header_slots,
             screen_state=ObjectsScreenState(
                 data=routed_data,
                 data_error=screen_state.data_error,
@@ -915,13 +948,7 @@ def render_objects_screen(
     # Emit the target screen before even queueing the worker. Streamlit marks
     # prior elements stale while a rerun is in flight, so submitting work first
     # could leave File Review visibly beneath a new Objects heading.
-    render_post_upload_header(
-        "Objects Estimation",
-        "Review objects → Set sale price → Final Approval",
-        class_name="objects-estimation-header",
-        marker_id=OBJECTS_MARKER_ID,
-        render_header_controls=render_header_controls,
-    )
+    header_slots = objects_workflow.render_objects_header("Objects Estimation", render_header_controls)
     # The File Review callback already populated visible seed rows. Queue
     # persistence only after the native destination header exists, so a click
     # never waits for worker setup before Objects starts replacing File Review.
@@ -964,12 +991,12 @@ def render_objects_screen(
     st.fragment(_render_live_objects_content, run_every=1.5 if live else None)(
         estimate_id=estimate_id, run_id=run_id, company_id=company_id,
         initial_state=screen_state, live=live,
+        header_slots=header_slots,
     )
 
     # Actions and JavaScript runtimes remain outside the timed fragment. They
     # are installed once per full render and cannot flicker or be replaced by a
     # progress-only refresh.
-    _render_parts_check(estimate_id=str(estimate_id or ""), run_id=str(run_id or ""), company_id=company_id)
     _render_objects_actions(
         company_id=company_id,
         run_id=run_id,
@@ -979,7 +1006,7 @@ def render_objects_screen(
     if not live:
         _prefetch_completed_object_details(estimate_id=estimate_id, company_id=company_id, data=action_data)
     if st.session_state.get("final_approval_error"):
-        st.error(f"Final Approval failed: {st.session_state.final_approval_error}")
+        st.error(st.session_state.final_approval_error)
     install_workflow_header_alignment_guard(
         ".objects-estimation-header h1.workflow-title"
     )
@@ -990,3 +1017,5 @@ def render_objects_screen(
         supabase_anon_key=supabase_anon_key,
         supabase_access_token=supabase_access_token,
     )
+    if estimate_id:
+        objects_workflow.install_actions_runtime(str(estimate_id))

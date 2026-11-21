@@ -7,7 +7,7 @@ The synthetic saved bench costs ILS 1,000; this is an interaction fixture,
 not a fresh Lev1 material or labor benchmark. The private V1.3.3 archive
 retains the real saved controls and their evidence.
 
-The protected behavior is defined in `notes/UI_GUIDELINES.md`. The seven suites
+The protected behavior is defined in `notes/UI_GUIDELINES.md`. The eight suites
 cover 54 normal transitions across desktop/mobile and safe migration of an older open wrapper,
 Save/reopen in seven Profile paths, preload/read reuse, keyboard, actor access,
 expired auth, handled read/write failures, timeout/double click and recovery.
@@ -45,7 +45,7 @@ uv run --locked --group ui-test python tools/run_ui_contract.py
 
 Linux CI installs Chromium system dependencies with `playwright install
 --with-deps chromium`. An existing Chrome can be selected with
-`COSTERLY_CHROME=/absolute/path/to/chrome`. Ports 8789, 8796 and 8797 must be
+`COSTERLY_CHROME=/absolute/path/to/chrome`. Ports 8789, 8796, 8797 and 8798 must be
 free. Each browser suite receives a fresh server and synthetic database;
 cache behavior within a suite is still exercised normally.
 
@@ -139,3 +139,13 @@ not today's runtime. The normal mandatory gate additionally covers native arrow
 contact, contour-owned label transcription, complete source coverage, preserved
 raw diagnostics and the dependent Parts/geometry/material contracts. The legacy
 rollback sections above describe history, not the active V3.2 publication path.
+
+## Objects V2 interface,21November2026
+
+The owner approved the desktop header/footer contract in
+`notes/OBJECTS_V2_UI_CONTRACT_2026_11_21.md`. The eighth browser suite exercises
+real saved Review/Approve navigation, three equal footer actions, the24px metric
+gap, unchanged162px project-cost inputs, original price persistence, edits after
+confirmation, generation failure/retry and the latest-price
+proposal snapshot. It waits for correlated app-ready before editing. Synthetic
+PDF/storage responses remain separate from owner production acceptance.

@@ -80,14 +80,15 @@ def test_final_approval_rejects_unapproved_object(monkeypatch):
         final_approval(company_id="001", run_id="run-1", estimate_id="estimate-1")
 
 
-def test_objects_uses_final_approval_instead_of_generate_proposal():
+def test_objects_v2_generates_via_the_existing_final_approval():
     source = Path("screens/objects.py").read_text()
 
-    assert '"FINAL APPROVAL"' in source
-    assert '"GENERATE PROPOSAL"' not in source
+    assert '"GENERATE PROPOSAL"' in source
+    assert '"Set prices"' in source
+    assert 'st.columns(3, gap="small")' in source
     assert "final_approval(" in source
     assert 'st.session_state.screen = "projects"' not in source
-    assert 'key="final_approval_approved" if proposal_ready else "final_approval"' in source
+    assert 'key="final_approval_approved" if proposal_ready else f"objects_generate_proposal_' in source
 
     css = Path("styles/objects.py").read_text()
     assert ".st-key-final_approval_approved button:disabled" in css

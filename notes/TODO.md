@@ -398,32 +398,43 @@ Report: /Users/qb/Documents/ChatGPT/Costerly/outputs/
 objects-estimation-ux-20261120/REPORT_RU.md. No new work number or runtime
 version assigned; no application, production or model-call changes.
 
-PENDING DESIGN AGREEMENT, P1, USER REQUEST, same outcome. Make the goal of
-the page explicit: review all objects, explicitly confirm current customer
-prices (including keeping suggestions), then generate a client proposal.
-Show numbered stages and truthful completion/current/future states, return
-from each object approval, and retain access to the last generated PDF.
-Owner asks to remove the Parts Check control here; purchasing-list export
-remains later scope 3.16.5, no replacement export approved. Existing vertical
-gap/column alignment requirements below remain in scope when implemented.
-Evaluate Back + Confirm prices + Generate proposal, with generation visible
-before it is available and a concrete visible reason for blocking. Modal
-yes/no, Final Approval naming and the exact button arrangement were discussed
-as alternatives, not a finalized specification. Preserve suggested/manual
-price behavior, full-cost/subtotal distinction, separate project allocations,
-saved-estimate reuse, tenant access and accepted navigation responsiveness.
-Owner wants the same Project and a new sequential version for each completed
-changed revision, with repeat download and prior documents preserved.
-Current same-estimate idempotence does not implement that revision loop.
-Agent recommendation, NOT OWNER APPROVED: Confirm prices records acceptance,
-Generate proposal freezes the version/PDF, and edits invalidate only affected
-reviews and price confirmation, rather than repeating all cost reviews after
-any price edit. Shared material-plan dependencies can affect several objects.
-Do not mark historical 3.16.2/3.16.4 superseded until the replacement contract
-is accepted. No new storage architecture, release, work number/block or
-publication is authorized by this research. Next: agree the concrete scenario
-matrix and revision semantics, then verify authoritative numbering before
-implementation. Evidence and alternatives are in the report above.
+ACTIVE RELEASE, APPROVED PUBLICATION, P1, USER REQUEST,21November2026,
+release name Objects V2. Final desktop drawing accepted; this explicit deploy
+approval supersedes the earlier static-only/no-deploy experiment. The rejected
+first concept is not an implementation checkpoint. Keep the exact existing
+Objects Estimation title. Native navigation moves below it; visible Total lap /
+TC / R1 / R2 follow Sign out with24CSS px gap on that same row. The numbered
+Review objects / Confirm prices / Generate proposal stages form the third row.
+Only header and footer may change. Preserve all object rows, headings, input
+sizes/axes, Delivery/Installation original Qty-axis (grid-column2/5,162px),
+suggestions, and Subtotal/VAT/Total layout and costing. The earlier drawing's
+shifted project-cost inputs was rejected and corrected before publication.
+Bottom row retains its existing content width, with exactly three equal-width
+buttons: Back to file review / Set prices / GENERATE PROPOSAL. Only the last
+label is uppercase. Remove Parts Check from this page. No Example project /
+Draft, Calculation dashboard, Next, Review all objects, Project summary or
+Download PDF placeholders. Preserve the existing generated-PDF download path.
+All objects must be approved before Set prices; this confirms the current saved
+basis without changing prices. Generate uses the existing finalization/version
+operation after confirmation; edits invalidate confirmation. No new revision
+storage architecture is approved. Contract and scenario matrix:
+notes/OBJECTS_V2_UI_CONTRACT_2026_11_21.md. Local full UI contract, exact-SHA CI,
+active remote gate and matching live Core/wrapper builds are release criteria.
+Owner authenticated production acceptance remains required after deployment.
+No new work number/block assigned; this is the approved interface continuation
+of historical3.16.2/3.16.4, not a new costing/model release.
+
+DEFERRED, P1, USER REQUEST, same research outcome: sequential versions of the
+same Project for changed revisions, retained prior PDFs and repeat download.
+Current same-estimate idempotence does not implement the revision loop. The
+proposed affected-review-only invalidation policy is not owner accepted.
+
+DEFERRED IN CURRENT UI, P1, USER REQUEST,3.16.5: combined Project Summary must
+include ALL project materials AND work. Earlier proposed two visible disabled
+controls to the left of totals (summary and PDF download) are explicitly omitted
+from this deployment, including placeholders. Preserve existing vertical gap /
+column requirements when the summary is implemented. Aggregation/export rules
+remain pending agreement. Research evidence is in the report above.
 
 ## Estimate recovery
 
@@ -5097,7 +5108,9 @@ lines. Proposal downloads use Project_Partner_YYYY-MM-DD.pdf as the external
 filename while private storage paths remain immutable internal identifiers.
 
 PENDING, 3.16.5 Project Summary XLS: generate a project-wide purchasing list
-containing all materials assigned across approved Objects. The disabled
+containing ALL materials AND work across approved Objects, per21November owner
+clarification. Aggregation/export rules still need agreement. Its controls are
+explicitly omitted from the current Objects V2 interface. The disabled
 Project Summary / Download XLS control is the reserved UI entry point. Define
 aggregation, duplicate-material merging, units, quantities, source prices, and
 supplier fields before implementation.

@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 UNIT_TESTS = [
     "tests/test_company_profile_preload.py", "tests/test_company_access.py",
     "tests/test_navigation_routes.py", "tests/test_workflow_header.py",
+    "tests/test_objects_workflow.py", "tests/test_final_approval.py",
     "tests/test_runtime_observability.py", "tests/test_ui_release_gate.py",
     "tests/test_presentation_previews.py",
     "tests/test_object_cost_hierarchy.py",
@@ -33,7 +34,7 @@ UNIT_TESTS = [
     "tests/test_agent_timing.py::test_isometric_membership_uses_primary_attachment_without_extra_requests",
     "tests/test_agent_timing.py::test_presentation_render_without_technical_match_never_creates_registry_object",
 ]
-BROWSER_SUITES = ["navigation.mjs", "calculation.mjs", "profile_save.mjs", "profile_recovery.mjs", "screen_recovery.mjs", "version_refresh.mjs", "auth_resume.mjs"]
+BROWSER_SUITES = ["navigation.mjs", "calculation.mjs", "objects_v2.mjs", "profile_save.mjs", "profile_recovery.mjs", "screen_recovery.mjs", "version_refresh.mjs", "auth_resume.mjs"]
 
 
 def main() -> int:
