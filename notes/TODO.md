@@ -4,8 +4,9 @@
 
 Current production UI is Objects V2.4 (`a8b08ba5`), carrying the V2.2 protection
 below unchanged. Public Login confirms revision7c34ff18617435dd/enabled=true
-and a durable compatible/protocol1 event. Owner authenticated acceptance remains
-pending; the V2.3 presentation outcome is tracked in its existing section below.
+and a durable compatible/protocol1 event. The owner requested its full presentation
+checkpoint, recorded below. Manual coverage of every authenticated route is not
+claimed. V1.3.3 behavior and V3.2 costing remain protected.
 
 ACTIVE OWNER ACCEPTANCE, P0, OBJECTS V2.2 DEPLOYED,21November2026.
 
@@ -491,7 +492,11 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-DEPLOYED, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING, Objects V2.4,21November2026.
+COMPLETED, P1, OWNER-ACCEPTED PRESENTATION CHECKPOINT, Objects V2.4,21November2026.
+Owner requested the full checkpoint after publication and moved to the next
+Object Details discussion. This closes this presentation objective, not an
+assertion of a manual owner replay of every authenticated scenario. Exact code,
+tags, evidence and restoration: [full checkpoint](OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md).
 Owner approved the final desktop sketch including both spacing corrections
 and explicitly requested deployment under a new version. Move the
 navigation rail to the top right with its center4px below the unchanged
@@ -538,7 +543,9 @@ succeeded14:38:40UTC. Actual Core/wrapper/meta/version endpoint match V2.4 at
 14:39:55UTC, HTTP200; unchanged protection revision7c34ff18617435dd is enabled
 and compatible/protocol1 is durable under the new build. This anonymous Login
 probe is not owner authenticated acceptance. Evidence .ui-artifacts/objects-v24-release/.
-No new accepted checkpoint; V3.2 costing and V1.3.3 behavior remain protected.
+The subsequent owner-requested full checkpoint accepts this final presentation;
+V3.2 costing and V1.3.3 behavior remain protected. Runtime/records tags and a
+manifest-covered private archive retain source, evidence and restore instructions.
 
 DEPLOYED, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING, Objects V2.3,21November2026.
 Owner accepted the revised mockup and authorized presentation changes only,
@@ -695,6 +702,15 @@ with an authenticated browser offline/close/resume sequence that an
 invalid session reaches Login without a Last Estimate click and a valid
 session resumes. Both cases passed in the local browser with controlled
 auth outcomes. Authenticated production acceptance remains open.
+
+## Object Details interface
+
+PENDING OWNER COMMENTS, P1, USER REQUEST,21November2026. Next interface area
+after the full Objects V2.4 checkpoint. Owner supplied the16:53:16 screenshot;
+original and SHA256 are preserved in the checkpoint's next-screen directory.
+Await the promised comments before design/implementation. No changes to this
+screen, Materials/Labor/Overhead, inputs, calculations or navigation are implied.
+Keep V2.4, V1.3.3 behavior and V3.2 costing protected. No new work number yet.
 
 ## Estimation Labor V1
 

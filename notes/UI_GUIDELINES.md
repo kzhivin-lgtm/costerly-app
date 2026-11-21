@@ -16,6 +16,12 @@ performance guarantee. On 17 November 2026 the owner approved implementing
 persistent checks and an obligatory publication barrier. The implementation
 and remote enforcement state are tracked in TODO and `tests/ui/README.md`.
 
+On21November2026 the owner requested the full accepted Objects V2.4 presentation
+checkpoint, runtimea8b08ba5 and tagobjects-v2.4-production-checkpoint-2026-11-21.
+Its [identity, layout, evidence and restoration](OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md)
+are additive to V1.3.3 behavior and V3.2 costing, which remain protected. Next
+Object Details scope awaits owner comments and must preserve this checkpoint.
+
 ## Protected workflow behavior and release checks
 
 Standing owner rule,21November2026: every deployment preserves previously

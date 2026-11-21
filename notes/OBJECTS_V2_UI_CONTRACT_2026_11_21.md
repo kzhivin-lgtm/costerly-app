@@ -1,5 +1,11 @@
 # Objects V2 scoped interface contract
 
+Current accepted presentation is [the full Objects V2.4 checkpoint](OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
+requested by the owner21November2026 after publication. Runtimea8b08ba5 and its
+annotated checkpoint tag preserve the final layout. V2.2 compatibility and
+V2.3 field boundaries remain protected. The V2/V2.1 sections below are history;
+superseded copy/coordinates are not the current presentation rules.
+
 Owner approved the final desktop drawing and publication as Objects V2 on
 21 November 2026. This is an interface release over accepted Estimation V3.2,
 not a new Detection, costing, procurement export or revision-storage design.

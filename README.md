@@ -7,7 +7,10 @@ price handlers, costing and business logic are retained.
 V2.2 compatibility/transition protection is unchanged. Full local and exact-SHA
 GitHub gates passed531 checks and nine browser suites. Served Core/wrapper match;
 enabled protection and durable compatibility logging verified on production Login.
-Owner authenticated V2.4 acceptance pending; no new accepted checkpoint.
+Owner requested the full V2.4 presentation checkpoint on21November2026.
+[Accepted reference and restoration](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md).
+Manual coverage of every authenticated route is not claimed. Next discussion:
+Object Details interface, awaiting owner comments; no changes yet.
 [Contract](notes/UI_GUIDELINES.md),
 [evidence and backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 

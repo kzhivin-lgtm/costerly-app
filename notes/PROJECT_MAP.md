@@ -13,6 +13,12 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
+- Accepted Objects Estimation UI reference: [Objects V2.4 full checkpoint](OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
+  runtimea8b08ba5. `styles/objects.py` owns layout, `ui/objects_workflow.py` the
+  stage/header view and `ui/objects_pricing.py` the pricing/document rendering.
+  Original handlers, V2.2 protection and V3.2 costing remain protected. Next
+  Object Details discussion awaits owner comments; its screenshot is a baseline,
+  not a specification or instruction to change calculations.
 - `screens/` contains one Streamlit screen per file.
 - `ui/` contains shared rendering helpers used by multiple screens.
 - `ui/browser_session.py` owns the tab-scoped Auth storage bridge. Its component

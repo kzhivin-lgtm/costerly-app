@@ -1,5 +1,9 @@
 # Persistent UI release contract
 
+The owner-requested [Objects V2.4 checkpoint](../../notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md)
+pins runtimea8b08ba5 and the accepted presentation. Its private full archive
+retains release checks and a standalone integrity/restore procedure.
+
 These checks exercise production Streamlit screens and the Cloudflare wrapper
 against synthetic local data. They make no paid model call and cannot write
 to production services. `app_fixture.py` rejects nonlocal socket connections.
