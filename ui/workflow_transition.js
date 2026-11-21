@@ -224,14 +224,17 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         update.target = "_top";
         update.style.cssText = "padding:12px 24px;border-radius:8px;background:#8147ce;color:white;text-decoration:none";
         update.addEventListener("click", event => {
+            const saving = Array.from(doc.querySelectorAll('button, [role="button"]')).some(node =>
+                node.getClientRects().length && /^saving(?:\.{3}|…)?$/i.test(node.textContent.trim()));
             const active = pickerOpen || uploadStarted || displayed?.screen === "processing" ||
                 doc.querySelector('#costerly-upload-processing-shell, .objects-progress-status, [data-costerly-screen="processing"]') ||
                 Array.from(doc.querySelectorAll('input[type="file"]')).some(input => input.files?.length);
-            if (active || displayed?.authStorageReady === false) {
+            if (active || saving || displayed?.authStorageReady === false) {
                 event.preventDefault();
-                hint.textContent = active ? "Finish the current upload or calculation before updating."
+                hint.textContent = saving ? "Finish the current save before updating."
+                    : active ? "Finish the current upload or calculation before updating."
                     : "Your sign-in must be saved before updating. Use Retry, then update the app.";
-                protection("update_deferred", recovery, active ? "active_work" : "auth_not_saved");
+                protection("update_deferred", recovery, saving ? "active_save" : active ? "active_work" : "auth_not_saved");
                 return;
             }
             // Conservatively ask on every editable screen. No new draft

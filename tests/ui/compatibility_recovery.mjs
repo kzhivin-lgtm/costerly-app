@@ -129,7 +129,11 @@ try{
  await frame.evaluate(()=>{const dt=new DataTransfer();dt.items.add(new File(['fixture'],'test.pdf'));document.querySelector('input[type="file"]').files=dt.files;});
  await core.getByRole('link',{name:'Update app',exact:true}).click();
  assert.equal(loads,1);
- report.push({fixture:'active-work',calculationAndSelectedUploadRetained:true});
+ await frame.evaluate(()=>{document.querySelector('input[type="file"]').files=new DataTransfer().files;const saving=document.createElement('button');saving.textContent='SAVING...';document.body.append(saving);});
+ await core.getByRole('link',{name:'Update app',exact:true}).click();
+ await core.getByText('Finish the current save before updating.').waitFor();
+ assert.equal(loads,1);
+ report.push({fixture:'active-work',calculationSelectedUploadAndSaveRetained:true});
  writeFileSync(reportPath('compatibility-recovery.json'),JSON.stringify(report,null,2));
  console.log(JSON.stringify(report));
 }catch(error){
