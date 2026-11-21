@@ -84,7 +84,7 @@ def test_objects_v2_generates_via_the_existing_final_approval():
     source = Path("screens/objects.py").read_text()
 
     assert '"GENERATE PROPOSAL"' in source
-    assert '"Set prices"' in source
+    assert '"Set Prices"' in source
     assert 'st.columns(3, gap="small")' in source
     assert "final_approval(" in source
     assert 'st.session_state.screen = "projects"' not in source
