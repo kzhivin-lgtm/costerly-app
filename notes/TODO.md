@@ -491,6 +491,33 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+ACTIVE IMPLEMENTATION, P1, OWNER-APPROVED DESIGN AND PUBLICATION, Objects V2.4,21November2026.
+Owner approved the final desktop sketch including both spacing corrections
+and explicitly requested deployment under a new version. Move the
+navigation rail to the top right with its vertical center on the unchanged
+Objects Estimation title axis. Place the existing technical chevron/metrics
+directly below the rail; collapse still leaves only the fixed arrow. Reclaim
+the former toolbar row so stages, table, summary and actions move upward
+together, preserving their internal geometry and input/business mechanics.
+Rename only stage2 to Set Prices. Stack Project Summary and Download Proposal
+under Installation, each exactly half the Back to File Review button width;
+Project Summary uses an Excel icon and Download Proposal keeps PDF. Retain
+three bottom actions. Owner revision21November2026: lower the entire body below
+the fixed title/menu/metrics by24px from the first V2.4 sketch to relieve the
+crowded header. Stage top margin is42px, resulting in a26px rise versus V2.3.
+Latest owner correction: lower the menu/technical-metrics pair together by4px,
+retaining their8px gap and keeping the title and entire body fixed. Menu top is
+15px within the header, its center now4px below the title center by design.
+The final displacement is approved. Prototype: objects-estimation-v24.html in
+the thread visualization directory. Retain this public release number through
+unpublished candidate fixes; publish only after exact-SHA local/remote gates.
+V2.3 is the protected pre-change runtime and its shield/focus checks stay required.
+Sketch verification: title box unchanged, menu center4px below title, all central
+blocks move up exactly26px versus V2.3 with existing x/width retained, document controls
+measure154.66px versus309.33px Back, equal stage lines and stable collapsed
+arrow pass. Full desktop PNG2636x1404 and geometry are saved beside the sketch.
+This is mockup verification only, not a production/interaction acceptance claim.
+
 DEPLOYED, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING, Objects V2.3,21November2026.
 Owner accepted the revised mockup and authorized presentation changes only,
 with the sole interaction correction of input-only Delivery/Installation hit

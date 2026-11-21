@@ -488,9 +488,10 @@ def apply_objects_css() -> None:
                 min-width: 900px;
             }
         }
-        /* Objects V2 presentation. V2.3 adds local metrics folding and document
-           controls; the approved service-field CSS scope is defined above. */
+        /* Objects V2.4 presentation. Keep input/row/summary geometry and all
+           handlers; reclaim the old toolbar row with the approved body offset. */
         .st-key-costerly_screen_header:has(.objects-estimation-header) {
+            position: relative;
             gap: 8px !important;
         }
         .st-key-objects_header_controls [class*="st-key-costerly_header_controls"] {
@@ -506,12 +507,17 @@ def apply_objects_css() -> None:
             flex: 0 0 auto !important;
         }
         .st-key-objects_header_toolbar {
-            align-items: center !important;
-            gap: 24px !important;
+            position: absolute !important;
+            top: 11px;
+            right: 0;
+            width: fit-content !important;
+            flex-direction: column !important;
+            align-items: flex-end !important;
+            gap: 8px !important;
         }
         .st-key-objects_header_stages {
-            /* The existing header gap is 8px: 8 + 42 = 50px above stages. */
-            padding-top: 42px;
+            /* Reclaim30px toolbar height, add4px to the old42px stage inset. */
+            padding-top: 46px;
         }
         .st-key-objects_live_pricing .objects-pricing-card {
             /* Two existing 16px block gaps plus 18px give 50px below stages. */
@@ -633,7 +639,8 @@ def apply_objects_css() -> None:
             transform: rotate(225deg);
         }
         .st-key-objects_header_metrics[data-metrics-collapsed="true"] .objects-cycle-metrics {
-            display: none;
+            /* Reserve the text width so the right-aligned arrow stays fixed. */
+            visibility: hidden;
         }
         .st-key-objects_header_metrics[data-metrics-collapsed="true"] .objects-metrics-chevron {
             transform: rotate(45deg);
@@ -641,13 +648,13 @@ def apply_objects_css() -> None:
 
         .objects-pricing-summary .objects-pricing-downloads {
             position: absolute;
-            top: 46px;
+            top: 34px;
             left: 0;
-            transform: translateY(-50%);
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            align-items: stretch;
             gap: 8px;
-            width: 292px;
+            width: calc((100% - 32px) / 6);
             min-width: 0;
             padding: 0;
             border: 0;
@@ -658,7 +665,7 @@ def apply_objects_css() -> None:
             justify-content: center;
             gap: 5px;
             flex: none;
-            width: 126px;
+            width: 100%;
             height: 34px;
             min-height: 34px;
             padding: 8px 9px;
@@ -673,7 +680,6 @@ def apply_objects_css() -> None:
             white-space: nowrap;
             text-decoration: none;
         }
-        .objects-pricing-summary .objects-document-button:last-child { width: 158px; }
         .objects-document-icon {
             position: relative;
             flex: none;
@@ -691,16 +697,48 @@ def apply_objects_css() -> None:
             font-size: 6px;
             line-height: 11px;
         }
+        .objects-document-icon--excel {
+            width: 18px;
+            height: 21px;
+            color: #28794c;
+        }
+        .objects-document-icon--excel::before {
+            content: "";
+            position: absolute;
+            inset: 5px 2px 3px 6px;
+            background: repeating-linear-gradient(0deg, currentColor 0 1px, transparent 1px 4px),
+                        repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 4px);
+            opacity: 0.5;
+        }
+        .objects-document-icon--excel span {
+            position: absolute;
+            left: -2px;
+            top: 6px;
+            width: 10px;
+            height: 11px;
+            border-radius: 1px;
+            background: #28794c;
+            color: white;
+            font: 700 8px/11px Arial, sans-serif;
+        }
         .stApp .st-key-objects_actions [class*="st-key-objects_generate_proposal_"] button,
         .stApp .st-key-objects_actions .st-key-final_approval_approved button {
             text-transform: uppercase !important;
+        }
+        @media (max-width: 900px) {
+            .st-key-objects_header_toolbar {
+                position: static !important;
+                width: 100% !important;
+                align-items: flex-start !important;
+            }
+            .st-key-objects_header_metrics { margin-left: 22px; }
+            .st-key-objects_header_stages { padding-top: 42px; }
         }
         @media (max-width: 760px) {
             .st-key-objects_header_toolbar { flex-wrap: wrap !important; }
             .st-key-objects_header_metrics .objects-cycle-metrics { flex-wrap: wrap; }
             .objects-workflow-stages { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
             .objects-stage-group { min-width: 0; }
-            .objects-pricing-summary .objects-pricing-downloads { width: 158px; flex-direction: column; gap: 6px; }
             .objects-workflow-stages strong { font-size: 12px; }
             .objects-workflow-stages small { font-size: 11px; }
             .objects-workflow-stages li:not(:last-child)::after { display: none; }

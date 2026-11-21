@@ -106,6 +106,22 @@ Metrics collapse stays local across existing progress markup updates, with no
 timer, Python rerun, network request or persistent data write. Its one DOM
 observer is restricted to the metrics subtree and disconnected on cleanup.
 
+## Objects V2.4 approved desktop placement,21November2026
+
+The owner approved the final V2.4 sketch and publication. Relative to V2.3,
+retain the title and move the native menu to the upper right with its center
+4px below the title center. Technical metrics are directly below with an8px
+gap. Collapse retains the same arrow location. Raise all stages/table/summary/
+footer actions together26px, retaining their internal x/width/height and gaps.
+Stage2 is Set Prices. Stack document controls under Installation, each half
+the Back to File Review width, with8px between them. Project Summary uses an
+Excel icon, Download Proposal retains PDF and the existing URL behavior.
+This approved placement supersedes only the V2.3 coordinate/copy assertions
+it names. Service-field scope, original handlers, pricing, costing, approval,
+generation, auth and V2.2 protection remain unchanged and mandatory. No new
+timer, callback, observer, request or persistent write is required. Restore
+runtime3a192b29 if this presentation experiment regresses protected behavior.
+
 ## V3.1 full object cost, approved 20 November 2026
 
 The owner explicitly approved Materials + current Labor + restored Overhead in

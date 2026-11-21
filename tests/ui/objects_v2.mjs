@@ -51,19 +51,22 @@ try{
   const metrics=document.querySelector('.objects-cycle-metrics');
   const title=document.querySelector('h1.workflow-title');
   const buttons=[...document.querySelectorAll('.st-key-objects_actions button')];
-  return{title:box(title),controls:box(controls),metrics:box(metrics),buttons:buttons.map(box),projectInput:box(document.querySelector('.objects-pricing-project-cost-cell .objects-pricing-price-input')),qty:box(document.querySelector('.objects-pricing-quantity-input')),
+  return{title:box(title),controls:box(controls),metrics:box(metrics),dashboard:box(document.querySelector('.objects-technical-metrics')),buttons:buttons.map(box),projectInput:box(document.querySelector('.objects-pricing-project-cost-cell .objects-pricing-price-input')),qty:box(document.querySelector('.objects-pricing-quantity-input')),
    stages:box(document.querySelector('.objects-workflow-stages')),tableHead:box(document.querySelector('.objects-pricing-header')),
    summary:box(document.querySelector('.objects-pricing-summary')),summaryTitle:box(document.querySelector('.objects-pricing-summary-title')),
    summaryValues:[...document.querySelectorAll('[data-summary-field]')].map(box),stageColors:[...document.querySelectorAll('.objects-workflow-stages strong')].map(node=>getComputedStyle(node).color)};
  });
  await page.screenshot({path:reportPath('objects-v2-initial.png'),fullPage:true});
  assert(report.geometry.controls.y>report.geometry.title.y);
- assert(Math.abs(report.geometry.metrics.x-report.geometry.controls.x-report.geometry.controls.width-24)<2,JSON.stringify(report.geometry));
- assert(Math.abs(report.geometry.metrics.y+report.geometry.metrics.height/2-report.geometry.controls.y-report.geometry.controls.height/2)<2,JSON.stringify(report.geometry));
+ const center=b=>b.y+b.height/2,right=b=>b.x+b.width;
+ assert(Math.abs(center(report.geometry.controls)-center(report.geometry.title)-4)<.1,JSON.stringify(report.geometry));
+ assert(Math.abs(right(report.geometry.controls)-right(report.geometry.title))<.1);
+ assert.equal(report.geometry.dashboard.y-report.geometry.controls.y-report.geometry.controls.height,8);
+ assert(Math.abs(right(report.geometry.dashboard)-right(report.geometry.controls))<.1);
  assert.equal(report.geometry.buttons.length,3);assert(Math.max(...report.geometry.buttons.map(b=>b.width))-Math.min(...report.geometry.buttons.map(b=>b.width))<2);
  assert.equal(report.geometry.projectInput.width,122);assert(Math.abs(report.geometry.projectInput.x-report.geometry.qty.x)<4);
  const geometry=report.geometry;
- assert.equal(geometry.stages.y-geometry.controls.y-geometry.controls.height,50);
+ assert.equal(geometry.stages.y-geometry.title.y,118);
  assert.equal(geometry.tableHead.y-geometry.stages.y-geometry.stages.height,50);
  const topSpace=geometry.summaryTitle.y-geometry.summary.y;
  const bottomSpace=geometry.buttons[0].y-Math.max(...geometry.summaryValues.map(box=>box.y+box.height));
@@ -71,12 +74,14 @@ try{
  assert(geometry.stageColors.every(color=>color===geometry.stageColors[0]),JSON.stringify(geometry.stageColors));
  assert(!/subtotal/i.test(await core.locator('body').innerText()));
  assert(!(await core.locator('[title]').evaluateAll(nodes=>nodes.map(node=>node.title).join(' '))).match(/subtotal/i));
- assert.deepEqual(await core.locator('.objects-workflow-stages strong').allTextContents(),['Review Objects','Confirm Set Prices','Generate Proposal']);
+ assert.deepEqual(await core.locator('.objects-workflow-stages strong').allTextContents(),['Review Objects','Set Prices','Generate Proposal']);
  assert.equal(await core.locator('.objects-workflow-stages [data-stage="2"] small, .objects-workflow-stages [data-stage="3"] small').count(),0);
  assert(await core.getByRole('button',{name:'Project Summary',exact:true}).isDisabled());
  assert(await core.getByRole('button',{name:'Download Proposal',exact:true}).isDisabled());
+ assert.equal(await core.locator('.objects-document-icon--excel').innerText(),'X');
  const baseline=JSON.parse(readFileSync(fixturePath('objects_v22_geometry.json'),'utf8'));
- // Preserve strict coordinates and dimensions. Only the intrinsically sized VAT
+ // Approved V2.4 lifts the body26px; keep every other coordinate/dimension strict.
+ // Only the intrinsically sized VAT
  // text box uses frozen V2.2 typography rendered with this platform's fonts,
  // rather than treating macOS glyph widths as a Linux layout requirement.
  const intrinsicWidths=await frame.evaluate(references=>Object.fromEntries(Object.entries(references).map(([selector,reference])=>{
@@ -97,15 +102,20 @@ try{
    const action=document.querySelector('.objects-pricing-action-cell').getBoundingClientRect().right;
    const docs=box(document.querySelector('.objects-pricing-downloads'));
    const heading=box(document.querySelector('.objects-pricing-summary-title'));
-   return{preserved,lines,end,action,docs,heading};
+   const documents=[...document.querySelectorAll('.objects-document-button')].map(box);
+   const back=box(document.querySelector('.st-key-objects_actions button'));
+   return{preserved,lines,end,action,docs,heading,documents,back};
   },Object.keys(baseline.viewports[width]));
   for(const [selector,expected] of Object.entries(baseline.viewports[width]))for(const [axis,recorded] of Object.entries(expected)){
-   const value=axis==='width'&&selector in intrinsicWidths?intrinsicWidths[selector]:recorded;
+   const value=axis==='width'&&selector in intrinsicWidths?intrinsicWidths[selector]:recorded+(axis==='y'&&selector!=='h1.workflow-title'?-26:0);
    assert(Math.abs(actual.preserved[selector][axis]-value)<.1,JSON.stringify({width,selector,axis,expected:value,actual:actual.preserved[selector][axis]}));
   }
   assert(Math.abs(actual.lines[0]-actual.lines[1])<1);
   assert(Math.abs(actual.end-actual.action)<1);
-  assert(Math.abs(actual.docs.y+actual.docs.height/2-actual.heading.y-actual.heading.height/2)<1);
+  assert(Math.abs(actual.docs.y-actual.heading.y)<.1);
+  for(const b of actual.documents)assert(Math.abs(b.width-actual.back.width/2)<.1);
+  assert.equal(actual.documents[0].x,actual.documents[1].x);
+  assert.equal(actual.documents[1].y-actual.documents[0].y-actual.documents[0].height,8);
   report.protectedGeometry[width]=actual;
   for(const key of ['delivery','installation']){
    const field=core.locator('.objects-pricing-row[data-object-key="'+key+'"] .objects-pricing-price-input');
@@ -117,7 +127,7 @@ try{
     report.serviceHitAreas.push({width,key,side,distance,focused:false});
    }
   }
-  await page.screenshot({path:reportPath('objects-v23-'+width+'.png'),fullPage:true});
+  await page.screenshot({path:reportPath('objects-v24-'+width+'.png'),fullPage:true});
  }
  await page.setViewportSize({width:1440,height:1000});
  const beforeJournal=readFileSync(statePath('browser-journal'),'utf8');
@@ -182,7 +192,7 @@ try{
  assert.equal(await memberCore.locator('.objects-cycle-metrics,.objects-metrics-toggle').count(),0,'Technical metrics reuse existing platform-admin visibility');
  await member.close();report.nonAdminMetricsHidden=true;
  writeFileSync(reportPath('objects-v2.json'),JSON.stringify(report,null,2));
- console.log('Objects V2.3 passed: preserved V2.2 geometry on two desktops, input-only service hit areas, equal stages, local persistent metrics toggle, original pricing/approval/proposal flow and existing PDF link.');
+ console.log('Objects V2.4 passed: approved26px body lift, original geometry/field boundaries, top-right menu+metrics with4px offset, stacked half-width documents, local metrics toggle and original pricing/approval/proposal flow.');
 }catch(error){
  for(const page of browser.contexts().flatMap(context=>context.pages())){
   await page.screenshot({path:reportPath('objects-v2-latest-failure.png'),fullPage:true});

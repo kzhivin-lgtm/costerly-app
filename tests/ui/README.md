@@ -50,6 +50,10 @@ authentication and transition suites stay obligatory and unchanged.
 Fixed coordinates and dimensions remain strict. The intrinsically sized VAT
 box alone uses frozen V2.2 typography rendered on the current platform, rather
 than requiring Linux system fonts to have macOS glyph widths.
+V2.4 changes only owner-approved placement expectations: body y minus26px,
+menu center title plus4px with metrics8px below, and vertical document buttons
+of half the Back width. All other geometry checks,48 outside-input probes and
+existing business/auth/navigation/failure/retry assertions remain required.
 
 ## Run
 

@@ -386,7 +386,7 @@ def _downloads_html(proposal_pdf_url: str | None) -> str:
     return (
         '<div class="objects-pricing-downloads">'
         '<button class="objects-document-button" type="button" disabled>'
-        '<span class="objects-document-icon objects-document-icon--summary" aria-hidden="true">≡</span>'
+        '<span class="objects-document-icon objects-document-icon--excel" aria-hidden="true"><span>X</span></span>'
         'Project Summary</button>'
         f'{download}'
         '</div>'

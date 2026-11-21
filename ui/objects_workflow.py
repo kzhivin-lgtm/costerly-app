@@ -31,7 +31,7 @@ def stages_html(data: dict, *, prices_set: bool, proposal_ready: bool, confirmat
     reviewed = sum(bool(row.get("reviewed")) for row in rows)
     all_reviewed = bool(rows) and reviewed == len(rows)
     current = 4 if proposal_ready else 1 if not all_reviewed else 3 if prices_set else 2
-    labels = ("Review Objects", "Confirm Set Prices", "Generate Proposal")
+    labels = ("Review Objects", "Set Prices", "Generate Proposal")
     details = (f"{reviewed} of {len(rows)} reviewed" if rows else "", "", "")
     steps = []
     for number, (label, detail) in enumerate(zip(labels, details), 1):
