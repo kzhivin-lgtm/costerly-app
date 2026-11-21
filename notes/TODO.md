@@ -493,6 +493,30 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+ACTIVE, P1, USER REQUEST, Objects V2.6,21November2026. Follow-up after deployed
+Object Details V2.5: technical metrics use R1/R2/... without object names, keep
+the disclosure arrow fixed at the right, and prevent premature finished timing
+while a row is active. Set Prices uses the existing Done green while the saved
+basis is confirmed, resets after editing, and stage checkmarks must show both
+strokes clearly. Latest owner addition: left-align Excel/PDF document frames;
+inactive icons grey, available Excel green/PDF red. Availability remains the
+existing disabled Project Summary placeholder and real Proposal URL, no exporter.
+
+[verified] Minimal pre-change timing replay: ready at10s, active at20s, final
+ready at35s incorrectly returns10s throughout. EstimationCycle.observe latches
+the first terminal frame without revoking it when later data is active, and
+R metrics display remembered readiness regardless of the current row status.
+The specific data transition in owner run535bdac5fa14cc6bbbf7c6885c32109 has
+not been independently read; do not claim its historical trigger is proven.
+Repair only timing observation/rendering, not worker/costing/status publication.
+Keep the dashboard one bounded line, with local horizontal overflow for large
+object counts. No new timer, observer, request, rerun or persistent state write.
+Preserve V2.5 Object Details and V2.4 body geometry/inputs/prices/proposal,
+V2.2 protection and V3.2 costing. Verify resumed timing, large counts, arrow
+collapse/refresh, confirmed/invalidated button state and document icon states,
+then full exact-commit local/CI gates and actual served versions before publish.
+Same interface continuation; no new hierarchical work block/number assigned.
+
 COMPLETED, P1, OWNER-ACCEPTED PRESENTATION CHECKPOINT, Objects V2.4,21November2026.
 Owner requested the full checkpoint after publication and moved to the next
 Object Details discussion. This closes this presentation objective, not an
@@ -707,7 +731,8 @@ auth outcomes. Authenticated production acceptance remains open.
 ## Object Details interface
 
 PUBLISHED, OWNER PRODUCTION ACCEPTANCE PENDING, P1, USER-APPROVED, Object Details V2.5,
-21November2026. Owner supplied comments after
+21November2026. Owner subsequently reports the disclosures work; this is partial
+production feedback, not a complete manual replay. Owner supplied comments after
 the full Objects V2.4 checkpoint. Preserve the Object title and native menu
 positions. Compact the name/quantity/preview area, remove AI Confidence and
 redundant bottom Subtotal/based-on/partial captions. Restore Excl. VAT above

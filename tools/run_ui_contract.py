@@ -17,6 +17,7 @@ UNIT_TESTS = [
     "tests/test_company_profile_preload.py", "tests/test_company_access.py",
     "tests/test_navigation_routes.py", "tests/test_workflow_header.py",
     "tests/test_objects_workflow.py", "tests/test_final_approval.py",
+    "tests/test_estimation_cycle_metrics.py",
     "tests/test_runtime_observability.py", "tests/test_ui_release_gate.py",
     "tests/test_presentation_previews.py",
     "tests/test_object_cost_hierarchy.py",

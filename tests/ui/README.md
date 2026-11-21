@@ -179,6 +179,15 @@ PDF/storage responses remain separate from owner production acceptance.
 
 ## Continuous navigation coverage after document restoration
 
+Objects V2.6 adds test_estimation_cycle_metrics.py to the mandatory Python list.
+It covers active/ready/failure/cost and ready-to-active timing revocation without
+changing the worker. objects_v2.mjs additionally verifies10/40 compact metrics,
+right-arrow positioning and local overflow, confirmed/invalidated button color,
+font-independent two-stroke checks and left-aligned grey/available document
+icons. Only the disabled Excel appearance is simulated; no exporter is added.
+Existing geometry, price writes, failed generation/retry, ownership,48 outside
+field probes and all other browser suites remain required.
+
 Object Details V2.5 adds the approved compact initial state to the same suites:
 all three bands closed with amounts on a shared column,240x164px saved preview,
 no extra Material disclosure, blank Material/Work column headings and final

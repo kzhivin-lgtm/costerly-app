@@ -128,6 +128,22 @@ generation, auth and V2.2 protection remain unchanged and mandatory. No new
 timer, callback, observer, request or persistent write is required. Restore
 runtime3a192b29 if this presentation experiment regresses protected behavior.
 
+## Objects V2.6 metrics and feedback,21November2026
+
+Objects V2.6 follow-up,21November2026: technical metrics use unbounded R1/R2/...
+without object names. Keep one bounded line and its disclosure arrow fixed on
+the right, retaining local collapse through refresh/navigation. Many entries
+scroll only inside the metrics line. Revoke a historical timing receipt when
+later row data is active; a running row has no ready-time metric. This only
+changes telemetry observation, not worker/status/costing/persistence behavior.
+Confirmed Set Prices uses existing Done green and loses it on price edits.
+Render both checkmark strokes independent of font glyphs. Left-align the Excel/
+PDF frames, grey while unavailable, green Excel/red PDF when available. Existing
+export availability and body/header/input geometry remain unchanged. No new
+runtime listener/observer/timer/request/rerun is required. The full gate now also
+includes the existing estimation-cycle metrics suite with its resumed-work
+regression; all nine browser suites and earlier checkpoints remain mandatory.
+
 ## Object Details V2.5 compact presentation,21November2026
 
 The owner approved the compact sketch and deployment with240x164px preview.

@@ -213,10 +213,10 @@ def cycle_metrics_html(rows, *, elapsed, ready_seconds, cost_usd, running):
     ]
     object_rows = sorted((row for row in rows if not _is_project_cost_row(row)), key=_object_key)
     for index, row in enumerate(object_rows, 1):
-        ready = ready_seconds.get(_object_key(row))
+        ready = ready_seconds.get(_object_key(row)) if review_action_ready(row) else None
         value = "Failed" if ready is None and _row_status(row) == "failed" else seconds(ready)
         parts.append(
-            f'<span>R{index} · {_escape(row.get("name"))} <strong>{value}</strong></span>'
+            f'<span>R{index} <strong>{value}</strong></span>'
         )
     return '<div class="objects-cycle-metrics" aria-label="Estimation cycle">' + "".join(parts) + '</div>'
 

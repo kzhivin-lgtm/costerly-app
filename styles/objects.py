@@ -530,7 +530,12 @@ def apply_objects_css() -> None:
             gap: 16px;
             padding: 0;
             margin: 0;
+            min-width: 0;
+            max-width: calc(var(--post-upload-width) - 22px);
+            overflow-x: auto;
+            scrollbar-width: thin;
         }
+        .st-key-objects_header_metrics .objects-cycle-metrics > span { flex: 0 0 auto; }
         .objects-workflow-stages {
             display: grid;
             grid-template-columns: max-content minmax(16px, 1fr) max-content minmax(16px, 1fr) max-content;
@@ -597,6 +602,25 @@ def apply_objects_css() -> None:
         .objects-workflow-stages [data-state="complete"] .objects-stage-marker {
             color: #2F8D48;
             border-color: #2F8D48;
+            font-size: 0;
+        }
+        .objects-workflow-stages [data-state="complete"] .objects-stage-marker::before {
+            content: "";
+            width: 6px;
+            height: 10px;
+            border-right: 2px solid currentColor;
+            border-bottom: 2px solid currentColor;
+            transform: translateY(-2px) rotate(45deg);
+        }
+        .stApp:has(.objects-workflow-stages [data-stage="2"][data-state="complete"]) .st-key-objects_set_prices button {
+            background: rgba(52, 168, 83, 0.10) !important;
+            border-color: rgba(52, 168, 83, 0.34) !important;
+            color: #2F8D48 !important;
+        }
+        .stApp:has(.objects-workflow-stages [data-stage="2"][data-state="complete"]) .st-key-objects_set_prices button:hover {
+            background: rgba(52, 168, 83, 0.16) !important;
+            border-color: rgba(52, 168, 83, 0.48) !important;
+            color: #26763B !important;
         }
         .stApp .st-key-objects_actions button {
             text-transform: none !important;
@@ -611,10 +635,12 @@ def apply_objects_css() -> None:
             display: flex;
             align-items: center;
             width: max-content;
+            max-width: var(--post-upload-width);
+            padding-right: 22px;
         }
         .stApp .objects-metrics-toggle {
             position: absolute;
-            left: -22px;
+            right: 0;
             top: 50%;
             transform: translateY(-50%);
             width: 20px;
@@ -662,13 +688,13 @@ def apply_objects_css() -> None:
         .objects-pricing-summary .objects-document-button {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 5px;
             flex: none;
             width: 100%;
             height: 34px;
             min-height: 34px;
-            padding: 8px 9px;
+            padding: 8px 12px;
             border: 1px solid #d4ced8;
             border-radius: 7px;
             background: #f7f5f8;
@@ -681,6 +707,8 @@ def apply_objects_css() -> None:
             text-decoration: none;
         }
         .objects-document-icon {
+            --document-icon-color: #817a80;
+            color: var(--document-icon-color);
             position: relative;
             flex: none;
             width: 14px;
@@ -700,7 +728,12 @@ def apply_objects_css() -> None:
         .objects-document-icon--excel {
             width: 18px;
             height: 21px;
-            color: #28794c;
+        }
+        .objects-document-button:not(:disabled):not([aria-disabled="true"]) .objects-document-icon--excel {
+            --document-icon-color: #28794c;
+        }
+        .objects-document-button:not(:disabled):not([aria-disabled="true"]) .objects-document-icon--pdf {
+            --document-icon-color: #b43b46;
         }
         .objects-document-icon--excel::before {
             content: "";
@@ -717,7 +750,7 @@ def apply_objects_css() -> None:
             width: 10px;
             height: 11px;
             border-radius: 1px;
-            background: #28794c;
+            background: var(--document-icon-color);
             color: white;
             font: 700 8px/11px Arial, sans-serif;
         }
@@ -731,12 +764,12 @@ def apply_objects_css() -> None:
                 width: 100% !important;
                 align-items: flex-start !important;
             }
-            .st-key-objects_header_metrics { margin-left: 22px; }
+            .st-key-objects_header_metrics { max-width: 100%; }
             .st-key-objects_header_stages { padding-top: 42px; }
         }
         @media (max-width: 760px) {
             .st-key-objects_header_toolbar { flex-wrap: wrap !important; }
-            .st-key-objects_header_metrics .objects-cycle-metrics { flex-wrap: wrap; }
+            .st-key-objects_header_metrics .objects-cycle-metrics { flex-wrap: nowrap; }
             .objects-workflow-stages { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
             .objects-stage-group { min-width: 0; }
             .objects-workflow-stages strong { font-size: 12px; }

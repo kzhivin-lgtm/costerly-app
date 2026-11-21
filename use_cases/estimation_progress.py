@@ -22,6 +22,12 @@ class EstimationCycle:
     cost_usd: float | None = None
 
     def observe(self, now: float, *, ready_ids: list[str], all_terminal: bool) -> float:
+        # A later render can show active work again. A historical ready frame
+        # is not the current terminal state, so revoke its timing receipt.
+        if not all_terminal and not self.worker_failed:
+            self.total_seconds = None
+        active_ready = set(ready_ids)
+        self.ready_seconds = {key: value for key, value in self.ready_seconds.items() if key in active_ready}
         if self.total_seconds is not None:
             return self.total_seconds
         elapsed = max(0.0, now - self.started_at)

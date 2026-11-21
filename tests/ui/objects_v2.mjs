@@ -79,6 +79,14 @@ try{
  assert(await core.getByRole('button',{name:'Project Summary',exact:true}).isDisabled());
  assert(await core.getByRole('button',{name:'Download Proposal',exact:true}).isDisabled());
  assert.equal(await core.locator('.objects-document-icon--excel').innerText(),'X');
+ const iconState=()=>frame.evaluate(()=>[...document.querySelectorAll('.objects-document-button')].map(n=>{
+  const icon=n.querySelector('.objects-document-icon'),r=icon.getBoundingClientRect();
+  return{x:r.x,color:getComputedStyle(icon).color};
+ }));
+ const initialIcons=await iconState();
+ assert.equal(initialIcons[0].x,initialIcons[1].x,'Document frames share the left edge');
+ assert.equal(initialIcons[0].color,initialIcons[1].color,'Unavailable document icons are equally grey');
+ report.documentIcons={initial:initialIcons};
  const baseline=JSON.parse(readFileSync(fixturePath('objects_v22_geometry.json'),'utf8'));
  // Approved V2.4 lifts the body26px; keep every other coordinate/dimension strict.
  // Only the intrinsically sized VAT
@@ -132,6 +140,24 @@ try{
  await page.setViewportSize({width:1440,height:1000});
  const beforeJournal=readFileSync(statePath('browser-journal'),'utf8');
  const toggle=core.getByRole('button',{name:'Collapse technical metrics',exact:true});
+ const dashboard=await core.locator('.objects-technical-metrics').boundingBox();
+ const toggleBox=await toggle.boundingBox();
+ assert(Math.abs(toggleBox.x+toggleBox.width-dashboard.x-dashboard.width)<1,'Metrics arrow is fixed at the right edge');
+ const metricText=await core.locator('.objects-cycle-metrics').innerText();
+ assert.match(metricText,/R1\s/);assert(!metricText.includes('Saved bench'));
+ const metricsMarkup=await core.locator('.objects-cycle-metrics').innerHTML();
+ report.metricsCounts=[];
+ for(const count of [10,40]){
+  await core.locator('.objects-cycle-metrics').evaluate((n,count)=>{n.innerHTML='<span>Total lap <strong>123.4s</strong></span><span>TC <strong>1.23</strong></span>'+Array.from({length:count},(_,i)=>'<span>R'+(i+1)+' <strong>123.4s</strong></span>').join('');},count);
+  const sizing=await frame.evaluate(()=>{
+   const m=document.querySelector('.objects-cycle-metrics'),b=document.querySelector('.objects-metrics-toggle').getBoundingClientRect(),d=document.querySelector('.objects-technical-metrics').getBoundingClientRect();
+   return{viewport:innerWidth,x:d.x,right:d.right,width:d.width,arrowRight:b.right,client:m.clientWidth,scroll:m.scrollWidth};
+  });
+  assert(sizing.x>=0&&sizing.right<=sizing.viewport,'Many metrics stay inside the viewport');
+  assert(Math.abs(sizing.arrowRight-sizing.right)<1);
+  report.metricsCounts.push({count,...sizing});
+ }
+ await core.locator('.objects-cycle-metrics').evaluate((n,markup)=>n.innerHTML=markup,metricsMarkup);
  const arrowBefore=await toggle.boundingBox();await toggle.click();
  assert(!(await core.locator('.objects-cycle-metrics').isVisible()));
  await frame.evaluate(()=>{const n=document.querySelector('.objects-technical-metrics'),copy=n.cloneNode(true),button=copy.querySelector('button');button.setAttribute('aria-expanded','true');button.setAttribute('aria-label','Collapse technical metrics');n.replaceWith(copy);});
@@ -170,7 +196,20 @@ try{
  await editPrice(1750);await set().click();
  await frame.waitForFunction(()=>{const button=document.querySelector('[class*="st-key-objects_generate_proposal_"] button');return button&&!button.disabled;});
  assert.equal(await core.locator('.objects-workflow-stages [data-stage="2"]').getAttribute('data-state'),'complete');
+ await page.mouse.move(0,0);
+ await frame.waitForFunction(()=>{
+  const set=document.querySelector('.st-key-objects_set_prices button'),done=document.querySelector('.objects-pricing-review-button--done');
+  return set&&done&&getComputedStyle(set).backgroundColor===getComputedStyle(done).backgroundColor;
+ });
+ const confirmedColor=await set().evaluate(n=>getComputedStyle(n).backgroundColor);
+ assert.equal(confirmedColor,await core.locator('.objects-pricing-review-button--done').evaluate(n=>getComputedStyle(n).backgroundColor),'Confirmed Set Prices reuses Done green');
+ const checks=await core.locator('.objects-workflow-stages [data-state="complete"] .objects-stage-marker').evaluateAll(ns=>ns.map(n=>{
+  const c=getComputedStyle(n,'::before');return{width:c.width,height:c.height,right:c.borderRightWidth,bottom:c.borderBottomWidth};
+ }));
+ assert.equal(checks.length,2);assert(checks.every(c=>parseFloat(c.width)>0&&parseFloat(c.height)>0&&c.right==='2px'&&c.bottom==='2px'));
+ await core.locator('.objects-workflow-stages').screenshot({path:reportPath('objects-v26-checkmarks.png')});
  await editPrice(1850);assert(await generate().isDisabled());
+ assert.notEqual(await set().evaluate(n=>getComputedStyle(n).backgroundColor),confirmedColor,'Editing revokes the confirmed green');
  await set().click();
  await frame.waitForFunction(()=>{const button=document.querySelector('[class*="st-key-objects_generate_proposal_"] button');return button&&!button.disabled;});
  writeFileSync(statePath('generation-failure'),'fail');await generate().click();await core.getByText('Controlled proposal failure',{exact:true}).waitFor();assert(await generate().isEnabled());
@@ -180,6 +219,17 @@ try{
  const proposal=JSON.parse(readFileSync(statePath('generated-proposal.json')));assert.equal(proposal.rows[0].sale_price_unit,1850);
  assert.equal((readFileSync(statePath('browser-journal'),'utf8').match(/proposal generated/g)||[]).length,1);
  const download=core.getByRole('link',{name:'Download Proposal',exact:true});await download.waitFor();
+ const availableIcons=await iconState();report.documentIcons.available=availableIcons;
+ assert.equal(availableIcons[0].x,availableIcons[1].x);
+ assert.equal(availableIcons[0].color,initialIcons[0].color,'Project Summary remains disabled and grey');
+ assert.equal(availableIcons[1].color,'rgb(180, 59, 70)','Available PDF is red');
+ const summaryButton=core.getByRole('button',{name:'Project Summary',exact:true});
+ const futureExcelColor=await summaryButton.evaluate(n=>{
+  n.disabled=false;
+  try{return getComputedStyle(n.querySelector('.objects-document-icon--excel')).color;}
+  finally{n.disabled=true;}
+ });
+ assert.equal(futureExcelColor,'rgb(40, 121, 76)','Available Excel appearance is green; no export is enabled');
  assert.equal(await download.getAttribute('href'),proposal.proposal_pdf_url||'data:application/pdf;base64,JVBERi0xLjQ=');
  assert.deepEqual(errors,[]);report.errors=errors;
  await page.screenshot({path:reportPath('objects-v2-generated.png'),fullPage:true});

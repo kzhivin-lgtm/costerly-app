@@ -43,16 +43,16 @@ def test_cycle_reports_first_active_review_per_object_and_total_cost(monkeypatch
 
     html = render()
     assert "Total lap <strong>1.0s" in html and "TC <strong>Pending" in html
-    assert "R1 · Base &amp; drawers <strong>—" in html
-    assert "R2 · Tall cabinet <strong>—" in html
+    assert "R1 <strong>—" in html
+    assert "R2 <strong>—" in html
     assert 'href="?screen=object_detail' not in html
 
     tick[0] = 107.25
     a["status"] = "review_required"
     app.session_state["test_rows"] = [a, b]
     html = render()
-    assert "R1 · Base &amp; drawers <strong>7.2s" in html
-    assert "R2 · Tall cabinet <strong>—" in html
+    assert "R1 <strong>7.2s" in html
+    assert "R2 <strong>—" in html
     assert html.count('href="?screen=object_detail') == 1
 
     tick[0] = 115.5
@@ -61,12 +61,25 @@ def test_cycle_reports_first_active_review_per_object_and_total_cost(monkeypatch
     future.set_result({"estimate_id": "estimate", "estimation": {"status": "completed"}, "cost_usd": 0.2119})
     html = render()
     assert "Total lap <strong>15.5s" in html and "TC <strong>0.21</strong>" in html
-    assert "R1 · Base &amp; drawers <strong>7.2s" in html
-    assert "R2 · Tall cabinet <strong>15.5s" in html
+    assert "R1 <strong>7.2s" in html
+    assert "R2 <strong>15.5s" in html
     assert html.count('href="?screen=object_detail') == 2
 
     tick[0] = 200.0
     assert render() == html
+
+    # A ready receipt must not survive a later active row in the real view.
+    tick[0] = 205.0
+    a['status'] = 'running'
+    app.session_state['test_rows'] = [a, b]
+    html = render()
+    assert 'Total lap <strong>105.0s' in html
+    assert 'R1 <strong>—' in html and 'R2 <strong>15.5s' in html
+    tick[0] = 210.0
+    a['status'] = 'completed'
+    app.session_state['test_rows'] = [a, b]
+    html = render()
+    assert 'Total lap <strong>110.0s' in html and 'R1 <strong>110.0s' in html
 
 
 def test_missing_usage_and_failed_object_are_not_reported_as_zero_or_ready():
@@ -76,5 +89,25 @@ def test_missing_usage_and_failed_object_are_not_reported_as_zero_or_ready():
         elapsed=4, ready_seconds={}, cost_usd=None, running=False,
     )
     assert "TC <strong>—" in html
-    assert "R1 · Base <strong>Failed" in html
+    assert "R1 <strong>Failed" in html
     assert "Delivery" not in html
+
+
+def test_cycle_reopens_timing_when_a_later_render_resumes_work():
+    from use_cases.estimation_progress import EstimationCycle
+    cycle = EstimationCycle(started_at=100, worker_finished=True)
+    assert cycle.observe(110, ready_ids=['a'], all_terminal=True) == 10
+    assert cycle.observe(120, ready_ids=[], all_terminal=False) == 20
+    assert cycle.total_seconds is None and cycle.ready_seconds == {}
+    assert cycle.observe(135, ready_ids=['a'], all_terminal=True) == 35
+    assert cycle.ready_seconds == {'a': 35}
+    assert cycle.observe(200, ready_ids=['a'], all_terminal=True) == 35
+
+
+def test_active_row_cannot_display_a_remembered_ready_time_and_labels_are_unbounded():
+    rows = [{'object_key': f'{i:02}', 'name': f'Long object name {i}', 'status': 'completed'} for i in range(1, 13)]
+    rows[0]['status'] = 'running'
+    html = cycle_metrics_html(rows, elapsed=20, ready_seconds={'01': 10, '12': 19}, cost_usd=.2, running=True)
+    assert 'R1 <strong>—</strong>' in html
+    assert 'R12 <strong>19.0s</strong>' in html
+    assert 'Long object name' not in html

@@ -1,5 +1,30 @@
 # Objects V2 scoped interface contract
 
+## Objects V2.6 owner follow-up,21November2026
+
+Owner requests compact technical R1/R2/... labels without object names and the
+metrics disclosure arrow fixed on the right. Keep the existing one-line layout;
+when many entries exceed the content width, overflow scrolls locally. Collapse
+and refresh stay local, with no new request, timer, observer or Python rerun.
+Set Prices becomes Done green only while the existing saved confirmation basis
+is current, resets on edits, and checkmarks must show both strokes clearly.
+Left-align Excel/PDF frames; unavailable icons grey, available Excel green and
+PDF red. Retain the existing disabled Summary placeholder and proposal URL.
+
+Timing correction: a remembered terminal observation must be revoked when a
+later row is active; clear that row's ready-time receipt and freeze only after
+the new terminal observation. Empty rows are not proof of completed work.
+This amends telemetry only, not status publication, costing, worker scheduling,
+input saving, price confirmation, proposal generation or transition protection.
+The specific source-data transition in the supplied production screenshots is
+unknown. Pre-change ready10s/active20s/ready35s replay returned10s throughout;
+the corrected real view and metrics tests track the resumed work and new finish.
+
+Verify10/40 metrics, fixed arrow collapse/markup replacement/reopen, both check
+strokes, confirmed/edited Set Prices, icon alignment/availability, original
+1440/2536 body geometry and48 field probes. Preserve V2.5 Object Details and the
+complete nine-suite local/exact-SHA remote gates before protected publication.
+
 Current accepted presentation is [the full Objects V2.4 checkpoint](OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 requested by the owner21November2026 after publication. Runtimea8b08ba5 and its
 annotated checkpoint tag preserve the final layout. V2.2 compatibility and

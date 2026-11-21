@@ -479,7 +479,6 @@ def _render_pricing_table(
     rows = _rows_with_approved_overlay(data["rows"])
     cycle = _estimation_cycle(estimate_id)
     elapsed = None
-    running = bool(cycle and not cycle.worker_finished)
     if cycle:
         ready_ids = [
             str(row["object_key"]) for row in rows
@@ -487,7 +486,8 @@ def _render_pricing_table(
         ]
         failed_count = sum(objects_pricing.row_status(row) == "failed" for row in rows)
         elapsed = cycle.observe(perf_counter(), ready_ids=ready_ids,
-                                all_terminal=len(ready_ids) + failed_count == len(rows))
+                                all_terminal=bool(rows) and len(ready_ids) + failed_count == len(rows))
+    running = bool(cycle and cycle.total_seconds is None)
     cost_usd = cycle.cost_usd if cycle else None
     if cost_usd is None and not running and estimate_id and run_id and company_id and rows and all(
         objects_pricing.review_action_ready(row) for row in rows

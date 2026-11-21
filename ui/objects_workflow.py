@@ -70,9 +70,10 @@ def update_header(slots: ObjectsHeaderSlots, *, metrics_html: str, data: dict, e
     if slots.metrics is not None:
         slots.metrics.html(
             '<div class="objects-technical-metrics">'
+            + metrics_html +
             '<button type="button" class="objects-metrics-toggle" aria-expanded="true" '
             'aria-label="Collapse technical metrics"><span class="objects-metrics-chevron" aria-hidden="true"></span></button>'
-            + metrics_html + '</div>' if metrics_html else "", width="content",
+            '</div>' if metrics_html else "", width="content",
         )
     slots.stages.html(stages_html(data, prices_set=prices_are_set(estimate_id, data), proposal_ready=proposal_ready,
                                  confirmation_id=st.session_state.get("objects_price_confirmation_id", 0)))
