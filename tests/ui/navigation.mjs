@@ -253,7 +253,7 @@ try {
    }
    await enter('object_detail');await move('Scrolled Approve to Objects',core.locator('.object-detail-footer-button--primary'),'objects');
    await enter('object_detail');await move('Scrolled Back to Objects',core.locator('.object-detail-footer-button--secondary').filter({hasText:'Back to Objects'}),'objects');
-   await move('Objects Back to File Review',button('Back to file review'),'file_review');
+   await move('Objects Back to File Review',button('Back to File Review'),'file_review');
    await move('File Review Back to Upload',button(/^back to upload$/i),'upload');
    for(const source of sources){
     await enter(source);await move(`Sign out from ${source}`,core.locator('.st-key-company_sign_out button'),'login');
