@@ -1,5 +1,10 @@
 # Costerly
 
+Current UI release: **Objects V2**,21November2026, runtime `4825750f`.
+Header/footer only; protected central pricing layout and handlers unchanged.
+Full local/CI gates and matching live builds verified; owner UI acceptance pending.
+[Scope and evidence](notes/OBJECTS_V2_UI_CONTRACT_2026_11_21.md).
+
 Accepted Estimation checkpoint: **V3.2**,21November2026, runtime `07ac05d2`.
 
 - [Checkpoint and restoration](notes/ESTIMATION_V3_2_SOURCE_BINDINGS_CHECKPOINT_2026_11_21.md).

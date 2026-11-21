@@ -398,7 +398,7 @@ Report: /Users/qb/Documents/ChatGPT/Costerly/outputs/
 objects-estimation-ux-20261120/REPORT_RU.md. No new work number or runtime
 version assigned; no application, production or model-call changes.
 
-ACTIVE RELEASE, APPROVED PUBLICATION, P1, USER REQUEST,21November2026,
+ACTIVE OWNER ACCEPTANCE, DEPLOYED, P1, USER REQUEST,21November2026,
 release name Objects V2. Final desktop drawing accepted; this explicit deploy
 approval supersedes the earlier static-only/no-deploy experiment. The rejected
 first concept is not an implementation checkpoint. Keep the exact existing
@@ -420,7 +420,15 @@ operation after confirmation; edits invalidate confirmation. No new revision
 storage architecture is approved. Contract and scenario matrix:
 notes/OBJECTS_V2_UI_CONTRACT_2026_11_21.md. Local full UI contract, exact-SHA CI,
 active remote gate and matching live Core/wrapper builds are release criteria.
-Owner authenticated production acceptance remains required after deployment.
+DEPLOYED4825750f through exact-SHA gate and active no-bypass ruleset27499066.
+Local531 checks/eight suites160.508s; CI531/eight172.31s. Railway7962256799
+succeeded10:46:55UTC. Actual Core/wrapper/meta/version.json match the stamped
+Objects V2 build at10:47:22UTC, both HTTP200. Original table renderer, input JS,
+estimation loader and finalization use case are byte-identical; original
+pricing CSS unchanged. Protected body geometry and footer y match at1440 and
+2536px. All attempted central write-tracking changes were discarded before
+publication. Existing PDF/version persistence is retained. Owner authenticated
+production acceptance remains pending; no accepted UI checkpoint yet.
 No new work number/block assigned; this is the approved interface continuation
 of historical3.16.2/3.16.4, not a new costing/model release.
 

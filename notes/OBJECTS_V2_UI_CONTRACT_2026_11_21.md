@@ -62,3 +62,16 @@ executable build. Auth-resume's synthetic wrapper must replace all occurrences
 of that build, including metadata and the script constant, rather than only the
 first. Only that fixture substitution changes; its auth assertions and production
 auth behavior are unchanged.
+
+Deployment verified21November2026: runtime4825750f, local exact-SHA full gate
+531 checks/eight suites160.508s, GitHub531/eight172.31s. Required check:
+https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44895552737/job/136820313324
+The publisher verified active ruleset27499066 without bypass actors and promoted
+the checked SHA. Railway GitHub deployment7962256799 succeeded10:46:55UTC;
+Cloudflare Pages494fda24-6c93-4a60-abc8-3f652c503ce3 delivered the wrapper.
+The actual Core ready/build event, public wrapper script, HTML metadata and
+version.json all reported objects-v2-b20261121102935-estimation-v3.2-detection-
+v8.4.29 at10:47:22UTC, wrapper/health HTTP200. Verification used fresh Login;
+owner authenticated saved-project acceptance remains pending. No new accepted
+checkpoint and no model calls. Complete receipt: owner workspace
+outputs/objects-v2-release-20261121/release.json.

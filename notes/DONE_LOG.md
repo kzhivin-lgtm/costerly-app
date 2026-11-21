@@ -1,5 +1,16 @@
 # Done Log
 
+Objects V2 deployment verified21November2026, owner UI acceptance PENDING.
+Runtime4825750f over accepted V3.2 changes only Objects header/footer. Original
+central renderer/input JS/estimation/finalization sources and pricing CSS are
+unchanged. Protected geometry matches at1440x1000 and2536x1244, including footer y.
+Local exact-SHA gate531/eight suites160.508s; GitHub531/eight172.31s, active remote
+no-bypass ruleset27499066 verified by publisher. Railway7962256799 succeeded;
+real Core/wrapper/meta/version endpoint share objects-v2-b20261121102935-
+estimation-v3.2-detection-v8.4.29, HTTP200. No new model calls or checkpoint.
+Contract: notes/OBJECTS_V2_UI_CONTRACT_2026_11_21.md. Deferred revision loop and
+summary/export controls remain in TODO. Production owner flow still needs acceptance.
+
 V3.2 source-bindings production checkpoint ACCEPTED BY OWNER,21November2026.
 Runtime07ac05d2 retained, no runtime change or new deployment. Independent source
 transcription inside every native contour, native-plane/contact Locator admission,
