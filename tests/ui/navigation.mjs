@@ -64,8 +64,10 @@ try {
    // referrer. They must retain the verified parent context, not silently
    // disable the shield for all subsequent page transitions.
    for(let round=1;round<=2;round++){
-    await frame.evaluate(round=>{const url=new URL(location.href);url.searchParams.delete('obs_trace');url.searchParams.set('restored_document',String(round));const link=document.createElement('a');link.href=url.toString();document.body.append(link);link.click();},round);
-    await frame.waitForLoadState('domcontentloaded');
+    await Promise.all([
+     frame.waitForURL(url=>url.searchParams.get('restored_document')===String(round),{waitUntil:'domcontentloaded'}),
+     frame.evaluate(round=>{const url=new URL(location.href);url.searchParams.delete('obs_trace');url.searchParams.set('restored_document',String(round));const link=document.createElement('a');link.href=url.toString();document.body.append(link);link.click();},round),
+    ]);
     await frame.waitForFunction(()=>window.__costerlyWorkflowTransition?.enabled());
     assert.equal(await frame.evaluate(()=>window.__costerlyWorkflowTransition.traceId),originalTrace);
    }
