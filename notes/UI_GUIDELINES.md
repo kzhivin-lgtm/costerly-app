@@ -5,6 +5,13 @@ state is a product defect, not optional polish.
 
 ## Accepted workflow reference
 
+The owner requested a full preservation checkpoint of current Objects V2.6 on
+21November2026, runtime82d55026. Its [identity/evidence/restore guide](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md)
+preserves V2.5 Object Details and the accepted V2.4/V1.3.3/V3.2 foundations.
+Unknown initial CI and screenshot triggers, plus manual production-acceptance
+limits, are retained explicitly. This checkpoint adds no source behavior or
+deployment and does not weaken the full mandatory release rule below.
+
 The owner-accepted V1.3.3 baseline is pinned at
 `estimation-labor-v1.3.3-2026-11-17` (`46aef079`). It preserves saved-estimate
 reuse, ready-correlated screen navigation, old-wrapper compatibility and

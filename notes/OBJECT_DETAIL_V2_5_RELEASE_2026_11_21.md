@@ -1,5 +1,8 @@
 # Object Details V2.5 release
 
+This view is retained by the subsequent [Objects V2.6 full checkpoint](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md).
+Its release evidence and original runtime below remain historical references.
+
 Status: published, owner authenticated production-card acceptance pending.
 Runtime: `3493a84ae1be47895b0b06e34de4e137dab4e9c9`.
 Accepted rollback: Objects V2.4 runtimea8b08ba5, with its full checkpoint intact.

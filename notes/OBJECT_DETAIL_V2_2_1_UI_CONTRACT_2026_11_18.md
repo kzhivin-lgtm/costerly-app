@@ -1,5 +1,10 @@
 # V2.2.1: Object Detail cost hierarchy
 
+Current V2.5 Object Details is preserved inside the owner-requested
+[Objects V2.6 full checkpoint](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md).
+The exact runtime/records, prior contracts and known acceptance limits remain
+available for restoration; the checkpoint adds no new Object Details behavior.
+
 ## Object Details V2.5 approved presentation,21November2026
 
 The owner approved the final compact sketch,240x164px contained preview and

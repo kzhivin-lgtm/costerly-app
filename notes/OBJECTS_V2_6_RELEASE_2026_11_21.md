@@ -1,5 +1,8 @@
 # Objects V2.6 release
 
+The owner subsequently requested [the full V2.6 preservation checkpoint](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md).
+It pins this runtime and all retained evidence without a new deployment.
+
 Status: published, owner authenticated production acceptance pending.
 Runtime: `82d5502689d83dfc8b75f3d41f50e350334c2815`.
 Rollback/runtime base: Object Details V2.5,3493a84a. Its accepted Objects V2.4

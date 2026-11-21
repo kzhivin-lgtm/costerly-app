@@ -13,6 +13,10 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
+- Latest full runtime/records restoration reference: [Objects V2.6 checkpoint](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md),
+  runtime82d55026. Preserve the private archive, blocked-CI evidence and known
+  acceptance limits before further UI work. No new runtime is published by it.
+
 - Current Objects V2.6 follow-up: `ui/objects_pricing.py` owns compact R labels,
   `ui/objects_workflow.py` the right-arrow markup, `styles/objects.py` confirmation/
   check/icon presentation, and `EstimationCycle.observe` UI timing receipts in

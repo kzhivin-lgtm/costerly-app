@@ -1,5 +1,11 @@
 # Persistent UI release contract
 
+The owner-requested [Objects V2.6 full checkpoint](../../notes/OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md)
+pins runtime82d55026, records tags and full release evidence, including the first
+blocked CI. Its independent restore procedure checks803 source files and the
+same535 Python checks. Full local/remote nine-suite receipts remain distinct
+from synthetic restore checks and owner authenticated production acceptance.
+
 The owner-requested [Objects V2.4 checkpoint](../../notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md)
 pins runtimea8b08ba5 and the accepted presentation. Its private full archive
 retains release checks and a standalone integrity/restore procedure.

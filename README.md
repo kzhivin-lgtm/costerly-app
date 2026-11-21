@@ -1,5 +1,9 @@
 # Costerly
 
+Latest full checkpoint: **Objects V2.6**, owner-requested21November2026.
+[Exact identities, archive, evidence, limits and restoration](notes/OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md).
+Runtime82d55026 remains deployed; the checkpoint adds records/tags only.
+
 Current UI release: **Objects V2.6**,21November2026, runtime `82d55026`.
 Compact R metrics with a fixed right arrow; revoked stale timing receipts,
 confirmed Set Prices green, clear checkmarks and aligned grey/available

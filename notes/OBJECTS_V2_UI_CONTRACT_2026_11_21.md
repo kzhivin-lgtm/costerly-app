@@ -1,5 +1,10 @@
 # Objects V2 scoped interface contract
 
+The latest full owner-requested preservation reference is [Objects V2.6](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md),
+runtime82d55026. It includes V2.5 Object Details, the V2.6 follow-up below, the
+accepted V2.4 presentation and earlier protected behavior, with explicit limits.
+It does not silently close unknown historical causes or manual production scope.
+
 ## Objects V2.6 owner follow-up,21November2026
 
 Owner requests compact technical R1/R2/... labels without object names and the

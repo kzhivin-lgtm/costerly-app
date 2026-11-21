@@ -2,6 +2,13 @@
 
 ## Workflow transitions
 
+Latest owner-requested full preservation checkpoint is Objects V2.6,21November2026.
+[Identity, evidence, limitations and restoration](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md).
+Runtime82d55026 is unchanged; records tagobjects-v2.6-records-2026-11-21 resolves
+the checkpoint records. Final archive integrity/restore/gate receipts are retained
+in its verification directory. This does not turn unknown historical causes or
+unreplayed authenticated production routes into verified acceptance.
+
 Current production UI is Objects V2.6 (`82d55026`), preserving Object Details
 V2.5, accepted Objects V2.4 body geometry and V2.2 protection. Public Login
 confirms revision7c34ff18617435dd/enabled=true, matching Core/wrapper builds and
@@ -492,6 +499,17 @@ method before promising an exclusively single-object pixel crop. Do not alter
 Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
+
+COMPLETED PRESERVATION OBJECTIVE, P1, OWNER-REQUESTED FULL CHECKPOINT, Objects
+V2.6,21November2026. Freeze runtime82d55026, current records/designs and all
+available release evidence, including the blocked50c850a3 CI and unknown cause.
+Runtime tagobjects-v2.6-production-checkpoint-2026-11-21; records tag
+objects-v2.6-records-2026-11-21. Helper-validated803-file source ZIP/4,600,280
+bytes, full Git bundle, SHA256 inventory and standalone restore/check procedure.
+Independent restoration and current records-gate receipts govern final completion;
+no new runtime/deploy/paid run/project write. Previous V2.4 archive remains intact.
+This accepts preservation of the achieved state, not a new complete manual
+authenticated UI replay. [Checkpoint](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md).
 
 PUBLISHED, OWNER PRODUCTION ACCEPTANCE PENDING, P1, USER REQUEST, Objects V2.6,
 21November2026. Follow-up after deployed
