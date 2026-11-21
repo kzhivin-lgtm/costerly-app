@@ -1,5 +1,24 @@
 # Done Log
 
+Objects V2.6 published21November2026, OWNER AUTHENTICATED ACCEPTANCE PENDING.
+Runtime82d5502689d83dfc8b75f3d41f50e350334c2815, build
+objects-v2.6-b20261121162542-metrics-estimation-v3.2-detection-v8.4.29.
+Compact R metrics/right arrow/local overflow; resumed-work timing receipt
+correction; confirmed Set Prices green and readable checks; left-aligned grey
+inactive/green Excel-red PDF availability colors. Original availability,
+inputs/writes/callbacks, costing and V2.5 Object Details preserved.441 other
+files byte-identical and80 functions AST-identical. Clean local535/nine242.988s,
+CI535/nine267.1s (301s job), run44925791103/job136911465989/artifact14715334682.
+142 protected transitions/zero uncovered or mixed frames;48 original probes.
+Initial50c850a3 CI44924773751 failed Installation persistence and was blocked,
+never deployed. Exact Linux focus cause remains unknown; explicit inside-field
+click/focus was added to the test without changing source input behavior,
+receipt assertions or deadlines. Both final full gates pass; failure retained.
+Publisher verified active no-bypass27499066. Core7966318213 success16:47:13UTC;
+actual versions match16:48:28UTC, previous7c34ff18617435dd protection enabled/
+recovery and compatible storage accepted202. No paid calls/project edits.
+[Complete scope, evidence and limits](OBJECTS_V2_6_RELEASE_2026_11_21.md).
+
 Object Details V2.5 published21November2026, OWNER AUTHENTICATED ACCEPTANCE
 PENDING. Runtime3493a84ae1be47895b0b06e34de4e137dab4e9c9, build
 object-details-v2.5-b20261121155644-compact-estimation-v3.2-detection-v8.4.29.

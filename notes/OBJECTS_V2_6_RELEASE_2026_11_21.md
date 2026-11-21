@@ -1,6 +1,7 @@
 # Objects V2.6 release
 
-Status: owner-requested follow-up, candidate under full verification.
+Status: published, owner authenticated production acceptance pending.
+Runtime: `82d5502689d83dfc8b75f3d41f50e350334c2815`.
 Rollback/runtime base: Object Details V2.5,3493a84a. Its accepted Objects V2.4
 checkpoint remains intact. No new work block or hierarchical number assigned.
 Build: `objects-v2.6-b20261121162542-metrics-estimation-v3.2-detection-v8.4.29`.
@@ -52,3 +53,30 @@ all earlier outside-field probes. No source input behavior or persistence code
 is changed, no assertion/time limit removed or relaxed. Failure diagnostics also
 retain service text/focus/dirty state. This does not claim the old CI failure's
 historical cause repaired; its evidence is kept underci-failed-50c850a3.
+
+## Final verified publication
+
+- Final runtime has exactly the same application source as50c850a3; the later
+  commit changes only the test's explicit field entry/failure diagnostics and
+  records.441 other protected files match V2.5 byte-for-byte,80 functions are
+  AST-identical, and only observe changes in the progress module.
+- Clean exact-commit local gate:535 checks/nine suites,242.988s.
+- [Exact-SHA GitHub gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44925791103):
+  535 checks/nine suites,267.1s tests/301s whole job, job136911465989,
+  artifact14715334682.142 transitions, zero uncovered-before-ready/mixed frames;
+  original48 boundary probes, protected desktop geometry, save/generation
+  failure/retry, auth/resume and compatibility/recovery assertions pass.
+- Publisher verified active no-bypass ruleset27499066 and advanced main from
+  V2.5 to the exact successful SHA. No failed candidate reached production.
+- Core deployment7966318213 succeeded21November16:47:13UTC. Fresh live
+  observations16:48:28UTC confirm actual Core/wrapper/meta/version.json match
+  the stamped V2.6 build, HTTP200. Previous controller7c34ff18617435dd is enabled
+  with recovery, compatible/protocol1 storage accepted202.
+
+Live observations are anonymous Login. A202 is returned only after the unchanged
+journal endpoint receives successful upstream storage, not independent DB row
+readback. Authenticated owner card acceptance and historical screenshot trigger
+remain separate from these synthetic/full-gate and served-version results.
+No paid model call or production project write. Previous V2.5 runtime and the
+full accepted V2.4 checkpoint/archive remain restoration references; any future
+forward rollback still needs the enforced exact-commit publication path.

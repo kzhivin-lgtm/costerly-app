@@ -13,6 +13,12 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
+- Current Objects V2.6 follow-up: `ui/objects_pricing.py` owns compact R labels,
+  `ui/objects_workflow.py` the right-arrow markup, `styles/objects.py` confirmation/
+  check/icon presentation, and `EstimationCycle.observe` UI timing receipts in
+  `use_cases/estimation_progress.py`. Worker/status publication and original
+  input/actions runtime remain unchanged. [Release/evidence](OBJECTS_V2_6_RELEASE_2026_11_21.md).
+
 - Accepted Objects Estimation UI reference: [Objects V2.4 full checkpoint](OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
   runtimea8b08ba5. `styles/objects.py` owns layout, `ui/objects_workflow.py` the
   stage/header view and `ui/objects_pricing.py` the pricing/document rendering.

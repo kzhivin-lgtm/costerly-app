@@ -2,12 +2,12 @@
 
 ## Workflow transitions
 
-Current production UI is Object Details V2.5 (`3493a84a`), preserving Objects
-V2.4 and carrying the V2.2 protection below unchanged. Public Login confirms
-revision7c34ff18617435dd/enabled=true and compatible/protocol1 storage acceptance.
-The accepted full V2.4 presentation checkpoint remains the restoration reference.
-Manual coverage of every authenticated route is not
-claimed. V1.3.3 behavior and V3.2 costing remain protected.
+Current production UI is Objects V2.6 (`82d55026`), preserving Object Details
+V2.5, accepted Objects V2.4 body geometry and V2.2 protection. Public Login
+confirms revision7c34ff18617435dd/enabled=true, matching Core/wrapper builds and
+compatible/protocol1 storage acceptance. The full V2.4 presentation checkpoint
+remains the restoration reference. Manual coverage of every authenticated route
+is not claimed. V1.3.3 behavior and V3.2 costing remain protected.
 
 ACTIVE OWNER ACCEPTANCE, P0, OBJECTS V2.2 DEPLOYED,21November2026.
 
@@ -493,7 +493,8 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-ACTIVE, P1, USER REQUEST, Objects V2.6,21November2026. Follow-up after deployed
+PUBLISHED, OWNER PRODUCTION ACCEPTANCE PENDING, P1, USER REQUEST, Objects V2.6,
+21November2026. Follow-up after deployed
 Object Details V2.5: technical metrics use R1/R2/... without object names, keep
 the disclosure arrow fixed at the right, and prevent premature finished timing
 while a row is active. Set Prices uses the existing Done green while the saved
@@ -524,6 +525,18 @@ evidence. The same strict service test now starts with an actual inside-field
 click/focus assertion, retains Tab commit, exact receipts and the original5s
 deadline. No production input fix is included. If this recurs with explicit
 pointer entry, stop publication and diagnose that interaction separately.
+[verified] Final runtime82d5502689d83dfc8b75f3d41f50e350334c2815 published after
+clean local535/nine242.988s and CI535/nine267.1s (301s job), run44925791103,
+job136911465989/artifact14715334682. All142 transitions remain covered,48
+outside-field probes and strict1440/2536 geometry pass.441 other protected
+files are byte-identical,80 functions AST-identical; only UI timing observation
+changed in the progress module. Active no-bypass27499066 verified by publisher.
+Core7966318213 succeeded16:47:13UTC; actual Core/wrapper/meta/version match
+16:48:28UTC, controller7c34ff18617435dd enabled/recovery and compatible202 storage
+accepted. First failed SHA was never published. Specific owner-run and initial
+Linux focus causes remain unknown; no input repair is claimed. Evidence:
+.ui-artifacts/objects-v26-release/ and the V2.6 release record.
+
 
 COMPLETED, P1, OWNER-ACCEPTED PRESENTATION CHECKPOINT, Objects V2.4,21November2026.
 Owner requested the full checkpoint after publication and moved to the next

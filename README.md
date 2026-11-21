@@ -1,16 +1,17 @@
 # Costerly
 
-Current UI release: **Object Details V2.5**,21November2026, runtime `3493a84a`.
-Approved compact Object Details with240x164px preview, collapsed Materials/Labor/
-Overhead and aligned Self Cost (SC). Existing editors, costing, persistence,
-Objects V2.4 layout and V2.2 transition protection are preserved. Full clean
-local and exact-SHA GitHub gates passed531 checks and nine browser suites;
+Current UI release: **Objects V2.6**,21November2026, runtime `82d55026`.
+Compact R metrics with a fixed right arrow; revoked stale timing receipts,
+confirmed Set Prices green, clear checkmarks and aligned grey/available
+Excel/PDF icons. Object Details V2.5 and Objects V2.4 body/input geometry,
+pricing/costing/persistence and transition protection are preserved.
+Clean local and exact-SHA GitHub gates passed535 checks/nine browser suites;
 142 transitions had zero uncovered/mixed frames. Actual served Core/wrapper/
-meta/version match V2.5; enabled protection and compatible storage acceptance
-verified on production Login. Owner authenticated card acceptance is pending.
-[Release and evidence](notes/OBJECT_DETAIL_V2_5_RELEASE_2026_11_21.md).
-[Previous Objects V2.4 checkpoint and restoration](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md).
-[Contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#object-details-interface).
+meta/version match; enabled protection and compatible storage acceptance verified.
+[Release, retained initial CI failure and verification limits](notes/OBJECTS_V2_6_RELEASE_2026_11_21.md).
+[Object Details V2.5](notes/OBJECT_DETAIL_V2_5_RELEASE_2026_11_21.md),
+[accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
+[contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
 Accepted Estimation checkpoint: **V3.2**,21November2026, runtime `07ac05d2`.
 
