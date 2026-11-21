@@ -6,12 +6,12 @@ deployment. The evidence below retains that boundary.
 
 Subsequent owner instruction21November2026 explicitly approves only this
 mechanism repair, preservation of protection, all mandatory local/GitHub checks
-and publication with a new deploy number. Implementation is now active as
+and publication with a new deploy number. Implementation is now published as
 [Objects V2.7](OBJECTS_V2_7_RELEASE_2026_11_21.md). The V2.6 checkpoint stays intact.
 
 ## Checkpoint and original evidence
 
-- Runtime remains `82d5502689d83dfc8b75f3d41f50e350334c2815`, Objects V2.6.
+- The diagnostic base was `82d5502689d83dfc8b75f3d41f50e350334c2815`, Objects V2.6.
 - Records checkpoint `1a1b8f7f12872f5ca60a251a433e615594998642` and both published
   checkpoint tags/archive remain intact.
 - CI `44950510955`, job `136987180726`, stopped in `profile_save.mjs:135`,
@@ -109,4 +109,6 @@ The owner subsequently approved implementation/publication. The 17-case
 comparison and diagnostic Profile Save pass are not a full nine-suite gate or
 production acceptance. The approved release must still pass the complete
 local/exact-SHA GitHub gate, protected publisher and actual Core/wrapper checks.
-Publication status is recorded in the linked V2.7 release, not inferred here.
+V2.7 subsequently passed both full exact-commit gates and was published at
+071593fc with real Core/wrapper/controller equality. Details/limits are recorded
+in the linked release. Owner authenticated acceptance remains pending.

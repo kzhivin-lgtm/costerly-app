@@ -2,17 +2,18 @@
 
 Latest full checkpoint: **Objects V2.6**, owner-requested21November2026.
 [Exact identities, archive, evidence, limits and restoration](notes/OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md).
-Runtime82d55026 remains deployed; the checkpoint adds records/tags only.
+It pins runtime82d55026; that checkpoint itself added records/tags only.
 
-Current UI release: **Objects V2.6**,21November2026, runtime `82d55026`.
-Compact R metrics with a fixed right arrow; revoked stale timing receipts,
-confirmed Set Prices green, clear checkmarks and aligned grey/available
-Excel/PDF icons. Object Details V2.5 and Objects V2.4 body/input geometry,
-pricing/costing/persistence and transition protection are preserved.
-Clean local and exact-SHA GitHub gates passed535 checks/nine browser suites;
-142 transitions had zero uncovered/mixed frames. Actual served Core/wrapper/
-meta/version match; enabled protection and compatible storage acceptance verified.
-[Release, retained initial CI failure and verification limits](notes/OBJECTS_V2_6_RELEASE_2026_11_21.md).
+Current UI release: **Objects V2.7**,22November2026 Israel, runtime `071593fc`.
+Fix overlapping Profile-ready receipts without changing employee writes,
+inputs, pricing, layout, auth or other mechanisms. One DOM watcher selects the
+current render/tab receipt and retains protection until two stable frames.
+Clean local/exact-SHA GitHub gates passed535 checks/nine browser suites and7
+forced ready cases;142 original transitions had zero uncovered/mixed frames.
+Actual Core/wrapper/meta/version match; new controller6a30e226ce88c9eb is enabled
+with recovery and compatible storage acceptance. Owner authenticated acceptance
+is pending. [Release, retained CI evidence and verification limits](notes/OBJECTS_V2_7_RELEASE_2026_11_21.md).
+[Preserved V2.6 presentation](notes/OBJECTS_V2_6_RELEASE_2026_11_21.md),
 [Object Details V2.5](notes/OBJECT_DETAIL_V2_5_RELEASE_2026_11_21.md),
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).

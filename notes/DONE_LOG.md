@@ -1,5 +1,29 @@
 # Done Log
 
+Objects V2.7 published22November2026 Israel (21NovemberUTC), OWNER AUTHENTICATED
+ACCEPTANCE PENDING. Runtime071593fcdbff06a804ace403ef8c24d535e43b18, tag
+objects-v2.7-2026-11-22, build
+objects-v2.7-b20261121215044-profile-ready-estimation-v3.2-detection-v8.4.29.
+Only shared ready coordination and build stamps change runtime: one observer/
+frame per transition, select by current render/tab, retain existing protection.
+Employee writes/inputs/layout/prices/auth and613 other non-Markdown base files
+remain byte-identical (three build files separately normalize exactly to base).
+Seven canonical real-browser cases pass with zero uncovered samples and one
+write/completion. Old-controller negative control fails the intended10s path.
+Clean full local535/nine298.845s and exact-SHA GitHub535/nine324.670s (376s job),
+run44955037159/job137001149815/artifact14726989350. Original142 navigation
+transitions/48 field probes/geometry/auth/recovery/pricing/proposal checks pass.
+Initial2c4ad23b CI44954109356 blocked on the old immediate color assertion,
+never deployed; isolated unchanged140ms CSS reproduces it. Test now requires
+the full old unconfirmed color within1s and retains its not-green assertion,
+without application price/style/input changes or receipt deadline relaxation.
+Publisher confirmed active no-bypass27499066; main advanced only to071593fc.
+Core7970127088 success22:14:33UTC; actual Core/wrapper/meta/version match
+22:15:26UTC, new6a30e226ce88c9eb enabled/recovery and compatible storage202.
+This is fresh public Login, not owner authenticated workflow acceptance.
+V2.6 full checkpoint remains intact. No paid run/production project edit.
+[Scope, checks, retained failures and limits](OBJECTS_V2_7_RELEASE_2026_11_21.md).
+
 Objects V2.6 FULL CHECKPOINT REQUESTED BY OWNER,21November2026.
 Runtime remains82d5502689d83dfc8b75f3d41f50e350334c2815; no new app deploy.
 Runtime tagobjects-v2.6-production-checkpoint-2026-11-21, records tag

@@ -2,25 +2,36 @@
 
 ## Workflow transitions
 
-ACTIVE APPROVED REPAIR, P1, OWNER REQUEST, Objects V2.7,21November2026:
+IMPLEMENTED/PUBLISHED, OWNER LIVE ACCEPTANCE PENDING, P1, Objects V2.7,
+22November2026 Israel (21NovemberUTC):
 Profile Loading after Add Worker -> Pricing Cost. Owner approved only the
 diagnosed ready coordination repair, preservation of transition protection,
 full local/exact-SHA GitHub gates and publication with a new deploy number.
-Production remains Objects V2.6 until those checks pass and publication completes.
+Runtime071593fc is published after clean exact-commit local535/nine298.845s and
+GitHub535/nine324.670s (376s job), run44955037159/job137001149815/artifact14726989350.
+All7 forced Profile cases have one write/completion and zero uncovered samples;
+142 original navigation transitions remain covered. Publisher reverified active
+no-bypass27499066. Core7970127088 succeeded22:14:33UTC; actual versions agree
+22:15:26UTC with enabled/recovery controller6a30e226ce88c9eb and compatible202.
+Initial2c4ad23b was blocked on an asynchronous old color assertion, never
+published. Only its test now observes the unchanged140ms CSS transition,
+requiring the full prior unconfirmed color within1s; no pricing/input/style code
+change. Retain the initial failure/CSS reproduction. Owner authenticated
+Add Worker -> Pricing Cost -> Labor acceptance is still required.
 [verified] The shared ready controller cancels a pending animation frame without
 clearing its handle when a second run receipt replaces the candidate. A stale
 receipt can also replace a valid candidate. A real-browser controlled overlap
 reproduces the original10s Loading symptom after a successful worker write.
 A diagnostic-only receipt-pool/tab-aware variant passed the same injection,
 full Profile Save flow and all7 applicable cases in a17-case comparison.
-The candidate uses one observer/frame check per transition, chooses the receipt
+The published repair uses one observer/frame check per transition, chooses the receipt
 matching current render and selected Profile tab, and uses that accepted receipt
 for completion/build state. Canonical Profile Save now includes7 deterministic
 real-browser cases with continuous cover and exactly-one-write/ready assertions.
 [likely] This explains the retained CI44950510955/job136987180726 and V2.4
 Profile timeout; their exact historical signal ordering remains unknown.
 Merge this evidence with the earlier after-worker timeout retained below,
-do not treat another passing ordinary retry as a repair. Proposed outcome:
+do not treat another passing ordinary retry as a repair. Implemented outcome:
 one protected DOM readiness check per transition, matching current render ID
 and selected tab, with deterministic overlapping/out-of-order regression cases.
 Keep protection, employee writes, all other mechanics and full release gate.
@@ -30,14 +41,14 @@ No new hierarchical work number or work block assigned for this continuation.
 
 Latest owner-requested full preservation checkpoint is Objects V2.6,21November2026.
 [Identity, evidence, limitations and restoration](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md).
-Runtime82d55026 is unchanged; records tagobjects-v2.6-records-2026-11-21 resolves
+Checkpoint runtime82d55026 is unchanged; records tagobjects-v2.6-records-2026-11-21 resolves
 the checkpoint records. Final archive integrity/restore/gate receipts are retained
 in its verification directory. This does not turn unknown historical causes or
 unreplayed authenticated production routes into verified acceptance.
 
-Current production UI is Objects V2.6 (`82d55026`), preserving Object Details
+Current production UI is Objects V2.7 (`071593fc`), preserving Object Details
 V2.5, accepted Objects V2.4 body geometry and V2.2 protection. Public Login
-confirms revision7c34ff18617435dd/enabled=true, matching Core/wrapper builds and
+confirms revision6a30e226ce88c9eb/enabled=true, matching Core/wrapper builds and
 compatible/protocol1 storage acceptance. The full V2.4 presentation checkpoint
 remains the restoration reference. Manual coverage of every authenticated route
 is not claimed. V1.3.3 behavior and V3.2 costing remain protected.

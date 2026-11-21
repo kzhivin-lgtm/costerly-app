@@ -13,11 +13,18 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
+- Current Objects V2.7 repair: `ui/workflow_transition.js` coordinates one
+  per-transition DOM watcher with run-indexed ready receipts and Profile tab
+  matching. Original covers/recovery/host-auth/protocol checks remain protected.
+  `tests/ui/profile_ready_regression.mjs` supplies7 deterministic local browser
+  cases inside the existing Profile Save suite. Layout, inputs, writes, costing
+  and all other mechanics are unchanged. [Publication/evidence](OBJECTS_V2_7_RELEASE_2026_11_21.md).
+
 - Latest full runtime/records restoration reference: [Objects V2.6 checkpoint](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md),
   runtime82d55026. Preserve the private archive, blocked-CI evidence and known
   acceptance limits before further UI work. No new runtime is published by it.
 
-- Current Objects V2.6 follow-up: `ui/objects_pricing.py` owns compact R labels,
+- Preserved Objects V2.6 presentation: `ui/objects_pricing.py` owns compact R labels,
   `ui/objects_workflow.py` the right-arrow markup, `styles/objects.py` confirmation/
   check/icon presentation, and `EstimationCycle.observe` UI timing receipts in
   `use_cases/estimation_progress.py`. Worker/status publication and original

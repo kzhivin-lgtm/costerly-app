@@ -1,6 +1,8 @@
 # Objects V2.7: overlapping Profile ready signals
 
-Status: approved candidate, not yet published.
+Status: published22November2026 Israel (21NovemberUTC), owner authenticated
+production acceptance pending. Runtime `071593fcdbff06a804ace403ef8c24d535e43b18`.
+Release tag: `objects-v2.7-2026-11-22`.
 Base runtime: `82d5502689d83dfc8b75f3d41f50e350334c2815`, Objects V2.6.
 Records/full checkpoint: `1a1b8f7f12872f5ca60a251a433e615594998642` and the
 published V2.6 checkpoint tags/archive. No new hierarchical work block assigned.
@@ -91,3 +93,38 @@ changed test and therefore retains613 other non-Markdown base files identical.
 The old CI's exact receipt order remains unknown. A forced reproduction is not
 a retrospective packet trace, and a synthetic gate is not authenticated owner
 production acceptance. No paid call or production project write is planned.
+
+## Final verified publication
+
+- Final app source is unchanged from the blocked2c4ad23b; final commit changes
+  only the documented visual-test timing and records.
+- Clean exact-commit local gate535 checks/nine suites passed in298.845s.
+- [Exact-SHA GitHub gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44955037159/job/137001149815)
+  passed535 checks/nine suites,324.670s test execution/376s whole job;
+  run44955037159, job137001149815, artifact14726989350.
+- Both gates pass all7 deterministic Profile cases, one employee write and one
+  correlated current completion per case, zero uncovered-before-ready samples.
+  Original142 navigation transitions have zero uncovered/mixed frames; original
+  geometry,48 field-boundary probes, prices/proposal failure/retry, auth, recovery
+  and cross-version compatibility checks remain passing.
+- Backup before the final commit:807 source files,4,618,232 bytes, unchanged
+  helper/exclusions/5MiB limit and established ZIP/LZMA wrapper, exact byte parity.
+- Publisher reverified remote ruleset27499066 active with no bypass actors and
+  trusted check137001149815, then advanced main82d55026 ->071593fc only at
+  22:13:49UTC through `tools/promote_ui_release.py --publish`. Initial failed
+  candidate2c4ad23b never deployed; no unchecked main push or rule bypass.
+- Core deployment7970127088 succeeded22:14:33UTC. Fresh public-browser witnesses
+  22:15:26UTC confirm Core/wrapper/meta/version all match the stamped V2.7,
+  HTTP200. New controller6a30e226ce88c9eb is enabled, recovery remains present,
+  compatible/protocol1 technical storage acceptance202. These are anonymous
+  Login observations, not owner authenticated Add Worker acceptance or an
+  independent DB row readback.
+
+Full evidence is retained under `.ui-artifacts/profile-ready-v27-release/`,
+including both candidate gates, initial failed CI, CSS reproduction, focused
+and negative controls, source isolation, backups, publisher/deployment and
+fresh production receipts. No paid model call or production project write.
+V2.6 full checkpoint/archive/tags remain intact. Do not reuseV2.7 for a second
+runtime deployment. Further source publication retains the same full gate and
+protected publisher. Next acceptance: owner Add Worker -> Pricing Cost -> Labor
+Costs on app.costerly.ai, without changing the surrounding UI/mechanics.
