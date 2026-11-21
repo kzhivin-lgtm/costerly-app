@@ -58,6 +58,7 @@ try{
   await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
   await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+  await core.locator('[data-cost-band="labor"] > summary').click();
   const hours=core.getByRole('textbox',{name:'Assembly hours',exact:true});
   await hours.waitFor();
   await frame.waitForFunction(()=>window.__costerlyObjectDetailDraft?.context?.objectId==='object-001');
@@ -105,6 +106,7 @@ try{
   await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
   await core.getByText('₪8\u202f250',{exact:true}).first().waitFor();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+  await core.locator('[data-cost-band="labor"] > summary').click();
   await hours.waitFor();assert.equal(await hours.innerText(),'0.0');
   assert.equal(await sheetHours.innerText(),'100.0');
   const body=await core.locator('body').innerText();

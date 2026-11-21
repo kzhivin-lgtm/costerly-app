@@ -48,7 +48,9 @@ def test_material_summary_uses_exact_row_totals_and_one_title():
     assert html.count('>Materials<') == 1
     assert 'data-material-section-total>₪136<' in html
     section['rows'].append({'item': 'Unknown', 'total': None})
-    assert '>Subtotal<' in _section_html(section)
+    partial_html = _section_html(section)
+    assert '>Subtotal<' not in partial_html
+    assert 'data-material-section-total>₪136<' in partial_html
 
 
 def test_assembly_remains_available_when_materials_are_pending_and_quantity_is_applied():
@@ -71,7 +73,7 @@ def test_labor_is_a_single_header_and_two_compact_work_rows():
     html = _labor_html({'status': 'waiting_for_materials'})
     assert html.count('object-detail-work-row') == 2
     assert html.count('object-detail-cost-band') == 1
-    assert '>Labor<br>pay<' in html
+    assert '>Labor<br>Pay<' in html
     assert '₪50/h' not in html and 'In-house labor</p>' not in html
     assert '>Subtotal<' not in html
 

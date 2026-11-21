@@ -20,7 +20,7 @@ logger.setLevel(logging.INFO)
 
 OBSERVABILITY_SCHEMA_VERSION = "runtime_v1"
 DEFAULT_BUILD_VERSION = "3.2.3"
-LABOR_BUILD_VERSION = "objects-v2.4-b20261121142957-layout-estimation-v3.2-detection-v8.4.29"
+LABOR_BUILD_VERSION = "object-details-v2.5-b20261121155644-compact-estimation-v3.2-detection-v8.4.29"
 _QUEUE: queue.Queue[dict[str, object]] = queue.Queue(maxsize=1000)
 _SINK_LOCK = threading.Lock()
 _SINK_URL: str | None = None

@@ -10,7 +10,8 @@ enabled protection and durable compatibility logging verified on production Logi
 Owner requested the full V2.4 presentation checkpoint on21November2026.
 [Accepted reference and restoration](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md).
 Manual coverage of every authenticated route is not claimed. Next discussion:
-Object Details interface, awaiting owner comments; no changes yet.
+Object Details V2.5 approved for implementation/publication, currently validating.
+[Approved scope](notes/OBJECT_DETAIL_V2_2_1_UI_CONTRACT_2026_11_18.md#object-details-v25-approved-presentation21november2026).
 [Contract](notes/UI_GUIDELINES.md),
 [evidence and backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 

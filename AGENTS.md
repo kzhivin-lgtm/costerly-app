@@ -33,3 +33,10 @@ job logs directly, and report the cause and next action without waiting for the
 owner to forward an email. Continue monitoring each corrected candidate. A
 pending or failed check never permits publication. This uses existing GitHub
 checks and the publisher, without a separate notification or monitoring system.
+
+Owner scope rule,21November2026: during interface construction, add only the
+requested UI. Do not introduce unrequested notices, warnings, status badges,
+extra controls or interaction scenarios. Notification design is deferred until
+the owner completes the user cycle and specifies those scenarios. In Object
+Details, remove all incomplete-calculation notices/captions without replacement
+badges. Preserve existing business data and the accepted workflow protection.

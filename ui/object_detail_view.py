@@ -305,20 +305,15 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
     known_totals = [float(row['total']) for row in rows
                     if isinstance(row.get('total'), (int, float)) and math.isfinite(row['total'])]
     subtotal = sum(known_totals) if known_totals or not rows else None
-    partial = len(known_totals) != len(rows)
+    if section_key == 'overhead':
+        subtotal = section['metrics'][0][1]
     for index, column in enumerate(columns):
         label = _escape(column)
-        extra_class = ''
         if collapse_title and index == 0:
-            label = _escape(collapse_title)
-            extra_class = ' object-detail-cost-title'
-        elif collapse_title and index == len(columns) - 1:
-            label = (f'<span class="object-detail-cost-label">{"Subtotal" if partial else "Total"}</span>'
-                     f'<span class="object-detail-cost-value" data-material-section-total>{_money(subtotal)}</span>')
-            extra_class = ' object-detail-cost-total'
+            label = ''
         if material_table and column in {"Purchase unit", "Unit price"}:
             label = f'<span>{label.replace(" ", "<br> ", 1)}</span>'
-        header_cells.append(f'<div class="object-detail-table-head{extra_class}">{label}</div>')
+        header_cells.append(f'<div class="object-detail-table-head">{label}</div>')
     header = "".join(header_cells)
 
     body_parts: list[str] = []
@@ -334,9 +329,13 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
         if collapse_title:
             return (
                 f'<details class="{table_class} object-detail-cost-band object-detail-materials-band" '
-                f'data-section="{_escape(section_key)}" open>'
-                f'<summary class="object-detail-table-head-row object-detail-cost-summary">{header}</summary>'
-                f'<div class="object-detail-cost-body">{"".join(body_parts)}</div></details>'
+                f'data-section="{_escape(section_key)}">'
+                '<summary class="object-detail-table-head-row object-detail-cost-summary object-detail-band-summary">'
+                f'<div class="object-detail-table-head object-detail-cost-title">{_escape(collapse_title)}</div>'
+                '<div class="object-detail-table-head object-detail-cost-total">'
+                f'<span class="object-detail-cost-value" data-material-section-total>{_money(subtotal)}</span></div></summary>'
+                f'<div class="object-detail-cost-body"><div class="object-detail-table-head-row">{header}</div>'
+                f'{"".join(body_parts)}</div></details>'
             )
         return (
             f'<div class="{table_class}" data-section="{_escape(section_key)}">'
@@ -355,11 +354,13 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
             summary_cells.append(f'<span class="object-detail-group-total">{value}</span>')
 
         body_parts.append(
-            '<details class="object-detail-group" open>'
+            '<details class="object-detail-group">'
             '<summary class="object-detail-group-summary">'
             + "".join(summary_cells)
             + "</summary>"
         )
+        if collapse_title:
+            body_parts.append(f'<div class="object-detail-table-head-row">{header}</div>')
 
         for row in group_rows:
             values = _row_values(section, row)
@@ -380,10 +381,21 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
             )
         body_parts.append("</details>")
 
+    body = "".join(body_parts)
+    if collapse_title:
+        return (
+            f'<details class="{table_class} object-detail-cost-band object-detail-overhead-band" '
+            f'data-section="{_escape(section_key)}">'
+            '<summary class="object-detail-table-head-row object-detail-cost-summary object-detail-band-summary">'
+            f'<div class="object-detail-table-head object-detail-cost-title">{_escape(collapse_title)}</div>'
+            '<div class="object-detail-table-head object-detail-cost-total object-detail-section-metric" data-metric="cost">'
+            f'<span class="object-detail-cost-value object-detail-section-value">{_money(subtotal)}</span></div></summary>'
+            f'<div class="object-detail-cost-body">{body}</div></details>'
+        )
     return (
         f'<div class="{table_class}" data-section="{_escape(section_key)}">'
         f'<div class="object-detail-table-head-row">{header}</div>'
-        f'{"".join(body_parts)}'
+        f'{body}'
         '</div>'
     )
 
@@ -394,6 +406,13 @@ def _section_html(section: dict[str, object]) -> str:
         return (
             '<section class="object-detail-section object-detail-section--cols-6" data-section="material">'
             + _table_html(section, collapse_title=str(section['title'])) + '</section>'
+        )
+    if section.get('key') == 'overhead':
+        return (
+            '<section class="object-detail-section object-detail-section--cols-4" data-section="overhead">'
+            + _table_html(section, collapse_title=str(section['title']))
+            + '<div hidden>' + ''.join(_metric_html(label, value) for label, value in section['metrics'][1:])
+            + '</div></section>'
         )
     metrics = "".join(_metric_html(label, value) for label, value in section["metrics"])
     column_count = len(section["columns"])
@@ -420,19 +439,16 @@ def _final_html(data: dict[str, object]) -> str:
         f'<div class="object-detail-final" data-vat-percent="{_escape(summary.get("vat_percent", 18))}" '
         f'data-full-cost="{str(data.get("cost_policy") == "object_costs_v3_1").lower()}" '
         f'data-base-cost="{_escape(summary["excl_vat"])}">'
-        f'<div class="object-detail-final-title">{_escape(summary["title"])}</div>'
-        '<div data-full-cost-subtotal class="object-detail-cnc-caption" style="grid-column:1 / -1"'
-        + ('' if summary.get('partial') else ' hidden') + '>Subtotal: some costs are still awaiting calculation</div>'
-        +
-        '<div>'
+        '<div class="object-detail-final-title">Self Cost (SC)</div>'
+        '<div class="object-detail-final-metric">'
         '<div class="object-detail-final-label">Excl. VAT</div>'
         f'<div class="object-detail-final-value" data-final="excl_vat">{_money(summary["excl_vat"])}</div>'
         '</div>'
-        '<div>'
-        '<div class="object-detail-final-label">VAT</div>'
+        '<div class="object-detail-final-metric">'
+        f'<div class="object-detail-final-label">VAT {_escape(summary.get("vat_percent", 18))}%</div>'
         f'<div class="object-detail-final-value" data-final="vat">{_money(summary["vat"])}</div>'
         '</div>'
-        '<div>'
+        '<div class="object-detail-final-metric">'
         '<div class="object-detail-final-label">Total</div>'
         f'<div class="object-detail-final-value object-detail-final-total" data-final="total">{_money(summary["total"])}</div>'
         '</div>'
@@ -464,13 +480,11 @@ def overhead_section_html(result: dict[str, object]) -> str:
     section = {
         "key": "overhead", "title": "Overhead", "readonly": True,
         "columns": ["Group", "Monthly cost", "Allocation", "Cost"], "rows": rows,
-        "metrics": [("Subtotal" if result.get("partial") else "Cost", result.get("cost") if ready else "—"),
+        "metrics": [("Cost", result.get("cost") if ready else "—"),
                     ("VAT", result.get("vat") if ready else "—"),
                     ("Total", result.get("total") if ready else "—")],
     }
-    message = messages.get(result.get("status"), "From Profile → Overhead Expenses and Pricing Cost")
-    if ready and result.get("partial"):
-        message = "Subtotal based on the available Materials and Labor"
+    message = messages.get(result.get("status"))
     return (
         f'<div data-overhead-summary data-overhead-ready="{str(ready).lower()}"'
         f' data-overhead-status="{_escape(result.get("status", "loading"))}"'
@@ -481,7 +495,7 @@ def overhead_section_html(result: dict[str, object]) -> str:
         f' data-overhead-material-cost="{_escape(result.get("material_cost", ""))}"'
         f' data-overhead-vat="{_escape(result.get("vat_percent", 18))}">'
         + _section_html(section)
-        + f'<p class="object-detail-cnc-caption">{_escape(message)}</p></div>'
+        + (f'<p class="object-detail-cnc-caption">{_escape(message)}</p>' if message else '') + '</div>'
     )
 
 
@@ -603,9 +617,6 @@ def hero_heading_html(data: dict[str, object]) -> str:
         '<span class="object-detail-info-value object-detail-quantity-input" '
         'data-object-quantity-input="true" contenteditable="true" inputmode="decimal" '
         f'tabindex="0">{_escape(data["quantity"])}</span>'
-        '<span>·</span>'
-        '<span class="object-detail-info-label">AI confidence:</span>'
-        f'<span class="object-detail-info-value">{_escape(data["confidence"])}</span>'
         '</div>'
         '</div>'
     )
@@ -637,9 +648,6 @@ def hero_details_html(data: dict[str, object]) -> str:
         '<span class="object-detail-info-value object-detail-quantity-input" '
         'data-object-quantity-input="true" contenteditable="true" inputmode="decimal" '
         f'tabindex="0">{_escape(_quantity(data["quantity"]))}</span>'
-        '<span>·</span>'
-        '<span class="object-detail-info-label">AI confidence:</span>'
-        f'<span class="object-detail-info-value">{_escape(data["confidence"])}</span>'
         '</div>'
         '</div>'
     )

@@ -92,8 +92,7 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False):
         css = 'object-detail-cost-total' if total else 'object-detail-cost-metric'
         cell = 'object-detail-table-cell' if is_row else 'object-detail-table-head'
         content = (f'<span class="object-detail-cost-value">{escape(str(value))}</span>' if is_row else
-                   f'<span class="object-detail-cost-label">{label}</span>'
-                   + (f'<span class="object-detail-cost-value">{escape(str(value))}</span>' if total else ''))
+                   f'<span class="object-detail-cost-label">{label}</span>')
         if is_row and column == 'hours' and metrics:
             exact = str(metrics['hours'])
             content = (
@@ -108,13 +107,27 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False):
     value = metrics or {}
     fields = metric('Hours', str(value['hours'].quantize(Decimal('.1'), rounding=ROUND_HALF_UP)) if metrics else None, 'hours')
     fields += '<div class="object-detail-labor-money-pair">'
-    fields += metric('Labor<br>pay', _money(value.get('pay')), 'pay')
-    fields += metric('Taxes &amp;<br>social', _money(value.get('taxes')), 'taxes') + '</div>'
+    fields += metric('Labor<br>Pay', _money(value.get('pay')), 'pay')
+    fields += metric('Taxes &amp;<br>Social', _money(value.get('taxes')), 'taxes') + '</div>'
     fields += metric('Total', _money(value.get('total')), 'total', total=True)
     classes = 'object-detail-work-row' if is_row else 'object-detail-table object-detail-cost-band object-detail-labor-table'
     cell = 'object-detail-table-cell' if is_row else 'object-detail-table-head'
     row = 'object-detail-table-row' if is_row else 'object-detail-table-head-row'
     body_class = 'object-detail-work-body' if is_row else 'object-detail-labor-body'
+    if not is_row:
+        return (
+            f'<details class="{classes}" data-cost-band="{key}"'
+            f' data-cost-unknown="{str(metrics is None).lower()}"'
+            f' data-cost-partial="{str(bool(value.get("partial"))).lower()}"'
+            + (' open' if open_by_default else '') + '>'
+            '<summary class="object-detail-table-head-row object-detail-cost-summary object-detail-band-summary">'
+            f'<div class="{cell} object-detail-cost-title">{escape(title)}</div>'
+            '<div class="object-detail-table-head object-detail-cost-total" data-labor-column="total">'
+            f'<span class="object-detail-cost-value">{_money(value.get("total"))}</span></div></summary>'
+            f'<div class="{body_class}">'
+            '<div class="object-detail-table-head-row object-detail-cost-summary object-detail-cost-column-headings">'
+            f'<div class="object-detail-table-head"></div>{fields}</div>{body}</div></details>'
+        )
     return (
         f'<details class="{classes}" data-cost-band="{key}"'
         f' data-cost-unknown="{str(metrics is None).lower()}"'
@@ -338,9 +351,7 @@ def _comparison_html(result, *, elements_html='', metrics=None):
 
 
 def _estimate(value, complete):
-    if value is None or complete:
-        return _money(value)
-    return f"{_money(value)} (subtotal)"
+    return _money(value)
 
 
 _labor_pay_metrics = object_labor_metrics
@@ -369,7 +380,7 @@ def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, 
         message = 'Preparing Assembly…' if state['status'] == 'preparing' else 'Assembly is unavailable.'
         assembly_body = f'<p class="object-detail-cnc-caption">{message}</p>'
     body = sheet + _cost_band('Assembly', assembly_body, assembly_metrics, key='assembly')
-    return '<div class="object-detail-labor-band">' + _cost_band('Labor', body, total, key='labor', open_by_default=True) + '</div>'
+    return '<div class="object-detail-labor-band">' + _cost_band('Labor', body, total, key='labor') + '</div>'
 
 
 def _overhead_html(state, *, identity, material_cost, material_partial=False, quantity=1, overrides=None):

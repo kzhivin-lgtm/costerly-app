@@ -1,5 +1,30 @@
 # V2.2.1: Object Detail cost hierarchy
 
+## Object Details V2.5 approved presentation,21November2026
+
+The owner approved the final compact sketch,240x164px contained preview and
+publication with a new release number. Rollback is accepted Objects V2.4
+runtimea8b08ba5. This supersedes earlier presentation/default-open and partial
+caption expectations below, not their arithmetic, input or persistence rules.
+
+| Scenario | Approved result / protected behavior |
+| --- | --- |
+| Initial Object Details | Materials, Labor and Overhead closed; white name+amount bands. Preview240x164px, unchanged saved source. Object label and native menu stay anchored. Name and quantity share a compact row; no AI Confidence. |
+| Materials opened | Empty first column heading, existing flat material rows and editors, no additional arrows/disclosure. Original values, units, source markers and numeric validation remain. |
+| Labor opened | Empty first column heading; Hours, Labor Pay, Taxes & Social, Total. Sheet Processing/Elements and Assembly retain existing disclosure and PDF actions. Collapsed Labor shows the existing sum of work totals. |
+| Overhead opened | Existing groups closed/white; open group pale purple with white leaves. Existing monthly/allocation/cost data. Header shows net Overhead cost, as the approved sketch. |
+| Final cost | Self Cost (SC) shares the three amounts' horizontal axis. Excl. VAT and VAT percentage centered above their own amounts. No incomplete-calculation captions, Subtotal labels or replacement badges; preserve missing values and internal partial audit. |
+| Local interaction | Mouse/Enter/Space disclosure stays local. No new timer, observer, request, callback, rerun, writer or export. Input clicks retain their current edit behavior without toggling parents. |
+| Save and cost | Existing material/quantity/manual-hours normalization, preview, explicit Save, failed Save/retry, receipt reconciliation, persisted reopen and full SC/Overhead arithmetic remain mandatory. |
+| Navigation and identity | Existing Back/Approve/header/Profile/auth/company isolation, old-wrapper recovery and continuous ready-correlated cover remain mandatory. Admin-entry latency optimization stays deferred. |
+| Narrow screen | Same functionality, local table scrolling, no page overflow; final label/value pairing retained. |
+
+Verification: focused unit checks, desktop/mobile production-screen browser
+scenarios and the complete exact-commit local/GitHub UI release gate. Publish
+only through the enforced publisher, then verify actual Core/wrapper/version
+and enabled protection. Synthetic checks are not owner production acceptance.
+No paid run, schema change, data migration or costing/model change is approved.
+
 ## V1.3.4 restored, 19 November 2026
 
 Owner-directed forward rollback `010e2658` restores exact runtime/tests from

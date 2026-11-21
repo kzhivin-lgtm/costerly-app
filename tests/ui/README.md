@@ -179,6 +179,16 @@ PDF/storage responses remain separate from owner production acceptance.
 
 ## Continuous navigation coverage after document restoration
 
+Object Details V2.5 adds the approved compact initial state to the same suites:
+all three bands closed with amounts on a shared column,240x164px saved preview,
+no extra Material disclosure, blank Material/Work column headings and final
+Self Cost (SC)/amount alignment. Opening the bands retains cross-section column
+alignment, input editing, keyboard, Elements/PDF and Overhead group disclosure.
+Calculation explicitly opens Labor before exercising the unchanged live-price,
+failed Save/retry, zero/invalid hours and persisted reopen scenarios. This only
+updates the approved disclosure prerequisites and structural selectors, not
+the protected behavioral assertions. All nine suites remain mandatory.
+
 The navigation suite includes fresh, migrated old-wrapper, mobile and restored
 Core-document cases. The restored case performs two real iframe document
 navigations without obs_trace, then exercises header destinations from Upload,

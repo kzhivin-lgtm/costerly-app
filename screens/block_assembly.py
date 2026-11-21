@@ -85,13 +85,13 @@ def assembly_breakdown_html(result, *, quantity=1, payroll_share=None, inline=Fa
                       if payroll_share is not None else ("Block", "Active min", "Planned min", "Base labor"))
     )
     rows = "".join(
-        _summary_row(block, block["block_id"] + (" · review" if block["issues"] else ""), quantity=quantity, payroll_share=payroll_share)
+        _summary_row(block, block["block_id"] + (" · review" if block["issues"] and not inline else ""), quantity=quantity, payroll_share=payroll_share)
         for block in result["blocks"]
     )
     table = (
         '<div class="object-detail-table object-detail-assembly-table" role="table" aria-label="Block Assembly estimate">'
         f'<div class="object-detail-table-head-row" role="row">{headers}</div>{rows}'
-        + _summary_row(result, "Subtotal" if _partial(result) else "Total", total=True, quantity=quantity, payroll_share=payroll_share) + '</div>'
+        + _summary_row(result, "Subtotal" if _partial(result) and not inline else "Total", total=True, quantity=quantity, payroll_share=payroll_share) + '</div>'
     )
     captions = (_caption(f'For {quantity:g} finished items') if quantity != 1 else '') if payroll_share is not None else _caption(
         f'Per finished item · ₪{result["hourly_base_ils"]:g}/h base wage · payroll costs excluded')

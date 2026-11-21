@@ -176,15 +176,40 @@ try {
   assert.equal(await assembly.count(),1);
   assert.equal(await sheet.locator('.object-detail-elements').count(),1);
   assert.equal(await assembly.locator('.object-detail-elements').count(),0);
+  const overhead=core.locator('.object-detail-overhead-band');
+  await overhead.waitFor();
+  for(const band of [materials,labor,overhead]){
+   assert.equal(await band.evaluate(node=>node.open),false,'Object Details starts compact');
+   assert.equal(await band.locator(':scope > summary .object-detail-cost-value').isVisible(),true);
+  }
+  const bandAxes=await frame.evaluate(()=>[...document.querySelectorAll('.object-detail-band-summary .object-detail-cost-value')].map(n=>{const b=n.getBoundingClientRect();return b.x+b.width/2;}));
+  assert.equal(bandAxes.length,3);assert.ok(bandAxes.every(x=>Math.abs(x-bandAxes[0])<1),JSON.stringify(bandAxes));
+  assert.equal(await materials.locator('details').count(),0,'Material rows do not disclose another level');
+  const previewSize=await core.locator('.object-detail-preview-placeholder').boundingBox();
+  assert.equal(previewSize.width,240);assert.equal(previewSize.height,164);
+  const detailCopy=await core.locator('body').innerText();
+  assert.ok(!/AI confidence|Subtotal based|some costs are still awaiting/i.test(detailCopy));
+  if(cfg.width>760){
+   const axis=await core.locator('.object-detail-final').evaluate(node=>{
+    const cy=n=>{const b=n.getBoundingClientRect();return b.y+b.height/2;};
+    return {title:cy(node.querySelector('.object-detail-final-title')),values:[...node.querySelectorAll('[data-final]')].map(cy)};
+   });
+   assert.ok(axis.values.every(y=>Math.abs(y-axis.title)<1),JSON.stringify(axis));
+  }
+  await page.screenshot({path:reportPath('object-details-compact-'+cfg.name+'.png'),fullPage:true});
+  await materials.locator(':scope > summary').click();
+  await labor.locator(':scope > summary').click();
+  assert.equal(await materials.locator('.object-detail-cost-body > .object-detail-table-head-row > div').first().innerText(),'');
+  assert.equal(await labor.locator('.object-detail-cost-column-headings > div').first().innerText(),'');
   for(const row of [sheet,assembly]){
    assert.equal(await row.evaluate(node=>node.classList.contains('object-detail-table')),false);
    assert.ok((await row.locator(':scope > summary').evaluate(node=>node.getBoundingClientRect().height))<=48);
    assert.equal(await row.locator(':scope > summary [data-labor-column="hours"]').isVisible(),true);
   }
   const alignment=await frame.evaluate(()=>{
-   const cells=document.querySelector('.object-detail-materials-band > summary').children;
+   const cells=document.querySelector('.object-detail-materials-band .object-detail-cost-body > .object-detail-table-head-row').children;
    const center=node=>{const r=node.getBoundingClientRect();return r.x+r.width/2;};
-   const head=document.querySelector('[data-cost-band="labor"] > summary');
+   const head=document.querySelector('[data-cost-band="labor"] .object-detail-cost-column-headings');
    const reference=document.createElement('span');
    reference.style.backgroundColor='rgba(42, 31, 44, 0.045)';
    head.appendChild(reference);
@@ -207,7 +232,7 @@ try {
   assert.ok(Math.abs(alignment.pay-alignment.start-step)<1 && Math.abs(alignment.taxes-alignment.pay-step)<1,JSON.stringify(alignment));
   assert.equal(alignment.header,alignment.originalColor);
   assert.equal(alignment.cell,'rgba(0, 0, 0, 0)');
-  assert.equal(await labor.locator(':scope > summary .object-detail-cost-label').last().innerText(),'TOTAL');
+  assert.equal(await labor.locator('.object-detail-cost-column-headings .object-detail-cost-label').last().innerText(),'TOTAL');
   assert.equal(await labor.locator('.object-detail-labor-body > .object-detail-cnc-caption:not(.object-detail-labor-review)').count(),0);
   const cardRender=await core.locator('[data-costerly-render-id]').last().getAttribute('data-costerly-render-id');
   for(const band of [materials,labor,sheet,assembly]){
@@ -219,6 +244,15 @@ try {
    await summary.press('Space');
    assert.equal(await band.evaluate(node=>node.open),initial);
   }
+  await overhead.locator(':scope > summary').click();
+  const group=overhead.locator('.object-detail-group').first();
+  assert.ok(await overhead.locator('.object-detail-group').count()>0);
+  assert.equal(await group.evaluate(n=>n.open),false);
+  const closedColor=await group.locator(':scope > summary').evaluate(n=>getComputedStyle(n).backgroundColor);
+  await group.locator(':scope > summary').click();
+  assert.equal(await group.locator('.object-detail-table-row').first().isVisible(),true);
+  assert.notEqual(await group.locator(':scope > summary').evaluate(n=>getComputedStyle(n).backgroundColor),closedColor);
+  await overhead.locator(':scope > summary').click();
   await sheet.locator(':scope > summary .object-detail-cost-title').click();
   await sheet.locator('.object-detail-elements > summary').click();
   await assembly.locator(':scope > summary .object-detail-cost-title').click();

@@ -14,7 +14,7 @@ def apply_object_detail_css() -> None:
 
         .object-detail-hero {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 260px;
+            grid-template-columns: minmax(0, 1fr) 240px;
             column-gap: 42px;
             align-items: start;
         }
@@ -27,11 +27,11 @@ def apply_object_detail_css() -> None:
 
         .object-detail-info-row {
             display: flex;
-            align-items: baseline;
+            align-items: center;
             gap: 10px;
-            margin: 18px 0 8px 0;
+            margin: 0;
             font-family: var(--font-sans);
-            font-size: 22px;
+            font-size: 12px;
             line-height: 1.12;
             font-weight: 800;
             letter-spacing: -0.035em;
@@ -139,8 +139,10 @@ def apply_object_detail_css() -> None:
         }
 
         .object-detail-preview-placeholder {
-            width: 260px;
-            min-height: 178px;
+            width: 240px;
+            height: 164px;
+            min-height: 164px;
+            box-sizing: border-box;
             border-radius: 12px;
             border: 1px solid rgba(42, 31, 44, 0.16);
             background: #FFFFFF;
@@ -158,7 +160,7 @@ def apply_object_detail_css() -> None:
         .object-detail-preview-image {
             display: block;
             width: 100%;
-            height: 178px;
+            height: 162px;
             object-fit: contain;
             background: #FFFFFF;
         }
@@ -168,11 +170,15 @@ def apply_object_detail_css() -> None:
             justify-content: flex-end;
             /* Streamlit already supplies the 16px row gap after the shared
                title/control row. Keep only the matching bottom clearance. */
-            margin: 0 0 16px;
+            margin: 0 0 24px;
         }
 
         .object-detail-details {
             margin-top: 0;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 24px;
         }
 
         /* The shared header's primary row contains only `Object:`. The legacy
@@ -183,16 +189,14 @@ def apply_object_detail_css() -> None:
         }
 
         .object-detail-title--name {
-            margin-bottom: 18px !important;
+            margin: 0 !important;
+            font-size: 28px !important;
+            line-height: 36px !important;
         }
 
         .object-detail-section {
             --detail-grid: minmax(260px, 2.1fr) repeat(4, minmax(0, 1fr));
-            margin: 0 0 48px 0;
-        }
-
-        .object-detail-section:last-of-type {
-            margin-bottom: 20px;
+            margin: 0 0 8px 0;
         }
 
         .object-detail-section--cols-4 {
@@ -249,7 +253,7 @@ def apply_object_detail_css() -> None:
             border: 1px solid rgba(42, 31, 44, 0.14);
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.045);
+            box-shadow: none;
         }
 
         .object-detail-table--cols-5 {
@@ -493,11 +497,11 @@ def apply_object_detail_css() -> None:
             height: 8px;
             border-right: 2px solid currentColor;
             border-bottom: 2px solid currentColor;
-            transform: rotate(45deg);
+            transform: rotate(-45deg);
             flex: 0 0 auto;
         }
         details[open] > .object-detail-cost-summary .object-detail-cost-title::before {
-            transform: rotate(225deg);
+            transform: rotate(45deg);
         }
         .object-detail-cost-total, .object-detail-cost-metric {
             flex-direction: column;
@@ -514,13 +518,28 @@ def apply_object_detail_css() -> None:
         }
         .object-detail-cost-band:not([open]) > .object-detail-cost-summary .object-detail-cost-label { display: none; }
         .object-detail-cost-summary .object-detail-table-head { min-height: 64px; align-self: stretch; }
-        .object-detail-labor-band { margin-bottom: 24px; --detail-grid: var(--object-detail-cost-grid); }
+        .object-detail-labor-band { margin-bottom: 8px; --detail-grid: var(--object-detail-cost-grid); }
+        .object-detail-band-summary.object-detail-cost-summary {
+            grid-template-columns: minmax(0, 1fr) 132px;
+            min-width: 0;
+            background: #FFFFFF;
+        }
+        .object-detail-cost-band[open] > .object-detail-band-summary { background: rgba(42, 31, 44, 0.045); }
+        .object-detail-band-summary .object-detail-table-head { min-height: 52px; border-bottom: 0; }
+        .object-detail-band-summary .object-detail-cost-title { font-size: 14px; }
+        .object-detail-band-summary .object-detail-cost-value { font-size: 18px; }
+        .object-detail-band-summary .object-detail-cost-title::before { color: var(--color-accent); }
+        .object-detail-band-summary [data-labor-column="total"] { grid-column: 2; }
+        .object-detail-cost-column-headings { cursor: default; }
+        .object-detail-cost-column-headings .object-detail-table-head { min-height: 46px; }
+        .object-detail-band-summary .object-detail-section-metric .object-detail-section-value { color: var(--color-text-strong); }
         .object-detail-labor-money-pair { grid-column: 3 / 6; display: grid; grid-template-columns: 1fr 1fr; align-self: stretch; }
         .object-detail-labor-money-pair [data-labor-column] > span { transform: translateX(var(--labor-column-offset, 0px)); }
-        .object-detail-labor-table [data-labor-column="total"] { grid-column: 6; }
+        .object-detail-labor-table .object-detail-cost-summary:not(.object-detail-band-summary) [data-labor-column="total"] { grid-column: 6; }
         .object-detail-labor-table .object-detail-table-head,
         .object-detail-work-row > summary .object-detail-table-cell { padding-inline: 7px; }
         .object-detail-work-row > .object-detail-cost-summary { background: none; }
+        .object-detail-work-row[open] > .object-detail-cost-summary { background: rgba(128, 73, 198, 0.075); }
         .object-detail-work-row > .object-detail-cost-summary .object-detail-cost-title {
             font: 400 13px/1.24 var(--font-sans);
             letter-spacing: normal;
@@ -565,7 +584,7 @@ def apply_object_detail_css() -> None:
         }
 
         .object-detail-group-summary {
-            background: rgba(128, 73, 198, 0.075);
+            background: #FFFFFF;
             color: rgba(42, 31, 44, 0.68);
             cursor: pointer;
             display: grid;
@@ -586,6 +605,14 @@ def apply_object_detail_css() -> None:
             display: none;
             content: "";
         }
+
+        .object-detail-group[open] > .object-detail-group-summary { background: rgba(128, 73, 198, 0.075); }
+        .object-detail-overhead-band .object-detail-group-summary {
+            grid-template-columns: minmax(0, 1fr) 132px;
+            padding-inline: 20px 0;
+        }
+        .object-detail-overhead-band .object-detail-group-summary > :not(:first-child):not(:last-child) { display: none; }
+        .object-detail-overhead-band .object-detail-group > .object-detail-table-row > :first-child { padding-left: 44px; }
 
         .object-detail-group-title {
             display: flex;
@@ -790,7 +817,7 @@ def apply_object_detail_css() -> None:
 
         .stApp:has(.object-detail-footer-actions) {
             --object-detail-summary-bottom: 24px;
-            --object-detail-action-gap: 34px;
+            --object-detail-action-gap: 24px;
             /* The fixed link starts 31px above the viewport bottom. The final
                Markdown container carries 16px of margin after the actions. */
             --post-upload-bottom: calc(var(--object-detail-summary-bottom) + var(--object-detail-action-gap) + 47px);
@@ -810,38 +837,51 @@ def apply_object_detail_css() -> None:
 
         .object-detail-final {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) repeat(3, max-content);
-            column-gap: 42px;
-            align-items: end;
+            grid-template-columns: minmax(0, 1fr) repeat(3, 132px);
+            grid-template-rows: 17px 32px;
+            gap: 10px 32px;
+            align-items: center;
             padding: 10px 0 var(--object-detail-summary-bottom);
             margin-top: 0;
         }
 
         .object-detail-final-title {
+            grid-column: 1;
+            grid-row: 2;
             font-family: var(--font-mono);
-            font-size: 30px;
+            font-size: 22px;
             line-height: 1.12;
             font-weight: 700;
             letter-spacing: 0.02em;
-            text-transform: uppercase;
+            white-space: nowrap;
             color: var(--color-text-strong);
         }
 
         .object-detail-final-label {
-            font-size: 13px;
-            margin: 0 0 8px 0;
+            grid-row: 1;
+            justify-self: center;
+            font-size: 12px;
+            margin: 0;
+            text-align: center;
         }
 
+        .object-detail-final-metric { display: contents; }
+        .object-detail-final-metric:nth-child(2) > * { grid-column: 2; }
+        .object-detail-final-metric:nth-child(3) > * { grid-column: 3; }
+        .object-detail-final-metric:nth-child(4) > * { grid-column: 4; }
+
         .object-detail-final-value {
+            grid-row: 2;
+            justify-self: center;
             font-family: var(--font-mono);
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
             color: var(--color-text-strong);
             text-align: center;
         }
 
         .object-detail-final-total {
-            font-size: 30px;
+            font-size: 26px;
             color: var(--color-accent);
         }
 
@@ -933,8 +973,18 @@ def apply_object_detail_css() -> None:
             .object-detail-footer-actions { grid-auto-flow: row; }
 
             .object-detail-preview-placeholder {
-                width: 100%;
+                width: min(240px, 100%);
             }
+
+            .object-detail-final { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto 17px 32px; gap: 12px; }
+            .object-detail-final-title { grid-column: 1 / -1; grid-row: 1; font-size: 18px; }
+            .object-detail-final-label { grid-row: 2; font-size: 10px; }
+            .object-detail-final-value { grid-row: 3; font-size: 16px; }
+            .object-detail-final-total { font-size: 18px; }
+            .object-detail-final-metric:nth-child(2) > * { grid-column: 1; }
+            .object-detail-final-metric:nth-child(3) > * { grid-column: 2; }
+            .object-detail-final-metric:nth-child(4) > * { grid-column: 3; }
+            .object-detail-band-summary.object-detail-cost-summary { grid-template-columns: minmax(0, 1fr) 100px; }
 
             .object-detail-table {
                 display: block;
@@ -949,7 +999,7 @@ def apply_object_detail_css() -> None:
             .object-detail-table--cols-6[data-section="material"] :is(.object-detail-table-head-row, .object-detail-table-row) {
                 min-width: 609px;
             }
-            .object-detail-labor-table > summary, .object-detail-work-row > summary { min-width: 609px; }
+            .object-detail-labor-table > summary, .object-detail-cost-column-headings, .object-detail-work-row > summary { min-width: 609px; }
             .object-detail-cost-band:not([open]) > .object-detail-cost-summary {
                 grid-template-columns: minmax(0, 1fr) 70px;
                 min-width: 0;

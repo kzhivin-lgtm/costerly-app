@@ -20,7 +20,7 @@ On21November2026 the owner requested the full accepted Objects V2.4 presentation
 checkpoint, runtimea8b08ba5 and tagobjects-v2.4-production-checkpoint-2026-11-21.
 Its [identity, layout, evidence and restoration](OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md)
 are additive to V1.3.3 behavior and V3.2 costing, which remain protected. Next
-Object Details scope awaits owner comments and must preserve this checkpoint.
+Object Details V2.5 presentation is approved below and preserves this checkpoint.
 
 ## Protected workflow behavior and release checks
 
@@ -127,6 +127,25 @@ it names. Service-field scope, original handlers, pricing, costing, approval,
 generation, auth and V2.2 protection remain unchanged and mandatory. No new
 timer, callback, observer, request or persistent write is required. Restore
 runtime3a192b29 if this presentation experiment regresses protected behavior.
+
+## Object Details V2.5 compact presentation,21November2026
+
+The owner approved the compact sketch and deployment with240x164px preview.
+Keep Object title/native menu coordinates and saved preview selection. Render
+name/quantity on one row without AI Confidence. Materials, Labor and Overhead
+start closed as white name+amount bands. Material rows stay flat; first Material
+and Work column labels are empty. Preserve operation/Elements and Overhead group
+nesting; an open nested summary uses the existing purple tint, closed ones white.
+Self Cost (SC) shares the three final amounts' axis; VAT labels stay above their
+amounts. Remove incomplete-calculation captions/Subtotal badges without changing
+partial audit, missing numeric values, source data or any arithmetic.
+
+This changes presentation and disclosure defaults only. Existing editors,
+explicit Save/failed Save/retry/receipt/reopen/approval, Back and all header,
+Profile/auth/tenant/protection paths remain mandatory. No new client runtime,
+observer, timer, callback, request or writer. The full scenario matrix and
+rollback are in the current Object Detail contract's V2.5 amendment. Earlier
+open-by-default and partial-caption expectations are superseded only as named.
 
 ## V3.1 full object cost, approved 20 November 2026
 
