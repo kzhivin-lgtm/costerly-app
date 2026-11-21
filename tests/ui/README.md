@@ -22,6 +22,14 @@ cover the page/header/footer/Profile transition matrix across desktop/mobile and
 Save/reopen in seven Profile paths, preload/read reuse, keyboard, actor access,
 expired auth, handled read/write failures, timeout/double click and recovery.
 Python checks cover the navigation/state/cache contracts and release verifier.
+Objects V2.7 extends Profile Save with seven deterministic ready-coordination
+cases after a genuine persisted Add Worker: both overlapping receipt orders,
+duplicates, receipt-before-DOM, stale DOM, wrong render and a worker render for
+another selected tab. Test-only hooks delay genuine server receipts; production
+has no such hook. Every case retains the regional cover/header until the actual
+current Core-ready time, exactly one click-correlated completion, a single worker
+write and persisted reopen. Existing ten-second Profile waits and all original
+suite assertions remain unchanged. See the approved [scope and scenario matrix](../../notes/OBJECTS_V2_7_RELEASE_2026_11_21.md).
 They also cover UI view priority, unchanged Naming selection, crop persistence,
 tenant/run/object ownership and Calculation inheritance.
 Calculation additionally covers a delayed new-estimate shell, full reruns during

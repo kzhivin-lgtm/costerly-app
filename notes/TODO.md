@@ -2,6 +2,32 @@
 
 ## Workflow transitions
 
+ACTIVE APPROVED REPAIR, P1, OWNER REQUEST, Objects V2.7,21November2026:
+Profile Loading after Add Worker -> Pricing Cost. Owner approved only the
+diagnosed ready coordination repair, preservation of transition protection,
+full local/exact-SHA GitHub gates and publication with a new deploy number.
+Production remains Objects V2.6 until those checks pass and publication completes.
+[verified] The shared ready controller cancels a pending animation frame without
+clearing its handle when a second run receipt replaces the candidate. A stale
+receipt can also replace a valid candidate. A real-browser controlled overlap
+reproduces the original10s Loading symptom after a successful worker write.
+A diagnostic-only receipt-pool/tab-aware variant passed the same injection,
+full Profile Save flow and all7 applicable cases in a17-case comparison.
+The candidate uses one observer/frame check per transition, chooses the receipt
+matching current render and selected Profile tab, and uses that accepted receipt
+for completion/build state. Canonical Profile Save now includes7 deterministic
+real-browser cases with continuous cover and exactly-one-write/ready assertions.
+[likely] This explains the retained CI44950510955/job136987180726 and V2.4
+Profile timeout; their exact historical signal ordering remains unknown.
+Merge this evidence with the earlier after-worker timeout retained below,
+do not treat another passing ordinary retry as a repair. Proposed outcome:
+one protected DOM readiness check per transition, matching current render ID
+and selected tab, with deterministic overlapping/out-of-order regression cases.
+Keep protection, employee writes, all other mechanics and full release gate.
+No new hierarchical work number or work block assigned for this continuation.
+[Cause, evidence, replay and proposed repair](PROFILE_LOADING_DIAGNOSTIC_2026_11_21.md).
+[Candidate scope and verification](OBJECTS_V2_7_RELEASE_2026_11_21.md).
+
 Latest owner-requested full preservation checkpoint is Objects V2.6,21November2026.
 [Identity, evidence, limitations and restoration](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md).
 Runtime82d55026 is unchanged; records tagobjects-v2.6-records-2026-11-21 resolves

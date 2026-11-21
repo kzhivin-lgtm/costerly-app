@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync,writeFileSync,rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { chromium } from 'playwright';
+import { profileReadyRegressions } from './profile_ready_regression.mjs';
 const config=statePath('scenario.json'), expiry=statePath('auth-expired');
 const settings=value=>writeFileSync(config,JSON.stringify(value));
 const server=createServer((req,res)=>{
@@ -13,17 +14,19 @@ const server=createServer((req,res)=>{
 await new Promise(resolve=>server.listen(8796,'127.0.0.1',resolve));
 const browser=await chromium.launch(chromeOptions);
 const results=[];
-async function boot(value={},route=''){
+async function boot(value={},route='',readyObserver=null){
  rmSync(expiry,{force:true});settings(value);
  const page=await browser.newPage({viewport:{width:1280,height:900}});
  page.setDefaultTimeout(10000);
+ if(readyObserver)await page.addInitScript(readyObserver);
  await page.addInitScript(()=>{
   if(window!==top)return;
   window.navMessages=[];
   addEventListener('message',event=>{
    if(['costerly:app-ready','costerly:transition-click','costerly:transition-failed'].includes(event.data?.type))
     navMessages.push({type:event.data.type,id:event.data.transitionId,screen:event.data.screen,
-      covered:event.data.workflowNavigation,transition:event.data.transition});
+      covered:event.data.workflowNavigation,transition:event.data.transition,
+      runId:event.data.runId,sentAt:event.data.sentAt,receivedAt:Date.now()});
   });
  });
  await page.goto('http://127.0.0.1:8796/'+route);
@@ -152,6 +155,9 @@ try{
  writeFileSync(reportPath('profile-save.json'),JSON.stringify(results,null,2));
  console.log(results);
  await ctx.page.close();
+ const readyCases=await profileReadyRegressions({boot,move,tab,waitDb,database});
+ writeFileSync(reportPath('profile-ready-regressions.json'),JSON.stringify(readyCases,null,2));
+ console.log('Profile ready regressions',JSON.stringify(readyCases));
 
 }catch(error){
  for (const context of browser.contexts()) for (const page of context.pages()) {
@@ -161,7 +167,16 @@ try{
  for(const page of browser.contexts().flatMap(context=>context.pages())){
   console.log('messages',JSON.stringify(await page.evaluate(()=>navMessages.slice(-5)).catch(()=>[])));
   for(const frame of page.frames().filter(frame=>frame.url().startsWith('http://127.0.0.1:8789')))
+  {
+   const ready=await frame.evaluate(()=>window.profileReadyCase?{
+    mode:profileReadyCase.mode,heldRun:profileReadyCase.held?.runId,
+    events:profileReadyCase.events,failure:profileReadyCase.failure,
+    markers:[...document.querySelectorAll('[data-costerly-render-id]')].map(e=>({id:e.dataset.costerlyRenderId,stale:!!e.closest('[data-stale="true"]')})),
+    busy:window.__costerlyWorkflowTransition?.busy(),
+   }:null).catch(()=>null);
+   if(ready)writeFileSync(reportPath('profile-ready-failure.json'),JSON.stringify(ready,null,2));
    console.log('body',(await frame.locator('body').innerText().catch(()=>'' )).slice(-1500));
+  }
  }
  throw error;
 }finally{

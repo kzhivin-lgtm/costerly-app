@@ -301,6 +301,10 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         if (find('[data-testid="stAlertContentError"]')) return true;
         const roots = selectors[message.screen];
         if (!roots?.every(find) || !find(".st-key-costerly_header_controls button")) return false;
+        if (message.screen === "account" && message.metrics?.profile_tab) {
+            const selected = find('.st-key-company_profile_tab [role="tab"][aria-selected="true"]');
+            if (!selected || selected.textContent.trim() !== message.metrics.profile_tab) return false;
+        }
         if (message.screen !== "file_review") return true;
         const button = Array.from(doc.querySelectorAll("button")).find(node =>
             node.textContent.trim().toLowerCase() === "continue to objects estimation" &&
@@ -438,21 +442,28 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         if (transition.failed || message.runId === transition.from.runId) return true;
         if (message.screen !== transition.target && message.screen !== "login" &&
             !message.screen.endsWith("_error")) return true;
-        if (transition.candidate === message.runId) return true;
-        transition.candidate = message.runId;
-        transition.observer?.disconnect();
-        coreWindow.cancelAnimationFrame(transition.frame);
-
-        let stable = false;
+        // Fragment completion and the next tab's ready can overlap. Keep one
+        // watcher, and let the actual render marker select its own receipt.
+        // Replacing/cancelling a candidate can strand its pending frame or
+        // let a delayed older receipt displace the current rendered result.
+        transition.receipts ||= new Map();
+        transition.receipts.set(message.runId, message);
+        if (transition.schedule) {
+            transition.schedule();
+            return true;
+        }
+        let stableRun = null;
         const check = () => {
             transition.frame = null;
             if (pending !== transition) return;
-            if (!readyTarget(message)) {
-                stable = false;
+            const marker = find("[data-costerly-render-id]");
+            const accepted = transition.receipts.get(marker?.dataset.costerlyRenderId);
+            if (!accepted || !readyTarget(accepted)) {
+                stableRun = null;
                 return;
             }
-            if (!stable) {
-                stable = true;
+            if (stableRun !== accepted.runId) {
+                stableRun = accepted.runId;
                 schedule();
                 return;
             }
@@ -462,16 +473,17 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
                     node.scrollTop = 0;
                 });
             }
-            displayed = {...message, settledRun: message.runId};
-            if (message.screen !== "upload") { pickerOpen = false; uploadStarted = false; }
-            post({...message, transitionId: transition.id});
-            announceBuild(message);
+            displayed = {...accepted, settledRun: accepted.runId};
+            if (accepted.screen !== "upload") { pickerOpen = false; uploadStarted = false; }
+            post({...accepted, transitionId: transition.id});
+            announceBuild(accepted);
             close(transition);
             checkVersion();
         };
         const schedule = () => {
             if (!transition.frame) transition.frame = coreWindow.requestAnimationFrame(check);
         };
+        transition.schedule = schedule;
         transition.observer = new coreWindow.MutationObserver(schedule);
         transition.observer.observe(doc.body, {childList: true, subtree: true,
                                                attributes: true, attributeFilter: ["data-stale", "disabled"]});
