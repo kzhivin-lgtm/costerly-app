@@ -195,6 +195,7 @@ try{
    await new Promise(resolve=>setTimeout(resolve,20));
   }
  }
+ const unconfirmedColor=await set().evaluate(n=>getComputedStyle(n).backgroundColor);
  await editPrice(1750);await set().click();
  await frame.waitForFunction(()=>{const button=document.querySelector('[class*="st-key-objects_generate_proposal_"] button');return button&&!button.disabled;});
  assert.equal(await core.locator('.objects-workflow-stages [data-stage="2"]').getAttribute('data-state'),'complete');
@@ -211,6 +212,13 @@ try{
  assert.equal(checks.length,2);assert(checks.every(c=>parseFloat(c.width)>0&&parseFloat(c.height)>0&&c.right==='2px'&&c.bottom==='2px'));
  await core.locator('.objects-workflow-stages').screenshot({path:reportPath('objects-v26-checkmarks.png')});
  await editPrice(1850);assert(await generate().isDisabled());
+ // The original base stylesheet animates background for140ms. Persistence
+ // and disabled state can complete before the first painted animation frame.
+ // Require the full original color back, retaining the original assertion.
+ await frame.waitForFunction(expected=>{
+  const button=document.querySelector('.st-key-objects_set_prices button');
+  return button&&getComputedStyle(button).backgroundColor===expected;
+ },unconfirmedColor,{timeout:1000});
  assert.notEqual(await set().evaluate(n=>getComputedStyle(n).backgroundColor),confirmedColor,'Editing revokes the confirmed green');
  await set().click();
  await frame.waitForFunction(()=>{const button=document.querySelector('[class*="st-key-objects_generate_proposal_"] button');return button&&!button.disabled;});

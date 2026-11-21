@@ -30,6 +30,11 @@ has no such hook. Every case retains the regional cover/header until the actual
 current Core-ready time, exactly one click-correlated completion, a single worker
 write and persisted reopen. Existing ten-second Profile waits and all original
 suite assertions remain unchanged. See the approved [scope and scenario matrix](../../notes/OBJECTS_V2_7_RELEASE_2026_11_21.md).
+The Objects confirmed-color regression retains its not-green assertion after
+editing and additionally waits for the full recorded unconfirmed color, within1s,
+to account for the unchanged140ms CSS background transition. Price persistence
+still has its original5s deadline; application pricing/input/style code is not
+changed. The initial blocked V2.7 CI and standalone CSS reproduction are retained.
 They also cover UI view priority, unchanged Naming selection, crop persistence,
 tenant/run/object ownership and Calculation inheritance.
 Calculation additionally covers a delayed new-estimate shell, full reruns during

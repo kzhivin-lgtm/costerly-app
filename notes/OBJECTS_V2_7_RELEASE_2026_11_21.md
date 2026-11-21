@@ -68,6 +68,25 @@ increase. The initial failed setup artifact is retained separately.
 Source isolation:614 other non-Markdown base files byte-identical. The three
 metadata files match the base after only the literal build replacement; app.py,
 company_profile.py and js_guards.py are unchanged. Full gates still required.
+
+Initial candidate2c4ad23b passed the clean full local535/nine gate in268.222s.
+CI44954109356 failed the pre-existing Objects Set Prices color assertion after
+editing1850: the price was persisted and Generate Proposal disabled, but the
+computed background still equalled the old green. No Profile failure or missing
+write is claimed for this run. This candidate was blocked, never published.
+An isolated browser probe using the unchanged actual base140ms background
+transition and confirmed-color CSS, without a workflow controller, reproduces
+the same immediate old color after stage2 changes to current; the color then
+settles to white (204ms observed). The visual assertion must observe completed
+CSS rendering, just as its existing enter-green check already does.
+Only the test now waits up to1s for the full recorded unconfirmed color before
+its unchanged not-green assertion. Original5s price receipts, immediate generate
+invalidation and all layout/input/price assertions remain. No price/color/input
+application code changes. Full final exact-commit gates remain required, not an
+unchanged retry to ignore the failure. Evidence includes the first CI artifact
+and `color-assertion-reproduction.json`. The final app source is byte-identical
+to2c4ad23b; only test/records change. Final isolation excludes this additional
+changed test and therefore retains613 other non-Markdown base files identical.
 [Diagnostic evidence and historical uncertainty](PROFILE_LOADING_DIAGNOSTIC_2026_11_21.md).
 The old CI's exact receipt order remains unknown. A forced reproduction is not
 a retrospective packet trace, and a synthetic gate is not authenticated owner
