@@ -34,7 +34,16 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
 
     let hostOrigin;
     try {
-        hostOrigin = new URL(doc.referrer).origin;
+        const ancestors = coreWindow.location.ancestorOrigins;
+        // A link inside Core makes document.referrer point to Core itself.
+        // The browser's actual top ancestor remains the wrapper.
+        hostOrigin = ancestors?.length
+            ? ancestors[ancestors.length - 1]
+            : new URL(doc.referrer).origin;
+        if (hostOrigin === coreWindow.location.origin) {
+            const previous = JSON.parse(coreWindow.sessionStorage.getItem("costerly.workflow.host-context.v1") || "null");
+            if (previous?.traceId === traceId && previous.hostOrigin) hostOrigin = new URL(previous.hostOrigin).origin;
+        }
     } catch (_) {
         return null;
     }
@@ -164,7 +173,8 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
     for (const type of ["click", "drop", "change", "cancel"]) doc.addEventListener(type, trackUpload, true);
 
     function post(data) {
-        coreWindow.top.postMessage({...data, traceId}, hostOrigin);
+        coreWindow.top.postMessage({...data, traceId,
+            ...(data.type === "costerly:app-ready" ? {sentAt: Date.now()} : {})}, hostOrigin);
     }
 
     function acceptHost(event) {
@@ -172,6 +182,13 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
             event.data?.type === "costerly:workflow-navigation-enabled" &&
             event.data.traceId === traceId && event.data.protocol === 1) {
             enabled = true;
+            // Retain only the verified wrapper context across Core document
+            // navigation. This is UI correlation, never authentication state.
+            try {
+                const value = JSON.stringify({traceId, hostOrigin});
+                const key = "costerly.workflow.host-context.v1";
+                if (coreWindow.sessionStorage.getItem(key) !== value) coreWindow.sessionStorage.setItem(key, value);
+            } catch (_) {}
             // Empty means a supported older wrapper. Migrate it once using
             // its existing correlated reload command, only on empty Upload.
             hostBuild = String(event.data.buildVersion || "");

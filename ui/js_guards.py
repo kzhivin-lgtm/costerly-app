@@ -821,8 +821,15 @@ def signal_app_ready_to_embed(
             // Streamlit clears query parameters and a server session restarts.
             try {
                 const navigation = window.parent.performance.getEntriesByType("navigation")[0];
-                const hostTrace = new URL(navigation?.name || window.parent.location.href)
+                let hostTrace = new URL(navigation?.name || window.parent.location.href)
                     .searchParams.get("obs_trace");
+                if (!hostTrace && window.parent.document.referrer) {
+                    const previous = new URL(window.parent.document.referrer);
+                    if (previous.origin === window.parent.location.origin) hostTrace = previous.searchParams.get("obs_trace");
+                }
+                if (!hostTrace) {
+                    hostTrace = JSON.parse(window.parent.sessionStorage.getItem("costerly.workflow.host-context.v1") || "null")?.traceId;
+                }
                 if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(hostTrace || "")) {
                     message.metrics.server_trace_id = message.traceId;
                     message.traceId = hostTrace;

@@ -8,7 +8,7 @@ not a fresh Lev1 material or labor benchmark. The private V1.3.3 archive
 retains the real saved controls and their evidence.
 
 The protected behavior is defined in `notes/UI_GUIDELINES.md`. The eight suites
-cover 54 normal transitions across desktop/mobile and safe migration of an older open wrapper,
+cover the page/header/footer/Profile transition matrix across desktop/mobile and safe migration of an older open wrapper,
 Save/reopen in seven Profile paths, preload/read reuse, keyboard, actor access,
 expired auth, handled read/write failures, timeout/double click and recovery.
 Python checks cover the navigation/state/cache contracts and release verifier.
@@ -149,3 +149,15 @@ gap, unchanged162px project-cost inputs, original price persistence, edits after
 confirmation, generation failure/retry and the latest-price
 proposal snapshot. It waits for correlated app-ready before editing. Synthetic
 PDF/storage responses remain separate from owner production acceptance.
+
+## Continuous navigation coverage after document restoration
+
+The navigation suite includes fresh, migrated old-wrapper, mobile and restored
+Core-document cases. The restored case performs two real iframe document
+navigations without obs_trace, then exercises header destinations from Upload,
+File Review, Objects, Object Detail, Projects and Profile, all eight Profile
+tabs, footer Back/Approve and sign-out. Profile/Objects reads are delayed.
+Every pending frame must remain covered until the correlated Core-ready emit
+time; Profile tabs retain their accepted regional cover/header. Admin-entry
+latency optimization remains deferred. A nonempty sampled interval is required,
+so a missing ready timestamp cannot vacuously pass. No input mechanics change.

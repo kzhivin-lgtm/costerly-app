@@ -47,6 +47,24 @@ Use the exact-commit `UI release gate` and the verified publisher described in
 be active to enforce this independently of the agent. Check its real status;
 do not infer activation from the presence of the workflow or ruleset template.
 
+## Restored browser document and continuous shield,21November2026
+
+The protected contract applies to every supported page route and Profile tab.
+Admin-entry latency optimization remains deferred. A Core iframe document
+navigation must not disable protection by replacing the wrapper referrer or
+losing its original trace query. Retain only the verified parent origin/trace
+as per-tab UI context, never authentication or pricing state. A new wrapper
+trace takes precedence. Writes occur only on a validated existing host ACK,
+once per changed context; no timer/request/worker is added.
+
+Publication verification must require continuous full-screen coverage from
+navigation acceptance until the matching Core-ready emission. Profile tabs
+retain their accepted header and cover only content. Some covered frames and
+zero simultaneous roots are insufficient: one unstyled outgoing screen is also
+a failure. The full matrix includes two Core document navigations without the
+trace query, lost server state, delayed Profile/Objects reads, header routes,
+footer Back/Approve and sign-out. Preserve tenant/auth and saved-estimate tests.
+
 ## V3.1 full object cost, approved 20 November 2026
 
 The owner explicitly approved Materials + current Labor + restored Overhead in

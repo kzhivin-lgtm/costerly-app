@@ -2,6 +2,29 @@
 
 ## Workflow transitions
 
+ACTIVE DIAGNOSIS, P0, USER REPORT,21November2026. Restore the accepted
+continuous transition shield across ALL supported pages and Profile/tab paths.
+Owner supplied12:22:50 and13:24:01 videos showing unmasked intermediate markup,
+including plain unstyled old Object Detail after Approve. Admin-entry latency
+remains explicitly deferred; do not reopen that optimization. Input mechanics,
+values, costing/persistence and the accepted V2.1 layout stay protected.
+The existing gate ran, but navigation.mjs only requires some covered frames and
+no simultaneous roots; a single partially rendered/unstyled screen can pass.
+Local reproduction confirmed true iframe document navigation changes referrer
+from wrapper to Core and leaves workflow controller present but enabled=false.
+Fresh anonymous production Login does have the controller enabled, so this is
+not a universal missing script. Exact link to the owner's browser state still
+needs production witness; current native Chrome is inaccessible to CUA.
+Context loss reproduced with and without the original trace query. The latter
+also loses wrapper correlation. Minimal candidate retains verified parent
+origin/trace in Core sessionStorage, derives actual ancestor origin from the
+browser, and retains the existing origin/source/trace/protocol ACK checks.
+No input handler or auth/pricing state changed. Strengthen continuous-cover tests,
+including restored/direct iframe documents, slow reads, Approve, Profile and
+existing error/recovery paths. Do not infer live acceptance from the green gate.
+Evidence: .ui-artifacts/transition-diagnosis/ and supplied local videos.
+No new work number/block or version assigned by this diagnosis.
+
 PUBLISHED, OWNER LIVE TEST FAILED, ACTIVE DIAGNOSIS, P0, V2.9, 2026-11-19. Owner explicitly
 requires automatic page refresh with login retained, rejects periodic build
 polling, and assigns V2.9. Remove V2.8 client polling, retain its static file for legacy migration, send one build

@@ -29,8 +29,10 @@ try {
   {name:'current_wrapper',width:1280,height:900},
   {name:'open_old_wrapper',width:1280,height:900,oldWrapper:true},
   {name:'mobile',width:390,height:844},
+  {name:'restored_document',width:1280,height:900,restoreDocument:true,lag:true},
  ]){
-  writeFileSync(config,JSON.stringify({delay:cfg.lag?{projects:1.25,account:1.25,admin:1.25}:{}}));
+  const scenarioSettings={objects_v2:!!cfg.restoreDocument,objects_refresh_delay:cfg.restoreDocument?0.8:0,delay:cfg.lag?{projects:1.25,account:1.25}:{}};
+  writeFileSync(config,JSON.stringify(scenarioSettings));
   rmSync(expiry,{force:true});
   const page=await browser.newPage({viewport:{width:cfg.width,height:cfg.height}});
   page.setDefaultTimeout(9500);
@@ -44,18 +46,30 @@ try {
         'costerly:transition-styled'].includes(ev.data?.type)) {
      window.navMessages.push({type:ev.data.type,screen:ev.data.screen,id:ev.data.transitionId,
                               runId:ev.data.runId,covered:ev.data.workflowNavigation,
-                              transition:ev.data.transition});
+                              transition:ev.data.transition,sentAt:ev.data.sentAt,receivedAt:Date.now()});
     }
    });
   });
   await page.goto('http://127.0.0.1:8797/'+(cfg.oldWrapper?'?old':''));
   if(cfg.oldWrapper)await page.waitForFunction(()=>window.wrapperFixtureVersion==='current');
   await page.locator('iframe.is-ready').waitFor();
-  const frame=await (await page.locator('#costerly-app-frame').elementHandle()).contentFrame();
+  let frame=await (await page.locator('#costerly-app-frame').elementHandle()).contentFrame();
   const core=page.frameLocator('#costerly-app-frame');
   await core.getByRole('button',{name:'Last Estimate',exact:true}).waitFor();
   await page.locator('iframe.is-ready').waitFor();
   if(!cfg.old) await frame.waitForFunction(()=>window.__costerlyWorkflowTransition?.enabled());
+  if(cfg.restoreDocument){
+   const originalTrace=await frame.evaluate(()=>window.__costerlyWorkflowTransition.traceId);
+   // Two real document navigations: the second has no trace in either URL or
+   // referrer. They must retain the verified parent context, not silently
+   // disable the shield for all subsequent page transitions.
+   for(let round=1;round<=2;round++){
+    await frame.evaluate(round=>{const url=new URL(location.href);url.searchParams.delete('obs_trace');url.searchParams.set('restored_document',String(round));const link=document.createElement('a');link.href=url.toString();document.body.append(link);link.click();},round);
+    await frame.waitForLoadState('domcontentloaded');
+    await frame.waitForFunction(()=>window.__costerlyWorkflowTransition?.enabled());
+    assert.equal(await frame.evaluate(()=>window.__costerlyWorkflowTransition.traceId),originalTrace);
+   }
+  }
   const actions=[];
   const button=name=>core.getByRole('button',{name,exact:true});
   const link=name=>core.getByRole('link',{name,exact:true});
@@ -80,7 +94,9 @@ try {
      const cover=document.querySelector(guard);
      const covered=cover && [[10,10],[innerWidth/2,innerHeight/2],[innerWidth-10,innerHeight-10]].every(
        ([x,y])=>cover.contains(document.elementFromPoint(x,y)));
-     frames.push({ms:Math.round(performance.now()-start),cover:Boolean(covered),screens});
+     const bounds=cover?.getBoundingClientRect();
+     const regional=bounds&&bounds.width>0&&bounds.height>0&&cover.contains(document.elementFromPoint(bounds.x+bounds.width/2,bounds.y+Math.min(30,bounds.height/2)));
+     frames.push({at:Date.now(),ms:Math.round(performance.now()-start),cover:Boolean(covered),regionalCover:Boolean(regional),screens});
      requestAnimationFrame(sample);
     }
     sample();
@@ -109,6 +125,11 @@ try {
     // postReady may announce unrelated navigation readiness. A covered
     // transition alone must provide exactly one completion under its ID.
     assert.equal(completions.length,1);
+    assert(Number.isFinite(completions[0].sentAt),'Missing actual Core-ready timestamp');
+    const untilReady=samples.filter(row=>row.at>=covered[0].receivedAt&&row.at<completions[0].sentAt);
+    assert(untilReady.length>0,'Continuous-cover check must sample the pending interval');
+    counts.uncoveredBeforeReady=untilReady.filter(row=>!row[profileTab?'regionalCover':'cover']).length;
+    assert.equal(counts.uncoveredBeforeReady,0,JSON.stringify({transition:label,events,gaps:untilReady.filter(row=>!row[profileTab?'regionalCover':'cover']).slice(0,6)}));
     assert.equal(counts.uncoveredMixed,0,JSON.stringify(samples));
     if(profileTab){
      assert.equal(counts.coveredFrames,0);
@@ -125,7 +146,7 @@ try {
   await move('Clear workflow URL with New Estimate',button('New Estimate'),'upload');
   assert.ok(!new URL(frame.url()).searchParams.has('obs_trace'));
   const browserTrace=await frame.evaluate(()=>window.__costerlyWorkflowTransition.traceId);
-  writeFileSync(config,JSON.stringify({restart_once:true}));
+  writeFileSync(config,JSON.stringify({...scenarioSettings,restart_once:true}));
   await move('Open Projects after server restart',button('Projects'),'projects');
   assert.equal(await frame.evaluate(()=>window.__costerlyWorkflowTransition.traceId),browserTrace);
   await move('Open prepared Profile',button('Profile'),'account');
@@ -209,6 +230,36 @@ try {
   }
   assert.equal(await core.locator('[data-costerly-render-id]').last().getAttribute('data-costerly-render-id'),cardRender);
   await move('Card to New Estimate',button('New Estimate'),'upload');
+  if(cfg.restoreDocument){
+   const screen=()=>core.locator('[data-costerly-screen]').last().getAttribute('data-costerly-screen');
+   async function enter(target){
+    if(await screen()===target)return;
+    if(target==='upload')return move('Matrix restore Upload',button('New Estimate'),'upload');
+    if(target==='projects')return move('Matrix restore Projects',button('Projects'),'projects');
+    if(target==='account')return move('Matrix restore Profile',button('Profile'),'account');
+    if(target==='file_review'){await enter('upload');return move('Matrix restore File Review',button('Last Estimate'),'file_review');}
+    if(target==='objects'){await enter('file_review');return move('Matrix restore Objects',cont(),'objects');}
+    await enter('objects');return move('Matrix restore Object Detail',openObject(),'object_detail');
+   }
+   const sources=['upload','file_review','objects','object_detail','projects','account'];
+   for(const source of sources)for(const [target,label] of [['upload','New Estimate'],['projects','Projects'],['account','Profile']]){
+    if(source===target)continue;
+    await enter(source);await move(`Header ${source} to ${target}`,button(label),target);
+   }
+   for(const source of ['upload','projects','account']){
+    await enter(source);await move(`Last Estimate from ${source}`,button('Last Estimate'),'file_review');
+   }
+   await enter('object_detail');await move('Scrolled Approve to Objects',core.locator('.object-detail-footer-button--primary'),'objects');
+   await enter('object_detail');await move('Scrolled Back to Objects',core.locator('.object-detail-footer-button--secondary').filter({hasText:'Back to Objects'}),'objects');
+   await move('Objects Back to File Review',button('Back to file review'),'file_review');
+   await move('File Review Back to Upload',button(/^back to upload$/i),'upload');
+   for(const source of sources){
+    await enter(source);await move(`Sign out from ${source}`,core.locator('.st-key-company_sign_out button'),'login');
+    rmSync(expiry,{force:true});await page.reload();await page.locator('iframe.is-ready').waitFor();
+    frame=await(await page.locator('#costerly-app-frame').elementHandle()).contentFrame();
+    await frame.waitForFunction(()=>window.__costerlyWorkflowTransition?.enabled());
+   }
+  }
   assert.equal(await core.locator('[data-testid="stException"]').count(),0);
   assert.deepEqual(errors,[]);
   report[cfg.name]=actions;
@@ -218,7 +269,7 @@ try {
  assert.ok(calls.includes('objects '+expected));
  assert.ok(!calls.includes('ERROR'));
  writeFileSync(reportPath('navigation.json'),JSON.stringify(report,null,2));
- console.log('Same saved estimate and zero Parts Check launches in all three browser routes.');
+ console.log('Saved-estimate reuse, continuous shielding and zero Parts Check launches across fresh, legacy, mobile and restored-document routes.');
 } catch(error) {
  for (const context of browser.contexts()) for (const page of context.pages()) {
   await page.screenshot({path:reportPath('navigation-failure.png')}).catch(()=>{});
