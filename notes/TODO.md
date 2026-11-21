@@ -2,10 +2,11 @@
 
 ## Workflow transitions
 
-Current production UI is Objects V2.4 (`a8b08ba5`), carrying the V2.2 protection
-below unchanged. Public Login confirms revision7c34ff18617435dd/enabled=true
-and a durable compatible/protocol1 event. The owner requested its full presentation
-checkpoint, recorded below. Manual coverage of every authenticated route is not
+Current production UI is Object Details V2.5 (`3493a84a`), preserving Objects
+V2.4 and carrying the V2.2 protection below unchanged. Public Login confirms
+revision7c34ff18617435dd/enabled=true and compatible/protocol1 storage acceptance.
+The accepted full V2.4 presentation checkpoint remains the restoration reference.
+Manual coverage of every authenticated route is not
 claimed. V1.3.3 behavior and V3.2 costing remain protected.
 
 ACTIVE OWNER ACCEPTANCE, P0, OBJECTS V2.2 DEPLOYED,21November2026.
@@ -705,7 +706,7 @@ auth outcomes. Authenticated production acceptance remains open.
 
 ## Object Details interface
 
-ACTIVE IMPLEMENTATION/VERIFICATION, P1, USER-APPROVED, Object Details V2.5,
+PUBLISHED, OWNER PRODUCTION ACCEPTANCE PENDING, P1, USER-APPROVED, Object Details V2.5,
 21November2026. Owner supplied comments after
 the full Objects V2.4 checkpoint. Preserve the Object title and native menu
 positions. Compact the name/quantity/preview area, remove AI Confidence and
@@ -719,10 +720,9 @@ APPROVED FOR IMPLEMENTATION AND PUBLICATION: three white name+amount headers;
 same chevrons/amount axis, grey column headings, pink only the selected open
 nested row, white detail rows. Labor operations/Elements and Overhead groups
 reveal locally. Compact name+quantity row and static preview.
-Owner accepts the revised non-preview sketch in principle,21November2026;
-the only active design question is preview size. Retain Labor terminology.
-The first120x88 preview proposal is withdrawn as too small. Existing source
-uses260x178px; the revised desktop sketch proposes240x164px (about8% smaller
+Owner accepted the revised sketch and then resolved preview size,21November2026.
+Retain Labor terminology. The first120x88 preview proposal is withdrawn as too
+small. Previous source used260x178px; the accepted desktop preview is240x164px (about8% smaller
 per dimension), with the entire image contained and no extra padding.
 Chrome confirms the new240x164px frame, unchanged title/menu positions and
 the previously verified sketch interactions; no browser errors.
@@ -740,8 +740,8 @@ warnings and badges, with no replacements. The proposed replacement status
 badge and preview-enlargement interaction are withdrawn. Add no unrequested
 UI/notifications/controls/scenarios. Dedicated notification design is deferred
 until the owner finishes the entire user cycle and explicitly specifies it.
-Current source confirms visible full-width partial captions interrupt the
-four-column final grid, pushing Excl. VAT into its wide first column.
+Pre-change source confirmed visible full-width partial captions interrupted
+the four-column final grid, pushing Excl. VAT into its wide first column.
 Prototype: object-details-compact.html in the thread visualization directory.
 Revised sketch verified in Chrome:14 flat material rows without disclosure
 arrows, empty Material/Work header cells, Self Cost (SC) centered on the final
@@ -749,12 +749,19 @@ amounts axis, Labor/Overhead nesting and keyboard interaction retained.
 Header/menu geometry is unchanged; no browser errors or shell overflow at
 desktop and1024/736/320px widths. This is sketch validation, not production
 acceptance. Collapsed, Materials-open and Overhead-open desktop PNGs refreshed.
-Review initial/expanded/deep/keyboard/input-click states in the sketch
-before an implementation approval; retain existing save failure/retry,
+Initial/expanded/deep/keyboard/input-click sketch states were reviewed before
+implementation approval. Retain existing save failure/retry,
 quantity/reopen/navigation/auth/mobile regression matrix for any future patch.
-Candidate changes are presentation-only; calculation, persistence, input and
-navigation/protection code remains protected. Publication pending mandatory
-exact-commit local/GitHub checks and served Core/wrapper verification.
+Published3493a84a through the enforced publisher after full clean local
+531/nine220.047s and exact-SHA CI531/nine288.816s (325s job), run44922310431.
+Both matrices report142 transitions and zero uncovered/mixed frames; original
+48 service-field probes pass.443 protected files are byte-identical and54
+other functions AST-identical. Core deployment7965852182 succeeded16:09:22UTC;
+actual Core/wrapper/meta/version match V2.5 at16:09:57UTC. Previous controller
+7c34ff18617435dd is enabled with recovery, compatible/protocol1 storage accepted
+(202 after upstream save). Independent DB readback was unavailable in this
+checkout; no row content or owner-project change was used. Evidence and
+remaining manual production-acceptance boundary are in the V2.5 release record.
 Keep V2.4, V1.3.3 behavior and V3.2 costing protected. No new work number yet.
 
 ## Estimation Labor V1

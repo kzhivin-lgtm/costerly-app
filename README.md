@@ -1,19 +1,16 @@
 # Costerly
 
-Current UI release: **Objects V2.4**,21November2026, runtime `a8b08ba5`.
-Approved top-right menu with metrics below, body raised26px, Set Prices stage
-and stacked half-width document controls with Excel/PDF icons. Existing fields,
-price handlers, costing and business logic are retained.
-V2.2 compatibility/transition protection is unchanged. Full local and exact-SHA
-GitHub gates passed531 checks and nine browser suites. Served Core/wrapper match;
-enabled protection and durable compatibility logging verified on production Login.
-Owner requested the full V2.4 presentation checkpoint on21November2026.
-[Accepted reference and restoration](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md).
-Manual coverage of every authenticated route is not claimed. Next discussion:
-Object Details V2.5 approved for implementation/publication, currently validating.
-[Approved scope](notes/OBJECT_DETAIL_V2_2_1_UI_CONTRACT_2026_11_18.md#object-details-v25-approved-presentation21november2026).
-[Contract](notes/UI_GUIDELINES.md),
-[evidence and backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
+Current UI release: **Object Details V2.5**,21November2026, runtime `3493a84a`.
+Approved compact Object Details with240x164px preview, collapsed Materials/Labor/
+Overhead and aligned Self Cost (SC). Existing editors, costing, persistence,
+Objects V2.4 layout and V2.2 transition protection are preserved. Full clean
+local and exact-SHA GitHub gates passed531 checks and nine browser suites;
+142 transitions had zero uncovered/mixed frames. Actual served Core/wrapper/
+meta/version match V2.5; enabled protection and compatible storage acceptance
+verified on production Login. Owner authenticated card acceptance is pending.
+[Release and evidence](notes/OBJECT_DETAIL_V2_5_RELEASE_2026_11_21.md).
+[Previous Objects V2.4 checkpoint and restoration](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md).
+[Contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#object-details-interface).
 
 Accepted Estimation checkpoint: **V3.2**,21November2026, runtime `07ac05d2`.
 

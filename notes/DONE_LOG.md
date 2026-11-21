@@ -1,5 +1,21 @@
 # Done Log
 
+Object Details V2.5 published21November2026, OWNER AUTHENTICATED ACCEPTANCE
+PENDING. Runtime3493a84ae1be47895b0b06e34de4e137dab4e9c9, build
+object-details-v2.5-b20261121155644-compact-estimation-v3.2-detection-v8.4.29.
+Owner-approved compact view,240x164px preview, closed white cost bands,
+flat Materials, retained Labor/Overhead detail, Self Cost (SC) aligned with
+amounts, redundant/partial copy removed. Existing screen/editor/controller/
+auth/costing/persistence code remains protected:443 other files byte-identical,
+54 functions AST-identical. Clean local531/nine220.047s, exact-SHA CI531/nine
+288.816s (325s job), run44922310431/job136900791501/artifact14714297791.
+142 transitions/zero uncovered or mixed frames;48 existing field probes pass.
+Enforced publisher confirmed active no-bypass27499066. Core7965852182 succeeded
+16:09:22UTC; actual Core/wrapper/meta/version match16:09:57UTC, unchanged
+controller7c34ff18617435dd enabled/recovery and compatible storage accepted202.
+No paid run/project edit. [Release, evidence and limits](OBJECT_DETAIL_V2_5_RELEASE_2026_11_21.md).
+Accepted Objects V2.4 checkpoint/archive remains intact as rollback reference.
+
 Objects V2.4 FULL CHECKPOINT REQUESTED/ACCEPTED BY OWNER,21November2026.
 Accepted presentation/runtime remainsa8b08ba5afea684876f14277f9e2476c42f80410.
 Runtime tagobjects-v2.4-production-checkpoint-2026-11-21; records tag
