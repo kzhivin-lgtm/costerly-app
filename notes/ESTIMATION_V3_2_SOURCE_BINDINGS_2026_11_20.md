@@ -1,5 +1,10 @@
 # V3.2: source-owned labels and arrow contact
 
+Owner acceptance21November2026: V3.2 retained as the accepted full checkpoint.
+Historical onset cause remains unexplained, reproduced defect fixed and accepted.
+See `notes/ESTIMATION_V3_2_SOURCE_BINDINGS_CHECKPOINT_2026_11_21.md` for final tests, production identity, six fresh second-stage calls and restoration.
+The original pre-acceptance statements below record the release chronology.
+
 Owner approved V3.2 and immediate gated publication on20November2026. Restore
 latest functional V3.1 (`f051b8cc`), including Materials+Labor+Overhead and the
 accepted authentication/grouping behavior. Detection matches V3.1 exactly.
@@ -95,7 +100,7 @@ Check actual Core/wrapper builds after deployment. The release receipt and full
 private evidence live in outputs/estimation-v3.2-20261120 in the task workspace.
 A new production Ada estimate and owner acceptance remain distinct from local
 and CI checks. Saved old estimates retain their original recognition results.
-No accepted production checkpoint is claimed before owner acceptance.
+Owner acceptance was subsequently given21November, as recorded in the checkpoint above.
 
 Service constraints were checked against [Anthropic's vision documentation](https://platform.claude.com/docs/en/build-with-claude/vision).
 

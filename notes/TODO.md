@@ -153,6 +153,15 @@ Auth diagnosis deferred while owner-directed V2.8 ships. Resume when the owner r
 Incident evidence: outputs/version-refresh-v2.7/owner-live-test/after-upload-events.json
 in the handoff workspace. No runtime or auth settings changed by this diagnosis.
 
+PENDING PROPOSAL, P1, USER QUESTION + AGENT SUGGESTION, 2026-11-21.
+Prevent future Core/wrapper divergence: extend the existing publisher with
+bounded release-time verification of the expected executable build served by
+both production hosts. Treat mismatch/timeout as incomplete delivery. Synchronize
+and test the stale diagnostic meta marker. No client polling or infrastructure
+replacement. V3.2 currently has matching executable builds; this follow-up is not
+a demonstrated production mismatch. Implementation is not yet owner-approved.
+Checkpoint: notes/ESTIMATION_V3_2_SOURCE_BINDINGS_CHECKPOINT_2026_11_21.md.
+
 DEFERRED PROPOSAL, P2, AGENT SUGGESTION, 2026-11-19. Clarify and repair or
 retire the separate Workers Builds integration after owner scope approval.
 It fails on both V2.6 fce5ffae and V2.7 1ca24099 while Cloudflare Pages succeeds.
@@ -7538,13 +7547,235 @@ cause from the local screenshot alone.
   agree; ready-screen Overhead renders after the navigation cover detaches.
   Railway8281f753-034b-4a16-9d82-1ac804d9e4bb ACTIVE; public wrapper/Core
   match estimation-v3.1-b20261119231652-restore-overhead-detection-v8.4.29.
-  Owner sees Overhead; full acceptance blocked by diagnosed Ada material geometry.
+  Owner sees Overhead. Ada material blocker resolved and accepted in V3.2 on21Nov;
+  the separate three-component edit/save/reopen checks below remain pending.
   Owner check after repair: verify three components/full SC, edit/save/
   reopen hours and matching Objects. No new recognition required. Paid calls0.
   Evidence: handoff workspace outputs/overhead-v3.1-20261120/.
-- ACTIVE, P1, USER REQUEST, Ada Display cabinet missing material costs,
+- Add deterministic delivery and installation pricing from project subtotal / overhead settings.
+- Improve catalog matching: save matched material/labor rows and mark weak matches as `needs_review`.
+- Run estimation for all detected objects, not only the first object.
+- Design Objects Estimation status refresh without Streamlit stale-DOM fragments.
+- UI copy: enforce the product rule that the final sentence in a user-facing
+  text block has no trailing period. Preserve internal periods and meaningful
+  question marks, exclamation marks, and other punctuation. Password recovery
+  and shared Auth validation copy now follow this rule; the remaining product
+  copy still needs an audit.
+- Upload: continue first app/file-load optimization; warm refresh now uses the grey screen/app-ready path, but cold start after reboot can still show one Streamlit skeleton.
+- Upload performance follow-up: lazy-load screens and cleanup are done; revisit `.streamlit/config.toml`, cold-start behavior, and optional post-deploy/reboot prewarm.
+- Processing: review processing-screen text wording and keep its current position as the layout benchmark.
+- Objects Estimation: reduce the large vertical gap between subtitle and pricing table column headers.
+- Objects Estimation: add a small blue spinner next to the running Self Cost per Unit percent.
+- Objects Estimation: format object quantities as whole units, not 1.0, after estimation completes.
+- Objects Estimation: Delivery and Installation should not show Self Cost pending state or Pending review buttons; keep review/status area empty for project-level rows.
+- Objects Estimation: keep Delivery and Installation as project-level percentage allocations and show their sale price inputs without fake object status.
+- Object Detail: show AI Confidence when available.
+- Object Detail preview source and selection: tracked under Object presentation
+  previews above, including the existing File Review crop and full-page
+  Calculation discrepancy.
+- Object Detail to Objects Estimation navigation: remove stale screen fragment flicker on return.
+- Estimation 9.10 Object Detail presentation. ACTIVE, P1, USER REQUEST.
+  Align Required Material, show piece only under Purchase Unit, and put
+  stock sheets, glass, hardware and LED in the requested order. Show a
+  collapsed Elements table with one row for each matching part type and
+  size across Blocks. Both saved Adda objects passed browser checks with
+  editing and return navigation. Railway deployed `b86906d`. Owner
+  verification in an authenticated production session is pending.
+- Estimation 9.14 Materials quantity behavior and Lev1 costing checkpoint.
+  COMPLETED, OWNER-ACCEPTED, P1, USER REQUEST. Three production runs and
+  offline replay agree on 28 part rows, ten purchase lines and 2,923.99 ILS
+  self cost excluding VAT. This closes the Materials editor iterations
+  9.11 through 9.14. The accepted flow previews costs locally, preserves
+  untouched quantities, saves once, and displays read-only unit prices.
+  Runtime `estimation-v9.14-checkpoint`. See the
+  [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-914-production-checkpoint).
+- Lev1 Parts and Material Demand audit. ACTIVE, P1, USER REQUEST. After
+  the 9.14 repeatability checkpoint, trace the saved run
+  `run_f837297d641e489880b162626eaf5916` for unexpected Parts counts,
+  repeated sheet material variants, and 10 Assumption Fallback rows.
+  Compare with the current 28-row control, which still uses six allowances
+  totaling 1,200 ILS and has 29 open findings on 9.14.
+  Estimation 9.15 adds equal horizontal drawers and a common nominal
+  thickness when vector gaps and compatible finishes support it. Lev1
+  verifies one 40 mm veneer MDF requirement for the seat, ribs and right
+  upright. Catalog coverage for that thickness, the contrasting tabletop
+  construction and the remaining Parts Check findings are still open.
+  Estimation 9.16 moves the veneer decision into Understanding and
+  carries its source into Parts. Fresh Lev1 and Lev2 controls verify the
+  veneered MDF choice and the plain-colour exclusion. Solid wood needs
+  a verbatim drawing note. Catalog coverage stays open.
+  Railway deployed 9.16 at `c279799`; production runtime verified.
+  Fresh Lev1 `run_c085a65508e247349f6b2bb673a13d7d` failed acceptance
+  with seven openings marked as doors despite matching Detection boxes.
+  Parts priced unmeasured sheet cuts as pieces, producing 7,000 ILS
+  in two allowances. Initial Front requests are identical in offline
+  reconstruction. Estimation 9.17 verifies both the frame recovery with
+  a Detail label and the supported-extension geometry without the
+  Detection edge. Fresh Lev1, Lev2 and Adda Estimation runs used saved
+  Detection inputs. Adda reproduced the accepted 2/7 block split and
+  one straight-object mirror. Keep tracking Adda mirror repeatability
+  and incomplete sheet demand. Railway deployed `2a4a548`; runtime
+  and checkpoint tags verified. Fresh Lev1
+  `run_037c9562735b4213854d5fd44f7e611e` matched three Blocks and three
+  drawers. Front counted two supports, Parts and purchasing retained
+  one on the Detection-linked path. Seven of 11 purchase lines matched;
+  materials were 3,693.42 ILS versus 3,551.72 ILS. Verify attachment
+  of the corroborated support pair on both Planner paths and material
+  coverage of the seat. Production 9.21 verified both supports and all
+  29 Parts dimensions. Its nine sheet lines include four LDSP positions.
+  The 9.23 production repeat confirms the seat loses usable finish
+  evidence before Parts. The current normalizer still maps the ribs to
+  40 mm. Restoring the successful 9.16 finish cues in an offline replay
+  reunites the seat with the ribs and right upright at 40 mm veneered MDF.
+  The 9.24 candidate recovers corroborated finish and reuses compatible
+  provisional sheet stock inside Parts. Offline Lev1 goes from nine to
+  eight sheet positions. Lev2 and Adda Parts replays match their controls.
+  Confirm the new finish cues on a fresh Lev1 model response, especially
+  the visible backing and underlayer. The owner approved production
+  deployment before this fresh verification. 9.24 is live at `ce2408c`.
+  The 9.24 experiment binds visual finish to a surface, reads explicit
+  stock before fitted sizes, and costs an eligible 40 mm veneered panel as
+  two 20 mm cuts. Lev1 now has seven sheet positions in the saved replay.
+  Fresh model surface evidence still needs verification, particularly
+  for the frame backing and tabletop underlayer. Review the source overlay,
+  Parts and purchase demand before accepting the production result. See the [9.24 experiment](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-924-finish-and-compatible-sheet-stock-candidate).
+  Production Lev1 9.24 missed the finish on the seat and both uprights,
+  assigned a slat-panel side cue to the cabinet base, and increased the
+  sheet list from nine to 11. Keep this witness for the next repair. Bind
+  finish to the owning surface and track rejected and missing evidence.
+  P1, USER REPORT. Compatible sheet allowances can appear twice when
+  procurement keys differ by demand role. Check family, finish, size,
+  format, price and cut compatibility before shared nesting. Preserve
+  separate ownership, usage and provenance. The saved LDSP 40 mm pair
+  nests on one fallback sheet in the diagnostic. See the
+  [production audit](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#first-production-lev1-regression).
+  9.25 passes the archived failure and two fresh Understanding responses
+  with six sheet positions and one allowance for supports. Lev2 and
+  Adda saved Parts, block envelopes and Front counts match. Fresh Lev1
+  Upload confirmed six sheet positions, 29 Parts and one support allowance.
+  Purchase acceptance remains partial. Verify the ownership and finish
+  of the central backing and flag a catalog sheet when a single cut does
+  not fit it. The 2180 x 1530 mm backing exceeds the quoted 2440 x 1220 mm
+  veneer sheet, and the CB Parts path estimates sheet counts by total
+  area with a waste factor. Retain projected versus printed
+  thickness trace and retain the 9.23 rollback reference. See the
+  [9.25 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-925-finish-evidence-and-compatible-sheet-purchasing).
+  Preserve explicit drawing materials. Reuse finish and nominal thickness
+  where the evidence links panels, prefer compatible stock already in the
+  material plan, and map thick finished panels to face layers and, where
+  needed, a core or spacers. Check the resulting purchase demand against
+  the saved Lev1, Lev2 and Adda controls. The [material audit](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#lev1-sheet-material-audit)
+  records why the smallest historical lists are not acceptance controls.
+- Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
+
+## Later
+- Large-PDF Detection routing: prevent Claude HTTP 413 before starting expensive work. Estimate the complete Messages payload size, including Base64 expansion, OCR context, prompt, and schema; never retry a non-retriable 413 through the fallback model. When the inline payload would approach the 32 MB Messages limit, upload the PDF once through the Anthropic Files API and pass its `file_id` instead of Base64. If the referenced document still exceeds the model context, split it into controlled page groups and reconcile one package-level object set. Persist OCR, upload, Detection, and failure timings for unsuccessful cycles.
+- Audit and replace brittle layout code in Objects pricing rows and Upload dropzone when the current estimation/overhead flow is stable.
+- Polish negative/error states with project button styles.
+- Add XLS proposal export.
+- Add missing-object second-pass detection flow.
+- 3.7.1 Company Price Sources: retained historical agent/import work, with the
+  source-first UI superseded by active task 3.10.1. Production candidate adds one-source upload or
+  public-URL ingestion, optional department selection with automatic material-type classification, automatic supplier and
+  document classification, unit-preserving normalization, private versioned
+  offers, unresolved-row quarantine, source inspection, and private source
+  storage. The owner applied the additive database migration before deployment;
+  `233 passed` on the production candidate. Verify one photographed invoice and
+  one static public supplier page on production. Existing `materials` and the
+  current Estimation resolver remain unchanged until import evidence is accepted.
+  First production URL test exposed output truncation on the 15k-character
+  Rotenberg catalog page; the extraction budget was raised from 8,192 to 32,768
+  tokens and explicit max-token failure handling was added. The same page then
+  exposed a model arithmetic mismatch, so ready-row normalized prices are now
+  calculated deterministically. The final no-write diagnostic completed in
+  48.252 seconds with supplier `Rotenberg 1929`, document type `price_list`, and
+  48 of 48 rows validated as ready. Production persistence still requires a
+  user-visible retest after the hotfix deployment. A later production URL test
+  failed before the agent: the page returned only 190 bytes and no readable HTML
+  text. Script-only or protected pages now receive a specific instruction to
+  upload a PDF, screenshot, or photo. A no-write automatic-category diagnostic
+  on the Tsidky page inferred `Sheet Materials`, identified the supplier, and
+  validated 39 of 42 rows as ready. Production still needs the exact failing URL
+  to determine whether a safe dynamic-page importer is justified. Production
+  user testing on checkpoint `4a5fd9a` confirmed that Sign Out no longer reveals
+  an unstyled Auth screen and that two automatic-category URL imports completed
+  in 22.9 and 9.5 seconds. Both persisted as `partial`, with zero ready prices:
+  one returned 27 unresolved rows, the other 6 unresolved and 1 excluded row.
+  Price ingestion therefore remains active work, not an accepted completion.
+  The preceding session measured Upload to Profile at 3.65 seconds. Its Profile marker
+  reached the DOM after 0.68 seconds and its server work was about 0.72 seconds;
+  roughly 2.97 seconds were spent waiting for the late general `app-ready`
+  component before the Cloudflare transition mask was removed. Checkpoint
+  `a626462` reuses the verified styled-target event path for both Upload to
+  Profile and Profile to Upload. It verifies screen-specific computed styles before
+  revealing either target and leaves the general `app-ready` event unchanged for
+  final server-run telemetry. Production trace
+  `3ae650ed-7e9e-4b15-b333-3e4691e4c227` measured two Upload to Profile styled
+  reveals at 704ms and two Profile to Upload styled reveals at 663ms and 895ms,
+  each with one Python run. The user accepted the navigation speed. No further
+  transition change is pending unless a new production regression is observed.
+
+
+## Completed history
+
+### Estimation V3.2 source-bindings repair, accepted21November2026
+
+- COMPLETED, P1, USER REQUEST, Ada Display cabinet missing material costs,
   2026-11-20. Mechanism and version effects verified; exact historical onset
-  trigger UNKNOWN. Owner forbids speculative repairs; explicit V1.2.23 rollback
+  trigger UNKNOWN. OWNER APPROVED V3.2 implementation and gated publication20Nov.
+  Base V3.1/f051b8cc restored, diagnostics retained, Detection unchanged from
+  that base. Prompt-only trials were insufficient: an identical previously8/8
+  request misassigned C14 instead of C19 and lost the cabinet geometry. Final
+  method independently transcribes original pixels inside EVERY native contour,
+  retaining original claims and all other source evidence.89 Ada panels require
+  one extra Haiku call; batches90 preserve all contours on larger views. No loop,
+  OCR change, expected count or per-file IDs. Non-mirror transcriptions retained.
+  Empty/wrong-owner frozen controls now both restore7/19/133 and no unpriced
+  materials. A full fresh trial exposed an additional Locator singleton claim
+  occupying a neighbouring cabinet plane despite correct labels. Final native
+  admission requires an in-plane claim or positive source contact, preserving
+  original proposals and allowing existing native growth to recover ownership.
+  Three captured fresh reply sets replay7/19/133/no unpriced, with all10 prepared
+  requests exactly equal to their captured requests. Final additional fully fresh
+  run passed2/7/24 Vanity and7/19/133 Cabinet, no unpriced materials. Published
+  main07ac05d2 after exact-SHA CI518 checks/seven suites150.863s, artifact verified,
+  remote ruleset27499066 active/no bypass. Railway7953171072 success21:41:26UTC,
+  actual CoreV3.2. CORRECTION21Nov: actual public wrapper JavaScript BUILD_VERSION
+  and embedded Core both match the V3.2 stamped build. The old V9.7 HTML meta
+  is stale in committed source, not proof of a deployed executable mismatch.
+  Pages deployment succeeded. Authenticated Cloudflare dashboard confirms the
+  failing separate Worker has no custom domains or zone routes; no config or
+  routes changed. Owner manual Cloudflare login completed. V3.2 delivery verified,
+  Owner21Nov reports first production Ada run appears successful. Amounts and
+  persisted output not independently inspected, repeatability not yet accepted.
+  Owner explicitly accepted the fix and requested a full checkpoint21Nov.
+  Historical onset remains unexplained; its investigation is no longer a
+  release blocker. Accepted runtime07ac05d2 and checkpoint details:
+  notes/ESTIMATION_V3_2_SOURCE_BINDINGS_CHECKPOINT_2026_11_21.md. Earlier statuses below are history.
+  COMPLETED diagnostic, P1, USER REQUEST21Nov: exactly6 fresh paid calls to
+  second-stage direct-label review, six distinct provider response IDs and
+  identical prepared input.6/6 pass: all89 contours reviewed, both mirrors at
+  C16/C19, no unresolved contours.12 network-blocked local controls (empty and
+  wrong initial direct_labels for each fresh second-stage answer) preserve all10
+  prepared stage requests and restore Vanity2/7/24, Cabinet7/19/133, no unpriced
+  requirements, identical base material totals2720.64/8586.68 ILS ex VAT. These
+  are base materials before formula consumables/Labor/Overhead, not full SC.
+  Actual token cost at verified official rates USD0.0070142 =0.70142 US cents
+  for all6, no unknown-usage calls. No OCR/Detection/other paid stages, no DB or
+  runtime changes. This validates the isolated stage, not six fully fresh
+  Calculation runs or owner UI acceptance. Evidence, raw replies, scripts and
+  final receipt: outputs/estimation-v3.2-label-stage-six-20261121/REPORT_RU.md.
+  Current receipt outputs/estimation-v3.2-20261120/release.json. Native arrow
+  contact preserves all122 former Ada hits and adds9 edge contacts. Normal UI
+  gate restored and final exact-SHA CI passed. See release note above.
+  New chronology: creation7Nov23:47 Israel in V7.4 experiment; main-history
+  commit88f261dd12Nov12:45; earliest found saved real empty reply20Nov12:09;
+ 17Nov19:18 is earliest current-pattern report, raw not retained. Thirteen unique
+  early V7.4/V8 replies contain labels, none empty. Actual Railway boundary logs
+  show same deployment/replica and no intervening restart/config edits. Key
+  rotation19Nov is later. Audit now includes189 compressed/uncompressed November
+  sessions, no events in exact onset gap. Runtime unchanged. Details/proposal:
+  outputs/ada-direct-label-history-20261120/REPORT_RU.md. Explicit V1.2.23 rollback
   was subsequently authorized20Nov for owner testing.
   Paid diagnostics authorized. Prompt strengthening is not an accepted repair.
   Owner now fixes PDF/crops/Detection as identical: stop input/archive
@@ -7764,6 +7995,62 @@ cause from the local screenshot alone.
   onset-investigation/VERSION_COMPARISON_RU.md, full-version-matrix.json,
   fixed-report-pricing/, fresh-unmodified/, direct-label-crossovers/,
   nov14-target-deployments.json, month-audit/REPORT_RU.md, paid-call-ledger.json.
+  PRODUCTION CAUSAL COMPARISON VERIFIED20Nov, two successes/one failure:
+  dbf4fba3(21:15),337dc8f2(21:31),985db97e(21:38 Israel) all have the SAME
+  marked-view-001 canonical body fingerprint41e249a340928974e6798772ca1e36658ca645122e01c0f59d35e2058e60899c.
+  Actual Haiku5.5 replies contain C16/C19,C16/C19,[] respectively BEFORE JSON
+  parsing/binding. All end_turn,6131 input tokens,612/621/535 output tokens,
+  thinking0/cache0/service standard. Cabinet outcomes7/19/133 and9101.88ex,
+ 7/19/133 and9101.88ex,6/0/129 and1543.36ex; Vanity2883.88 in all three.
+  This verifies present response variation on the SAME actual production body,
+  not just local reconstructed parity. Upstream island-map fingerprints differ
+  (normal run-specific context); downstream native-locator changes after blocks.
+  Seven offline Front/Assembly controls on the actual captured replies confirm:
+  add ONLY direct_labels to failed reply ->6 to7 blocks; remove ONLY that field's
+  bindings from successful reply ->7 to6. Swapping only eight alternate stroke
+  readings keeps the original block count, so strokes do not cause this loss.
+  Exact own-code amplifier: tools/estimation_casework_geometry.py:165
+  corner_casework requires exactly one mirror_upright role; missing central
+  block makes it return{} before resolving any cabinet envelope. This is a role
+  requirement, not a literal total-block-count==7 guard. Then missing geometry
+  leaves7 sheet/finished-glass requirements unpriced under the known policy.
+  Code/production unchanged, paid calls0. This confirms the current failure's
+  trigger and cascade, not why the historical success frequency changed17Nov.
+  Preserve historical-onset investigation as OPEN; do not call a provider bug
+  or a new code regression proven. Next repair/design discussion requires owner
+  approval; do not auto-retry/rewrite prompts/drop evidence as an implicit fix.
+  Evidence outputs/ada-production-two-good-one-bad-20261120/{comparison.json,
+  controls/summary.json}; full production replies and offline controls retained.
+  DIAGNOSTIC DEPLOYED20Nov: exact SHA7d631d354506df02b9fffe5830ab3fc463d79f58
+  passed570+24 local checks and GitHub UI release gate44799513069. Publisher
+  verified active ruleset27499066/no bypass and promoted the exact SHA. Live
+  wrapper and Core both estimation-labor-v1.2.21-b20261120190513-parts-trace-
+  detection-v8.4.29; Core health200. Railway/GitHub deployment7950312126.
+  Production log persistence VERIFIED by owner fresh successful Ada20Nov21:15–
+ 21:18 Israel, rundbf4fba3/estimate20261120191552. All9 actual responses and
+  request fingerprints persisted, no diagnostic errors. Raw Haiku5.5 marked
+  response contains C16/C19 mirror labels,612 output tokens/end_turn/cache0.
+  Cabinet7 blocks/19 dimensions/133 parts/no unpriced; saved9101.88ex. Vanity
+ 2/7/24/no unpriced,2883.88ex. This verifies this calculation and telemetry,
+  not a root-cause repair or repeatability. No additional paid calls by agent.
+  IMPORTANT new actual production success fingerprint41e249a340928974e6798772ca1e36658ca645122e01c0f59d35e2058e60899c
+  differs from local reconstructed marked control1605de98. Do not infer that
+  request changed between production success/failure: preceding production
+  failure has no captured body fingerprint/raw reply. All historical/last
+  failed/new successful Parts have identical geometry-audit b85c313c; four
+  source-inventory request fingerprints match local controls, front-related
+  request fingerprints differ. Content/encoding difference not localized.
+  Preserve this actual successful production trace as the comparison baseline
+  for the next captured failure; do not substitute local reconstruction for it.
+  Evidence /private/tmp/costerly-ada-diag-owner-success-20261120/summary.json.
+  Full provider response and request_fingerprint now retained in private Parts
+  request usage events; compare marked fingerprint1605de98... with saved control.
+  Validated full-source helper backup5,212,374 bytes, compression9, exclusions and
+ 5MiB limit unchanged. Prior oversized archive failure and unintended candidate
+  branch commit recorded in handoff; final published commit follows valid backup.
+  Evidence outputs/parts-diagnostic-v1.2.21-20261120/release.json. The old V9.7
+  checkout remains stopped/dirty/preserved. Current attached diagnostic checkout
+  is the source for the next capture investigation. This is not a checkpoint.
   DIAGNOSTIC RELEASE APPROVED20Nov: owner explicitly approved only diagnostic
   logging on current V1.2.21. Runtime algorithms, prompts, conditions and pricing
   stay fixed. New isolated worktree codex/parts-diagnostic-v1.2.21 preserves the
@@ -7785,165 +8072,3 @@ cause from the local screenshot alone.
   no original17Nov HTTP capture exists. Proposal's five offline controls preserve
   original requests/outcomes for complete, omitted, malformed, truncated and
   trace-error cases. Evidence /private/tmp/costerly-ada-hypotheses-20261120/.
-- Add deterministic delivery and installation pricing from project subtotal / overhead settings.
-- Improve catalog matching: save matched material/labor rows and mark weak matches as `needs_review`.
-- Run estimation for all detected objects, not only the first object.
-- Design Objects Estimation status refresh without Streamlit stale-DOM fragments.
-- UI copy: enforce the product rule that the final sentence in a user-facing
-  text block has no trailing period. Preserve internal periods and meaningful
-  question marks, exclamation marks, and other punctuation. Password recovery
-  and shared Auth validation copy now follow this rule; the remaining product
-  copy still needs an audit.
-- Upload: continue first app/file-load optimization; warm refresh now uses the grey screen/app-ready path, but cold start after reboot can still show one Streamlit skeleton.
-- Upload performance follow-up: lazy-load screens and cleanup are done; revisit `.streamlit/config.toml`, cold-start behavior, and optional post-deploy/reboot prewarm.
-- Processing: review processing-screen text wording and keep its current position as the layout benchmark.
-- Objects Estimation: reduce the large vertical gap between subtitle and pricing table column headers.
-- Objects Estimation: add a small blue spinner next to the running Self Cost per Unit percent.
-- Objects Estimation: format object quantities as whole units, not 1.0, after estimation completes.
-- Objects Estimation: Delivery and Installation should not show Self Cost pending state or Pending review buttons; keep review/status area empty for project-level rows.
-- Objects Estimation: keep Delivery and Installation as project-level percentage allocations and show their sale price inputs without fake object status.
-- Object Detail: show AI Confidence when available.
-- Object Detail preview source and selection: tracked under Object presentation
-  previews above, including the existing File Review crop and full-page
-  Calculation discrepancy.
-- Object Detail to Objects Estimation navigation: remove stale screen fragment flicker on return.
-- Estimation 9.10 Object Detail presentation. ACTIVE, P1, USER REQUEST.
-  Align Required Material, show piece only under Purchase Unit, and put
-  stock sheets, glass, hardware and LED in the requested order. Show a
-  collapsed Elements table with one row for each matching part type and
-  size across Blocks. Both saved Adda objects passed browser checks with
-  editing and return navigation. Railway deployed `b86906d`. Owner
-  verification in an authenticated production session is pending.
-- Estimation 9.14 Materials quantity behavior and Lev1 costing checkpoint.
-  COMPLETED, OWNER-ACCEPTED, P1, USER REQUEST. Three production runs and
-  offline replay agree on 28 part rows, ten purchase lines and 2,923.99 ILS
-  self cost excluding VAT. This closes the Materials editor iterations
-  9.11 through 9.14. The accepted flow previews costs locally, preserves
-  untouched quantities, saves once, and displays read-only unit prices.
-  Runtime `estimation-v9.14-checkpoint`. See the
-  [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-914-production-checkpoint).
-- Lev1 Parts and Material Demand audit. ACTIVE, P1, USER REQUEST. After
-  the 9.14 repeatability checkpoint, trace the saved run
-  `run_f837297d641e489880b162626eaf5916` for unexpected Parts counts,
-  repeated sheet material variants, and 10 Assumption Fallback rows.
-  Compare with the current 28-row control, which still uses six allowances
-  totaling 1,200 ILS and has 29 open findings on 9.14.
-  Estimation 9.15 adds equal horizontal drawers and a common nominal
-  thickness when vector gaps and compatible finishes support it. Lev1
-  verifies one 40 mm veneer MDF requirement for the seat, ribs and right
-  upright. Catalog coverage for that thickness, the contrasting tabletop
-  construction and the remaining Parts Check findings are still open.
-  Estimation 9.16 moves the veneer decision into Understanding and
-  carries its source into Parts. Fresh Lev1 and Lev2 controls verify the
-  veneered MDF choice and the plain-colour exclusion. Solid wood needs
-  a verbatim drawing note. Catalog coverage stays open.
-  Railway deployed 9.16 at `c279799`; production runtime verified.
-  Fresh Lev1 `run_c085a65508e247349f6b2bb673a13d7d` failed acceptance
-  with seven openings marked as doors despite matching Detection boxes.
-  Parts priced unmeasured sheet cuts as pieces, producing 7,000 ILS
-  in two allowances. Initial Front requests are identical in offline
-  reconstruction. Estimation 9.17 verifies both the frame recovery with
-  a Detail label and the supported-extension geometry without the
-  Detection edge. Fresh Lev1, Lev2 and Adda Estimation runs used saved
-  Detection inputs. Adda reproduced the accepted 2/7 block split and
-  one straight-object mirror. Keep tracking Adda mirror repeatability
-  and incomplete sheet demand. Railway deployed `2a4a548`; runtime
-  and checkpoint tags verified. Fresh Lev1
-  `run_037c9562735b4213854d5fd44f7e611e` matched three Blocks and three
-  drawers. Front counted two supports, Parts and purchasing retained
-  one on the Detection-linked path. Seven of 11 purchase lines matched;
-  materials were 3,693.42 ILS versus 3,551.72 ILS. Verify attachment
-  of the corroborated support pair on both Planner paths and material
-  coverage of the seat. Production 9.21 verified both supports and all
-  29 Parts dimensions. Its nine sheet lines include four LDSP positions.
-  The 9.23 production repeat confirms the seat loses usable finish
-  evidence before Parts. The current normalizer still maps the ribs to
-  40 mm. Restoring the successful 9.16 finish cues in an offline replay
-  reunites the seat with the ribs and right upright at 40 mm veneered MDF.
-  The 9.24 candidate recovers corroborated finish and reuses compatible
-  provisional sheet stock inside Parts. Offline Lev1 goes from nine to
-  eight sheet positions. Lev2 and Adda Parts replays match their controls.
-  Confirm the new finish cues on a fresh Lev1 model response, especially
-  the visible backing and underlayer. The owner approved production
-  deployment before this fresh verification. 9.24 is live at `ce2408c`.
-  The 9.24 experiment binds visual finish to a surface, reads explicit
-  stock before fitted sizes, and costs an eligible 40 mm veneered panel as
-  two 20 mm cuts. Lev1 now has seven sheet positions in the saved replay.
-  Fresh model surface evidence still needs verification, particularly
-  for the frame backing and tabletop underlayer. Review the source overlay,
-  Parts and purchase demand before accepting the production result. See the [9.24 experiment](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-924-finish-and-compatible-sheet-stock-candidate).
-  Production Lev1 9.24 missed the finish on the seat and both uprights,
-  assigned a slat-panel side cue to the cabinet base, and increased the
-  sheet list from nine to 11. Keep this witness for the next repair. Bind
-  finish to the owning surface and track rejected and missing evidence.
-  P1, USER REPORT. Compatible sheet allowances can appear twice when
-  procurement keys differ by demand role. Check family, finish, size,
-  format, price and cut compatibility before shared nesting. Preserve
-  separate ownership, usage and provenance. The saved LDSP 40 mm pair
-  nests on one fallback sheet in the diagnostic. See the
-  [production audit](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#first-production-lev1-regression).
-  9.25 passes the archived failure and two fresh Understanding responses
-  with six sheet positions and one allowance for supports. Lev2 and
-  Adda saved Parts, block envelopes and Front counts match. Fresh Lev1
-  Upload confirmed six sheet positions, 29 Parts and one support allowance.
-  Purchase acceptance remains partial. Verify the ownership and finish
-  of the central backing and flag a catalog sheet when a single cut does
-  not fit it. The 2180 x 1530 mm backing exceeds the quoted 2440 x 1220 mm
-  veneer sheet, and the CB Parts path estimates sheet counts by total
-  area with a waste factor. Retain projected versus printed
-  thickness trace and retain the 9.23 rollback reference. See the
-  [9.25 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-925-finish-evidence-and-compatible-sheet-purchasing).
-  Preserve explicit drawing materials. Reuse finish and nominal thickness
-  where the evidence links panels, prefer compatible stock already in the
-  material plan, and map thick finished panels to face layers and, where
-  needed, a core or spacers. Check the resulting purchase demand against
-  the saved Lev1, Lev2 and Adda controls. The [material audit](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#lev1-sheet-material-audit)
-  records why the smallest historical lists are not acceptance controls.
-- Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
-
-## Later
-- Large-PDF Detection routing: prevent Claude HTTP 413 before starting expensive work. Estimate the complete Messages payload size, including Base64 expansion, OCR context, prompt, and schema; never retry a non-retriable 413 through the fallback model. When the inline payload would approach the 32 MB Messages limit, upload the PDF once through the Anthropic Files API and pass its `file_id` instead of Base64. If the referenced document still exceeds the model context, split it into controlled page groups and reconcile one package-level object set. Persist OCR, upload, Detection, and failure timings for unsuccessful cycles.
-- Audit and replace brittle layout code in Objects pricing rows and Upload dropzone when the current estimation/overhead flow is stable.
-- Polish negative/error states with project button styles.
-- Add XLS proposal export.
-- Add missing-object second-pass detection flow.
-- 3.7.1 Company Price Sources: retained historical agent/import work, with the
-  source-first UI superseded by active task 3.10.1. Production candidate adds one-source upload or
-  public-URL ingestion, optional department selection with automatic material-type classification, automatic supplier and
-  document classification, unit-preserving normalization, private versioned
-  offers, unresolved-row quarantine, source inspection, and private source
-  storage. The owner applied the additive database migration before deployment;
-  `233 passed` on the production candidate. Verify one photographed invoice and
-  one static public supplier page on production. Existing `materials` and the
-  current Estimation resolver remain unchanged until import evidence is accepted.
-  First production URL test exposed output truncation on the 15k-character
-  Rotenberg catalog page; the extraction budget was raised from 8,192 to 32,768
-  tokens and explicit max-token failure handling was added. The same page then
-  exposed a model arithmetic mismatch, so ready-row normalized prices are now
-  calculated deterministically. The final no-write diagnostic completed in
-  48.252 seconds with supplier `Rotenberg 1929`, document type `price_list`, and
-  48 of 48 rows validated as ready. Production persistence still requires a
-  user-visible retest after the hotfix deployment. A later production URL test
-  failed before the agent: the page returned only 190 bytes and no readable HTML
-  text. Script-only or protected pages now receive a specific instruction to
-  upload a PDF, screenshot, or photo. A no-write automatic-category diagnostic
-  on the Tsidky page inferred `Sheet Materials`, identified the supplier, and
-  validated 39 of 42 rows as ready. Production still needs the exact failing URL
-  to determine whether a safe dynamic-page importer is justified. Production
-  user testing on checkpoint `4a5fd9a` confirmed that Sign Out no longer reveals
-  an unstyled Auth screen and that two automatic-category URL imports completed
-  in 22.9 and 9.5 seconds. Both persisted as `partial`, with zero ready prices:
-  one returned 27 unresolved rows, the other 6 unresolved and 1 excluded row.
-  Price ingestion therefore remains active work, not an accepted completion.
-  The preceding session measured Upload to Profile at 3.65 seconds. Its Profile marker
-  reached the DOM after 0.68 seconds and its server work was about 0.72 seconds;
-  roughly 2.97 seconds were spent waiting for the late general `app-ready`
-  component before the Cloudflare transition mask was removed. Checkpoint
-  `a626462` reuses the verified styled-target event path for both Upload to
-  Profile and Profile to Upload. It verifies screen-specific computed styles before
-  revealing either target and leaves the general `app-ready` event unchanged for
-  final server-run telemetry. Production trace
-  `3ae650ed-7e9e-4b15-b333-3e4691e4c227` measured two Upload to Profile styled
-  reveals at 704ms and two Profile to Upload styled reveals at 663ms and 895ms,
-  each with one Python run. The user accepted the navigation speed. No further
-  transition change is pending unless a new production regression is observed.

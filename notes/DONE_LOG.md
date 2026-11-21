@@ -1,5 +1,25 @@
 # Done Log
 
+V3.2 source-bindings production checkpoint ACCEPTED BY OWNER,21November2026.
+Runtime07ac05d2 retained, no runtime change or new deployment. Independent source
+transcription inside every native contour, native-plane/contact Locator admission,
+and boundary-touching arrow ownership preserve original evidence and repair the
+reproduced Ada missing-material cascade. Historical onset cause remains unknown;
+owner explicitly accepts closure of the defect and requests this full checkpoint.
+CI exact SHA518 checks/seven suites150.863s; active remote no-bypass gate verified.
+One completely fresh pre-release Ada Calculation passed both objects. Six fresh
+second-stage calls passed6/6,89 contours,C16/C19;12 offline empty/wrong-primary
+controls restore both objects, cabinet7/19/133 and no unpriced requirements.
+Cost of those6 calls USD0.0070142,0.70142 US cents. Owner reports successful Ada
+on production; exact new run/amounts not independently queried. Real executable
+Core/wrapper V3.2 match; stale V9.7 meta was misdiagnosed as executable divergence.
+Detection unchanged from V3.1. Full archive, tags, bundle, source backup, records,
+raw inputs/replies, CI evidence and portable replay are recorded in
+notes/ESTIMATION_V3_2_SOURCE_BINDINGS_CHECKPOINT_2026_11_21.md.
+Release-time build verifier remains a separate unapproved proposal. No new paid
+calls for checkpoint creation. Earlier live-failure records below are history.
+
+
 V2.9 owner-control deployment completed, LIVE ACCEPTANCE FAILED, 2026-11-19.
 Control c46e9809 changed only three build stamps, no behavior/model changes.
 Owner confirmed signed-in idle Upload before publication and reported Login
