@@ -874,7 +874,7 @@ def signal_app_ready_to_embed(
                     return "new_estimate";
                 }
                 if (hasControlKey("header_last_estimate")) {
-                    return currentWorkflow()?.enabled() ? "last_estimate" : null;
+                    return "last_estimate";
                 }
                 if (control.closest(".st-key-open_company_account") || hasControlKey("open_company_account")) {
                     if (currentScreen() === "upload") return "upload_to_profile";
@@ -1273,6 +1273,13 @@ def signal_app_ready_to_embed(
                             event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
                         const transition = transitionName(control);
                         if (!transition) return;
+                        const workflow = currentWorkflow();
+                        if (workflow?.supports?.(transition) && !workflow.enabled()) {
+                            event.preventDefault();
+                            event.stopImmediatePropagation();
+                            workflow.requestUpdate(transition, crypto.randomUUID());
+                            return;
+                        }
                         const bridgeKey = String(control.dataset.streamlitBridgeKey || "");
                         const objectId = String(control.dataset.objectId || "");
                         let bridgeButton = bridgeKey
@@ -1320,6 +1327,19 @@ def signal_app_ready_to_embed(
                         capture: false,
                         passive: false,
                     });
+                    // The recovery barrier must run before React's delegated
+                    // click callback. Compatible navigation keeps its accepted
+                    // bubble handler and all input/discard handlers unchanged.
+                    const barrierKey = transitionHandlerKey + "Compatibility";
+                    if (parentWindow[barrierKey]) parentDocument.removeEventListener("click", parentWindow[barrierKey], true);
+                    const barrier = event => {
+                        const control = event.target.closest?.("button, a");
+                        const transition = control && transitionName(control);
+                        const workflow = currentWorkflow();
+                        if (transition && workflow?.supports?.(transition) && !workflow.enabled()) handler(event, control);
+                    };
+                    parentWindow[barrierKey] = barrier;
+                    parentDocument.addEventListener("click", barrier, {capture: true, passive: false});
                     // Streamlit tabs select on pointerdown and stop the click
                     // event. Their configured on_change performs a full rerun.
                     const tabHandlerKey = transitionHandlerKey + "ProfileTabs";

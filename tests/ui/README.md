@@ -7,7 +7,7 @@ The synthetic saved bench costs ILS 1,000; this is an interaction fixture,
 not a fresh Lev1 material or labor benchmark. The private V1.3.3 archive
 retains the real saved controls and their evidence.
 
-The protected behavior is defined in `notes/UI_GUIDELINES.md`. The eight suites
+The protected behavior is defined in `notes/UI_GUIDELINES.md`. The nine suites
 cover the page/header/footer/Profile transition matrix across desktop/mobile and safe migration of an older open wrapper,
 Save/reopen in seven Profile paths, preload/read reuse, keyboard, actor access,
 expired auth, handled read/write failures, timeout/double click and recovery.
@@ -31,6 +31,14 @@ sign_in callback followed by a version reload and a used stale cookie with a
 newer valid tab session; rejected tab sessions still reach Login.
 Navigation asserts
 that File Review and the reopened saved card display the same synthetic crop.
+
+Compatibility recovery uses the exact published V1.2.23 wrapper (582343a),
+an absent ACK and an unsupported protocol. Native page/tab callbacks must not
+run without confirmed protection. A user-activated top link updates even the
+pre-protocol shell, retains browser session storage and restores normal covered
+navigation. Cancelled confirmation retains edits; active uploads/calculations
+block reload. The existing telemetry records protocol ACK and cover start/end,
+and click/ready records explicitly say whether the route was covered.
 
 ## Run
 

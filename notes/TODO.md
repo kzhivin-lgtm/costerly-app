@@ -2,11 +2,11 @@
 
 ## Workflow transitions
 
-ACTIVE OWNER ACCEPTANCE, P0, DEPLOYED, USER REPORT,21November2026. Restore
+ACTIVE OWNER ACCEPTANCE, P0, REFRESHED FLOW VERIFIED,21November2026. Restore
 continuous shielding across all supported pages/Profile; Admin-entry latency
 optimization remains deferred. Owner videos12:22:50/13:24:01 show unmasked
 intermediate markup, including old Object Detail losing styles after Approve.
-Confirmed root: full Core-document navigation changes referrer to Core and can
+Separately reproduced defect: full Core-document navigation changes referrer to Core and can
 remove obs_trace. The old controller then rejects the actual wrapper ACK and
 stays disabled. Ordinary server-state-reset tests retain the original document
 and did not cover this lifecycle. Old gate also required only some covered frames
@@ -29,8 +29,49 @@ HTTP200 at12:08:29UTC. Anonymous production baseline before rollout reproduced
 loss (revisiona1123c3f88dd4374, enabled=false, trace lost). After rollout both real
 document reloads retain enabled=true and the original wrapper trace (new revision
 4c6d0f78dce7133d). This verifies production bootstrap, not the owner's authenticated
-project. Owner live acceptance pending; no new accepted checkpoint. Existing
-broken tabs may need one complete outer-tab reload to establish the new context.
+project. Owner subsequently ran the deployed flow and still sees screen
+fragments with no Loading/Opening cover. Acceptance failed;8df3721c is not a
+verified repair of the owner's reported behavior. The documented bootstrap
+defect and anonymous probe do not establish the cause of the remaining live
+failure. Recheck the original V1.3.3 cover, click registration and reveal path
+against the actual authenticated flow before another repair/publication claim.
+No new accepted checkpoint. Do not treat a reload suggestion or passing
+synthetic matrix as resolution of this live failure.
+Latest live diagnosis, owner-authorized technical journal read21November2026:
+tracec3588bdc-c5c7-4666-a15b-a14d591cfc1f (12:10-12:15UTC) still runs the
+V1.2.23 wrapper against the current navigation-shield Core. Repeated explicit
+browser.build_mismatch events cover Upload, File Review, Objects, Detail and
+Profile. Exact V1.2.23 source582343a has no workflow-navigation-enabled ACK,
+so the modern controller cannot enable its local cover. The fallback
+transition_visible/transition_styled events in this trace confirm the uncovered
+handler branch. Current legacy fixture is V1.3.0.1, which has the ACK; it did not
+represent this older live wrapper. Fresh anonymous current/current probes
+therefore did not test the owner's actual pair. Bounded validation completed:
+owner performed Cmd+Shift+R, then confirmed the cover is visible on the requested
+Profile/Projects/Profile and two Profile-tab transitions. New trace
+e169881a-e6d1-4f4c-aeda-ae5704503e5b has matching wrapper/Core navigation-shield
+builds. At12:23:18-12:23:42UTC all five clicks have matching transition-ready
+IDs: Profile to Projects2411.0ms, Projects to Profile719.2ms, two Profile tabs
+709.8/722.8ms, Profile to Upload813.2ms. Zero errors/timeouts/build mismatches
+and zero fallback transition-visible/styled events. This is live acceptance of
+the sampled refreshed flow, not a manual replay of every Object/Approve route.
+Evidence: owner-refreshed-navigation.json and after-owner-refresh-summary.json.
+Pre-protocol wrapper migration remains an uncovered compatibility case,
+not a reason to weaken source/origin/trace checks or alter input mechanics.
+Owner request21November2026: explain the failure and prevent recurrence.
+APPROVED AND ACTIVE, P0, Objects V2.2: extend the
+existing controller's compatibility boundary so absent/unsupported wrapper
+protocol never silently permits unshielded navigation. Compatible pairs retain
+the current cover/ready flow; unsupported pairs retain a stable actionable
+update/recovery state. Preserve sign-in, drafts, active transfers/calculation,
+and the no-polling rule. Add the exact shipped V1.2.23 wrapper to cross-version
+tests, including deliberately absent ACK; require supported navigation coverage
+or the explicit recovery state, not upload success alone. Persist technical
+protocol/ACK/cover-start/cover-end evidence with transition IDs so production
+verification can distinguish completed navigation from a visibly covered one.
+Owner approved the recovery button, safe update, stronger existing publication
+gate and logging on21November2026; implementation and verification in progress.
+Public deploy number must advance to Objects V2.2, never reuse V2.1.
 Evidence: .ui-artifacts/navigation-shield-release/. No new work block/number.
 
 PUBLISHED, OWNER LIVE TEST FAILED, ACTIVE DIAGNOSIS, P0, V2.9, 2026-11-19. Owner explicitly

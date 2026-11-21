@@ -105,6 +105,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
     let hostManagesDeployRefresh = false;
     let pickerOpen = false;
     let uploadStarted = false;
+    let recovery = null;
     const refreshKey = "costerly.version-refresh.v1";
     const announcedBuilds = new Set();
 
@@ -177,10 +178,89 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
             ...(data.type === "costerly:app-ready" ? {sentAt: Date.now()} : {})}, hostOrigin);
     }
 
+    function protection(phase, transition, reason = "") {
+        post({type: "costerly:workflow-protection", phase, reason,
+              protocol: 1, revision, screen: displayed?.screen || receipt.screen,
+              transition: transition?.name || "", transitionId: transition?.id || "",
+              regional: Boolean(transition?.local), hostBuild: hostBuild || ""});
+    }
+
+    function closeRecovery(reason) {
+        if (!recovery) return;
+        const previous = recovery;
+        recovery = null;
+        previous.cover.remove();
+        if (previous.app) previous.app.inert = previous.wasInert;
+        protection("recovery_end", previous, reason);
+    }
+
+    function requestUpdate(name, id) {
+        if (recovery) return;
+        const cover = doc.createElement("div");
+        cover.id = "costerly-workflow-recovery";
+        cover.setAttribute("role", "dialog");
+        cover.setAttribute("aria-modal", "true");
+        cover.setAttribute("aria-label", "App update required");
+        cover.style.cssText = "position:fixed;inset:0;z-index:2147483000;background:#f1efef;"
+            + "display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;"
+            + "color:#392c47;font:500 1rem system-ui,sans-serif;text-align:center;padding:24px;";
+        const status = doc.createElement("span");
+        status.setAttribute("role", "status");
+        status.textContent = "Update the app to continue.";
+        const hint = doc.createElement("p");
+        hint.textContent = "Save any changes before updating. You can return to your current page.";
+        const update = doc.createElement("a");
+        update.textContent = "Update app";
+        // A real user-activated top link works even in V1.2.23, which has
+        // no ACK or reload-message handler. Do not bypass that missing ACK.
+        const url = new URL("/", hostOrigin);
+        const route = ["upload", "login"].includes(displayed?.screen) ? {} : displayed?.route || {};
+        for (const [key, value] of Object.entries(route)) {
+            if (["screen", "route_token", "run_id", "estimate_id", "object_id"].includes(key) && value) {
+                url.searchParams.set(key, value);
+            }
+        }
+        update.href = url.href;
+        update.target = "_top";
+        update.style.cssText = "padding:12px 24px;border-radius:8px;background:#8147ce;color:white;text-decoration:none";
+        update.addEventListener("click", event => {
+            const active = pickerOpen || uploadStarted || displayed?.screen === "processing" ||
+                doc.querySelector('#costerly-upload-processing-shell, .objects-progress-status, [data-costerly-screen="processing"]') ||
+                Array.from(doc.querySelectorAll('input[type="file"]')).some(input => input.files?.length);
+            if (active || displayed?.authStorageReady === false) {
+                event.preventDefault();
+                hint.textContent = active ? "Finish the current upload or calculation before updating."
+                    : "Your sign-in must be saved before updating. Use Retry, then update the app.";
+                protection("update_deferred", recovery, active ? "active_work" : "auth_not_saved");
+                return;
+            }
+            // Conservatively ask on every editable screen. No new draft
+            // writer, input listener, persistence path or silent discard.
+            if (!["upload", "login"].includes(displayed?.screen) &&
+                !coreWindow.confirm("Updating reloads the app. Save any changes first. Update now?")) {
+                event.preventDefault();
+                protection("update_deferred", recovery, "owner_cancelled");
+                return;
+            }
+            protection("update_requested", recovery, "owner_action");
+        });
+        const keep = doc.createElement("button");
+        keep.textContent = "Keep working";
+        keep.addEventListener("click", () => closeRecovery("keep_working"));
+        cover.append(status, hint, update, keep);
+        const app = doc.querySelector(".stApp");
+        recovery = {id, name, cover, app, wasInert: Boolean(app?.inert)};
+        doc.body.append(cover);
+        if (app) app.inert = true;
+        update.focus({preventScroll: true});
+        protection("recovery_start", recovery, "protocol_unconfirmed");
+    }
+
     function acceptHost(event) {
         if (event.source === coreWindow.top && event.origin === hostOrigin &&
             event.data?.type === "costerly:workflow-navigation-enabled" &&
             event.data.traceId === traceId && event.data.protocol === 1) {
+            const firstAck = !enabled;
             enabled = true;
             // Retain only the verified wrapper context across Core document
             // navigation. This is UI correlation, never authentication state.
@@ -193,6 +273,8 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
             // its existing correlated reload command, only on empty Upload.
             hostBuild = String(event.data.buildVersion || "");
             hostManagesDeployRefresh = event.data.buildSignalProtocol === 1;
+            if (firstAck) protection("compatible", null);
+            closeRecovery("compatibility_confirmed");
             checkVersion();
         }
     }
@@ -231,11 +313,12 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         coreWindow.clearTimeout(transition.timeout);
     }
 
-    function close(transition) {
+    function close(transition, reason = "ready") {
         stopWatching(transition);
         if (transition.app) transition.app.inert = transition.wasInert;
         transition.cover.remove();
         pending = null;
+        protection("cover_end", transition, reason);
         if (transition.local) {
             find('.st-key-company_profile_tab [role="tab"][aria-selected="true"]')?.focus({preventScroll: true});
         }
@@ -292,6 +375,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         const transition = {id, name, target, cover, status, app, local,
                             wasInert: Boolean(app?.inert), from: displayed};
         pending = transition;
+        protection("cover_start", transition);
         if (local) {
             const heading = find(".company-profile-heading");
             transition.scopeObserver = new coreWindow.MutationObserver(() => {
@@ -322,6 +406,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
             // over the update cover. Never strand Login or an accepted job.
             const refresh = pending;
             displayed = message;
+            if (message.screen === "login" || message.screen.endsWith("_error")) closeRecovery("auth_or_error");
             pickerOpen = false;
             uploadStarted = false;
             post({...message, transitionId: refresh.id});
@@ -336,6 +421,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
             const marker = find("[data-costerly-render-id]");
             if (marker?.dataset.costerlyRenderId !== message.runId) return Boolean(displayed);
             displayed = message;
+            if (message.screen === "login" || message.screen.endsWith("_error")) closeRecovery("auth_or_error");
             if (message.screen !== "upload") { pickerOpen = false; uploadStarted = false; }
             else if (!doc.querySelector('[data-testid="stFileUploaderFile"]') &&
                      !Array.from(doc.querySelectorAll('input[type="file"]')).some(input => input.files?.length)) {
@@ -391,7 +477,8 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
     }
 
     const controller = {
-        traceId, revision, begin, ready, announceBuild, resumeAuthWrite,
+        traceId, revision, begin, ready, announceBuild, resumeAuthWrite, requestUpdate,
+        supports: name => Boolean(routes[name]),
         enabled: () => enabled,
         busy: () => Boolean(pending),
         versionMatched: buildsMatch,
@@ -399,7 +486,8 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         dispose: () => {
             coreWindow.removeEventListener("message", acceptHost);
             for (const type of ["click", "drop", "change", "cancel"]) doc.removeEventListener(type, trackUpload, true);
-            if (pending) close(pending);
+            if (pending) close(pending, "disposed");
+            closeRecovery("disposed");
         },
     };
     coreWindow[key] = controller;

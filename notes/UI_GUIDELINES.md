@@ -65,6 +65,23 @@ a failure. The full matrix includes two Core document navigations without the
 trace query, lost server state, delayed Profile/Objects reads, header routes,
 footer Back/Approve and sign-out. Preserve tenant/auth and saved-estimate tests.
 
+## Objects V2.2 compatibility recovery, approved 21 November 2026
+
+Unconfirmed/unsupported wrapper protocol must never silently permit a protected
+page or Profile-tab navigation. Cancel the original event before its native
+callback and retain a stable update/recovery screen. The owner may return to
+the current page to save work. Update app is one explicit outer navigation,
+retains browser sign-in, refuses an active upload/calculation or failed auth
+persistence, and warns for explicit confirmation on editable pages. Never add
+an independent draft writer or change input mechanics. No polling is added.
+Compatible navigation retains the accepted cover and correlated ready path.
+
+The exact shipped V1.2.23 wrapper and absent/unsupported ACK must be checked by
+the same obligatory full release gate. Record compatibility, recovery and cover
+start/end using the existing Core/wrapper channel; persist covered on click and
+ready events. Historical wrappers cannot record new event types before update.
+Each published UI release has a distinct public number and stamped build.
+
 ## V3.1 full object cost, approved 20 November 2026
 
 The owner explicitly approved Materials + current Labor + restored Overhead in
