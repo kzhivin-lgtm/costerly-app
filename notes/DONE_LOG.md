@@ -1,5 +1,25 @@
 # Done Log
 
+Objects V2.3 approved presentation deployed21November2026, OWNER AUTHENTICATED
+ACCEPTANCE PENDING. Runtime `3a192b2995293fceda2553b3e2659cecadf70371`, build
+`objects-v2.3-b20261121132650-layout-estimation-v3.2-detection-v8.4.29`.
+Stage copy/equal connectors, local technical-metrics chevron and document buttons
+beside unchanged totals; service fields122px with CSS-only bounded focus.
+Existing price handlers, costing, confirmation/generation and V2.2 controller/
+auth sources retained. Project Summary remains disabled; PDF uses existing URL.
+Full clean local531/nine261.923s and exact-SHA CI531/nine267.279s pass,
+run44910787826/job136865954053/artifact14709851515.142 normal transitions,
+zero uncovered frames,48 outside-field probes and both desktops pass. Old CSS
+negative control rejects outside focus. Three failed candidates never published:
+two outdated text selectors, then a Mac-only intrinsic text width on Linux.
+Frozen old typography is now measured per platform, fixed geometry stays strict.
+Protected publisher reverified active no-bypass27499066 and advanced main only
+to the successful SHA. Core7964296591 success13:56:13UTC; real served builds
+match13:57:13UTC, enabled protection revision7c34ff18617435dd and durable
+compatible/protocol1 event confirmed. Every-release preservation and agent-owned
+CI monitoring are persistent AGENTS.md rules. No paid calls or new checkpoint.
+Evidence: .ui-artifacts/objects-v23-release/.
+
 Objects V2.2 compatibility recovery deployed21November2026, OWNER AUTHENTICATED
 ACCEPTANCE PENDING. Runtime `d02d3b58129639bc892e41bae9e7467f01b125b8`, build `objects-v2.2-b20261121123415-compat-gate-estimation-v3.2-detection-v8.4.29`.
 Actual owner failure was an open V1.2.23 wrapper with V2.1 Core, whose missing

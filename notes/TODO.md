@@ -2,6 +2,11 @@
 
 ## Workflow transitions
 
+Current production UI is Objects V2.3 (`3a192b29`), carrying the V2.2 protection
+below unchanged. Public Login confirms revision7c34ff18617435dd/enabled=true
+and a durable compatible/protocol1 event. Owner authenticated acceptance remains
+pending; the V2.3 presentation outcome is tracked in its existing section below.
+
 ACTIVE OWNER ACCEPTANCE, P0, OBJECTS V2.2 DEPLOYED,21November2026.
 
 [verified] Runtime `d02d3b58`, distinct public release Objects V2.2, build
@@ -486,7 +491,7 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-ACTIVE IMPLEMENTATION, P1, OWNER-APPROVED DESIGN, Objects V2.3,21November2026.
+DEPLOYED, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING, Objects V2.3,21November2026.
 Owner accepted the revised mockup and authorized presentation changes only,
 with the sole interaction correction of input-only Delivery/Installation hit
 areas. CSS-only selection scoping proved sufficient on both desktops, keeping
@@ -508,8 +513,30 @@ with PDF icon to the left of totals under Installation, without moving totals.
 Both appear unavailable in the shown Estimating state. This is a control-design
 request, not implicit approval to implement deferred3.16.5 procurement/XLS export.
 Prototype: thread visualization objects-estimation-refinement.html; full desktop
-capture and geometry kept beside it. Full local/remote gate and served-version
-verification required before V2.3 publication; no new accepted checkpoint.
+capture and geometry kept beside it. No new accepted checkpoint.
+
+[verified] Runtime `3a192b2995293fceda2553b3e2659cecadf70371`, build
+`objects-v2.3-b20261121132650-layout-estimation-v3.2-detection-v8.4.29`.
+Full clean exact-SHA local gate531/nine261.923s and CI531/nine267.279s pass
+(run44910787826/job136865954053/artifact14709851515).142 normal transitions,
+zero uncovered/mixed frames. Both desktops preserve protected geometry;48
+outside-field probes remain unfocused, original editing/persistence/confirmation/
+generation failure/retry pass. CSS-only old-selection negative control fails on
+an actual outside click. Intrinsic VAT width uses frozen V2.2 typography on each
+platform, with all fixed coordinates/dimensions still strict. Mac71.984375px
+and Linux74.203125px explain the prior cross-platform witness failure.
+Project Summary stays its existing disabled placeholder; Download Proposal
+uses the existing generated PDF URL. No new export or price/business logic.
+Workflow controller, auth persistence, handlers and V3.2 costing are retained.
+Three unpublished candidates were blocked: f7b5a5af stale Set prices expectation,
+bbf85211 stale Back to file review selector,7b42280a Mac text width on Linux.
+Only test expectations/reference measurement were corrected; contract assertions
+and remote barrier were retained. Existing publisher promoted only the successful
+SHA after checking active no-bypass ruleset27499066. Core7964296591 succeeded
+13:56:13UTC. Real Core/wrapper/meta/version endpoint match13:57:13UTC, HTTP200;
+protection revision7c34ff18617435dd is enabled and compatible/protocol1 is durable
+under the new build. This anonymous Login probe does not establish owner account
+visual acceptance. Evidence: .ui-artifacts/objects-v23-release/. Paid calls0.
 
 COMPLETED RESEARCH, P1, USER REQUEST, 2026-11-20. Investigate the Objects
 Estimation page layout, workflow, labels, completion feedback, proposal

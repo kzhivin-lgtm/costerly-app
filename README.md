@@ -1,15 +1,15 @@
 # Costerly
 
-Current UI release: **Objects V2.2**,21November2026, runtime `d02d3b58`.
-Unconfirmed wrapper protocol blocks navigation and offers an explicit outer update.
-Editable pages require confirmation; active upload/calculation/save and failed
-auth persistence defer update. Keep working retains the existing editor.
-The exact V1.2.23 wrapper is covered by the obligatory nine-suite release gate.
-Core/wrapper and durable compatibility logging verified on production Login.
-Input mechanics, costing, pricing and V2.1 layout unchanged.
-Owner authenticated V2.2 acceptance pending; no new accepted checkpoint.
-[Contract](notes/UI_GUIDELINES.md#objects-v22-compatibility-recovery-approved-21-november-2026),
-[evidence and backlog](notes/TODO.md#workflow-transitions).
+Current UI release: **Objects V2.3**,21November2026, runtime `3a192b29`.
+Approved stage labels/equal lines, local owner-only metrics chevron and document
+controls beside fixed totals. Delivery/Installation focus only inside their
+122px borders, using CSS; existing price handlers and business logic are retained.
+V2.2 compatibility/transition protection is unchanged. Full local and exact-SHA
+GitHub gates passed531 checks and nine browser suites. Served Core/wrapper match;
+enabled protection and durable compatibility logging verified on production Login.
+Owner authenticated V2.3 acceptance pending; no new accepted checkpoint.
+[Contract](notes/UI_GUIDELINES.md#objects-v23-presentation-scope-approved-21-november-2026),
+[evidence and backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
 Accepted Estimation checkpoint: **V3.2**,21November2026, runtime `07ac05d2`.
 
