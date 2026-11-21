@@ -186,6 +186,8 @@ try{
  }
  for(const [key,value] of [['delivery',123],['installation',321]]){
   const field=core.locator('.objects-pricing-row[data-object-key="'+key+'"] .objects-pricing-price-input');
+  await field.click();
+  assert(await field.evaluate(n=>document.activeElement===n),'Service editing starts with an inside-field click');
   await field.fill(String(value));await field.press('Tab');
   const deadline=Date.now()+5000;
   while(!existsSync(prices)||JSON.parse(readFileSync(prices)).find(row=>row.object_key===key)?.value!==value){
@@ -247,7 +249,7 @@ try{
  for(const page of browser.contexts().flatMap(context=>context.pages())){
   await page.screenshot({path:reportPath('objects-v2-latest-failure.png'),fullPage:true});
   const handle=await page.locator('#costerly-app-frame').elementHandle();const frame=handle&&await handle.contentFrame();
-  if(frame)writeFileSync(reportPath('objects-v2-latest-failure.json'),JSON.stringify(await frame.evaluate(()=>({text:document.body.innerText,receipt:document.getElementById('objects-actions-error')?.outerHTML,pending:[...(window.__costerlyObjectsPricingWrites?.latest||new Map())].map(([key,entry])=>({key,ok:entry.ok})),buttons:[...document.querySelectorAll('.st-key-objects_actions button')].map(button=>({text:button.innerText,disabled:button.disabled,busy:button.getAttribute('aria-busy'),phase:button.dataset.objectsPhase}))})),null,2));
+  if(frame)writeFileSync(reportPath('objects-v2-latest-failure.json'),JSON.stringify(await frame.evaluate(()=>({text:document.body.innerText,receipt:document.getElementById('objects-actions-error')?.outerHTML,pending:[...(window.__costerlyObjectsPricingWrites?.latest||new Map())].map(([key,entry])=>({key,ok:entry.ok})),serviceInputs:[...document.querySelectorAll('.objects-pricing-project-cost-cell .objects-pricing-price-input')].map(n=>({key:n.closest('.objects-pricing-row')?.dataset.objectKey,text:n.textContent,active:document.activeElement===n,dirty:n.dataset.editDirty})),buttons:[...document.querySelectorAll('.st-key-objects_actions button')].map(button=>({text:button.innerText,disabled:button.disabled,busy:button.getAttribute('aria-busy'),phase:button.dataset.objectsPhase}))})),null,2));
  }
  throw error;
 }finally{await browser.close();server.close();}

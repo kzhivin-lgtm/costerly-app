@@ -36,3 +36,19 @@ rgb129/122/128, available PDF uses180/59/70. Full exact-commit gates and actual
 served version/protection checks follow. Synthetic data is not production
 owner acceptance. Private evidence: `.ui-artifacts/objects-v26-release/` and
 the retained focused probes.
+
+Initial exact candidate50c850a3: full local535/nine244.301s passed. Linux CI
+44924773751 failed its original Installation321 persistence assertion after
+Delivery123 saved. The retained screenshot/receipt show Installation130 and no
+Installation write, without a reported client exception. Production stayed on
+3493a84a. The precise Linux focus/event cause is unknown and was not reproduced
+locally: an instrumented programmatic-entry run and a real-pointer-entry run
+both saved123/321. The existing input guard is byte-identical to V2.5.
+
+The service-edit test now explicitly clicks inside each field and verifies focus
+before entering its value, matching the stated inside-input scenario. It retains
+Tab commit, the same5s receipt deadline, exact123/321 saved-value assertions and
+all earlier outside-field probes. No source input behavior or persistence code
+is changed, no assertion/time limit removed or relaxed. Failure diagnostics also
+retain service text/focus/dirty state. This does not claim the old CI failure's
+historical cause repaired; its evidence is kept underci-failed-50c850a3.

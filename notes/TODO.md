@@ -516,6 +516,14 @@ V2.2 protection and V3.2 costing. Verify resumed timing, large counts, arrow
 collapse/refresh, confirmed/invalidated button state and document icon states,
 then full exact-commit local/CI gates and actual served versions before publish.
 Same interface continuation; no new hierarchical work block/number assigned.
+Initial exact candidate50c850a3 passed local535/nine244.301s, but CI44924773751
+failed Installation321 persistence (Delivery123 saved, Installation stayed130).
+Main remained3493a84a. Input guard is unchanged; both instrumented local entry
+modes passed, so the precise Linux event cause remains unknown. Retain failure
+evidence. The same strict service test now starts with an actual inside-field
+click/focus assertion, retains Tab commit, exact receipts and the original5s
+deadline. No production input fix is included. If this recurs with explicit
+pointer entry, stop publication and diagnose that interaction separately.
 
 COMPLETED, P1, OWNER-ACCEPTED PRESENTATION CHECKPOINT, Objects V2.4,21November2026.
 Owner requested the full checkpoint after publication and moved to the next
