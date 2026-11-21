@@ -109,6 +109,18 @@ try{
  await page.close();
  ({core,frame}=await boot('no_ack'));
  await recovery(core,core.getByRole('button',{name:'Profile',exact:true}));
+ const retained=await frame.evaluate(()=>{
+  const previous=window.__costerlyWorkflowTransition;
+  const node=document.querySelector('#costerly-workflow-recovery');
+  const receipt={screen:'upload',traceId:previous.traceId,runId:document.querySelector('[data-costerly-render-id]').dataset.costerlyRenderId};
+  const selected=workflowTransitionController(window,previous.traceId,'next-controller-revision',receipt);
+  return previous===selected&&window.__costerlyWorkflowTransition===previous&&node.isConnected&&previous.busy();
+ });
+ assert(retained,'A controller upgrade must not remove an unresolved recovery screen');
+ report.push({fixture:'controller-upgrade',recoveryRetained:true});
+ await page.close();
+ ({core,frame}=await boot('no_ack'));
+ await recovery(core,core.getByRole('button',{name:'Profile',exact:true}));
  await frame.evaluate(()=>{const marker=document.createElement('div');marker.className='objects-progress-status';document.body.append(marker);});
  await core.getByRole('link',{name:'Update app',exact:true}).click();
  await core.getByText('Finish the current upload or calculation before updating.').waitFor();

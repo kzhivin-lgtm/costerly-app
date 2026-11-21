@@ -480,7 +480,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         traceId, revision, begin, ready, announceBuild, resumeAuthWrite, requestUpdate,
         supports: name => Boolean(routes[name]),
         enabled: () => enabled,
-        busy: () => Boolean(pending),
+        busy: () => Boolean(pending || recovery),
         versionMatched: buildsMatch,
         fail: () => { if (pending) showFailure(pending, "navigation_control_unavailable"); },
         dispose: () => {
