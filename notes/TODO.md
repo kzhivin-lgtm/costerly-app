@@ -2,7 +2,32 @@
 
 ## Workflow transitions
 
-ACTIVE OWNER ACCEPTANCE, P0, REFRESHED FLOW VERIFIED,21November2026. Restore
+ACTIVE OWNER ACCEPTANCE, P0, OBJECTS V2.2 DEPLOYED,21November2026.
+
+[verified] Runtime `d02d3b58`, distinct public release Objects V2.2, build
+`objects-v2.2-b20261121123415-compat-gate-estimation-v3.2-detection-v8.4.29`.
+Unconfirmed/unsupported protocol now cancels the protected native page/tab event
+and shows Update app / Keep working. A real user-activated top link can update
+V1.2.23, which lacks both ACK and reload handlers. Editable pages require explicit
+reload confirmation; active upload/calculation/save or unsaved browser auth block
+reload. Existing input handlers are AST-identical to8df3721c, no pricing/costing/
+layout or deferred Admin latency change. Recovery survives controller upgrades.
+Exact historical fixture is SHA256 pinned; negative control restored the old
+handler and failed on an actual unprotected Profile screen, not setup/network.
+Full clean exact-SHA local gate531/nine265.169s and GitHub531/nine220.166s
+passed (run44905529347/job136850228341/artifact14707014167).142 normal
+transitions have zero uncovered/mixed frames; seven recovery cases pass.
+Existing trusted publisher reverified active no-bypass ruleset27499066. First
+push hit GitHub internal commit_refs_rules error, identical protected retry
+advanced main8df3721c to d02d3b58, no rule changed or bypass used.
+Core deployment7963610264 success12:53:39UTC; actual wrapper/Core/Login
+revision7c34ff18617435dd/enabled=true match at12:54:43UTC. Durable production
+workflow_protection/compatible/protocol1 event confirmed under the correct build.
+V2.2 owner authenticated replay remains pending; previous accepted refreshed
+V2.1 sample is preserved. No paid calls or new accepted checkpoint.
+Evidence: .ui-artifacts/objects-v22-release/.
+
+Earlier V2.1 diagnosis and owner evidence, retained as history. Restore
 continuous shielding across all supported pages/Profile; Admin-entry latency
 optimization remains deferred. Owner videos12:22:50/13:24:01 show unmasked
 intermediate markup, including old Object Detail losing styles after Approve.
@@ -59,7 +84,7 @@ Evidence: owner-refreshed-navigation.json and after-owner-refresh-summary.json.
 Pre-protocol wrapper migration remains an uncovered compatibility case,
 not a reason to weaken source/origin/trace checks or alter input mechanics.
 Owner request21November2026: explain the failure and prevent recurrence.
-APPROVED AND ACTIVE, P0, Objects V2.2: extend the
+APPROVED AND IMPLEMENTED, P0, Objects V2.2: extend the
 existing controller's compatibility boundary so absent/unsupported wrapper
 protocol never silently permits unshielded navigation. Compatible pairs retain
 the current cover/ready flow; unsupported pairs retain a stable actionable
@@ -70,7 +95,7 @@ or the explicit recovery state, not upload success alone. Persist technical
 protocol/ACK/cover-start/cover-end evidence with transition IDs so production
 verification can distinguish completed navigation from a visibly covered one.
 Owner approved the recovery button, safe update, stronger existing publication
-gate and logging on21November2026; implementation and verification in progress.
+gate and logging on21November2026; deployed and verified as recorded above.
 Public deploy number must advance to Objects V2.2, never reuse V2.1.
 Evidence: .ui-artifacts/navigation-shield-release/. No new work block/number.
 

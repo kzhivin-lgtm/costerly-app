@@ -1,5 +1,23 @@
 # Done Log
 
+Objects V2.2 compatibility recovery deployed21November2026, OWNER AUTHENTICATED
+ACCEPTANCE PENDING. Runtime `d02d3b58129639bc892e41bae9e7467f01b125b8`, build `objects-v2.2-b20261121123415-compat-gate-estimation-v3.2-detection-v8.4.29`.
+Actual owner failure was an open V1.2.23 wrapper with V2.1 Core, whose missing
+ACK silently allowed unprotected routing. The former legacy fixture was V1.3.0.1.
+The owner refreshed and accepted five V2.1 transitions, then approved prevention.
+V2.2 blocks unconfirmed page/tab callbacks, offers explicit outer update and
+Keep working, preserves cancelled-edit state, defers active work/save/auth failure
+and retains recovery through controller upgrades. No input/costing/layout change.
+Exact V1.2.23/absent ACK/unsupported protocol/saved-object links/Profile pointer
+and keyboard/draft cancellation/controller upgrade/active-work tests added to
+the mandatory existing gate; old-handler negative control rejected.
+531/nine local265.169s and CI220.166s;142 ordinary transitions, zero uncovered
+frames. Protected publisher verified active no-bypass27499066; an internal
+GitHub first-push error was retried through the same publisher without changes.
+Core7963610264 success12:53:39UTC; public Core/wrapper and enabled revision
+7c34ff18617435dd match12:54:43UTC. Actual durable compatibility event verified.
+Evidence: .ui-artifacts/objects-v22-release/. No paid calls or accepted checkpoint.
+
 Objects V2.1 navigation-shield repair deployed21November2026, OWNER ACCEPTANCE PENDING.
 Runtime8df3721c fixes lost wrapper origin/trace after full iframe document navigation.
 The earlier gate did not cover that lifecycle and allowed a single unstyled screen.

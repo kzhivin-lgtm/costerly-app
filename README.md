@@ -1,13 +1,15 @@
 # Costerly
 
-Current UI release: **Objects V2.1**,21November2026, runtime `8df3721c`.
-Stage spacing/contrast, stable refresh opacity, tighter footer and Objects copy.
-Input mechanics, values and calculations unchanged.
-Navigation shielding now survives Core document restoration;142 transition cases
-require continuous coverage until ready. Production context restoration verified,
-owner authenticated acceptance pending.
-Full local/CI gates and matching live builds verified; owner UI acceptance pending.
-[Scope and evidence](notes/OBJECTS_V2_UI_CONTRACT_2026_11_21.md).
+Current UI release: **Objects V2.2**,21November2026, runtime `d02d3b58`.
+Unconfirmed wrapper protocol blocks navigation and offers an explicit outer update.
+Editable pages require confirmation; active upload/calculation/save and failed
+auth persistence defer update. Keep working retains the existing editor.
+The exact V1.2.23 wrapper is covered by the obligatory nine-suite release gate.
+Core/wrapper and durable compatibility logging verified on production Login.
+Input mechanics, costing, pricing and V2.1 layout unchanged.
+Owner authenticated V2.2 acceptance pending; no new accepted checkpoint.
+[Contract](notes/UI_GUIDELINES.md#objects-v22-compatibility-recovery-approved-21-november-2026),
+[evidence and backlog](notes/TODO.md#workflow-transitions).
 
 Accepted Estimation checkpoint: **V3.2**,21November2026, runtime `07ac05d2`.
 
