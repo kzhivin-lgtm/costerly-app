@@ -1,15 +1,20 @@
-**[verified] Current cycle release: Estimation9.40,22November2026,f99d17b3.**
-Numbering resumes9.39 →9.40; the historical V3.x labels below are not the current
+**[verified] Current cycle release: Estimation9.41,22November2026,077264c0.**
+Numbering continues9.39 →9.40 →9.41; historical V3.x labels below are not the current
 whole-cycle version. Source-binding and Labor component versions remain separate.
 Front panels selection is now incremental: selected family/defaults, one front
 demand and only affected old/new purchase baskets. Do not rerun Parts or Labor.
 Saved Labor/source Parts and unrelated material rows are retained; future coating
 will attach to this same group. Unknown thickness uses catalog fallback; explicit
 values stay fixed. Save reuses the trusted server-side preview and rejects stale
-bases. Local563/nine251.807s, CI563/nine320.540s, actual Core/wrapper match10:28:34UTC.
-Read-only actual-estimate preview2.567s plus receipt0.591s,21reads,0 paid calls.
+bases. Dark Changing material status appears immediately on the existing preview
+and clears on reconciliation/error/timeout/cleanup. No added timers or polling.
+Local563/nine319.126s, CI563/nine321.986s, Core/wrapper match11:27:53UTC.
+Four actual-estimate previews pass read-only,0 paid calls, unchanged Parts/Labor/
+unrelated rows. Frozen Lev1/Lev2/Adda and new110-part Lev2 matchV3.3 purchasing.
+All606 protected source files, including Front/Planner/Geometry/Loading, match
+V3.3. No fresh full9.41 recognition test; do not claim proven9.40 causality.
 Owner authenticated UI acceptance pending. Current release/scope/failures:
-`notes/ESTIMATION_V9_40_FRONT_PANELS_2026_11_22.md`; backlog only `notes/TODO.md`.
+`notes/ESTIMATION_V9_41_FRONT_PANELS_2026_11_22.md`; backlog only `notes/TODO.md`.
 Earlier statuses below are history. Do not start coating until its rules/rates
 and the next work-block boundary are agreed.
 

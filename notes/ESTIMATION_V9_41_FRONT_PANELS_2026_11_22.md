@@ -1,6 +1,7 @@
 # Estimation 9.41 Front panels and immediate material feedback
 
-Status: candidate,22November2026. Existing work3.17.4.6. The owner approved
+Status: published22November2026, owner authenticated UI acceptance pending.
+Existing work3.17.4.6. The owner approved
 bringing the agreed material-selection changes onto the successful V3.3 base,
 with the requested Changing material cover and no unrelated changes.
 
@@ -71,6 +72,32 @@ is unchanged. No paid call or production-project edit. Evidence:
 outputs/estimation-v9.41/real-readonly-previews.json and material-controls-comparison.json.
 
 Candidate build: estimation-v9.41-b20261122111449-fronts-objects-v2.7-detection-v8.4.29.
-Final exact-SHA gates and actual publication are still pending. Authenticated
-owner UI acceptance is separate from local synthetic UI and read-only backend
-verification. Keep records/tags of9.40 and the diagnostic V3.3 restoration.
+Authenticated owner UI acceptance is separate from local synthetic UI and
+read-only backend verification. Keep records/tags of9.40 and the diagnostic
+V3.3 restoration.
+
+## Verified publication
+
+Runtime077264c004dcbc70e5c369d1c776658981684db0, release tag
+estimation-v9.41-2026-11-22. All606 protected non-Markdown files remain identical
+to the published V3.3 source; no source recognition/geometry/Loading change.
+
+- Clean exact-SHA local563 checks/nine suites passed319.126s.
+- Exact-SHA GitHub563/nine passed321.986s: run45016775451,
+  job137190674163, artifact14752457309, retained inci-077264c0/.
+- Existing publisher checked active no-bypass ruleset27499066 and the trusted
+  exact-SHA success, then advanced main froma6158588 without force.
+- Core deployment7978005541 succeeded11:27:15UTC. Actual executable Core/
+  wrapper/meta/version match9.41 at11:27:53UTC; health and wrapperHTTP200.
+- Source archive814 files/4,663,099bytes, byte/CRC verified, SHA256
+  95b79b5109c81c8fbb366e73463a24c466597734fd2bcf79f109b6fabe749f45.
+  Private backup record: runtime-backup.json underoutputs/estimation-v9.41.
+
+No failed candidate or relaxed gate. Full saved controls and guarded actual
+four-choice previews passed; no paid model call or production-project edit was
+used for verification. Public browser proof is anonymous Login. A fresh full
+recognition run on9.41 and the owner's authenticated UI trial are still separate
+acceptance checks. The owner can first reuse the existing completed Lev2,
+switch Front panels, inspect updated stock/totals, Save/reopen and APPROVE.
+Coating remains unimplemented. This is a verified release, not an owner-accepted
+full checkpoint or proof that the latent Front omission cannot recur.

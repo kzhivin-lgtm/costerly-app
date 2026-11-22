@@ -1,5 +1,8 @@
 # Estimation 9.40 Front panels live material recalculation
 
+Historical release, superseded by published[Estimation9.41](ESTIMATION_V9_41_FRONT_PANELS_2026_11_22.md)
+after the owner-approved V3.3 diagnostic rollback and successful fresh control.
+
 Status: published22November2026. Automated and deployment checks passed; owner authenticated UI acceptance pending. Existing work3.17.4.6.
 Owner requested the visual correction and automatic row/cost rebuilding, then
 confirmed missing thickness must use the existing fallback. Runtime baseV3.3

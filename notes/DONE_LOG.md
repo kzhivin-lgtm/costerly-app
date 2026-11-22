@@ -1,5 +1,24 @@
 # Done Log
 
+Estimation9.41 published22November2026, work3.17.4.6, owner authenticated UI
+acceptance pending. Runtime077264c0, release tagestimation-v9.41-2026-11-22,
+successful V3.3 source base with606 protected files unchanged. Restore agreed
+front-only point updates/fallback thickness/adjacent selector; add immediate
+dark Changing material status using existing preview/queued Save state only.
+No timer/polling/model/Labor restart. Success/error/timeout/cleanup remove the
+cover; rapid selection/drafts/Save/reopen/APPROVE remain tested at1280/390px.
+Isolated full saved-material comparisons matchV3.3 for Lev1/Lev2/Adda plus new
+owner110-part Lev2. Actual four-choice previews pass read-only, no unpriced or
+Assumption Fallback, no source Parts/unrelated-row change. Local563/nine319.126s
+and GitHub563/nine321.986s passed(run45016775451/job137190674163/artifact14752457309).
+Publisher checked mandatory active no-bypass27499066. Core7978005541 succeeded
+11:27:15UTC; executable Core/wrapper/meta/version match11:27:53UTC, HTTP200.
+Source archive814/4,663,099bytes verified, SHA25695b79b5109c81c8fbb366e73463a24c466597734fd2bcf79f109b6fabe749f45.
+No paid call/project write for verification. Fresh full9.41 recognition and
+owner UI trial are not yet verified; do not claim long-run stability or proven
+9.40 causality. Coating remains separate pending work. Prior source/tags retained.
+[Release, scope, verification and limits](ESTIMATION_V9_41_FRONT_PANELS_2026_11_22.md).
+
 V3.3 fresh owner Lev2 control analysed22November2026, work3.17.4.6,
 run_44832c1b2f014a07a3b17ec7bb21be99, completed11:05:15UTC. Nine blocks/110 Parts,
 numeric part facts/full block envelopes/all nine purchase rows match the last

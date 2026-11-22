@@ -1317,7 +1317,7 @@ start; the remaining 18.44 s are not timed by substage.
 
 ## Estimation Parts Check, 3.17.4.6
 
-ACTIVE, P1, ESTIMATION9.41 CANDIDATE IN VERIFICATION,22November2026. Owner approved
+ACTIVE, P1, ESTIMATION9.41 PUBLISHED, OWNER AUTHENTICATED UI ACCEPTANCE PENDING,22November2026. Owner approved
 the agreed front point-update/fallback/placement changes on the successful V3.3
 base plus immediate dark Changing material feedback. Preserve source Front/
 Planner/Geometry/Detection and Objects V2.7 Loading byte-for-byte. Reuse existing
@@ -1327,8 +1327,13 @@ Lev2, have identical original purchases/costs in isolated V3.3/candidate trees.
 Real read-only four-choice previews pass without Parts/Labor/writes; unrelated
 rows/source Parts are unchanged. Focused121 Python and48.783s Calculation UI
 checks pass1280/390, including cover success/error/timeout/retry/queued changes.
-Final exact-SHA local/full GitHub gates and actual Core/wrapper publication are
-pending. Do not claim fresh recognition stability or proven9.40 causality.
+Runtime077264c0, local563/nine319.126s and exact-SHA GitHub563/nine321.986s
+passed(run45016775451). Publisher checked active no-bypass27499066. Core
+deployment7978005541 succeeded11:27:15UTC; actual executable Core/wrapper/meta/
+version match9.41 at11:27:53UTC, HTTP200. All606 protected source files matchV3.3.
+Owner should reuse completed Lev2: select material, inspect rebuilt rows/totals,
+Save/reopen and APPROVE. Fresh full9.41 recognition is not yet verified. Do not
+claim fresh recognition stability or proven9.40 causality.
 [Scope, evidence and verification](ESTIMATION_V9_41_FRONT_PANELS_2026_11_22.md).
 
 HISTORICAL V3.3 DIAGNOSTIC ROLLBACK PUBLISHED, FRESH LEV2 CONTROL PASSED,22November2026.
@@ -1351,7 +1356,7 @@ or Assumption Fallback. New22November10:33UTC run_f4eb3f589fcb4f18a0d548e3a6a712
 offline replay reproduces both. Front omittedC11 in the failed run; loss of the
 plan-matched column precedes the missing geometry. This is not proof that9.40
 introduced it: the geometry source is identical to the last priced runtime.
-Dark Changing material overlay is carried forward into the9.41 candidate above.
+Dark Changing material overlay is included in the9.41 release above.
 No new model request or production-project edit was used in the rollback analysis.
 Keep the9.40 requirements below preserved for a later forward correction.
 
