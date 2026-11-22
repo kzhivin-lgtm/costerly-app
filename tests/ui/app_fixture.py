@@ -213,9 +213,9 @@ def read_overhead(_client, scoped_company, *, delay=True):
  return {'status':'ready','settings':{'production_workers':12,'workdays_per_month':21,
   'hours_per_day':8,'vat_percent':18}, 'monthly':{'rent_facilities_cost':20160}}
 labor._load_overhead_context=read_overhead
-def full_cost_context(client,obj,plan,settings=None):
+def full_cost_context(client,obj,plan,settings=None,**kwargs):
  inputs=read_overhead(client,obj['company_id'],delay=False)
- return {**inputs,'plan':plan,'parts':{'status':'ready','payload':parts},'machinery':{}}
+ return {**inputs,'plan':plan,'parts':{'status':'ready','payload':parts},'machinery':{},**kwargs}
 estimation._full_cost_context=full_cost_context
 
 def save_materials(**kwargs):
@@ -459,5 +459,13 @@ if scenario().get('fresh_calculation'):
    raise PermissionError('Estimate is not available to this company.')
  estimation._assert_screen_estimate_access=assert_durable
  st.button('Fixture rerender',key='fixture_calculation_rerender')
+if scenario().get('front_panels') and not derived_path.exists():
+ # This scenario represents a completed estimate, including its saved Labor.
+ # Seed that existing breakdown before opening the card, never on selection.
+ obj={**sample['objects'][0], 'estimate_id':estimate_id}
+ plan=front_plan(sample['plans'][0]['plan_payload'],'ldsp')
+ estimation._full_cost_summary(Client(),estimate_id=estimate_id,obj=obj,
+  lines=read_lines(Client(),estimate_id=estimate_id,object_id='object-001'),material_batch=0,
+  context=full_cost_context(Client(),obj,plan))
 app.main()
 

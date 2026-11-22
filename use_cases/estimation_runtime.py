@@ -65,6 +65,7 @@ class _MaterialPlanRequest(NamedTuple):
     purchase_edits: dict[str, float]
     approve_objects: tuple[str, ...]
     front_choice_edits: dict[tuple[str, str], str]
+    front_preview: dict | None = None
 
 
 _MATERIAL_PLAN_PENDING_REQUESTS: dict[str, _MaterialPlanRequest] = {}
@@ -190,13 +191,14 @@ def _recalculate_material_plan_job(*, estimate_id: str, run_id: str, company_id:
                                    quantity_edits: Mapping[str, float] | None = None,
                                    norm_edits: Mapping[tuple[str, str], dict] | None = None,
                                    purchase_edits: Mapping[str, float] | None = None,
-                                   approve_objects: tuple[str, ...] = (), front_choice_edits=None) -> dict[str, object]:
+                                   approve_objects: tuple[str, ...] = (), front_choice_edits=None, front_preview=None) -> dict[str, object]:
     client = get_supabase_client()
     if front_choice_edits:
         return _recalculate_front_panel_materials(
             client, estimate_id=estimate_id, run_id=run_id, company_id=company_id,
             choices=front_choice_edits, quantity_edits=quantity_edits or {},
             norm_edits=norm_edits or {}, purchase_edits=purchase_edits or {},
+            front_preview=front_preview,
         )
     if purchase_keys is not None:
         return _recalculate_edited_material_lines(
@@ -425,34 +427,111 @@ def _recalculate_from_parts_check(client, *, estimate_id, run_id, company_id):
 
 
 def _recalculate_front_panel_materials(client, *, estimate_id, run_id, company_id, choices,
-                                      quantity_edits, norm_edits, purchase_edits, preview=False):
+                                      quantity_edits, norm_edits, purchase_edits, preview=False, front_preview=None):
     """Price an explicit front choice before publishing a new saved snapshot."""
     plans = fetch_rfq_estimate_material_plan(client, estimate_id)
     if plans.empty:
         raise ValueError("The saved material plan is not available yet.")
+    from copy import deepcopy
+    from use_cases.estimation_front_panels import front_panel_controls, front_plan_revision, FRONT_MATERIALS
+    from use_cases.estimation_front_material_patch import patch_front_material_plan, front_group_material
+    from use_cases.estimation_material_context import build_front_material_context
+    from db.repositories import fetch_rfq_estimate_lines_for_object
+    from use_cases.estimation import apply_material_plan_allocations
+
     previous = plans.iloc[0]["plan_payload"]
-    selected = {oid: dict(value) for oid, value in previous.get("front_panel_choices", {}).items()}
-    for (oid, group_id), choice in choices.items():
-        selected.setdefault(oid, {})[group_id] = choice
+    revision = front_plan_revision(previous)
+    reusable = isinstance(front_preview, dict) and front_preview.get('_front_preview_base') == revision
+    snapshot = deepcopy(front_preview) if reusable else previous
     objects = fetch_rfq_object_estimates(client, estimate_id)
     quantities = {str(row["object_id"]): quantity_edits.get(str(row["object_id"]), row["quantity"])
                   for _, row in objects.iterrows()}
-    report, inputs = _saved_material_inputs(client, estimate_id, run_id, company_id, quantities)
-    calculation = _calculate_material_plan(
-        client=client, estimate_id=estimate_id, company_id=company_id, parts_report=report, input_rows=inputs,
-        review_order=previous.get("material_review_order", ()), front_panel_choices=selected,
-        norm_edits=norm_edits, purchase_edits=purchase_edits,
-    )
-    snapshot = calculation["material_plan"]
-    unresolved = {(row["object_id"], row["material_requirement_id"]) for row in snapshot.get("assumption_fallbacks", ())}
-    priced = {(row["object_id"], row["material_requirement_id"]) for row in snapshot["object_material_costs"]}
-    for (oid, group_id), choice in choices.items():
-        group = next(group for group in snapshot["front_panel_groups"][oid] if group["id"] == group_id)
-        if choice not in {"source", group.get("source_choice")} and any((oid, req) not in priced or (oid, req) in unresolved
-                                      for req in group["requirement_ids"]):
-            raise ValueError("No compatible catalog price was found for this front panel material and thickness.")
+    contexts = {}
+    publications = snapshot.pop('_front_preview_publications', []) if reusable else []
+    affected = {tuple(owner) for owner in snapshot.pop('_front_preview_owners', [])} if reusable else set()
+    edited_objects = {oid for oid, _ in choices}
+    for oid in edited_objects:
+        lines = fetch_rfq_estimate_lines_for_object(client, estimate_id=estimate_id, object_id=oid).to_dict("records")
+        grouped = {group["id"]: group for group in front_panel_controls(snapshot, lines, oid)}
+        selected = {group: choice for (owner, group), choice in choices.items() if owner == oid}
+        for group_id, choice in selected.items():
+            group = grouped[group_id]
+            if choice == group.get("choice"):
+                continue
+            family = group["family"] if choice in {"source", group.get("source_choice")} else FRONT_MATERIALS[choice][1]
+            if not group.get("part_sources"):
+                group["part_sources"] = [source for line in lines
+                    for source in (line.get("raw_agent_json") or {}).get("facts", {}).get("part_sources", ())
+                    if source["part_id"] in group["part_ids"]]
+            material, _ = front_group_material(group, choice, object_quantity=quantities[oid])
+            defaults_only = "thickness_mm" not in material["specification"] and "thickness" not in material["specification"]
+            if family not in contexts or (contexts[family].get("front_defaults_only") and not defaults_only):
+                contexts[family] = build_front_material_context(client, company_id, family, defaults_only=defaults_only)
+        snapshot, changed_materials, owners = patch_front_material_plan(
+            snapshot, object_id=oid, source_lines=lines, choices=selected, contexts=contexts,
+        )
+        affected.update(owners)
+        existing = {row.get("raw_agent_json", {}).get("facts", {}).get("requirement_id"): row
+                    for row in lines if isinstance(row.get("raw_agent_json"), dict)}
+        order = max((row.get("sort_order") or 0 for row in lines if row.get("section") == "material"), default=0)
+        for index, (requirement, material) in enumerate(changed_materials.items(), 1):
+            old = existing.get(requirement, {})
+            publications.append({
+                "estimate_id": estimate_id, "object_id": oid, "company_id": company_id,
+                "line_id": old.get("line_id") or f"{oid}__front_{requirement}",
+                "section": "material", "group_name": "Materials", "item_name": material["source_name"],
+                "catalog_match_query": material["family"], "unit": "project allocation", "quantity": None,
+                "unit_cost": None, "cost": old.get("cost"), "source": "parts_check",
+                "sort_order": old.get("sort_order") or order + index * 10,
+                "needs_price": False, "needs_review": False, "quantity_basis": "per_finished_item",
+                "raw_agent_json": {**old.get("raw_agent_json", {}), "facts": material},
+            })
+    publications = list({row['line_id']: row for row in publications}.values())
+    # Numeric edits in the same explicit Save keep their existing incremental
+    # path. They do not trigger a Parts or catalog rebuild either.
+    ratios = {oid: Decimal(str(value)) / Decimal(str(previous.get("object_quantities", {}).get(oid, value)))
+              for oid, value in quantity_edits.items()}
+    numeric_keys = {line["selection_key"] for line in snapshot["lines"] if any(
+        a["object_id"] in ratios or (a["object_id"], a["material_requirement_id"]) in norm_edits
+        for a in line["allocations"])}
+    if numeric_keys:
+        outcome = replan_material_norm_snapshot(snapshot, norm_edits, quantities, {},
+                                                changed_keys=numeric_keys, quantity_ratios=ratios)
+        if outcome is None:
+            raise ValueError("The saved material geometry is not available for this edit.")
+        snapshot, changed = outcome
+        affected.update(changed)
+        snapshot = material_review_purchases(snapshot, review_order=snapshot.get("material_review_order", ()),
+                                             changed_keys=numeric_keys)
+    if purchase_edits:
+        if snapshot.get('material_review_order') is not None:
+            costs_before = {(row['object_id'], row['material_requirement_id']): row['cost_ex_vat']
+                            for row in snapshot['object_material_costs']}
+            keys = {line['selection_key'] for line in snapshot['lines'] if any(
+                object_purchase_key(row['object_id'], line['selection_key']) in purchase_edits
+                for row in line['allocations'])}
+            overrides = {**snapshot.get('review_purchase_overrides', {}),
+                         **{key: {'purchase_quantity': value} for key, value in purchase_edits.items()}}
+            snapshot = material_review_purchases(snapshot, review_order=snapshot['material_review_order'],
+                                                 overrides=overrides, changed_keys=keys)
+            changed = {(row['object_id'], row['material_requirement_id']) for row in snapshot['object_material_costs']
+                       if row['cost_ex_vat'] != costs_before.get((row['object_id'], row['material_requirement_id']))}
+        else:
+            snapshot, changed = reprice_material_purchase_snapshot(
+                snapshot, {key: {"purchase_quantity": value} for key, value in purchase_edits.items()})
+        affected.update(changed)
+    if snapshot is not previous:
+        snapshot["object_quantities"] = {oid: float(value) for oid, value in quantities.items()}
     if preview:
+        if snapshot is previous:
+            snapshot = deepcopy(snapshot)
+        snapshot['_front_preview_base'] = revision
+        snapshot['_front_preview_publications'] = publications
+        snapshot['_front_preview_owners'] = [list(owner) for owner in affected]
         return snapshot
+    snapshot.pop('_front_preview_base', None)
+    if publications:
+        upsert_rfq_estimate_lines(client, lines=publications)
     if norm_edits:
         upsert_rfq_estimate_material_norm_overrides(client, rows=list(norm_edits.values()))
     if purchase_edits:
@@ -461,12 +540,14 @@ def _recalculate_front_panel_materials(client, *, estimate_id, run_id, company_i
     for oid, quantity in quantity_edits.items():
         update_rfq_object_estimate_quantity(client, estimate_id=estimate_id, object_id=oid, quantity=quantity)
         update_rfq_detected_object(client, run_id=run_id, object_id=oid, values={"quantity": quantity})
-    return _build_and_persist_material_plan(
-        client=client, estimate_id=estimate_id, company_id=company_id, parts_report=report,
-        input_rows=inputs, rebuild=True, calculation=calculation,
-        protected_approval_objects=set(quantities) - {oid for oid, _ in choices} - set(quantity_edits)
-                                   - {oid for oid, _ in norm_edits},
-    )
+    if affected:
+        apply_material_plan_allocations(client, estimate_id=estimate_id, plan_snapshot=snapshot,
+                                        changed_requirements=affected, changed_quantity_objects=set(quantity_edits),
+                                        preserve_labor=not bool(quantity_edits),
+                                        protected_approval_objects=set(quantities) - edited_objects - set(quantity_edits))
+        upsert_rfq_estimate_material_plan(client, estimate_id=estimate_id, company_id=company_id,
+                                         plan_payload=snapshot, plan_status=snapshot["status"])
+    return snapshot
 
 
 def preview_front_panel_materials(**kwargs):
@@ -495,6 +576,7 @@ def _submit_pending_material_plan_recalculation(estimate_id: str) -> Future | No
         purchase_edits=request.purchase_edits,
         approve_objects=request.approve_objects,
         front_choice_edits=request.front_choice_edits,
+        **({'front_preview': request.front_preview} if request.front_preview is not None else {}),
     )
     _MATERIAL_PLAN_FUTURES[estimate_id] = future
 
@@ -524,7 +606,7 @@ def queue_material_plan_recalculation(
     quantity_edits: Mapping[str, float] | None = None,
     norm_edits: Mapping[tuple[str, str], dict] | None = None,
     purchase_edits: Mapping[str, float] | None = None,
-    approve_objects: tuple[str, ...] = (), front_choice_edits=None,
+    approve_objects: tuple[str, ...] = (), front_choice_edits=None, front_preview=None,
 ) -> Future:
     """Coalesce edits for one estimate without dropping a changed stock line."""
     with _MATERIAL_PLAN_LOCK:
@@ -536,6 +618,7 @@ def queue_material_plan_recalculation(
         edited_fronts = dict(front_choice_edits or {})
         receipts = [receipt]
         if pending:
+            front_preview = front_preview if front_preview is not None else pending.front_preview
             receipts = [*pending.receipts, receipt]
             edited_quantities = {**pending.quantity_edits, **edited_quantities}
             edited_norms = {**pending.norm_edits, **edited_norms}
@@ -550,7 +633,7 @@ def queue_material_plan_recalculation(
             purchase_only = purchase_only and pending.purchase_only
         _MATERIAL_PLAN_PENDING_REQUESTS[estimate_id] = _MaterialPlanRequest(
             run_id, company_id, receipts, purchase_only, norm_keys, purchase_keys, edited_quantities,
-            edited_norms, edited_purchases, approve_objects, edited_fronts,
+            edited_norms, edited_purchases, approve_objects, edited_fronts, front_preview,
         )
         if estimate_id not in _MATERIAL_PLAN_FUTURES:
             _submit_pending_material_plan_recalculation(estimate_id)

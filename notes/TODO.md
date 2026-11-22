@@ -1317,6 +1317,20 @@ start; the remaining 18.44 s are not timed by substage.
 
 ## Estimation Parts Check, 3.17.4.6
 
+ACTIVE, P1, OWNER-REQUESTED ESTIMATION9.40 CORRECTION,22November2026. Keep Front panels
+above the Materials table, place its selector16px beside its label, inset the
+chevron12px. Selecting a type must rebuild visible rows/prices/totals without
+Save, navigation or a full-page reload. Existing Save/APPROVE remains persistence.
+Use catalog fallback thickness only when the drawing did not specify thickness;
+never make a prior assumption an explicit constraint on replacement stock.
+An explicit dimension remains fixed. Recalculate only selected front demands and affected source/destination stock baskets; preserve saved Labor. No complete cycle or all-catalog read. Future coating is the second dependent position. Do not change unrelated body materials,
+Parts source geometry/counts, pending drafts, pricing edits, Objects V2.7 Loading,
+Detection or the no-bypass release gate. V3.3 remains preserved atbcf9fdb4.
+Reproduce against the owner's saved Lev2 route and all three saved controls.
+Verify the existing selector/failure/rapid-change/Save/Approve matrix on both
+viewports, plus adjacent placement and unchanged document during preview.
+[Investigation and release](ESTIMATION_V9_40_FRONT_PANELS_2026_11_22.md).
+
 ACTIVE, P1, OWNER-APPROVED IMPLEMENTATION AND DEPLOYMENT, Estimation V3.3,
 22November2026: casework Front panels material class and
 front-only material substitution. Owner approved the user-facing label

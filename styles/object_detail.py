@@ -684,8 +684,8 @@ def apply_object_detail_css() -> None:
         .object-detail-front-panels-control {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 12px;
+            justify-content: flex-start;
+            gap: 16px;
             color: inherit;
             font-size: 14px;
         }
@@ -694,10 +694,11 @@ def apply_object_detail_css() -> None:
             min-width: 0;
             width: 180px;
             max-width: 65%;
-            padding: 8px 10px;
+            padding: 8px 34px 8px 10px;
             border: 1px solid rgba(42, 31, 44, 0.14);
             border-radius: 8px;
-            background: white;
+            appearance: none;
+            background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%232a1f2c' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 12px center;
             color: inherit;
             font: inherit;
         }
