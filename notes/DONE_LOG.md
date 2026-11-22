@@ -1,5 +1,24 @@
 # Done Log
 
+Estimation9.42 published23November2026 Israel(22NovemberUTC), work3.17.4.6.
+Runtime185e3c02, release tagestimation-v9.42-2026-11-23. Objects Delivery/
+Installation/Sale Price/quantity save on blur without Set Prices and survive
+Review/Back. Confirmed stale server snapshot and destroyed installer-iframe
+promise lifetime repaired, authenticated serialized writes retain failed values
+and retry, Set Prices waits only for pending writes. Commercial-only refresh
+3 reads/1.201s/0 writes, no cost/Parts/material/Labor rebuild. Shared Changing
+material font/no card and VAT18%/fractional label verified. All56 prior Estimation
+definitions AST-identical;608 other non-Markdown files unchanged. Clean local
+567/nine308.639s and exact-SHA GitHub567/nine287.013s passed(run45074429235,
+job137368371686, artifact14774991352). Publisher verified active no-bypass27499066;
+Core7985667441 success21:59:16UTC, actual executable Core/wrapper/meta/version
+match21:59:55UTC, HTTP200. Byte/CRC-verified source archive816/4,673,767bytes,
+SHA2560f32837c24aace0b5b334b15b37175708edb83b7bfde51bb9ed8b8a55ab5f51c.
+9.41 full checkpoint independently restored814 source files/563 checks and four
+network-blocked material controls;422-file manifest and both remote tags pass.
+No paid call/project write. Live probe is anonymous; owner authenticated trial
+remains pending. [Release, causes and retained failures](ESTIMATION_V9_42_UI_PERSISTENCE_2026_11_22.md).
+
 Owner requested a full Estimation9.41 preservation checkpoint22November2026
 before9.42 UI corrections. Runtime077264c0 stays unchanged. Pin source814 files,
 exact local/CI/live proof, full Git history/tags and four frozen material controls

@@ -537,16 +537,19 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-ACTIVE CANDIDATE, P1, USER REQUEST,22November2026, release9.42.
-Persist every Objects Delivery/Installation/object Sale Price/quantity edit on
-blur without Set Prices. Preserve Review/Back/reopen, ordering, scoped auth,
-immediate totals and handled failure/retry. Confirmed stale server snapshot and
-disposable installer-iframe promise lifetime repaired; return now reads only
-commercial data (actual guarded1.201s/3 reads/0 writes). Focused Objects19.867s,
-Calculation52.246s and24 Python checks pass. Full exact-SHA local/CI/publication
-and owner production acceptance pending. Object Detail Save/Leave without saving
-stays explicit. Shared Changing material font/no card and VAT18%/fractional label
-checks included. Preserve all original gates. [Scope and evidence](ESTIMATION_V9_42_UI_PERSISTENCE_2026_11_22.md).
+PUBLISHED, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING, release9.42,
+23November2026 Israel (22NovemberUTC), runtime185e3c02. Objects Delivery/
+Installation/object Sale Price/quantity persist on blur without Set Prices;
+ordinary Review/Back/reopen, delayed/failed write/retry and latest-edit ordering
+pass. Repaired stale snapshot and installer-iframe lifetime; narrow commercial
+refresh1.201s/3 reads/0 writes, no cost/material rebuild. Object Detail explicit
+Save/Leave without saving retained. Shared Changing material font/no card and
+VAT18%/fractional label pass. Clean local567/nine308.639s and exact-SHA GitHub
+567/nine287.013s(run45074429235) pass. Publisher verified active no-bypass27499066;
+Core7985667441 success21:59:16UTC, actual Core/wrapper/meta/version match21:59:55UTC.
+Owner next: edit Delivery/Installation, leave input, Review and Back without Set
+Prices. No paid run or production-project write in verification; anonymous live
+probe is not owner acceptance. [Release and evidence](ESTIMATION_V9_42_UI_PERSISTENCE_2026_11_22.md).
 
 COMPLETED PRESERVATION OBJECTIVE, P1, OWNER-REQUESTED FULL CHECKPOINT, Objects
 V2.6,21November2026. Freeze runtime82d55026, current records/designs and all
@@ -1336,7 +1339,8 @@ network-blocked material replay receipts pass:814 source files,563 restore check
 four control sets,422-file manifest. Records723986b5 and both remote tags verified.
 [Checkpoint](ESTIMATION_V9_41_PRODUCTION_CHECKPOINT_2026_11_22.md).
 
-ACTIVE, P1, ESTIMATION9.41 PUBLISHED, OWNER AUTHENTICATED UI ACCEPTANCE PENDING,22November2026. Owner approved
+PRESERVED9.41 MATERIAL-POINT-UPDATE RELEASE, P1,22November2026. UI successor9.42
+is published above; owner material-selector acceptance remains pending. Owner approved
 the agreed front point-update/fallback/placement changes on the successful V3.3
 base plus immediate dark Changing material feedback. Preserve source Front/
 Planner/Geometry/Detection and Objects V2.7 Loading byte-for-byte. Reuse existing

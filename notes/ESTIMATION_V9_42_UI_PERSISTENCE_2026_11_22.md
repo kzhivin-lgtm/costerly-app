@@ -1,6 +1,7 @@
 # Estimation 9.42 Objects input persistence and UI polish
 
-Status: candidate under full release verification,22November2026.
+Status: published23November2026 Israel (22NovemberUTC), owner authenticated
+production acceptance pending.
 Existing work3.17.4.6 and Objects workflow. No new work block.
 
 ## Approved outcome and preserved checkpoint
@@ -72,3 +73,28 @@ Core/wrapper verification are required before publication. Authenticated owner
 production acceptance remains separate; do not infer fresh recognition stability.
 
 Build: estimation-v9.42-b20261122214041-ui-objects-v2.7-detection-v8.4.29.
+
+## Verified release
+
+Runtime185e3c02bc1415858a91f1861a85e72ad17cab7b, release tag
+estimation-v9.42-2026-11-23. Candidate was committed on a clean feature branch;
+all existing checks and deadlines remained mandatory.
+
+- Clean exact-SHA local567 Python checks/nine browser suites passed308.639s.
+- Exact-SHA GitHub567/nine passed287.013s, run45074429235,
+  job137368371686, artifact14774991352. Full logs and reports retained in
+  ci-185e3c02; no failing candidate was published.
+- Protected publisher verified the exact trusted success and active no-bypass
+  ruleset27499066, then advanced main from077264c0 without force.
+- Core deployment7985667441 succeeded21:59:16UTC22November. Actual executable
+  Core/wrapper/meta/version all matched9.42 at21:59:55UTC; health/wrapperHTTP200.
+- Source archive816 files/4,673,767bytes, every source byte/CRC verified, SHA256
+  0f32837c24aace0b5b334b15b37175708edb83b7bfde51bb9ed8b8a55ab5f51c.
+  Receipt ui-blur-persistence-candidate-backup.json underoutputs/estimation-v9.42.
+
+No paid model call or production-project edit was used for verification.
+The live check observed anonymous Login and proves served-build identity;
+owner authenticated Delivery/Installation edit → Review → Back remains the
+production acceptance step. Full local UI uses authenticated synthetic data.
+Do not turn these checks into a claim of fresh recognition stability. The9.41
+full checkpoint, V3.3 rollback and all prior UI gates remain preserved.

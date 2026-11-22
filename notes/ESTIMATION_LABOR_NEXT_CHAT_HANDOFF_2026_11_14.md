@@ -1,3 +1,21 @@
+**[verified] Current whole-cycle release: Estimation9.42,23November2026 Israel
+(22NovemberUTC), runtime185e3c02.** Objects Delivery/Installation/Sale Price/
+quantity persist on blur without Set Prices, survive ordinary Review/Back and
+saved reopen. Repair preserves explicit Object Detail Save/Leave without saving.
+A commercial-only three-read refresh replaces stale pricing without rebuilding
+costs, Parts, materials or Labor. Existing56 Estimation definitions unchanged;
+608 other non-Markdown source files byte-identical9.41. Shared Changing material
+font/no white card; integral VAT18% with fractional configured rates retained.
+Clean local567/nine308.639s, exact-SHA CI567/nine287.013s(run45074429235) pass.
+Protected publisher confirmed active no-bypass27499066; Core7985667441 succeeded
+21:59:16UTC and actual Core/wrapper/meta/version match21:59:55UTC, HTTP200.
+Owner authenticated acceptance pending; live verifier observed anonymous Login.
+No model call or production-project edit. Full9.41 checkpoint restored814 files,
+563 tests and four saved material controls; archive422-file manifest/tags pass.
+Authoritative scope/causes/failures: notes/ESTIMATION_V9_42_UI_PERSISTENCE_2026_11_22.md.
+Historical statuses below do not replace this current release or authorise
+coating work. Backlog remains only notes/TODO.md.
+
 **[verified] Current cycle release: Estimation9.41,22November2026,077264c0.**
 Numbering continues9.39 →9.40 →9.41; historical V3.x labels below are not the current
 whole-cycle version. Source-binding and Labor component versions remain separate.

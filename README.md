@@ -23,18 +23,14 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
-Estimation **9.42 candidate** follows the completed9.41 checkpoint. Save Objects
-Delivery/Installation/Sale Price/quantity on input blur without Set Prices;
-retain explicit Object Detail Save. Shared Changing material typography/no card
-and integral VAT labels are included. Full local/CI/publication verification
-pending. [Scope and evidence](notes/ESTIMATION_V9_42_UI_PERSISTENCE_2026_11_22.md).
-
-Current Estimation release: **9.41**,22November2026, runtime`077264c0`: point updates for
-front materials/fallback thickness plus immediate Changing material feedback,
-based on the successful V3.3 control. Recognition/geometry/Loading remain intact.
-Local563/nine319.126s, exact-SHA GitHub563/nine321.986s and actual Core/wrapper/
-meta/version identity passed11:27:53UTC. Owner authenticated acceptance pending.
-[Scope and verification](notes/ESTIMATION_V9_41_FRONT_PANELS_2026_11_22.md).
+Current Estimation release: **9.42**,23November2026 Israel (22NovemberUTC),
+runtime`185e3c02`. Objects Delivery/Installation/Sale Price/quantity save on blur
+without Set Prices and survive Review/Back. Commercial-only refresh, no cost or
+material rebuild. Shared Changing material status/no card and integral VAT label.
+Local567/nine308.639s, exact-SHA GitHub567/nine287.013s passed; actual Core/wrapper/
+meta/version matched21:59:55UTC22November. Owner authenticated acceptance pending.
+[Release and verification](notes/ESTIMATION_V9_42_UI_PERSISTENCE_2026_11_22.md).
+Preserved9.41 runtime077264c0 and its full checkpoint remain available above.
 
 Preserved diagnostic release: **Estimation V3.3**,22November2026,
 rollback commit`a6158588`, application/tests byte-identical to published`bcf9fdb4`.
