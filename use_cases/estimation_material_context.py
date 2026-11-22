@@ -84,26 +84,3 @@ def build_estimation_material_context(
             ),
         },
     }
-
-
-def build_front_material_context(client: Any, company_id: str, family: str, *, defaults_only=False) -> dict[str, Any]:
-    """Read only the selected front stock family and its active offers/defaults."""
-    from use_cases.israel_reference_catalog import _rows as selected_rows
-
-    families = selected_rows(client, "reference_material_families", filters={"active": True, "family_code": family})
-    ids = [row["family_id"] for row in families]
-    defaults = selected_rows(client, "reference_material_family_default_variants",
-                             filters={"active": True}, in_filter=("family_id", ids))
-    items = selected_rows(client, "company_material_items", filters={
-        "company_id": company_id, "specifications->>material_family": family,
-    })
-    return {"company_id": company_id, "families": {family}, "front_defaults_only": defaults_only, "catalogs": {
-        "material_families": families, "items": items,
-        "offers": selected_rows(client, "company_material_offers", filters={"company_id": company_id},
-                                 in_filter=("company_material_id", [row["company_material_id"] for row in items])),
-        "reference_positions": load_active_israel_reference_positions(client, family_codes=[family],
-            **({"model_ids": [row["reference_position_id"] for row in defaults]} if defaults_only else {})),
-        "material_pricing_policies": selected_rows(client, "reference_material_family_pricing_policies",
-                                                    filters={"active": True}, in_filter=("family_id", ids)),
-        "material_default_variants": defaults,
-    }}

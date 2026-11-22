@@ -132,3 +132,30 @@ Owner should use the same saved estimate: switch Front panels, inspect the
 changed stock/amount, edit the new row if needed, Save/reopen and APPROVE.
 A new upload or model run is unnecessary. No new accepted checkpoint is declared.
 Coating remains the next separate block, with its rules/rates still to agree.
+
+## Owner-approved diagnostic rollback,22November2026
+
+The owner requested exact V3.3 production restoration before another fresh
+full Lev2 run. Restore application and test source frombcf9fdb4, including its
+original build identity, without a Git history reset or forced main push.
+Retain9.40 runtime/tag/records and the remote mandatory gate. This rollback is
+the same work3.17.4.6, not a new9.41 feature release. Objects V2.7 is the next
+owner-selected baseline only if this fresh control fails. No speculative fix,
+model prompt change or new loading overlay is included in this experiment.
+
+Read-only evidence: last priced Lev2run_e030ad3ba80a4fec9ac410b3e5bb0a83
+(21November16:49UTC) has110 Parts/nine blocks/no unpriced demands/no assumptions;
+newrun_f4eb3f589fcb4f18a0d548e3a6a7127d(22November10:33UTC) has102 Parts,
+unbound block depths and worktop area, two unpriced demands and two slide
+assumptions. Both are reproduced offline with saved provider responses and
+network blocked. Source PDF, numeric Detection inventory and the Front request
+fingerprint match; Front responses differ, including omittedC11 in the failed
+run. Geometry source is byte-identical across the two runtime versions. Failure
+is observed on9.40, but introduction by9.40 is not established. Private evidence
+is underoutputs/estimation-v9.41; this directory name does not assign a release.
+The requested Changing material overlay remains pending after this diagnostic.
+
+Publication requires a new fast-forward rollback commit with exact V3.3 runtime,
+clean local/full exact-SHA CI gates, the existing verified publisher and actual
+Core/wrapper identity. Fresh recognition acceptance remains the owner's next
+test; old saved controls alone cannot establish it.

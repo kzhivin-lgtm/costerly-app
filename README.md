@@ -18,7 +18,12 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
-Current Estimation release: **9.40**,22November2026, runtime `f99d17b3`.
+Owner-approved diagnostic rollback to **Estimation V3.3**,22November2026,
+is in verification. Restore published`bcf9fdb4` application/tests exactly, retain
+the9.40 source and records, and wait for the owner's fresh full Lev2 control.
+This tests release causality; it is not yet a proven geometry repair.
+
+Preserved Estimation release: **9.40**,22November2026, runtime `f99d17b3`.
 Front panels changes patch only selected front stock and its affected purchase
 baskets. Existing Labor/other materials stay saved; totals update without Save.
 The selector sits beside its label. Missing thickness uses the chosen material's

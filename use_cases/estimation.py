@@ -56,15 +56,14 @@ from observability.runtime import LABOR_BUILD_VERSION
 _FULL_COST_SOURCE = "object_costs_v3_1"
 
 
-def _full_cost_context(client, obj, plan, settings=None, *, preserve_labor=False):
+def _full_cost_context(client, obj, plan, settings=None):
     company = str(obj["company_id"])
     return {
         "settings": settings if settings is not None else _first_row(fetch_company_overhead_settings(client, company)),
         "monthly": _first_row(fetch_company_overhead_monthly(client, company)),
-        "machinery": {} if preserve_labor else load_sheet_processing_machinery(client, company), "plan": plan,
-        "parts": {} if preserve_labor else load_parts_check(client=client, company_id=company,
+        "machinery": load_sheet_processing_machinery(client, company), "plan": plan,
+        "parts": load_parts_check(client=client, company_id=company,
                                   run_id=str(obj["run_id"]), estimate_id=str(obj["estimate_id"]), include_payload=False),
-        "preserve_labor": preserve_labor,
     }
 
 
@@ -84,23 +83,17 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
     material_partial = any(value is None or (isinstance(value, float) and not isfinite(value)) for value in amounts)
     checked = (plan.get("parts_check") or {}).get(str(obj["object_id"])) or {}
     material_partial |= bool(checked.get("unpriced_requirements") or checked.get("has_unresolved_demands"))
-    saved = next((row.get("raw_agent_json") for row in lines.to_dict("records")
-                  if row.get("source") == _FULL_COST_SOURCE), None)
-    if context.get("preserve_labor"):
-        if not isinstance(saved, dict) or not saved.get("labor_blocks"):
-            raise ValueError("The saved labor totals are not available yet.")
-        labor_basis = saved["labor_basis_sha256"]
-    else:
-        labor_basis = hashlib.sha256(json.dumps({
-            "version": _FULL_COST_SOURCE, "build": LABOR_BUILD_VERSION,
-            "object_id": obj["object_id"], "estimate_id": estimate_id, "company_id": obj["company_id"],
-            "quantity": quantity, "overrides": overrides, "machinery": context["machinery"],
-            "source": plan.get("parts_check_source"),
-            "sheets": (plan["front_material_source_sheet_basis"] if "front_material_source_sheet_basis" in plan else sheet_layout_basis(plan)), "parts": context["parts"],
-        }, sort_keys=True, default=str).encode()).hexdigest()
+    labor_basis = hashlib.sha256(json.dumps({
+        "version": _FULL_COST_SOURCE, "build": LABOR_BUILD_VERSION,
+        "object_id": obj["object_id"], "estimate_id": estimate_id, "company_id": obj["company_id"],
+        "quantity": quantity, "overrides": overrides, "machinery": context["machinery"],
+        "source": plan.get("parts_check_source"), "sheets": sheet_layout_basis(plan), "parts": context["parts"],
+    }, sort_keys=True, default=str).encode()).hexdigest()
     basis = hashlib.sha256(json.dumps({"labor_basis": labor_basis, "materials": material_batch,
         "materials_partial": material_partial, "settings": context["settings"], "monthly": context["monthly"]
     }, sort_keys=True, default=str).encode()).hexdigest()
+    saved = next((row.get("raw_agent_json") for row in lines.to_dict("records")
+                  if row.get("source") == _FULL_COST_SOURCE), None)
     if isinstance(saved, dict) and saved.get("basis_sha256") == basis:
         return saved, False
     if isinstance(saved, dict) and saved.get("labor_basis_sha256") == labor_basis:
@@ -1480,7 +1473,7 @@ def _material_norms_from_plan(
 
 
 def save_object_detail_material_edits(
-    *, estimate_id: str, object_id: str, edits: list[dict[str, Any]], preview: bool = False, front_preview=None,
+    *, estimate_id: str, object_id: str, edits: list[dict[str, Any]], preview: bool = False,
 ) -> Future:
     """Validate and save a material draft, then queue one pricing update."""
     if not edits or len(edits) > 500:
@@ -1492,16 +1485,6 @@ def save_object_detail_material_edits(
         plan_future = executor.submit(fetch_rfq_estimate_material_plan, client, estimate_id)
         obj = object_future.result()
         plan = _first_row(plan_future.result()).get("plan_payload") or {}
-    from use_cases.estimation_front_panels import front_plan_revision
-    requested_fronts = {edit.get('lineId', '').removeprefix('__front_panels__:'): edit.get('value')
-                        for edit in edits if edit.get('field') == 'front_material'}
-    if (requested_fronts and isinstance(front_preview, dict) and front_preview.get('_front_preview_base') == front_plan_revision(plan)
-            and (front_preview.get('front_material_patch') or {}).get('object_id') == object_id
-            and (preview or all((front_preview.get('front_panel_choices') or {}).get(object_id, {}).get(group) == choice
-                    for group, choice in requested_fronts.items()))):
-        plan = front_preview
-    else:
-        front_preview = None
     company_id = str(obj["company_id"])
     owned = {
         line["selection_key"]: line for line in plan.get("lines", ())
@@ -1608,7 +1591,6 @@ def save_object_detail_material_edits(
 
         return preview_front_panel_materials(
             estimate_id=estimate_id, run_id=str(obj["run_id"]), company_id=company_id, choices=front_choices,
-            **({'front_preview': front_preview} if front_preview is not None else {}),
         )
     if not norm_rows and not purchases and object_quantity is None and not front_choices:
         upsert_rfq_estimate_lines(client, lines=override_lines(
@@ -1639,7 +1621,6 @@ def save_object_detail_material_edits(
         norm_edits={(object_id, key): row for key, row in norm_rows.items()},
         purchase_edits=purchases,
         front_choice_edits=front_choices,
-        **({'front_preview': front_preview} if front_preview is not None else {}),
     )
 
 
@@ -1656,7 +1637,7 @@ def front_material_preview_receipt(*, estimate_id, object_id, plan):
             row["total"] = round((coatings if row.get("policy_basis") == "coatings" else primary)
                                  * _number(row.get("policy_percent"), 0) / 100, 2)
             lines.loc[(lines["source"] == "pricing_policy") & (lines["item_name"] == row["item"]), "cost"] = row["total"]
-    context = _full_cost_context(client, obj, plan, preserve_labor=True)
+    context = _full_cost_context(client, obj, plan)
     summary, _ = _full_cost_summary(client, estimate_id=estimate_id, obj=obj, lines=lines,
                                    material_batch=primary, context=context, persist=False)
     return {
@@ -1679,7 +1660,6 @@ def apply_material_plan_allocations(
     changed_quantity_objects: set[str] | None = None,
     object_contexts: dict[str, dict[str, Any]] | None = None,
     protected_approval_objects: set[str] | None = None,
-    preserve_labor: bool = False,
 ) -> None:
     """Project rounded purchase costs back into the owning Object Detail rows."""
     # A partial plan is still authoritative for the requirements it actually
@@ -1855,7 +1835,6 @@ def apply_material_plan_allocations(
         if plan_snapshot.get("parts_check_source") and full_context is None:
             full_context = _full_cost_context(
                 client, {**object_context, "estimate_id": estimate_id}, plan_snapshot, settings,
-                **({"preserve_labor": True} if preserve_labor else {}),
             )
         cost_summary = _recalculate_object_estimate_totals(
             client,

@@ -1317,7 +1317,22 @@ start; the remaining 18.44 s are not timed by substage.
 
 ## Estimation Parts Check, 3.17.4.6
 
-ACTIVE, P1, PUBLISHED ESTIMATION9.40, OWNER AUTHENTICATED ACCEPTANCE PENDING,22November2026. Keep Front panels
+ACTIVE, P1, OWNER-APPROVED DIAGNOSTIC ROLLBACK TO V3.3 IN VERIFICATION,22November2026.
+Restore the exact publishedbcf9fdb4 application/tests, retain9.40 source/history/records,
+then let the owner upload a fresh Lev2 for a complete cycle. If it fails, the owner
+has selected Objects V2.7 as the next diagnostic baseline; do not deploy it before
+observing this control. Last priced control21November16:49UTC,
+run_e030ad3ba80a4fec9ac410b3e5bb0a83:110 Parts, nine blocks, no unpriced demands
+or Assumption Fallback. New22November10:33UTC run_f4eb3f589fcb4f18a0d548e3a6a7127d:
+102 Parts, no bound block depths/worktop area, two unpriced demands. Saved-response
+offline replay reproduces both. Front omittedC11 in the failed run; loss of the
+plan-matched column precedes the missing geometry. This is not proof that9.40
+introduced it: the geometry source is identical to the last priced runtime.
+Dark Changing material overlay remains an approved pending request, deferred by
+this rollback experiment. No new model request or production-project edit.
+Keep the9.40 requirements below preserved for a later forward correction.
+
+HISTORICAL PUBLISHED ESTIMATION9.40, OWNER AUTHENTICATED ACCEPTANCE PENDING. Keep Front panels
 above the Materials table, place its selector16px beside its label, inset the
 chevron12px. Selecting a type must rebuild visible rows/prices/totals without
 Save, navigation or a full-page reload. Existing Save/APPROVE remains persistence.

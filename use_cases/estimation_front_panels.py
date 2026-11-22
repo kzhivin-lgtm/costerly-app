@@ -11,13 +11,6 @@ FRONT_MATERIALS = {
 }
 
 
-def front_plan_revision(plan):
-    """Bind a server-side draft to the exact persisted plan it was based on."""
-    import hashlib
-    import json
-    return hashlib.sha256(json.dumps(plan, sort_keys=True, default=str).encode()).hexdigest()
-
-
 def front_material_groups(materials):
     """Identify fronts from saved part roles, including older demand records."""
     groups = []

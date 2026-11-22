@@ -800,15 +800,13 @@ def _active_default_specifications(
     }
 
     def has_evidenced_non_applicability_key(
-        *, applicability: Mapping[str, Any], defaults: Mapping[str, Any], policy: Mapping[str, Any] | None,
+        *, applicability: Mapping[str, Any], policy: Mapping[str, Any] | None,
     ) -> bool:
         """A default may complete a recognised Family, never alter a key fact.
 
         Applicability is the Family/subtype identity that selected a default,
         such as MDF plus its stated veneer face. Any other populated Pricing
-        Key fact is an exact resolver input and must be matched as-is. An
-        already populated fact may agree with the linked default; it must not
-        stop that same default from filling another, missing pricing fact.
+        Key fact is an exact resolver input and must be matched as-is.
         """
         for attribute_code in (policy or {}).get("pricing_key_attribute_codes") or ():
             fields = {str(attribute_code), *pricing_key_fact_fields(str(attribute_code))}
@@ -818,8 +816,7 @@ def _active_default_specifications(
             if not present_fields:
                 continue
             if not any(
-                (field in applicability and specifications.get(field) == applicability[field])
-                or (field in defaults and specifications.get(field) == defaults[field])
+                field in applicability and specifications.get(field) == applicability[field]
                 for field in present_fields
             ):
                 return True
@@ -845,11 +842,11 @@ def _active_default_specifications(
         if not has_active_price:
             continue
         applicability = dict(variant.get("applicability_specifications") or {})
-        defaults = dict(variant.get("default_specifications") or {})
         if any(specifications.get(key) != value for key, value in applicability.items()):
             continue
-        if has_evidenced_non_applicability_key(applicability=applicability, defaults=defaults, policy=policy):
+        if has_evidenced_non_applicability_key(applicability=applicability, policy=policy):
             continue
+        defaults = dict(variant.get("default_specifications") or {})
         applied = {key: value for key, value in defaults.items() if not _present_value(specifications.get(key))}
         if not applied and price_scope != "retail_package":
             continue

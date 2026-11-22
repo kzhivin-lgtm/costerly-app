@@ -290,22 +290,16 @@ def _material_editor(context: ObjectDetailContext) -> None:
         edits = request.get("edits")
         if not isinstance(edits, list):
             raise ValueError("No material changes to save.")
-        cached = st.session_state.get('object_detail_front_preview') or {}
-        front_preview = cached.get('plan') if cached.get('scope') == key else None
         future = save_object_detail_material_edits(
             estimate_id=context.estimate_id, object_id=context.object_id,
             edits=edits, **({"preview": True} if preview else {}),
-            **({'front_preview': front_preview} if front_preview is not None
-               and any(edit.get('field') == 'front_material' for edit in edits) else {}),
         )
         submitted = perf_counter()
         plan = future.result()
         published = perf_counter()
         if preview:
-            st.session_state.object_detail_front_preview = {'scope': key, 'plan': plan}
             data = front_material_preview_receipt(estimate_id=context.estimate_id, object_id=context.object_id, plan=plan)
         else:
-            st.session_state.pop('object_detail_front_preview', None)
             st.session_state.pop("approved_object_keys", None)
             _mark_objects_estimation_dirty(context.estimate_id)
             data = load_object_detail_material_receipt(estimate_id=context.estimate_id, object_id=context.object_id)
