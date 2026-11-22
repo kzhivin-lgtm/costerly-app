@@ -159,3 +159,19 @@ Publication requires a new fast-forward rollback commit with exact V3.3 runtime,
 clean local/full exact-SHA CI gates, the existing verified publisher and actual
 Core/wrapper identity. Fresh recognition acceptance remains the owner's next
 test; old saved controls alone cannot establish it.
+
+Rollback publication: commita61585885653cf8c0c7bde48dbc3680bfb91e565,
+runtime tagestimation-v3.3-diagnostic-rollback-2026-11-22. All622 non-Markdown
+files match publishedbcf9fdb4 exactly. Clean local548/nine passed249.953s;
+exact-SHA GitHub548/nine passed277.770s, run45014753897/job137184569302/
+artifact14751456918. Existing publisher verified active no-bypass27499066
+and advanced main fromf99d17b3 without force/history reset. Core deployment
+7977732825 succeeded11:02:32UTC; actual executable Core/wrapper/meta/version
+match original V3.3build at11:03:07UTC, HTTP200. Public browser proof is anonymous
+Login, not the owner's authenticated fresh control. No paid model call or
+production-project write. Private artifacts: outputs/estimation-v33-rollback.
+Source archive812 files/4,647,326bytes, exact byte/CRC verification, SHA256
+0decd62d9a39bb754747e421c82d4b5d1d90bcfd0876f8de59ecd929bf87602a.
+The9.40 runtime/tag remains intact. Do not advance to Objects V2.7 before the
+owner's V3.3 control is observed and evaluated. Requested overlay/facade patch
+are retained as pending forward work, not silently included in the rollback.

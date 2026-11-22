@@ -1317,9 +1317,13 @@ start; the remaining 18.44 s are not timed by substage.
 
 ## Estimation Parts Check, 3.17.4.6
 
-ACTIVE, P1, OWNER-APPROVED DIAGNOSTIC ROLLBACK TO V3.3 IN VERIFICATION,22November2026.
-Restore the exact publishedbcf9fdb4 application/tests, retain9.40 source/history/records,
-then let the owner upload a fresh Lev2 for a complete cycle. If it fails, the owner
+ACTIVE, P1, V3.3 DIAGNOSTIC ROLLBACK PUBLISHED, OWNER FRESH LEV2 CONTROL PENDING,22November2026.
+Rollbacka6158588 matches publishedbcf9fdb4 in all622 non-Markdown files. Local548/nine
+249.953s and exact-SHA GitHub548/nine277.770s passed, run45014753897. Mandatory
+no-bypass ruleset27499066 verified by publisher; Core deployment7977732825
+succeeded11:02:32UTC, actual Core/wrapper/meta/version match11:03:07UTC.
+Retain9.40 source/history/records. The owner uploads a fresh Lev2 for a complete
+cycle. If it fails, the owner
 has selected Objects V2.7 as the next diagnostic baseline; do not deploy it before
 observing this control. Last priced control21November16:49UTC,
 run_e030ad3ba80a4fec9ac410b3e5bb0a83:110 Parts, nine blocks, no unpriced demands

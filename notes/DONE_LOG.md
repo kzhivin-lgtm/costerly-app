@@ -1,5 +1,19 @@
 # Done Log
 
+Owner-approved diagnostic rollback to Estimation V3.3 published22November2026,
+work3.17.4.6. Runtimea6158588 is byte-identical tobcf9fdb4 across622 non-Markdown
+files;9.40 source/tag/records remain preserved. No speculative repair or new
+overlay. Local548/nine249.953s, GitHub548/nine277.770s passed(run45014753897,
+job137184569302, artifact14751456918). Publisher confirmed active no-bypass
+ruleset27499066 and fast-forwarded main. Core7977732825 succeeded11:02:32UTC;
+actual Core/wrapper/meta/version match V3.3 at11:03:07UTC, HTTP200. No paid call
+or production-project write. Fresh full Lev2 is pending owner execution; this
+is successful restoration, not established recognition repair. Objects V2.7
+is the next owner-selected control only if this one fails. Artifacts and exact
+source audit: outputs/estimation-v33-rollback. Source archive812/4,647,326bytes,
+byte/CRC verified, SHA2560decd62d9a39bb754747e421c82d4b5d1d90bcfd0876f8de59ecd929bf87602a.
+[Rollback decision and evidence](ESTIMATION_V9_40_FRONT_PANELS_2026_11_22.md#owner-approved-diagnostic-rollback22november2026).
+
 Estimation9.40 published22November2026, work3.17.4.6, OWNER AUTHENTICATED
 UI ACCEPTANCE PENDING. Correct the cycle numbering: last9.39/15faa779, now9.40;
 historical V3.x Labor/source-binding labels/tags are retained. Runtimef99d17b3,
