@@ -60,6 +60,15 @@ async function frontPanelChecks(){
    await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
   }
   await save.click();
+  if(width===1280){
+   await core.getByRole('button',{name:'Saving…',exact:true}).waitFor();
+   await picker.selectOption('plywood');
+   await save.waitFor();
+   await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
+   assert.equal(readFileSync(statePath('front-choice'),'utf8'),'mdf');
+   assert.equal(await picker.inputValue(),'plywood');
+   await picker.selectOption('mdf');
+  }
   await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
   assert.equal(readFileSync(statePath('front-choice'),'utf8'),'mdf');
   await core.getByRole('link',{name:'Back to Objects',exact:true}).click();

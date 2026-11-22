@@ -39,6 +39,9 @@ timer, observer, database table or permanent preview write is introduced.
   state. A failed preview or save retains the draft and existing saved plan.
 - Preview reuses the full Materials/Labor/Overhead calculation with diagnostic
   persistence disabled. Save uses the existing publication and Self Cost paths.
+  Objects outside the material edit keep their approvals when their calculated
+  cost is unchanged. A new selection made during Save is previewed after the
+  accepted save completes, preserving the newer draft and the Saved state.
   Raw MDF replacements allow rotation independently of the original veneer's
   grain evidence. Plywood and veneer keep their grain constraints.
 - Coating preparation, coating materials and coating labor are the next

@@ -2510,7 +2510,6 @@ def install_object_detail_input_guard(
                 const edit = {field: "front_material", lineId: input.dataset.lineId, value: input.value};
                 if (input.value === input.dataset.originalValue) draft.delete(editKey(edit));
                 else draft.set(editKey(edit), edit);
-                saveButton()?.removeAttribute("data-saved");
                 updateSaveControls();
                 submitDraft(false, true);
             }
@@ -2639,6 +2638,9 @@ def install_object_detail_input_guard(
                 if (result.preview && approveAfterSave) submitDraft(true);
                 else if (approveAfterSave && !draft.size && !invalidMaterial()) {
                     parentDoc.querySelector("[data-object-detail-approve]")?.click();
+                }
+                else if (!result.preview && [...draft.values()].some(edit => edit.field === "front_material")) {
+                    submitDraft(approveAfterSave, true);
                 }
             }
 

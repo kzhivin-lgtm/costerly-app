@@ -168,3 +168,24 @@ def test_several_surfaces_of_one_part_retain_separate_material_identities():
     base = {"materials": materials, "parts": []}
     result = classify_front_materials(base, deepcopy(base), [], {})
     assert [row["requirement_id"] for row in result["materials"]] == ["main", "contrast"]
+
+
+def test_front_save_preserves_unedited_objects_approvals(monkeypatch):
+    import pandas as pd
+    from use_cases import estimation_runtime as runtime
+
+    snapshot = {"front_panel_groups": {"one": [{"id": "group", "requirement_ids": ["front"]}]},
+                "object_material_costs": [{"object_id": "one", "material_requirement_id": "front"}]}
+    monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_plan", lambda *a: pd.DataFrame([{"plan_payload": {}}]))
+    monkeypatch.setattr(runtime, "fetch_rfq_object_estimates", lambda *a: pd.DataFrame([
+        {"object_id": "one", "quantity": 1}, {"object_id": "two", "quantity": 1},
+    ]))
+    monkeypatch.setattr(runtime, "_saved_material_inputs", lambda *a: ({}, []))
+    monkeypatch.setattr(runtime, "_calculate_material_plan", lambda **kw: {"material_plan": snapshot})
+    published = []
+    monkeypatch.setattr(runtime, "_build_and_persist_material_plan", lambda **kw: published.append(kw) or snapshot)
+    runtime._recalculate_front_panel_materials(
+        None, estimate_id="estimate", run_id="run", company_id="company", choices={("one", "group"): "mdf"},
+        quantity_edits={}, norm_edits={}, purchase_edits={},
+    )
+    assert published[0]["protected_approval_objects"] == {"two"}

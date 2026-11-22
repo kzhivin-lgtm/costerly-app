@@ -131,7 +131,7 @@ def _calculate_material_plan(*, client, estimate_id, company_id, parts_report, i
 
 
 def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_report, input_rows,
-                                     rebuild=False, review_order=(), calculation=None):
+                                     rebuild=False, review_order=(), calculation=None, protected_approval_objects=None):
     """Price the checked document through the shared estimate-wide engine."""
     if calculation is None:
         calculation = _calculate_material_plan(
@@ -158,7 +158,9 @@ def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_r
         snapshot["assumption_job_sync"] = {"status": "failed", "error": type(exc).__name__}
         _LOG.warning("Assumption follow-up failed for estimate %s", estimate_id, exc_info=True)
 
-    apply_material_plan_allocations(client, estimate_id=estimate_id, plan_snapshot=snapshot)
+    apply_material_plan_allocations(client, estimate_id=estimate_id, plan_snapshot=snapshot,
+                                    **({"protected_approval_objects": protected_approval_objects}
+                                       if protected_approval_objects is not None else {}))
     upsert_rfq_estimate_material_plan(
         client, estimate_id=estimate_id, company_id=company_id, plan_payload=snapshot,
         plan_status=snapshot["status"], input_fingerprint=snapshot["input_fingerprint"],
@@ -462,6 +464,8 @@ def _recalculate_front_panel_materials(client, *, estimate_id, run_id, company_i
     return _build_and_persist_material_plan(
         client=client, estimate_id=estimate_id, company_id=company_id, parts_report=report,
         input_rows=inputs, rebuild=True, calculation=calculation,
+        protected_approval_objects=set(quantities) - {oid for oid, _ in choices} - set(quantity_edits)
+                                   - {oid for oid, _ in norm_edits},
     )
 
 
