@@ -537,6 +537,17 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+PENDING AFTER9.41 CHECKPOINT, P1, USER REQUEST,22November2026, release9.42.
+Preserve intentional Delivery/Installation/object Sale Price edits across Review/
+Back, reopen and reload without requiring Set Prices; keep authoritative override
+storage, latest edit wins, tenant/estimate scoping, immediate totals and handled
+slow/failed writes. Set Prices retains confirmation semantics. Keep Object Detail
+Save/Leave without saving explicit. Match Changing material typography to the
+existing loading status and remove its white card; render VAT18.0 as18 without
+losing fractional configured rates. User authorised this sequence after the full
+9.41 checkpoint. Test the matrix in the checkpoint record before publishing;
+preserve all previous UI/recognition/calculation gates. No new work block.
+
 COMPLETED PRESERVATION OBJECTIVE, P1, OWNER-REQUESTED FULL CHECKPOINT, Objects
 V2.6,21November2026. Freeze runtime82d55026, current records/designs and all
 available release evidence, including the blocked50c850a3 CI and unknown cause.
@@ -1316,6 +1327,13 @@ USD 0.017655) followed. Last model response at 61.48 s from Parts Check
 start; the remaining 18.44 s are not timed by substage.
 
 ## Estimation Parts Check, 3.17.4.6
+
+OWNER-REQUESTED PRESERVATION CHECKPOINT, P1,22November2026. Freeze achieved9.41
+runtime077264c0/release evidence/control handoff before the authorised9.42 UI
+corrections above. Runtime stays published; preserve known pricing/presentation
+issues and fresh-recognition verification limits. Independent source restore and
+network-blocked material replay receipts govern archive verification.
+[Checkpoint](ESTIMATION_V9_41_PRODUCTION_CHECKPOINT_2026_11_22.md).
 
 ACTIVE, P1, ESTIMATION9.41 PUBLISHED, OWNER AUTHENTICATED UI ACCEPTANCE PENDING,22November2026. Owner approved
 the agreed front point-update/fallback/placement changes on the successful V3.3

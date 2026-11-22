@@ -1,5 +1,12 @@
 # Done Log
 
+Owner requested a full Estimation9.41 preservation checkpoint22November2026
+before9.42 UI corrections. Runtime077264c0 stays unchanged. Pin source814 files,
+exact local/CI/live proof, full Git history/tags and four frozen material controls
+with a portable network-blocked replay and new-directory restoration checks.
+Preserve the known Objects price-persistence issue, loading typography and VAT
+label corrections as pending next work; no model stability claim or hidden repair.
+[Checkpoint scope, identities and restoration](ESTIMATION_V9_41_PRODUCTION_CHECKPOINT_2026_11_22.md).
 Estimation9.41 published22November2026, work3.17.4.6, owner authenticated UI
 acceptance pending. Runtime077264c0, release tagestimation-v9.41-2026-11-22,
 successful V3.3 source base with606 protected files unchanged. Restore agreed

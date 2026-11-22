@@ -1,6 +1,11 @@
 # Costerly
 
-Latest full checkpoint: **Objects V2.6**, owner-requested21November2026.
+Latest full checkpoint: **Estimation 9.41**, owner-requested22November2026,
+runtime`077264c0`. Source, exact release evidence, four frozen material controls
+and independent restoration are preserved before the next UI-only corrections.
+[Identities, archive, known issues and restoration](notes/ESTIMATION_V9_41_PRODUCTION_CHECKPOINT_2026_11_22.md).
+
+Previous full checkpoint: **Objects V2.6**, owner-requested21November2026.
 [Exact identities, archive, evidence, limits and restoration](notes/OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md).
 It pins runtime82d55026; that checkpoint itself added records/tags only.
 
