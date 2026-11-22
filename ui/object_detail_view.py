@@ -480,7 +480,7 @@ def _final_html(data: dict[str, object]) -> str:
         f'<div class="object-detail-final-value" data-final="excl_vat">{_money(summary["excl_vat"])}</div>'
         '</div>'
         '<div class="object-detail-final-metric">'
-        f'<div class="object-detail-final-label">VAT {_escape(summary.get("vat_percent", 18))}%</div>'
+        f'<div class="object-detail-final-label">VAT {_escape(_number_text(summary.get("vat_percent", 18)))}%</div>'
         f'<div class="object-detail-final-value" data-final="vat">{_money(summary["vat"])}</div>'
         '</div>'
         '<div class="object-detail-final-metric">'

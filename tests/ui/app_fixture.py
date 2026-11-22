@@ -78,7 +78,9 @@ def read_objects(_client, estimate_id):
  record('objects '+estimate_id)
  totals=json.loads(totals_path.read_text()) if totals_path.exists() else {}
  approvals=json.loads((STATE / 'object-approvals.json').read_text()) if (STATE / 'object-approvals.json').exists() else {}
- return pd.DataFrame([{**row,**totals.get(row['object_id'],{}),**({'approved':approvals[row['object_id']]} if row['object_id'] in approvals else {})} for row in sample['objects'] if row['estimate_id']==estimate_id])
+ quantities_path=STATE/'object-quantities.json'
+ quantities=json.loads(quantities_path.read_text()) if quantities_path.exists() else {}
+ return pd.DataFrame([{**row,**totals.get(row['object_id'],{}),**({'quantity':quantities[estimate_id+':'+row['object_id']]} if estimate_id+':'+row['object_id'] in quantities else {}),**({'approved':approvals[row['object_id']]} if row['object_id'] in approvals else {})} for row in sample['objects'] if row['estimate_id']==estimate_id])
 def read_plans(_client, estimate_id):
  rows=[row for row in sample['plans'] if row['estimate_id']==estimate_id]
  if scenario().get('labor_ready'):

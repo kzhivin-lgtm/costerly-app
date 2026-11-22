@@ -1,7 +1,16 @@
 from decimal import Decimal
+import pytest
 
 from screens.estimation_labor_v1 import _labor_html, _pay_metrics, _sheet_pay_metrics
 from ui.object_detail_view import MATERIAL_PURCHASE_COLUMNS, _section_html
+
+
+@pytest.mark.parametrize('value,label', [(18.0,'18'), (18.5,'18.5')])
+def test_vat_label_preserves_fractional_rates_without_integral_decimal(value,label):
+    from ui.object_detail_view import _final_html
+    result=_final_html({'self_cost':{'vat_percent':value,'excl_vat':100,'vat':value,'total':100+value}})
+    assert f'VAT {label}%' in result
+
 
 
 def sheet_result(*, route='cnc'):

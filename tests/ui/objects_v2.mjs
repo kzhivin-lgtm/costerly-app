@@ -4,7 +4,8 @@ import {readFileSync,writeFileSync,rmSync,existsSync} from 'node:fs';
 import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 const config=statePath('scenario.json'),prices=statePath('objects-prices.json');
-for(const file of ['object-approvals.json','objects-prices.json','generated-proposal.json','generation-failure','browser-journal'])rmSync(statePath(file),{force:true});
+let priceDelay=0,priceFailure=false;
+for(const file of ['object-approvals.json','objects-prices.json','object-quantities.json','generated-proposal.json','generation-failure','browser-journal'])rmSync(statePath(file),{force:true});
 writeFileSync(config,JSON.stringify({objects_v2:true}));
 
 const server=createServer(async(req,res)=>{
@@ -12,8 +13,18 @@ const server=createServer(async(req,res)=>{
   const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,apikey,content-type,prefer','Access-Control-Allow-Methods':'POST,OPTIONS'};
   if(req.method==='OPTIONS')return res.writeHead(204,headers).end();
   let body='';for await(const chunk of req)body+=chunk;
-  const row=JSON.parse(body),saved=existsSync(prices)?JSON.parse(readFileSync(prices)):[];
-  const filtered=saved.filter(old=>old.object_key!==row.object_key);filtered.push(row);writeFileSync(prices,JSON.stringify(filtered));
+  const row=JSON.parse(body);
+  if(req.url.includes('/rpc/save_rfq_object_quantity')){
+   const file=statePath('object-quantities.json'),values=existsSync(file)?JSON.parse(readFileSync(file)):{};
+   values[row.p_estimate_id+':'+row.p_object_id]=row.p_quantity;
+   const approvalsFile=statePath('object-approvals.json'),approvals=existsSync(approvalsFile)?JSON.parse(readFileSync(approvalsFile)):{};
+   approvals[row.p_object_id]=false;writeFileSync(approvalsFile,JSON.stringify(approvals));
+   writeFileSync(file,JSON.stringify(values));return res.writeHead(200,{...headers,'Content-Type':'application/json'}).end(JSON.stringify({quantity:row.p_quantity}));
+  }
+  await new Promise(resolve=>setTimeout(resolve,row.value===333?300:priceDelay));
+  if(priceFailure)return res.writeHead(503,headers).end();
+  const latest=existsSync(prices)?JSON.parse(readFileSync(prices)):[];
+  const filtered=latest.filter(old=>old.object_key!==row.object_key);filtered.push(row);writeFileSync(prices,JSON.stringify(filtered));
   return res.writeHead(204,headers).end();
  }
  if(req.url.startsWith('/api/'))return res.writeHead(202).end();
@@ -196,6 +207,74 @@ try{
   }
  }
  const unconfirmedColor=await set().evaluate(n=>getComputedStyle(n).backgroundColor);
+ await editPrice(1750);
+ await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
+ await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ for(const [key,value] of [['delivery',123],['installation',321],['object-001',1750]]){
+  const field=core.locator('.objects-pricing-row[data-object-key="'+key+'"] .objects-pricing-price-input');
+  assert.equal((await field.innerText()).replace(/[^0-9]/g,''),String(value),key+' blur save survives Review/Back without Set Prices');
+ }
+ const service=key=>core.locator('.objects-pricing-row[data-object-key="'+key+'"] .objects-pricing-price-input');
+ async function waitPrice(key,value){
+  const deadline=Date.now()+5000;
+  while(!existsSync(prices)||JSON.parse(readFileSync(prices)).find(row=>row.object_key===key)?.value!==value){
+   if(Date.now()>deadline){
+    report.persistenceFailure=await frame.evaluate(()=>({
+     inputs:[...document.querySelectorAll('.objects-pricing-price-input')].map(n=>n.outerHTML),
+     writes:[...(window.__costerlyObjectsPriceWrites||new Map())].map(([key,x])=>({key,value:x.value,done:x.done,failed:x.failed}))
+    }));
+    writeFileSync(reportPath('persistence-failure.json'),JSON.stringify(report.persistenceFailure,null,2));
+    throw new Error('Blur price not persisted: '+key);
+   }
+   await new Promise(resolve=>setTimeout(resolve,20));
+  }
+ }
+ priceDelay=500;
+ await service('delivery').fill('222');
+ await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
+ await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ await waitPrice('delivery',222);
+ assert.equal((await service('delivery').innerText()).replace(/[^0-9]/g,''),'222');
+ priceDelay=0;priceFailure=true;
+ await service('installation').fill('444');await service('installation').press('Tab');
+ await frame.waitForFunction(()=>document.querySelector('[data-object-key="installation"] .objects-pricing-price-input')?.getAttribute('aria-invalid')==='true');
+ assert.equal((await service('installation').innerText()).replace(/[^0-9]/g,''),'444');
+ assert.equal(JSON.parse(readFileSync(prices)).find(row=>row.object_key==='installation').value,321);
+ await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
+ await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ assert.equal((await service('installation').innerText()).replace(/[^0-9]/g,''),'444');
+ priceFailure=false;
+ await service('installation').click();await service('installation').press('Tab');await waitPrice('installation',444);
+ await service('delivery').fill('333');await service('delivery').press('Tab');
+ await service('delivery').fill('555');await service('delivery').press('Tab');await waitPrice('delivery',555);
+ await service('delivery').fill('123');await service('delivery').press('Tab');await waitPrice('delivery',123);
+ await service('installation').fill('321');await service('installation').press('Tab');await waitPrice('installation',321);
+ priceDelay=300;
+ await input.fill('1750');await set().click();
+ await frame.waitForFunction(()=>document.querySelector('.objects-workflow-stages [data-stage="2"]')?.dataset.state==='complete');
+ await waitPrice('object-001',1750);priceDelay=0;
+ const quantity=core.locator('.objects-pricing-row[data-object-key="object-001"] [data-object-quantity-input]');
+ await quantity.fill('2');await quantity.press('Tab');
+ await core.locator('.objects-quantity-saving-overlay.is-visible').waitFor({state:'hidden'});
+ await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
+ await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ assert.equal(await quantity.innerText(),'2','Quantity blur save survives Review/Back');
+ await quantity.fill('1');await quantity.press('Tab');
+ await core.locator('.objects-quantity-saving-overlay.is-visible').waitFor({state:'hidden'});
+ await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
+ await move(core.locator('.object-detail-footer-button--primary'),'objects');
+ const reopened=await browser.newPage({viewport:{width:390,height:1000}});
+ await reopened.goto('http://127.0.0.1:8798/');await reopened.locator('iframe.is-ready').waitFor();
+ const reopenedCore=reopened.frameLocator('#costerly-app-frame');
+ await reopenedCore.getByRole('button',{name:'Last Estimate',exact:true}).click();
+ await reopenedCore.getByRole('button',{name:/^continue to objects estimation$/i}).click();
+ await reopenedCore.locator('.objects-pricing-table').waitFor();
+ for(const [key,value] of [['delivery',123],['installation',321],['object-001',1750]]){
+  assert.equal((await reopenedCore.locator('.objects-pricing-row[data-object-key="'+key+'"] .objects-pricing-price-input').innerText()).replace(/[^0-9]/g,''),String(value),'New browser context reads saved '+key);
+ }
+ await reopened.close();
+ report.blurPersistence={roundTripWithoutSetPrices:true,slowWrite:true,failedWriteRetained:true,retry:true,
+  latestEditWins:true,quantityRoundTrip:true,newBrowserContext:true,confirmationWaitsForWrite:true};
  await editPrice(1750);await set().click();
  await frame.waitForFunction(()=>{const button=document.querySelector('[class*="st-key-objects_generate_proposal_"] button');return button&&!button.disabled;});
  assert.equal(await core.locator('.objects-workflow-stages [data-stage="2"]').getAttribute('data-state'),'complete');

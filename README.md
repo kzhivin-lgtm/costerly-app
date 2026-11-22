@@ -23,6 +23,12 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
+Estimation **9.42 candidate** follows the completed9.41 checkpoint. Save Objects
+Delivery/Installation/Sale Price/quantity on input blur without Set Prices;
+retain explicit Object Detail Save. Shared Changing material typography/no card
+and integral VAT labels are included. Full local/CI/publication verification
+pending. [Scope and evidence](notes/ESTIMATION_V9_42_UI_PERSISTENCE_2026_11_22.md).
+
 Current Estimation release: **9.41**,22November2026, runtime`077264c0`: point updates for
 front materials/fallback thickness plus immediate Changing material feedback,
 based on the successful V3.3 control. Recognition/geometry/Loading remain intact.

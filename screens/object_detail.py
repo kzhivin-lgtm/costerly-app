@@ -217,6 +217,9 @@ def _render_object_detail(
 
 
 def _return_to_objects() -> None:
+    estimate_id = st.session_state.get("current_estimate_id")
+    if estimate_id and str(estimate_id) not in st.session_state.setdefault("objects_estimation_cache_dirty", set()):
+        st.session_state.setdefault("objects_estimation_pricing_dirty", set()).add(str(estimate_id))
     st.session_state.current_object_id = None
     st.session_state.screen = "objects"
 

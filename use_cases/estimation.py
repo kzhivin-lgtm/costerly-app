@@ -436,6 +436,36 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     }
 
 
+def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any]) -> dict[str, Any]:
+    """Refresh saved commercial inputs without rebuilding costs or materials."""
+    client = get_supabase_client()
+    _assert_screen_estimate_access(client, estimate_id)
+    objects = fetch_rfq_object_estimates(client, estimate_id)
+    overrides = _pricing_overrides_by_object(fetch_rfq_estimate_pricing_overrides(client, estimate_id))
+    if objects.empty:
+        raise ValueError("The saved estimate is unavailable")
+    settings = _first_row(fetch_company_overhead_settings(client, str(objects.iloc[0]["company_id"])))
+    saved = {str(row["object_id"]): row for row in objects.to_dict("records")}
+    rows = []
+    for original in cached.get("rows", ()):
+        oid = str(original.get("object_key") or "")
+        obj = saved.get(oid)
+        if obj is None:
+            continue
+        quantity = _number(obj.get("quantity"), 1)
+        cost = obj.get("self_cost_ex_vat")
+        price = overrides.get(oid, _suggested_sale_price(cost, _number(settings.get("sale_price_markup_percent"), 30)))
+        rows.append({**original, "quantity": quantity, "self_cost_unit": cost,
+                     "sale_price_unit": price, "sale_price_total": _line_total(price, quantity),
+                     "sale_price_overridden": oid in overrides, "reviewed": bool(obj.get("approved")),
+                     "status": obj.get("status", original.get("status"))})
+    project, summary = _objects_project_pricing(
+        rows, overrides, vat_percent=_number(settings.get("vat_percent"), 18),
+        delivery_percent=_number(settings.get("delivery_percent"), 3),
+        installation_percent=_number(settings.get("installation_percent"), 10))
+    return {**cached, "rows": rows, "project_costs": project, "summary": summary}
+
+
 def _suggested_sale_price(self_cost: Any, markup_percent: float = 30) -> float | None:
     """Return the company-configured suggested sale price."""
     if self_cost is None or self_cost == "":

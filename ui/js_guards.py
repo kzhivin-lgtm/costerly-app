@@ -1671,11 +1671,10 @@ def install_objects_price_input_guard(
     supabase_url_json = json.dumps(supabase_url.rstrip("/")) if supabase_url else "null"
     supabase_anon_key_json = json.dumps(supabase_anon_key) if supabase_anon_key else "null"
     supabase_access_token_json = json.dumps(supabase_access_token) if supabase_access_token else "null"
-    components.html(
+    script = (
         """
-        <script>
         (() => {
-            const parentWindow = window.parent;
+            const parentWindow = window;
             const parentDoc = parentWindow.document;
             const ESTIMATE_ID = __ESTIMATE_ID__;
             const SUPABASE_URL = __SUPABASE_URL__;
@@ -1683,6 +1682,8 @@ def install_objects_price_input_guard(
             const SUPABASE_ACCESS_TOKEN = __SUPABASE_ACCESS_TOKEN__;
             const HANDLER_KEY = "__costerlyObjectsPriceInputGuardCleanup";
             const MANUAL_PRICES_KEY = "__costerlyObjectsManualSalePrices";
+            const PRICE_WRITES_KEY = "__costerlyObjectsPriceWrites";
+            const priceWrites = parentWindow[PRICE_WRITES_KEY] ||= new Map();
             let pointerStartedInPriceInput = false;
 
             if (parentWindow[HANDLER_KEY]) parentWindow[HANDLER_KEY]();
@@ -1828,7 +1829,24 @@ def install_objects_price_input_guard(
                 )) {
                     const input = row.querySelector('.objects-pricing-price-input[data-pricing-overridden="true"]');
                     const objectKey = row.dataset.objectKey || "";
-                    if (!input || !objectKey || Number.isFinite(prices[objectKey])) continue;
+                    const anyInput = row.querySelector('.objects-pricing-price-input');
+                    const write = priceWrites.get(JSON.stringify([ESTIMATE_ID, objectKey]));
+                    if (write && anyInput) {
+                        const confirmed = write.done && input && readMoneyNumber(saleInputValue(input)) === write.value;
+                        prices[objectKey] = write.value;
+                        setSaleInputValue(anyInput, formatMoney(write.value));
+                        anyInput.dataset.userEdited = "true";
+                        if (write.failed) {
+                            anyInput.setAttribute("aria-invalid", "true");
+                            anyInput.title = "Could not save. Leave the field to retry.";
+                        }
+                        if (confirmed) {
+                            priceWrites.delete(JSON.stringify([ESTIMATE_ID, objectKey]));
+                        }
+                        hideProjectCostSuggestion(row);
+                        continue;
+                    }
+                    if (!input || !objectKey) continue;
                     prices[objectKey] = Math.max(0, Math.round(readMoneyNumber(saleInputValue(input))));
                     input.dataset.userEdited = "true";
                     hideProjectCostSuggestion(row);
@@ -1844,8 +1862,7 @@ def install_objects_price_input_guard(
                 hideProjectCostSuggestion(row);
             }
 
-            async function persistManualSaleUnit(row, value) {
-                if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
+            function persistManualSaleUnit(row, value) {
                 const objectKey = row ? row.dataset.objectKey || "" : "";
                 if (!objectKey) return;
                 const payload = {
@@ -1855,9 +1872,18 @@ def install_objects_price_input_guard(
                     value: Math.max(0, Math.round(readNumber(value, 0))),
                     updated_at: new Date().toISOString(),
                 };
-                try {
-                    await fetch(`${SUPABASE_URL}/rest/v1/rfq_estimate_pricing_overrides?on_conflict=estimate_id,object_key,field`, {
+                const key = JSON.stringify([ESTIMATE_ID, objectKey]);
+                const previous = priceWrites.get(key);
+                const write = {value: payload.value, done: false, failed: false};
+                priceWrites.set(key, write);
+                write.promise = Promise.resolve(previous?.promise).then(async () => {
+                  try {
+                    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_ACCESS_TOKEN) {
+                        throw new Error("Authenticated price persistence is unavailable");
+                    }
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/rfq_estimate_pricing_overrides?on_conflict=estimate_id,object_key,field`, {
                         method: "POST",
+                        keepalive: true,
                         headers: {
                             "apikey": SUPABASE_ANON_KEY,
                             "Authorization": `Bearer ${SUPABASE_ACCESS_TOKEN || SUPABASE_ANON_KEY}`,
@@ -1866,11 +1892,49 @@ def install_objects_price_input_guard(
                         },
                         body: JSON.stringify(payload),
                     });
-                } catch (error) {
+                    if (!response.ok) throw new Error(`Price save failed (${response.status})`);
+                    write.done = true;
+                    if (priceWrites.get(key) === write) {
+                        const input = rowForObject(objectKey)?.querySelector(".objects-pricing-price-input");
+                        input?.removeAttribute("aria-invalid");
+                        input?.removeAttribute("title");
+                    }
+                    return true;
+                  } catch (error) {
+                    write.failed = true;
+                    if (priceWrites.get(key) === write) {
+                        const input = rowForObject(objectKey)?.querySelector(".objects-pricing-price-input");
+                        input?.setAttribute("aria-invalid", "true");
+                        if (input) input.title = "Could not save. Leave the field to retry.";
+                    }
                     if (parentWindow.console && parentWindow.console.warn) {
                         parentWindow.console.warn("Could not persist pricing override", error);
                     }
+                    return false;
+                  }
+                });
+                return write.promise;
+            }
+
+            function confirmAfterPriceWrites(event) {
+                const button = event.target.closest?.('.st-key-objects_set_prices button, [class*="st-key-objects_generate_proposal_"] button');
+                if (!button || button.disabled) return;
+                if (button.getAttribute("aria-busy") === "true") {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    return;
                 }
+                const pending = [...priceWrites.entries()].filter(([key, write]) =>
+                    JSON.parse(key)[0] === ESTIMATE_ID && !write.done).map(([, write]) => write.promise);
+                if (!pending.length) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                button.setAttribute("aria-busy", "true");
+                Promise.all(pending).then(results => {
+                    button.removeAttribute("aria-busy");
+                    if (results.every(Boolean) && button.isConnected) button.click();
+                    else parentDoc.querySelector('.objects-pricing-price-input[aria-invalid="true"]')?.focus();
+                });
             }
 
             function rowsForEstimate() {
@@ -2053,7 +2117,8 @@ def install_objects_price_input_guard(
                 const ctx = context(event);
                 if (!ctx || isDisabled(ctx.input)) return;
                 const digits = sanitizeActive(ctx.input);
-                const changed = ctx.input.dataset.editDirty === "true" || digits !== (ctx.input.dataset.editStartDigits || "");
+                const changed = ctx.input.getAttribute("aria-invalid") === "true" ||
+                    ctx.input.dataset.editDirty === "true" || digits !== (ctx.input.dataset.editStartDigits || "");
                 if (changed) {
                     const value = digits ? Number(digits) : 0;
                     setManualSaleUnit(ctx.row, value);
@@ -2075,6 +2140,7 @@ def install_objects_price_input_guard(
             }
 
             parentDoc.addEventListener("pointerdown", handlePointerDown, true);
+            parentDoc.addEventListener("click", confirmAfterPriceWrites, true);
             parentDoc.addEventListener("focusin", handleFocus, true);
             parentDoc.addEventListener("keydown", handleKeydown, true);
             parentDoc.addEventListener("beforeinput", handleBeforeInput, true);
@@ -2084,6 +2150,7 @@ def install_objects_price_input_guard(
 
             parentWindow[HANDLER_KEY] = () => {
                 parentDoc.removeEventListener("pointerdown", handlePointerDown, true);
+                parentDoc.removeEventListener("click", confirmAfterPriceWrites, true);
                 parentDoc.removeEventListener("focusin", handleFocus, true);
                 parentDoc.removeEventListener("keydown", handleKeydown, true);
                 parentDoc.removeEventListener("beforeinput", handleBeforeInput, true);
@@ -2096,12 +2163,17 @@ def install_objects_price_input_guard(
             };
             seedManualPricesFromDom();
         })();
-        </script>
         """
         .replace("__ESTIMATE_ID__", estimate_id_json)
         .replace("__SUPABASE_URL__", supabase_url_json)
         .replace("__SUPABASE_ANON_KEY__", supabase_anon_key_json)
-        .replace("__SUPABASE_ACCESS_TOKEN__", supabase_access_token_json),
+        .replace("__SUPABASE_ACCESS_TOKEN__", supabase_access_token_json)
+    )
+    # Keep event handlers and in-flight promises in the persistent Core document,
+    # rather than the disposable Streamlit component iframe that installs them.
+    components.html(
+        "<script>(()=>{const host=window.parent.document;const script=host.createElement('script');"
+        "script.textContent=" + json.dumps(script) + ";host.body.append(script);script.remove();})();</script>",
         height=0,
     )
 
@@ -2175,6 +2247,7 @@ def install_object_detail_input_guard(
                         changing.setAttribute("role", "status");
                         changing.setAttribute("aria-live", "polite");
                         const label = parentDoc.createElement("span");
+                        label.className = "costerly-workflow-status";
                         label.textContent = "Changing material…";
                         changing.appendChild(label);
                         parentDoc.body.appendChild(changing);

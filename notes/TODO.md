@@ -537,16 +537,16 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-PENDING AFTER9.41 CHECKPOINT, P1, USER REQUEST,22November2026, release9.42.
-Preserve intentional Delivery/Installation/object Sale Price edits across Review/
-Back, reopen and reload without requiring Set Prices; keep authoritative override
-storage, latest edit wins, tenant/estimate scoping, immediate totals and handled
-slow/failed writes. Set Prices retains confirmation semantics. Keep Object Detail
-Save/Leave without saving explicit. Match Changing material typography to the
-existing loading status and remove its white card; render VAT18.0 as18 without
-losing fractional configured rates. User authorised this sequence after the full
-9.41 checkpoint. Test the matrix in the checkpoint record before publishing;
-preserve all previous UI/recognition/calculation gates. No new work block.
+ACTIVE CANDIDATE, P1, USER REQUEST,22November2026, release9.42.
+Persist every Objects Delivery/Installation/object Sale Price/quantity edit on
+blur without Set Prices. Preserve Review/Back/reopen, ordering, scoped auth,
+immediate totals and handled failure/retry. Confirmed stale server snapshot and
+disposable installer-iframe promise lifetime repaired; return now reads only
+commercial data (actual guarded1.201s/3 reads/0 writes). Focused Objects19.867s,
+Calculation52.246s and24 Python checks pass. Full exact-SHA local/CI/publication
+and owner production acceptance pending. Object Detail Save/Leave without saving
+stays explicit. Shared Changing material font/no card and VAT18%/fractional label
+checks included. Preserve all original gates. [Scope and evidence](ESTIMATION_V9_42_UI_PERSISTENCE_2026_11_22.md).
 
 COMPLETED PRESERVATION OBJECTIVE, P1, OWNER-REQUESTED FULL CHECKPOINT, Objects
 V2.6,21November2026. Freeze runtime82d55026, current records/designs and all
@@ -1328,11 +1328,12 @@ start; the remaining 18.44 s are not timed by substage.
 
 ## Estimation Parts Check, 3.17.4.6
 
-OWNER-REQUESTED PRESERVATION CHECKPOINT, P1,22November2026. Freeze achieved9.41
+COMPLETED PRESERVATION CHECKPOINT, P1,22November2026. Freeze achieved9.41
 runtime077264c0/release evidence/control handoff before the authorised9.42 UI
 corrections above. Runtime stays published; preserve known pricing/presentation
 issues and fresh-recognition verification limits. Independent source restore and
-network-blocked material replay receipts govern archive verification.
+network-blocked material replay receipts pass:814 source files,563 restore checks,
+four control sets,422-file manifest. Records723986b5 and both remote tags verified.
 [Checkpoint](ESTIMATION_V9_41_PRODUCTION_CHECKPOINT_2026_11_22.md).
 
 ACTIVE, P1, ESTIMATION9.41 PUBLISHED, OWNER AUTHENTICATED UI ACCEPTANCE PENDING,22November2026. Owner approved

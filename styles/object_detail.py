@@ -92,17 +92,6 @@ def apply_object_detail_css() -> None:
             pointer-events: none;
         }
 
-        .object-detail-material-changing > span {
-            padding: 18px 24px;
-            border-radius: 12px;
-            background: #FFFFFF;
-            color: var(--color-text-strong);
-            font-family: var(--font-sans);
-            font-size: 18px;
-            font-weight: 700;
-            box-shadow: 0 12px 40px rgba(42, 31, 44, 0.18);
-        }
-
         .object-detail-discard-modal {
             position: fixed;
             inset: 0;

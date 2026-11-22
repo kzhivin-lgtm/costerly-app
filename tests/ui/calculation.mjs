@@ -53,14 +53,22 @@ async function frontPanelChecks(){
   const immediate=await picker.evaluate(input=>{
    input.value='mdf';input.dispatchEvent(new Event('change',{bubbles:true}));
    const overlays=document.querySelectorAll('.object-detail-material-changing'),node=overlays[0];
+   const label=node?.querySelector('.costerly-workflow-status'),style=label&&getComputedStyle(label);
+   const reference=document.createElement('span');reference.className='costerly-workflow-status';document.body.append(reference);
+   const shared=getComputedStyle(reference);
+   const typography=Boolean(style)&&['fontFamily','fontSize','fontWeight','letterSpacing','lineHeight'].every(key=>style[key]===shared[key]);
+   reference.remove();
    const rect=node?.getBoundingClientRect();
    return {count:overlays.length,text:node?.textContent,role:node?.getAttribute('role'),
     color:node&&getComputedStyle(node).backgroundColor,
-    covers:rect?.left===0&&rect?.top===0&&rect?.width===innerWidth&&rect?.height===innerHeight};
+    covers:rect?.left===0&&rect?.top===0&&rect?.width===innerWidth&&rect?.height===innerHeight,
+    typography,background:style?.backgroundColor,shadow:style?.boxShadow,padding:style?.padding,border:style?.borderWidth};
   });
   assert.equal(immediate.count,1);assert.equal(immediate.text,'Changing material…');
   assert.equal(immediate.role,'status');assert.equal(immediate.covers,true);
   assert.equal(immediate.color,'rgba(42, 31, 44, 0.28)');
+  assert.equal(immediate.typography,true);assert.equal(immediate.background,'rgba(0, 0, 0, 0)');
+  assert.equal(immediate.shadow,'none');assert.equal(immediate.padding,'0px');assert.equal(immediate.border,'0px');
   await core.getByRole('button',{name:'Calculating…',exact:true}).waitFor();
   await page.screenshot({path:reportPath('front-material-changing-'+width+'.png')});
   await save.waitFor();

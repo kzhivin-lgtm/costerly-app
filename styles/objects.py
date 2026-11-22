@@ -169,6 +169,10 @@ def apply_objects_css() -> None:
             box-shadow: 0 0 0 2px rgba(128, 73, 198, 0.10);
         }
 
+        .objects-pricing-price-input[aria-invalid="true"] {
+            outline: 1px solid #b43b46;
+        }
+
         .objects-quantity-saving-overlay {
             position: fixed;
             inset: 0;

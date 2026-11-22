@@ -45,6 +45,14 @@ Front material selection also checks immediate Changing material feedback at
 1280/390px, one continuous status during rapid/queued choices, success/error
 removal, existing-timeout cleanup and draft-preserving retry. Only the test
 accelerates the existing90s timeout; production timing remains unchanged.
+Estimation9.42 adds Objects blur persistence without Set Prices through ordinary
+Review/Back, delayed writes, HTTP503/retry, rapid latest-edit ordering, quantity,
+confirmation while a write is pending and reopening saved data in a new narrow
+browser context. The original geometry,48 boundary probes and all prior failure/
+auth/proposal assertions stay required. Calculation additionally checks shared
+computed loading typography, transparent/no-border/no-padding/no-shadow material
+status. Existing cover success/error/timeout/queued changes remain unchanged.
+Python checks integral/fractional VAT and commercial-only refresh boundaries.
 The version-refresh suite uses the real wrapper and workflow controller with
 synthetic screens. V2.9 covers a single Core build event, old-tab migration,
 one reload, deferred active work, failure recovery and zero version-file reads.

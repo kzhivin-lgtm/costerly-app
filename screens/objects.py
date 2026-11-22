@@ -20,7 +20,7 @@ from ui import objects_workflow
 from ui.screen_transition import (
     OBJECTS_MARKER_ID,
 )
-from use_cases.estimation import load_objects_estimation_data
+from use_cases.estimation import load_objects_estimation_data, refresh_objects_estimation_prices
 from use_cases.estimation_runtime import submit_prepared_estimation_job
 from use_cases.estimation_parts_check_runtime import load_estimation_cycle_cost, load_parts_check
 from use_cases.object_detail_runtime import submit_object_detail_prefetch
@@ -250,6 +250,14 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
     dirty_estimates = st.session_state.setdefault("objects_estimation_cache_dirty", set())
 
     if estimate_id in cache and estimate_id not in dirty_estimates:
+        pricing_dirty = st.session_state.setdefault("objects_estimation_pricing_dirty", set())
+        if estimate_id in pricing_dirty:
+            try:
+                cache[estimate_id] = refresh_objects_estimation_prices(estimate_id, cache[estimate_id])
+                pricing_dirty.discard(estimate_id)
+                st.session_state.pop("approved_object_keys", None)
+            except Exception as exc:
+                return cache[estimate_id], f"Could not refresh saved prices. Your edits are retained. ({exc})"
         return cache[estimate_id], None
 
     try:
@@ -265,6 +273,7 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
 
     cache[estimate_id] = data
     dirty_estimates.discard(estimate_id)
+    st.session_state.setdefault("objects_estimation_pricing_dirty", set()).discard(estimate_id)
     return data, None
 
 
@@ -422,7 +431,13 @@ def _persisted_objects_state(estimate_id: str | None) -> ObjectsScreenState:
         return ObjectsScreenState(data=prepared_objects_data_from_seed_rows(
             st.session_state.get("objects_estimation_seed_rows") or []
         ))
-    st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
+    cache = st.session_state.setdefault("objects_estimation_data_cache", {})
+    dirty = st.session_state.setdefault("objects_estimation_cache_dirty", set())
+    if estimate_id in cache and estimate_id not in dirty and not isinstance(future, Future):
+        st.session_state.setdefault("objects_estimation_pricing_dirty", set()).add(estimate_id)
+        data, warning = _load_objects_screen_data(estimate_id)
+        return ObjectsScreenState(data=data, cache_warning=warning)
+    dirty.add(estimate_id)
     try:
         data, cache_warning = _load_objects_screen_data(estimate_id)
         return ObjectsScreenState(data=data, cache_warning=cache_warning)

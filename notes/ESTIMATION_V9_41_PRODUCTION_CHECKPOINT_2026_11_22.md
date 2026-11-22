@@ -58,3 +58,14 @@ isolation, latest edit wins. Preserve Set Prices confirmation and proposal basis
 Changing material keeps immediate cover/error/timeout/queued-choice behavior at
 1280/390px and matches the shared status font with no card. VAT18.0→18 and a
 fractional rate remains fractional. Retain all existing release-gate assertions.
+
+## Completed preservation receipts
+
+Records commit723986b56a47b419b6ae7e643ff8cc808ed9621d and both tags are on
+origin. Independent new-directory source restore matches all814 files;563
+Python checks passed14.978s. Portable network-blocked replay passes Lev1(29),
+Lev2(112), Adda(24/133) and fresh Lev2V3.3(110), preserving original costs.
+MANIFEST.sha256 validates422 files, source ZIP and full Git bundle. Records CI
+run45071093133/job137357973630 passed. Receipts checkpoint-restore.json and
+checkpoint-final.json remain underoutputs/estimation-v9.41. The preserved9.41
+runtime does not contain the subsequent9.42 UI corrections.
