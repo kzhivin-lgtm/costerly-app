@@ -18,6 +18,13 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
+Current Estimation release: **V3.3**,22November2026, runtime `bcf9fdb4`.
+Front panels material selection: LDSP, Veneered MDF, MDF and Plywood, with
+automatic read-only price preview and explicit Save/APPROVE. Local and exact-SHA
+GitHub gates passed548 checks/nine browser suites. Actual Core/wrapper builds
+match; owner authenticated saved-estimate acceptance is pending.
+[Release, source controls and verification limits](notes/ESTIMATION_V3_3_FRONT_PANELS_2026_11_22.md).
+
 Accepted Estimation checkpoint: **V3.2**,21November2026, runtime `07ac05d2`.
 
 - [Checkpoint and restoration](notes/ESTIMATION_V3_2_SOURCE_BINDINGS_CHECKPOINT_2026_11_21.md).

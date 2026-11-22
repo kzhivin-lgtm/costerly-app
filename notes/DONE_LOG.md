@@ -1,5 +1,22 @@
 # Done Log
 
+Estimation V3.3 published22November2026, work3.17.4.6, OWNER AUTHENTICATED
+ACCEPTANCE PENDING. Runtimebcf9fdb4fc53265b28f75ebbe48ae183ea7d73b7,
+release tagestimation-v3.3-2026-11-22. Front panels offers LDSP/Veneered MDF/MDF/
+Plywood, retains explicit outside sources, previews through the existing engine,
+and persists only on Save/APPROVE. Source Parts/counts/geometry and unrelated
+material assignments remain intact. Objects V2.7 Loading source is unchanged.
+Network-blocked Lev1/Lev2/Adda controls match base purchasing signatures; all four
+choices price on accepted Adda24/133-part evidence. Local548/nine337.037s and
+exact-SHA GitHub548/nine288.780s passed (run45005370806/job137155698387/
+artifact14748215454). Publisher checked active no-bypass27499066. Actual public
+Core/wrapper/meta/version match09:13:48UTC; Railway deployment7976587372.
+One earlier local frame-detachment failure is preserved; unchanged repeat and
+CI pass, no assertion relaxed. Public proof is anonymous Login; authenticated
+owner material-switch acceptance remains open. No paid call or production
+project edit was used for verification. Coating remains the next separate scope.
+[Implementation, backup, failures and limits](ESTIMATION_V3_3_FRONT_PANELS_2026_11_22.md).
+
 Objects V2.7 published22November2026 Israel (21NovemberUTC), OWNER AUTHENTICATED
 ACCEPTANCE PENDING. Runtime071593fcdbff06a804ace403ef8c24d535e43b18, tag
 objects-v2.7-2026-11-22, build

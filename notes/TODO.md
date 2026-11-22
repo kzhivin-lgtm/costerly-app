@@ -1334,12 +1334,18 @@ Owner approved gated implementation/deployment and automatic read-only preview
 on selection, followed by the existing explicit Save/APPROVE persistence.
 Retain Objects V2.7 Loading coordination and all earlier accepted behavior.
 Side/exposure/floor-plan ideas are excluded from MVP and not an active task.
-IMPLEMENTED CANDIDATE, awaiting final exact-SHA gate and publication. Automatic
-preview, four material types, explicit Save/Approve, source restoration and
-legacy groups are implemented. Network-blocked Lev1/Lev2/Adda purchasing
-signatures match current main. All four choices are priced on accepted Adda
-24/133-part evidence. The first candidate was not promoted after those controls
-found derived-ID collisions, now repaired with regression coverage.
+PUBLISHED, OWNER AUTHENTICATED ACCEPTANCE PENDING. Runtimebcf9fdb4,
+22November2026, release tagestimation-v3.3-2026-11-22. Clean local548/nine337.037s
+and exact-SHA GitHub548/nine288.780s passed. Main was advanced only through the
+trusted publisher; actual Core/wrapper/meta/version match the V3.3 build.
+Automatic preview, four material types, explicit Save/Approve, source restoration
+and legacy groups are implemented. Network-blocked Lev1/Lev2/Adda purchasing
+signatures match the unchanged base. All four choices are priced on accepted
+Adda24/133-part evidence. Initial derived-ID collisions were repaired before
+publication. A final local detached-frame failure is retained; unchanged full
+repeat and CI passed. Owner still needs to check an existing saved estimate's
+Front panels selection, preview, Save/reopen and APPROVE. No new paid run needed.
+[Release evidence and verification limits](ESTIMATION_V3_3_FRONT_PANELS_2026_11_22.md).
 Preserve shared purchase rounding, unrelated
 manual edits and current UI/protection. No new work block/number assigned.
 [Accepted scope, current code and proposed sequence](CASEWORK_FRONTS_MATERIAL_CLASS_PLAN_2026_11_22.md).

@@ -1,6 +1,7 @@
 # Front panels: MVP material class and switching plan
 
-Status: implementation and gated deployment approved.22November2026. Estimation V3.3.
+Status: implemented and published22November2026. Estimation V3.3. Owner authenticated acceptance pending.
+[Runtime, verification and limits](ESTIMATION_V3_3_FRONT_PANELS_2026_11_22.md).
 The owner first requested a plan for changing facade/visible sheet stock, then
 explicitly narrowed MVP to fronts only. Exposed sides, wall/cabinet adjacency,
 floor-plan interpretation and automatic visibility inference are excluded.
@@ -26,7 +27,7 @@ drawer boxes, sides, backs, shelves, worktops and other components keep their
 material assignments. Recalculate using saved Parts and the existing shared
 Resolver/Material Engine, without rerunning Detection/OCR/Parts recognition.
 
-## Verified current foundation
+## Verified pre-implementation foundation
 
 - `use_cases/estimation_cb_geometry_parts.py` already maps casework front
   types to `door_front`, `drawer_front`, `lift_up_front`.
