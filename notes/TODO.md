@@ -1317,15 +1317,20 @@ start; the remaining 18.44 s are not timed by substage.
 
 ## Estimation Parts Check, 3.17.4.6
 
-ACTIVE, P1, V3.3 DIAGNOSTIC ROLLBACK PUBLISHED, OWNER FRESH LEV2 CONTROL PENDING,22November2026.
+ACTIVE, P1, V3.3 DIAGNOSTIC ROLLBACK PUBLISHED, FRESH LEV2 CONTROL PASSED,22November2026.
 Rollbacka6158588 matches publishedbcf9fdb4 in all622 non-Markdown files. Local548/nine
 249.953s and exact-SHA GitHub548/nine277.770s passed, run45014753897. Mandatory
 no-bypass ruleset27499066 verified by publisher; Core deployment7977732825
 succeeded11:02:32UTC, actual Core/wrapper/meta/version match11:03:07UTC.
-Retain9.40 source/history/records. The owner uploads a fresh Lev2 for a complete
-cycle. If it fails, the owner
-has selected Objects V2.7 as the next diagnostic baseline; do not deploy it before
-observing this control. Last priced control21November16:49UTC,
+Retain9.40 source/history/records. Owner fresh controlrun_44832c1b2f014a07a3b17ec7bb21be99,
+22November11:03UTC, completed11:05:15UTC: nine blocks,110 Parts, all part roles/
+counts/material hints/numeric dimensions, block envelopes and nine purchase rows
+match the last priced control exactly. No missing part dimensions, unpriced
+demands or Assumption Fallback. Worktop3.019621m2; base materials10761.85ILS,
+materials including policy11407.56ILS; full self cost12940.29ILS ex VAT.
+This confirms one successful fresh V3.3 run, not stability or9.40 causality.
+No automatic rollback to Objects V2.7 is justified by this successful control.
+Last priced control21November16:49UTC,
 run_e030ad3ba80a4fec9ac410b3e5bb0a83:110 Parts, nine blocks, no unpriced demands
 or Assumption Fallback. New22November10:33UTC run_f4eb3f589fcb4f18a0d548e3a6a7127d:
 102 Parts, no bound block depths/worktop area, two unpriced demands. Saved-response

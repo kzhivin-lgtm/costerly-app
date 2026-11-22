@@ -22,8 +22,10 @@ Current diagnostic release: **Estimation V3.3**,22November2026,
 rollback commit`a6158588`, application/tests byte-identical to published`bcf9fdb4`.
 Local548 checks/nine browser suites and exact-SHA GitHub gate passed. Actual
 Core/wrapper/meta/version match V3.3 at11:03:07UTC, HTTP200. Preserve9.40 source,
-tag and records; wait for the owner's fresh full Lev2 control. This tests release
-causality; it is not yet a proven geometry repair.
+tag and records. Owner fresh Lev2run_44832c1b completed11:05:15UTC:110 Parts/nine
+blocks, numeric part facts/block envelopes/purchases match the last priced
+control, no unpriced demands or Assumption Fallback,12940.29ILS self cost ex VAT.
+One fresh success does not establish stability or prove release causality.
 
 Preserved Estimation release: **9.40**,22November2026, runtime `f99d17b3`.
 Front panels changes patch only selected front stock and its affected purchase

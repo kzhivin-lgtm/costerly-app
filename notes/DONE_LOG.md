@@ -1,5 +1,16 @@
 # Done Log
 
+V3.3 fresh owner Lev2 control analysed22November2026, work3.17.4.6,
+run_44832c1b2f014a07a3b17ec7bb21be99, completed11:05:15UTC. Nine blocks/110 Parts,
+numeric part facts/full block envelopes/all nine purchase rows match the last
+pricedrun_e030ad3b control exactly. No missing part dimensions, unpriced demands
+or Assumption Fallback; worktop3.019621m2. Base materials10761.85ILS, policy-
+inclusive materials11407.56ILS, self cost12940.29ILS ex VAT,15269.54ILS with VAT.
+Read-only persisted evidence only, no new paid run or production-project write.
+One successful fresh control does not establish stability or9.40 causality;
+the pre-existing unresolved Front remains. Keep V3.3, no V2.7 rollback made.
+[Evidence and limits](ESTIMATION_V9_40_FRONT_PANELS_2026_11_22.md#fresh-owner-v33-control22november2026).
+
 Owner-approved diagnostic rollback to Estimation V3.3 published22November2026,
 work3.17.4.6. Runtimea6158588 is byte-identical tobcf9fdb4 across622 non-Markdown
 files;9.40 source/tag/records remain preserved. No speculative repair or new

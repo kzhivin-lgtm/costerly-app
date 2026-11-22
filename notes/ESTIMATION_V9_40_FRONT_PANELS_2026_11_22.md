@@ -175,3 +175,26 @@ Source archive812 files/4,647,326bytes, exact byte/CRC verification, SHA256
 The9.40 runtime/tag remains intact. Do not advance to Objects V2.7 before the
 owner's V3.3 control is observed and evaluated. Requested overlay/facade patch
 are retained as pending forward work, not silently included in the rollback.
+
+### Fresh owner V3.3 control,22November2026
+
+Runrun_44832c1b2f014a07a3b17ec7bb21be99,
+estimaterun_44832c1b2f014a07a3b17ec7bb21be99_estimate_20261122110332,
+created11:03:43UTC, completed11:05:15UTC. Same source PDF digest as both prior
+controls. Read-only persisted evidence confirms nine blocks/110 Parts. Part
+owner/role/quantity/material-hint/numeric-dimension signatures, full block
+envelopes, Front counts and all nine purchase-row quantities/catalog prices
+match therun_e030ad3b last priced control exactly. No missing part dimensions,
+unpriced demands or Assumption Fallback. Shared worktop gross outline3.019621m2
+(UI3.0m2), base materials10761.85ILS, policy-inclusive materials11407.56ILS,
+full self cost12940.29ILS ex VAT and15269.54ILS with VAT. Difference is zero
+before display rounding. Textual model explanations/finish-group names can
+differ; this comparison does not claim byte-identical model responses.
+
+One unresolved Front remains, as in the prior control(17 hinged,2 lift-up,
+5 drawers). This analysis verifies reproducibility and complete pricing against
+the agreed control, not manual acceptance of every recognition decision. One
+fresh V3.3 success and one9.40 failure do not prove release causality or long-run
+stability. Keep this diagnostic baseline; no Objects V2.7 rollback was made.
+No model rerun or production-project edit was used for analysis. Private source
+witness and comparison: outputs/estimation-v33-rollback/fresh-control/.
