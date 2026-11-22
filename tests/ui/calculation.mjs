@@ -66,8 +66,16 @@ async function frontPanelChecks(){
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('.object-detail-materials-band > summary').click();
   assert.equal(await core.getByRole('combobox',{name:'Front panels',exact:true}).inputValue(),'mdf');
+  if(width===390){
+   await core.getByRole('combobox',{name:'Front panels',exact:true}).selectOption('plywood');
+   await core.getByRole('button',{name:'Calculating…',exact:true}).waitFor();
+   await core.getByRole('link',{name:'APPROVE',exact:true}).click();
+   await core.locator('.objects-pricing-table').waitFor();
+   assert.equal(readFileSync(statePath('front-choice'),'utf8'),'plywood');
+  }
   await page.close();
  }
+ rmSync(statePath('object-approvals.json'),{force:true});
  report.frontPanels={viewports:[1280,390],automaticPreview:true,explicitSave:true};
 }
 await frontPanelChecks();

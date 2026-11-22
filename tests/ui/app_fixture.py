@@ -265,14 +265,14 @@ from use_cases.platform_admin import PlatformAccess
 config_path=(STATE / 'scenario.json')
 def scenario():
  return json.loads(config_path.read_text()) if config_path.exists() else {}
+object_detail.get_supabase_client=Client
+object_detail.fetch_rfq_object_detail_draft=lambda *a,**kw:[]
+def approve_saved_object(**kwargs):
+ assert kwargs['estimate_id']==estimate_id and kwargs['object_id']=='object-001'
+ (STATE / 'object-approvals.json').write_text(json.dumps({'object-001':True}))
+object_detail.approve_object_estimate=approve_saved_object
 if scenario().get('objects_v2'):
  objects._objects_price_input_config=lambda:('http://127.0.0.1:8798','fixture-anon','fixture-token')
- object_detail.get_supabase_client=Client
- object_detail.fetch_rfq_object_detail_draft=lambda *a,**kw:[]
- def approve_saved_object(**kwargs):
-  assert kwargs['estimate_id']==estimate_id and kwargs['object_id']=='object-001'
-  (STATE / 'object-approvals.json').write_text(json.dumps({'object-001':True}))
- object_detail.approve_object_estimate=approve_saved_object
  def generate_proposal(**kwargs):
   assert kwargs['company_id']==company_id and kwargs['estimate_id']==estimate_id and kwargs['run_id']==run_id
   current=estimation.load_objects_estimation_data(estimate_id)

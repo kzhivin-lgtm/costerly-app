@@ -56,6 +56,12 @@ def front_choices_by_part(groups, choices):
             for group in groups if group["id"] in selected for part_id in group["part_ids"]}
 
 
+def _source_reference_key(material):
+    return tuple(sorted((source["part_id"], str(source.get("surface", {}).get("id", "")),
+                         str(source.get("cutout", {}).get("id", "")))
+                        for source in material.get("part_sources", ())))
+
+
 def classify_front_materials(base, effective, groups, choices):
     """Keep stable source requirement IDs while separating the front demands."""
     origins = {source["part_id"]: material["requirement_id"]
@@ -63,16 +69,14 @@ def classify_front_materials(base, effective, groups, choices):
                for source in material.get("part_sources", ())}
     mixed = {group["id"] for group in groups if group["mixed"]}
     front_ids = {part_id for group in groups for part_id in group["part_ids"]}
+    original_ids = {(material.get("material_role"), material.get("unit"), _source_reference_key(material)):
+                    material["requirement_id"] for material in base["materials"] if _source_reference_key(material)}
     materials, requirement_by_part = [], {}
     for material in effective["materials"]:
         if material.get("unit") is not None:
             material = dict(material)
-            ids = {source["part_id"] for source in material.get("part_sources", ())}
-            original = next((row for row in base["materials"]
-                             if row.get("material_role") == material.get("material_role")
-                             and {source["part_id"] for source in row.get("part_sources", ())} == ids), None)
-            if original:
-                material["requirement_id"] = original["requirement_id"]
+            key = material.get("material_role"), material.get("unit"), _source_reference_key(material)
+            material["requirement_id"] = original_ids.get(key, material["requirement_id"])
             materials.append(material)
             continue
         partitions = {}
@@ -95,6 +99,8 @@ def classify_front_materials(base, effective, groups, choices):
         part["material_requirement_id"] = requirement_by_part.get(part["part_id"], part["material_requirement_id"])
         if part["part_id"] in front_ids:
             part["material_class"] = "front_panels"
+    if len({material["requirement_id"] for material in materials}) != len(materials):
+        raise ValueError("Material requirement identities must remain unique.")
     effective["materials"] = materials
     effective["front_panel_groups"] = [{**group, "choice": choices.get(group["id"], "source"),
         "requirement_ids": sorted({requirement_by_part[part_id] for part_id in group["part_ids"]})}

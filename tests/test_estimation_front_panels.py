@@ -41,6 +41,7 @@ def test_switch_updates_only_front_stock_and_its_edge_tape(choice, surface):
     baseline = facts()
     group = baseline["front_panel_groups"][0]
     selected = facts({"one": {group["id"]: choice}})
+    assert len({row["requirement_id"] for row in selected["materials"]}) == len(selected["materials"])
     front = next(row for row in selected["materials"] if row.get("material_class") == "front_panels")
     assert front["family"] == "mdf_hdf"
     assert front["specification"] == {"board_type": "mdf", "surface": surface, "thickness_mm": 17}
@@ -141,3 +142,29 @@ def test_automatic_preview_has_no_persistence_side_effects(monkeypatch):
         quantity_edits={}, norm_edits={}, purchase_edits={}, preview=True,
     )
     assert result is snapshot and previous == {"front_panel_choices": {}}
+
+
+def test_multiple_edge_tape_requirements_keep_their_own_ids():
+    from use_cases.estimation_front_panels import classify_front_materials
+
+    materials = [
+        {"requirement_id": "edge-melamine-24", "material_role": "edge_banding", "unit": "m", "part_sources": []},
+        {"requirement_id": "edge-melamine-45", "material_role": "edge_banding", "unit": "m", "part_sources": []},
+        {"requirement_id": "edge-veneer-24", "material_role": "edge_banding", "unit": "m", "part_sources": []},
+    ]
+    base = {"materials": materials, "parts": []}
+    result = classify_front_materials(base, deepcopy(base), [], {})
+    assert [row["requirement_id"] for row in result["materials"]] == [
+        "edge-melamine-24", "edge-melamine-45", "edge-veneer-24",
+    ]
+
+
+def test_several_surfaces_of_one_part_retain_separate_material_identities():
+    from use_cases.estimation_front_panels import classify_front_materials
+
+    materials = [{"requirement_id": surface, "material_role": "worktop_sheet", "unit": "m2",
+                  "part_sources": [{"part_id": "top", "surface": {"id": surface}}]}
+                 for surface in ("main", "contrast")]
+    base = {"materials": materials, "parts": []}
+    result = classify_front_materials(base, deepcopy(base), [], {})
+    assert [row["requirement_id"] for row in result["materials"]] == ["main", "contrast"]

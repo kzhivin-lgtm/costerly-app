@@ -1334,8 +1334,13 @@ Owner approved gated implementation/deployment and automatic read-only preview
 on selection, followed by the existing explicit Save/APPROVE persistence.
 Retain Objects V2.7 Loading coordination and all earlier accepted behavior.
 Side/exposure/floor-plan ideas are excluded from MVP and not an active task.
-First proposed deliverable: one saved object's part-to-front-class table, then
-a small selector scenario/mockup. Preserve shared purchase rounding, unrelated
+IMPLEMENTED CANDIDATE, awaiting final exact-SHA gate and publication. Automatic
+preview, four material types, explicit Save/Approve, source restoration and
+legacy groups are implemented. Network-blocked Lev1/Lev2/Adda purchasing
+signatures match current main. All four choices are priced on accepted Adda
+24/133-part evidence. The first candidate was not promoted after those controls
+found derived-ID collisions, now repaired with regression coverage.
+Preserve shared purchase rounding, unrelated
 manual edits and current UI/protection. No new work block/number assigned.
 [Accepted scope, current code and proposed sequence](CASEWORK_FRONTS_MATERIAL_CLASS_PLAN_2026_11_22.md).
 

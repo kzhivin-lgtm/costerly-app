@@ -59,11 +59,22 @@ The Calculation browser suite additionally exercises automatic price and Self
 Cost updates, rapid choice changes, preview failure, explicit Save/reopen and
 both 1280 px and 390 px layouts.
 
-An offline control against the accepted V3.2 Adda evidence reproduced the same
-15 original purchase signatures, then priced the original three replacement
-types from the archived catalog. Plywood and the fourth option are additionally
-covered by the final control and full gate before publication. No paid request
-or production project write is used for these controls.
+Network-blocked controls against the current main reproduce original purchase
+signatures for all three saved files. Lev1 retains15 lines, Lev2 retains10 and
+the accepted V3.2 Adda control retains15. Adda preserves24/133 Parts. All four
+front types receive catalog prices on both Adda objects, and selecting Plywood
+restores the original2,720.64/8,586.68 ILS base material amounts. These exclude
+formula consumables, Labor, Overhead and VAT. Evidence is saved-controls.json.
+
+Initial candidate149480b1 passed its UI gate but was not promoted: additional
+saved-file comparisons exposed duplicate derived material IDs. Empty source
+sets must not merge edge-tape variants. Surfaces and cutouts of one physical
+part also require their own source reference. The fix retains those identities,
+checks uniqueness and has two dedicated regressions. The corrected candidate
+requires its own complete exact-SHA gates. The new Approve-during-preview
+browser case also needed the existing synthetic approval client wired into the
+Calculation fixture. No production approval code changed for that setup repair.
+No paid request or production project write is used for these controls.
 
 Private evidence is retained in the handoff workspace under
 `outputs/front-panels-v3.3/`. Runtime publication requires an exact-SHA successful
