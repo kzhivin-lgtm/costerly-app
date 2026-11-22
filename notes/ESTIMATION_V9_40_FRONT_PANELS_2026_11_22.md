@@ -96,3 +96,9 @@ purchase rows can be edited before Save. A stale base is rejected and repriced
 against the current saved plan. No client-supplied plan, new polling or database
 table is introduced. Existing numeric drafts remain incremental. Regression
 checks cover fresh/stale preview reuse and a new purchase row in the same Save.
+
+Initial commit15e1fa16 was blocked before publication: its new build label
+exceeded the existing80-character observability contract. Local units had
+562 passes/one marker failure. Shorten only the shared Core/wrapper label; retain
+the same limit/test and every calculation change. The corrected exact SHA must
+pass the entire gate. Production stayedbcf9fdb4 throughout.
