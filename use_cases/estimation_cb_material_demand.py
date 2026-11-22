@@ -10,6 +10,9 @@ from use_cases.estimation_cb_geometry_parts import (
     STANDARD_BACKING_THICKNESS_MM, VENEERED_MDF, is_explicit_solid_wood_note, is_kitchen_name,
 )
 from use_cases.estimation_edge_banding import EDGE_FAMILY, EDGE_TAPE_NAMES, EDGE_TAPE_THICKNESS_MM, sheet_edge_run
+from use_cases.estimation_front_panels import (
+    FRONT_MATERIALS, FRONT_PART_ROLES, classify_front_materials, front_choices_by_part, front_material_groups, preserve_front_norms,
+)
 from use_cases.estimation_glass_parts import GLASS_SET_NAME, GLASS_SET_REQUIREMENT, finished_glass_part, finished_glass_set
 from use_cases.estimation_mirror_parts import (
     MIRROR_QUOTE_REQUIREMENT, MIRROR_SET_NAME, MIRROR_SET_REQUIREMENT, finished_mirror_part, finished_mirror_set,
@@ -340,7 +343,7 @@ def _worktop_cutout_requirements(row, part_source, object_quantity, materials, s
 
 
 def build_cb_material_demand(*, parts_report, input_row, allowed_material_families, catalog_names=(),
-                             family_alias_context=None, mirror_offers=()):
+                             family_alias_context=None, mirror_offers=(), front_material_choices=None):
     """Emit a requirement for every identified part, retaining provisional evidence."""
     family_alias_context = family_alias_context or {}
     payload = input_row["input_payload"]
@@ -496,6 +499,16 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             if visible_veneer:
                 name = "Veneered MDF"
                 spec.update(board_type="mdf", surface="veneer_two_sided")
+            choice = (front_material_choices or {}).get(part_id)
+            if choice:
+                name, family, selected_spec = FRONT_MATERIALS[choice]
+                if family not in allowed_material_families:
+                    raise ValueError("The selected front panel material is not available in the catalog.")
+                spec = {**selected_spec, **({"thickness_mm": thickness_mm} if _positive(thickness_mm) else {})}
+                identity_hint = name
+                visible_veneer = choice == "veneered_mdf"
+                basis = "user_selection"
+                fallback_reason = None
             if default_backing:
                 name = "White single-sided HPL plywood backing"
                 identity_hint = _BACKING_CATALOG_NAME
@@ -575,10 +588,10 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                     "length_mm": measurements["length"]["mm"], "width_mm": measurements["width"]["mm"],
                     "rotation_allowed": demand_role not in {"visible_sheet", "worktop_sheet"},
                     "cnc_rotation_allowed": (
-                        family not in {"plywood", "plywood_special"}
+                        choice == "mdf" or (family not in {"plywood", "plywood_special"}
                         and "veneer" not in name.casefold()
                         and visual_stock.get("surface") != "wood_grain"
-                        and all(cue.get("finish") != "wood_grain" for cue in row.get("finish_surfaces", ()))
+                        and all(cue.get("finish") != "wood_grain" for cue in row.get("finish_surfaces", ())))
                     ),
                     "basis": "construction_assumption", "evidence_refs": refs,
                     "assumption_reason": "Cut geometry comes from the preliminary Parts estimate.",
@@ -653,7 +666,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
     }
 
 
-def build_cb_material_facts(*, parts_report, input_rows, catalog_context, object_ids=None):
+def build_cb_material_facts(*, parts_report, input_rows, catalog_context, object_ids=None, front_panel_choices=None):
     """Bind the checked document to the same immutable inputs and catalog tenant."""
     facts = {}
     run_ids = set()
@@ -668,7 +681,18 @@ def build_cb_material_facts(*, parts_report, input_rows, catalog_context, object
                                        mirror_offers=catalog_context["catalogs"].get("finished_mirror_offers", ()))
         if item["company_id"] != catalog_context["company_id"] or item["object_id"] in facts:
             raise ValueError("Parts costing requires matching catalog tenant and unique object inputs")
-        facts[item["object_id"]] = item
+        groups = front_material_groups(item["materials"])
+        choices = (front_panel_choices or {}).get(item["object_id"], {})
+        selected = front_choices_by_part(groups, choices)
+        effective = item
+        if selected:
+            effective = build_cb_material_demand(
+                parts_report=parts_report, input_row=row, allowed_material_families=allowed,
+                catalog_names=catalog_names, family_alias_context=catalog_context.get("family_alias_context"),
+                mirror_offers=catalog_context["catalogs"].get("finished_mirror_offers", ()),
+                front_material_choices=selected,
+            )
+        facts[item["object_id"]] = classify_front_materials(item, effective, groups, choices)
         run_ids.add(item["run_id"])
     expected_objects = parts_report["objects"].keys() if object_ids is None else object_ids
     if len(run_ids) != 1 or facts.keys() != expected_objects:
@@ -691,6 +715,7 @@ def _checked_parts_for_estimate(rows, estimated, estimated_counts, glass_part_id
         estimates = estimated.get(part_id, {})
         dimensions = {**row["dimensions"], **estimates}
         parts.append({"component_role": row["role"], "block_id": row.get("block_id"),
+                      **({"material_class": "front_panels"} if row["role"] in FRONT_PART_ROLES else {}),
                       "quantity": estimated_counts.get(part_id, row.get("quantity")),
                       **{key: row[key] for key in ("scope_quantity", "colour_temperature_k") if key in row},
                       **{f"{axis}_mm": dimensions.get(axis, {}).get("mm")
@@ -702,9 +727,12 @@ def _checked_parts_for_estimate(rows, estimated, estimated_counts, glass_part_id
 
 
 def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
-                           material_norm_overrides=None, material_purchase_overrides=None, material_review_order=()):
+                           material_norm_overrides=None, material_purchase_overrides=None, material_review_order=(),
+                           front_panel_choices=None):
     """Calculate one document through the existing estimate-wide Material Plan."""
-    facts = build_cb_material_facts(parts_report=parts_report, input_rows=input_rows, catalog_context=catalog_context)
+    facts = build_cb_material_facts(parts_report=parts_report, input_rows=input_rows, catalog_context=catalog_context,
+                                    front_panel_choices=front_panel_choices)
+    material_norm_overrides = preserve_front_norms(facts, material_norm_overrides)
     catalogs = catalog_context["catalogs"]
     fingerprint = material_plan_input_fingerprint(
         facts_by_object=facts, material_default_variants=catalogs.get("material_default_variants") or (),
@@ -777,6 +805,15 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
                          **({"finished_mirror_sets": mirror_sets} if mirror_sets else {}),
                          "primary_preview_ref": item["primary_preview_ref"]}
     snapshot["parts_check"] = coverage
+    snapshot["front_panel_groups"] = {oid: item["front_panel_groups"] for oid, item in facts.items()}
+    snapshot["front_panel_choices"] = {oid: dict(choices) for oid, choices in (front_panel_choices or {}).items()}
+    raw_mdf_parts = {f"{oid}:{part_id}" for oid, item in facts.items()
+                     for group in item["front_panel_groups"] if group["choice"] == "mdf"
+                     and group.get("source_choice") != "mdf" for part_id in group["part_ids"]}
+    for line in snapshot["lines"]:
+        for allocation in line.get("allocations", ()):
+            if allocation.get("demand_id") in raw_mdf_parts:
+                allocation["front_panel_material_choice"] = "mdf"
     snapshot["edge_runs_by_object"] = {oid: item.get("edge_runs", []) for oid, item in facts.items()}
     snapshot["parts_check_source"] = {key: parts_report[key] for key in ("run_id", "estimate_id", "input_ids", "source_audit_sha256",
                                                                         "overlay_revision")

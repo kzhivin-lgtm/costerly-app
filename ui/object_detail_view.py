@@ -293,6 +293,40 @@ def material_preview_rows(data: dict[str, object]) -> list[dict[str, object]]:
             for row in section["rows"]]
 
 
+def front_panels_html(groups) -> str:
+    controls = []
+    for group in groups or ():
+        label = "Front panels"
+        if len(groups) > 1:
+            label += f" · {group.get('thickness_mm') or '—'} mm"
+        options = group["options"] if group.get("source_choice") else [
+            {"value": "source", "label": group["source_name"]}, *group["options"],
+        ]
+        option_html = "".join(
+            f'<option value="{_escape(option["value"])}"'
+            + (' selected' if option["value"] == group["choice"] else '')
+            + f'>{_escape(option["label"])}</option>' for option in options
+        )
+        controls.append(
+            '<label class="object-detail-front-panels-control">'
+            f'<span>{_escape(label)}</span>'
+            f'<select aria-label="{_escape(label)}" data-front-panels '
+            f'data-field="front_material" data-line-id="__front_panels__:{_escape(group["id"])}" '
+            f'data-original-value="{_escape(group["choice"])}">{option_html}</select></label>'
+        )
+    return '<div class="object-detail-front-panels">' + ''.join(controls) + '</div>' if controls else ''
+
+
+def material_rows_html(rows) -> str:
+    section = {"columns": MATERIAL_PURCHASE_COLUMNS}
+    return ''.join(
+        '<div class="object-detail-table-row" data-section="materials" '
+        f'data-material-preview="{_escape(json.dumps(_material_preview(row)))}">'
+        + ''.join(f'<div class="object-detail-table-cell">{value}</div>' for value in _row_values(section, row))
+        + '</div>' for row in rows
+    )
+
+
 def _table_html(section: dict[str, object], *, collapse_title: str | None = None) -> str:
     """Render a grouped cost table from normalized estimate rows."""
     columns = section["columns"]
@@ -334,7 +368,8 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
                 f'<div class="object-detail-table-head object-detail-cost-title">{_escape(collapse_title)}</div>'
                 '<div class="object-detail-table-head object-detail-cost-total">'
                 f'<span class="object-detail-cost-value" data-material-section-total>{_money(subtotal)}</span></div></summary>'
-                f'<div class="object-detail-cost-body"><div class="object-detail-table-head-row">{header}</div>'
+                f'<div class="object-detail-cost-body">{front_panels_html(section.get("front_panels"))}'
+                f'<div class="object-detail-table-head-row">{header}</div>'
                 f'{"".join(body_parts)}</div></details>'
             )
         return (

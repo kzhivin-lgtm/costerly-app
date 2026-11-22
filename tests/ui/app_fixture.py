@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from base64 import b64encode
 import json
+from copy import deepcopy
 import pandas as pd
 import streamlit as st
 import socket
@@ -83,7 +84,32 @@ def read_plans(_client, estimate_id):
  if scenario().get('labor_ready'):
   source={key:sample['parts'].get(key) for key in ('run_id','estimate_id','input_ids','source_audit_sha256','overlay_revision')}
   rows=[{**row,'plan_payload':{**row['plan_payload'],'parts_check_source':source}} for row in rows]
+ if scenario().get('front_panels'):
+  choice=(STATE/'front-choice').read_text() if (STATE/'front-choice').exists() else 'ldsp'
+  rows=[{**row,'plan_payload':front_plan(row['plan_payload'],choice)} for row in rows]
  return pd.DataFrame(rows)
+
+def front_plan(plan, choice):
+ plan=deepcopy(plan)
+ plan['front_panel_groups']={'object-001':[{'id':'fixture-front','source_name':'LDSP 17 mm',
+  'source_choice':'ldsp','thickness_mm':17,'part_ids':['B01:door_front:001']} ]}
+ plan['front_panel_choices']={'object-001':{'fixture-front':choice}}
+ labels={'ldsp':'LDSP','mdf':'MDF','veneered_mdf':'Veneered MDF','plywood':'Plywood'}
+ for line in plan['lines']:
+  if line.get('purchase_kind')=='sheet':
+   line['display_name']=labels[choice]+' 17 mm'
+   line['selection_key']='front-fixture-'+choice
+   if choice!='ldsp':
+    line['price_per_purchase_unit']+=100
+    delta=100*line['purchase_quantity']
+    line['total_cost']+=delta
+    owners={(row['object_id'],row['material_requirement_id']) for row in line['allocations']}
+    allocated=[row for row in plan['object_material_costs'] if (row['object_id'],row['material_requirement_id']) in owners]
+    prior=sum(row['cost_ex_vat'] for row in allocated)
+    for row in allocated:row['cost_ex_vat']+=delta*row['cost_ex_vat']/prior
+    for value in (line.get('object_purchases') or {}).values():value['total']+=100*value['quantity']
+   break
+ return plan
 def company_access(**kwargs):
  record('auth checked '+('expired' if status_path.exists() else 'valid'))
  return None if status_path.exists() else company_auth.CompanyAccess('fixture-user','fixture@example.invalid',company_id,'owner','fixture-token')
@@ -195,6 +221,18 @@ estimation._full_cost_context=full_cost_context
 def save_materials(**kwargs):
  assert kwargs['estimate_id']==estimate_id and kwargs['object_id']=='object-001'
  assert len(kwargs['edits'])==1
+ if kwargs['edits'][0]['field']=='front_material':
+  choice=kwargs['edits'][0]['value']
+  preview=kwargs.get('preview',False)
+  record('front preview' if preview else 'front save')
+  sleep(float(scenario().get('front_delay',0.15)))
+  result=Future()
+  if scenario().get('front_failure'):
+   result.set_exception(ValueError('Controlled front material failure.'))
+   return result
+  if not preview:(STATE/'front-choice').write_text(choice)
+  result.set_result(front_plan(sample['plans'][0]['plan_payload'],choice))
+  return result
  if kwargs['edits'][0]['field']=='labor_hours':
   return estimation.save_object_detail_material_edits(**kwargs)
  record('save material '+kwargs['estimate_id'])
@@ -214,6 +252,11 @@ def saved_receipt(**kwargs):
 
 object_detail.save_object_detail_material_edits=save_materials
 object_detail.load_object_detail_material_receipt=saved_receipt
+def front_preview_receipt(**kwargs):
+ data=estimation.front_material_preview_receipt(**kwargs)
+ record('front receipt '+json.dumps(data['self_cost']))
+ return data
+object_detail.front_material_preview_receipt=front_preview_receipt
 if st.query_params.get('screen') == 'object_detail' or st.session_state.get('screen') == 'object_detail':
  record('read Object Detail '+str(st.session_state.get('current_estimate_id')))
 

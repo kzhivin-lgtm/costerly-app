@@ -1317,6 +1317,28 @@ start; the remaining 18.44 s are not timed by substage.
 
 ## Estimation Parts Check, 3.17.4.6
 
+ACTIVE, P1, OWNER-APPROVED IMPLEMENTATION AND DEPLOYMENT, Estimation V3.3,
+22November2026: casework Front panels material class and
+front-only material substitution. Owner approved the user-facing label
+`Front panels` and four selector options: `LDSP`, `Veneered MDF`, `MDF`, `Plywood`.
+Plywood and explicitly specified other stock remain selected as found by the
+cycle. An outside type retains its actual source option plus the four replacements.
+The veneer option uses an MDF substrate for MVP. Owner explicitly narrowed MVP from fronts
+plus exposed panels to fronts only. Use saved explicit door_front/drawer_front/
+lift_up_front roles (and existing legacy equivalents); do not infer visibility,
+inspect wall adjacency or change sides/carcass. Keep a distinct Front panels purpose
+through material aggregation/UI so shared LDSP is not replaced for every part.
+The original goal remains a material choice for this front class and dependent
+recalculation using the existing saved-Parts/Resolver/Material Engine path.
+Owner approved gated implementation/deployment and automatic read-only preview
+on selection, followed by the existing explicit Save/APPROVE persistence.
+Retain Objects V2.7 Loading coordination and all earlier accepted behavior.
+Side/exposure/floor-plan ideas are excluded from MVP and not an active task.
+First proposed deliverable: one saved object's part-to-front-class table, then
+a small selector scenario/mockup. Preserve shared purchase rounding, unrelated
+manual edits and current UI/protection. No new work block/number assigned.
+[Accepted scope, current code and proposed sequence](CASEWORK_FRONTS_MATERIAL_CLASS_PLAN_2026_11_22.md).
+
 DEFERRED, P1, USER REQUEST. The owner provisionally accepted material costing
 on Lev1, Lev2 and Adda on 2026-11-14 and moved the next workstream to shop
 labor. Return to Lev1 to review visible finishes, sheet stock families and
@@ -6914,7 +6936,11 @@ transition timings before restoring Machinery or File Review metadata.
 PARTIALLY IMPLEMENTED, historical design entry, current scope in the Labor
 section and [current handoff](ESTIMATION_LABOR_NEXT_CHAT_HANDOFF_2026_11_14.md).
 Sheet Processing and Block Assembly are already implemented; extra assembly,
-finishing and final aggregation remain separate open work. Original request:
+finishing and final aggregation remain separate open work. Owner confirmed
+22November2026 that Front panels MDF/veneer coating is the next block after
+material switching. Reuse the chosen effective front material and its physical
+parts for coating quantities, retaining cutting and edge work separately.
+Agree the coating rules and rates at that stage. Original request:
 design and agree Estimation Calculation from
 the same published Parts Check used for materials. Cover part fabrication,
 Block and Common assembly, finishing at the appropriate step, and readiness

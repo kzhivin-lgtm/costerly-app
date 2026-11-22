@@ -30,6 +30,7 @@ UNIT_TESTS = [
     "tests/test_estimation_v9_inventory.py", "tests/test_estimation_parts_check_runtime.py",
     "tests/test_estimation_cb_geometry_parts.py", "tests/test_estimation_display_parts.py",
     "tests/test_estimation_cb_material_demand.py",
+    "tests/test_estimation_front_panels.py",
     "tests/test_estimation_locator_plane.py",
     "tests/test_agent_timing.py::test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping",
     "tests/test_agent_timing.py::test_isometric_membership_uses_primary_attachment_without_extra_requests",

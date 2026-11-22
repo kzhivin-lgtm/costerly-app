@@ -25,6 +25,7 @@ from use_cases.estimation import (
     approve_object_estimate,
     load_object_detail_data,
     load_object_detail_material_receipt,
+    front_material_preview_receipt,
     save_object_detail_material_edits,
 )
 from state.company_auth import company_auth_enabled
@@ -282,7 +283,8 @@ def _material_editor(context: ObjectDetailContext) -> None:
     request_id = request["id"]
     if request_id == (results.get(key) or {}).get("id"):
         return
-    result = {"id": request_id, "scope": list(key)}
+    preview = request.get("preview") is True
+    result = {"id": request_id, "scope": list(key), "preview": preview}
     started = perf_counter()
     try:
         edits = request.get("edits")
@@ -290,21 +292,29 @@ def _material_editor(context: ObjectDetailContext) -> None:
             raise ValueError("No material changes to save.")
         future = save_object_detail_material_edits(
             estimate_id=context.estimate_id, object_id=context.object_id,
-            edits=edits,
+            edits=edits, **({"preview": True} if preview else {}),
         )
         submitted = perf_counter()
-        future.result()
+        plan = future.result()
         published = perf_counter()
-        st.session_state.pop("approved_object_keys", None)
-        _mark_objects_estimation_dirty(context.estimate_id)
-        data = load_object_detail_material_receipt(estimate_id=context.estimate_id, object_id=context.object_id)
+        if preview:
+            data = front_material_preview_receipt(estimate_id=context.estimate_id, object_id=context.object_id, plan=plan)
+        else:
+            st.session_state.pop("approved_object_keys", None)
+            _mark_objects_estimation_dirty(context.estimate_id)
+            data = load_object_detail_material_receipt(estimate_id=context.estimate_id, object_id=context.object_id)
         result.update(
             rows=object_detail_view.material_preview_rows(data),
             self_cost=data["self_cost"],
             quantity=data["quantity"],
             labor_hours_overrides=data.get("labor_hours_overrides", {}),
+            labor_block_hours=data.get("labor_block_hours", {}),
             cost_policy=data.get("cost_policy"),
         )
+        if any(edit.get("field") == "front_material" for edit in edits):
+            section = data["sections"][0]
+            result["material_rows_html"] = object_detail_view.material_rows_html(section["rows"])
+            result["front_panels"] = section.get("front_panels", [])
         result["timing"] = {
             "validation": round((submitted - started) * 1000),
             "pricing": round((published - submitted) * 1000),

@@ -45,6 +45,7 @@ from use_cases.price_source_taxonomy import source_family_for_catalog_family
 from use_cases.retry import read_with_retry
 from use_cases.detection_previews import saved_presentation_preview_ref
 from use_cases.labor_hours import overrides_from_lines, override_lines, validate_hours
+from use_cases.estimation_front_panels import FRONT_PART_ROLES as _FRONT_PART_ROLES, front_panel_controls
 from use_cases.estimation_labor_v1 import load_object_labor, object_labor_metrics, sheet_layout_basis
 from use_cases.estimation_parts_check_runtime import load_parts_check
 from use_cases.machinery import load_sheet_processing_machinery
@@ -66,7 +67,7 @@ def _full_cost_context(client, obj, plan, settings=None):
     }
 
 
-def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, context):
+def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, context, persist=True):
     """Use the same saved inputs and Labor math as Object Detail, once per basis."""
     quantity = _number(obj.get("quantity"), 1) or 1
     overrides = overrides_from_lines(lines)
@@ -130,13 +131,14 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
                }}
     # Existing JSON diagnostics rows keep the full breakdown, not another charge.
     summary = json.loads(json.dumps(summary, default=str))
-    upsert_rfq_estimate_lines(client, lines=[{
-        "estimate_id": estimate_id, "object_id": str(obj["object_id"]), "company_id": str(obj["company_id"]),
-        "line_id": f'{obj["object_id"]}__full_cost_v3_1', "section": "overhead", "source": _FULL_COST_SOURCE,
-        "group_name": "Cost calculation", "item_name": "Materials + Labor + Overhead",
-        "cost": 0, "sort_order": 99000, "needs_price": False,
-        "needs_review": summary["partial"], "raw_agent_json": summary,
-    }])
+    if persist:
+        upsert_rfq_estimate_lines(client, lines=[{
+            "estimate_id": estimate_id, "object_id": str(obj["object_id"]), "company_id": str(obj["company_id"]),
+            "line_id": f'{obj["object_id"]}__full_cost_v3_1', "section": "overhead", "source": _FULL_COST_SOURCE,
+            "group_name": "Cost calculation", "item_name": "Materials + Labor + Overhead",
+            "cost": 0, "sort_order": 99000, "needs_price": False,
+            "needs_review": summary["partial"], "raw_agent_json": summary,
+        }])
     return summary, True
 
 
@@ -300,7 +302,6 @@ def build_estimate_id(run_id: str) -> str:
     return f"{run_id}_estimate_{estimate_stamp}"
 
 
-_FRONT_PART_ROLES = {"facade", "door_front", "drawer_front", "lift_up_front", "hinged_facade", "lift_up_facade"}
 _VISIBLE_PARTS = (
     ("LED", {"led_strip_run"}),
     ("Mirror", {"mirror", "mirror_glass"}),
@@ -682,6 +683,7 @@ def load_object_detail_data(
                 "metrics": [],
                 "columns": ["Material", "Required material", "Purchase unit", "Unit price", "Purchase quantity", "Total"],
                 "rows": material_rows,
+                "front_panels": front_panel_controls(material_plan, lines_df.to_dict("records"), object_id),
             },
         ],
         "labor_hours_overrides": overrides_from_lines(lines_df),
@@ -712,9 +714,11 @@ def load_object_detail_material_receipt(
     cost_snapshot = next((row.get("raw_agent_json") or {} for row in lines.to_dict("records")
                           if row.get("source") == _FULL_COST_SOURCE), {})
     return {
-        "sections": [{"key": "material", "rows": _object_detail_material_rows(saved_plan, lines, object_id)}],
+        "sections": [{"key": "material", "rows": _object_detail_material_rows(saved_plan, lines, object_id),
+                      "front_panels": front_panel_controls(saved_plan, lines.to_dict("records"), object_id)}],
         "quantity": _number(obj.get("quantity"), 1),
         "labor_hours_overrides": overrides_from_lines(lines),
+        "labor_block_hours": {key: value["hours"] for key, value in cost_snapshot.get("labor_blocks", {}).items() if value},
         "cost_policy": next((row.get("source") for row in lines.to_dict("records") if row.get("source") == _FULL_COST_SOURCE), None),
         "self_cost": {"excl_vat": obj.get("self_cost_ex_vat"), "vat": obj.get("vat_amount"),
                       "total": obj.get("self_cost_total"),
@@ -1469,7 +1473,7 @@ def _material_norms_from_plan(
 
 
 def save_object_detail_material_edits(
-    *, estimate_id: str, object_id: str, edits: list[dict[str, Any]],
+    *, estimate_id: str, object_id: str, edits: list[dict[str, Any]], preview: bool = False,
 ) -> Future:
     """Validate and save a material draft, then queue one pricing update."""
     if not edits or len(edits) > 500:
@@ -1486,7 +1490,7 @@ def save_object_detail_material_edits(
         line["selection_key"]: line for line in plan.get("lines", ())
         if line.get("selection_key") and any(a.get("object_id") == object_id for a in line.get("allocations", ()))
     }
-    purchases, norm_rows, labor_hours = {}, {}, {}
+    purchases, norm_rows, labor_hours, front_choices = {}, {}, {}, {}
     auto_purchase = set()
     original_quantity = _number(obj.get("quantity"), 1) or 1
     current_quantity = original_quantity
@@ -1512,6 +1516,16 @@ def save_object_detail_material_edits(
             if line_id not in BLOCKS:
                 raise ValueError("This labor block is no longer available.")
             labor_hours[line_id] = validate_hours(edit.get("value"))
+            continue
+        if field == "front_material" and line_id.startswith("__front_panels__:"):
+            from use_cases.estimation_front_panels import validate_front_choices
+
+            source_lines = fetch_rfq_estimate_lines_for_object(client, estimate_id=estimate_id, object_id=object_id)
+            groups = front_panel_controls(plan, source_lines.to_dict("records"), object_id)
+            group_id = line_id.removeprefix("__front_panels__:")
+            choice = str(edit.get("value") or "")
+            validate_front_choices(groups, {group_id: choice})
+            front_choices[(object_id, group_id)] = choice
             continue
         if not plan.get("parts_check_source"):
             raise ValueError("A saved material plan is required to edit materials.")
@@ -1570,7 +1584,15 @@ def save_object_detail_material_edits(
                 "material_requirement_id": requirement_id, "company_id": company_id,
                 "quantity_per_item": quantity, "unit": unit, "source_line_id": None}
 
-    if not norm_rows and not purchases and object_quantity is None:
+    if preview:
+        if not front_choices or norm_rows or purchases or object_quantity is not None or labor_hours:
+            raise ValueError("Only front panel material choices can be previewed.")
+        from use_cases.estimation_runtime import preview_front_panel_materials
+
+        return preview_front_panel_materials(
+            estimate_id=estimate_id, run_id=str(obj["run_id"]), company_id=company_id, choices=front_choices,
+        )
+    if not norm_rows and not purchases and object_quantity is None and not front_choices:
         upsert_rfq_estimate_lines(client, lines=override_lines(
             labor_hours, estimate_id=estimate_id, object_id=object_id,
             company_id=company_id, quantity=current_quantity,
@@ -1598,7 +1620,35 @@ def save_object_detail_material_edits(
         quantity_edits={object_id: object_quantity} if object_quantity is not None else None,
         norm_edits={(object_id, key): row for key, row in norm_rows.items()},
         purchase_edits=purchases,
+        front_choice_edits=front_choices,
     )
+
+
+def front_material_preview_receipt(*, estimate_id, object_id, plan):
+    """Project a draft purchase plan and full self cost without database writes."""
+    client = get_supabase_client()
+    obj = {**_object_material_context(client, estimate_id=estimate_id, object_id=object_id), "estimate_id": estimate_id}
+    lines = fetch_rfq_estimate_lines_for_object(client, estimate_id=estimate_id, object_id=object_id).copy()
+    rows = _object_detail_material_rows(plan, lines, object_id)
+    primary = sum(_number(row.get("total"), 0) for row in rows if not row.get("locked"))
+    coatings = sum(_number(row.get("total"), 0) for row in rows if row.get("is_coating"))
+    for row in rows:
+        if row.get("locked"):
+            row["total"] = round((coatings if row.get("policy_basis") == "coatings" else primary)
+                                 * _number(row.get("policy_percent"), 0) / 100, 2)
+            lines.loc[(lines["source"] == "pricing_policy") & (lines["item_name"] == row["item"]), "cost"] = row["total"]
+    context = _full_cost_context(client, obj, plan)
+    summary, _ = _full_cost_summary(client, estimate_id=estimate_id, obj=obj, lines=lines,
+                                   material_batch=primary, context=context, persist=False)
+    return {
+        "sections": [{"key": "material", "rows": rows,
+                      "front_panels": front_panel_controls(plan, lines.to_dict("records"), object_id)}],
+        "quantity": _number(obj.get("quantity"), 1), "cost_policy": _FULL_COST_SOURCE,
+        "self_cost": {"excl_vat": summary["self_cost_ex_vat"], "vat": summary["vat_amount"],
+                      "total": summary["self_cost_total"], "partial": summary["partial"]},
+        "labor_hours_overrides": overrides_from_lines(lines),
+        "labor_block_hours": {key: value["hours"] for key, value in summary["labor_blocks"].items() if value},
+    }
 
 
 def apply_material_plan_allocations(

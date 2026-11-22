@@ -105,7 +105,9 @@ def _thickness(row, line):
     return row["dimensions"].get("thickness", {}).get("mm")
 
 
-def _grain_required(row, line, family):
+def _grain_required(row, line, family, *, material_choice=None):
+    if material_choice == "mdf":
+        return False
     visual = row.get("visual_stock") or {}
     return (family in {"plywood", "plywood_special"} or "veneer" in line["display_name"].casefold()
             or visual.get("surface") == "wood_grain"
@@ -115,8 +117,10 @@ def _grain_required(row, line, family):
 def _line_groups(line, parts, object_quantities, scope_by_requirement, issues):
     quantities = Counter()
     sizes = {}
+    material_choices = {}
     for allocation in line["allocations"]:
         part_id = allocation["demand_id"].removesuffix(":assumption")
+        material_choices[part_id] = allocation.get("front_panel_material_choice")
         row = parts.get(part_id)
         requirement = allocation.get("object_id"), allocation.get("material_requirement_id")
         if ((row and row["role"] == "shared_worktop")
@@ -139,7 +143,8 @@ def _line_groups(line, parts, object_quantities, scope_by_requirement, issues):
     by_thickness = {}
     for (part_id, thickness), qty in quantities.items():
         row = parts[part_id]
-        blank = Blank(part_id, *sizes[part_id, thickness], qty, rotation_allowed=not _grain_required(row, line, family))
+        blank = Blank(part_id, *sizes[part_id, thickness], qty,
+                      rotation_allowed=not _grain_required(row, line, family, material_choice=material_choices.get(part_id)))
         group = by_thickness.setdefault(thickness, {"blanks": [], "drilling": []})
         group["blanks"].append(blank)
         if thickness >= DEFAULT_CNC_PARAMETERS.drilling_min_panel_mm and row["role"] not in DRILL_EXCLUSIONS:

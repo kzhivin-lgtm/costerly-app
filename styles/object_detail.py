@@ -674,6 +674,34 @@ def apply_object_detail_css() -> None:
             box-shadow: 0 0 0 3px rgba(128, 73, 198, 0.14);
         }
 
+        .object-detail-front-panels {
+            display: grid;
+            gap: 10px;
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(42, 31, 44, 0.09);
+        }
+
+        .object-detail-front-panels-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            color: inherit;
+            font-size: 14px;
+        }
+
+        .object-detail-front-panels-control select {
+            min-width: 0;
+            width: 180px;
+            max-width: 65%;
+            padding: 8px 10px;
+            border: 1px solid rgba(42, 31, 44, 0.14);
+            border-radius: 8px;
+            background: white;
+            color: inherit;
+            font: inherit;
+        }
+
         .object-detail-material-source {
             display: inline-flex;
             align-items: center;

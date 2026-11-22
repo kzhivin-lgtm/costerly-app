@@ -2173,7 +2173,7 @@ def install_object_detail_input_guard(
                 const saved = button.hasAttribute("data-saved") && !draft.size && !activeSave && !invalid;
                 button.disabled = !draft.size || !!activeSave || invalid;
                 button.classList.toggle("object-detail-material-save--saved", saved);
-                button.textContent = activeSave ? "Saving…" : saved ? "Saved" : "Save changes";
+                button.textContent = activeSave ? (activeSave.preview ? "Calculating…" : "Saving…") : saved ? "Saved" : "Save changes";
                 setStatus(message || (saved ? "Changes saved" : ""), saved && !message);
             };
             __MOVE_CARET_TO_END__
@@ -2477,14 +2477,17 @@ def install_object_detail_input_guard(
                 }
             }
 
-            function submitDraft(approveAfterSave = false) {
-                if (activeSave || !draft.size || invalidMaterial()) return;
+            function submitDraft(approveAfterSave = false, preview = false) {
+                if (activeSave || (!preview && !draft.size) || invalidMaterial()) return;
                 const submit = parentWindow.__costerlySubmitMaterialEdit;
                 if (typeof submit !== "function") {
                     updateSaveControls("The material editor is connecting. Try again.");
                     return;
                 }
-                const request = {id: crypto.randomUUID(), scope, edits: [...draft.values()], approveAfterSave};
+                const edits = preview ? [...parentDoc.querySelectorAll('[data-front-panels]')].map(input => ({
+                    field: "front_material", lineId: input.dataset.lineId, value: input.value,
+                })) : [...draft.values()];
+                const request = {id: crypto.randomUUID(), scope, edits, approveAfterSave, preview};
                 request.started = parentWindow.performance.now();
                 activeSave = request;
                 request.timeout = parentWindow.setTimeout(() => {
@@ -2493,12 +2496,50 @@ def install_object_detail_input_guard(
                     updateSaveControls("No response yet. Your changes are still here.");
                 }, 90000);
                 updateSaveControls();
-                submit({id: request.id, scope, edits: request.edits});
+                submit({id: request.id, scope, edits: request.edits, preview});
             }
 
             function saveMaterialDraft(event) {
                 if (event.target?.closest?.('[data-field="labor_hours"]')) event.preventDefault();
                 if (event.target?.closest?.(".object-detail-material-save")) submitDraft();
+            }
+
+            function changeFrontMaterial(event) {
+                const input = event.target?.closest?.('[data-front-panels]');
+                if (!input) return;
+                const edit = {field: "front_material", lineId: input.dataset.lineId, value: input.value};
+                if (input.value === input.dataset.originalValue) draft.delete(editKey(edit));
+                else draft.set(editKey(edit), edit);
+                saveButton()?.removeAttribute("data-saved");
+                updateSaveControls();
+                submitDraft(false, true);
+            }
+
+            function reconcileFrontMaterialRows(result) {
+                if (!result.material_rows_html) return;
+                const body = parentDoc.querySelector('.object-detail-materials-band > .object-detail-cost-body');
+                if (!body) return;
+                const key = row => {
+                    const data = rowPreview(row);
+                    return data.purchase_quantity_line_id || data.item;
+                };
+                const old = new Map(materialRows().map(row => [key(row), row]));
+                const template = parentDoc.createElement('template');
+                template.innerHTML = result.material_rows_html;
+                const retained = new Set();
+                for (const fresh of [...template.content.children]) {
+                    const node = old.get(key(fresh)) || fresh;
+                    retained.add(node);
+                    body.appendChild(node);
+                }
+                for (const row of old.values()) if (!retained.has(row)) row.remove();
+                for (const group of result.front_panels || []) {
+                    const input = parentDoc.querySelector(`[data-front-panels][data-line-id="${CSS.escape('__front_panels__:' + group.id)}"]`);
+                    if (!input) continue;
+                    if (!result.preview) input.dataset.originalValue = group.choice;
+                    const edit = draft.get(editKey(contextFor(input)));
+                    input.value = edit?.value || group.choice;
+                }
             }
 
             function receiveMaterialSave(result) {
@@ -2508,6 +2549,13 @@ def install_object_detail_input_guard(
                 const approveAfterSave = activeSave.approveAfterSave;
                 parentWindow.clearTimeout(activeSave.timeout);
                 activeSave = null;
+                if (result.preview && submitted.some(edit => {
+                    const input = parentDoc.querySelector(`[data-front-panels][data-line-id="${CSS.escape(edit.lineId)}"]`);
+                    return input && input.value !== edit.value;
+                })) {
+                    submitDraft(approveAfterSave, true);
+                    return;
+                }
                 if (result.error) {
                     for (const row of materialRows()) {
                         for (const input of row.querySelectorAll("[data-field][data-line-id]")) {
@@ -2521,14 +2569,16 @@ def install_object_detail_input_guard(
                 const focused = parentDoc.activeElement;
                 const current = focused?.dataset?.lineId && materialField(focused.dataset.field)
                     ? {...contextFor(focused), value: materialValue(focused)} : null;
-                for (const edit of submitted) {
+                for (const edit of result.preview ? [] : submitted) {
                     const key = editKey(edit);
-                    if (Number(draft.get(key)?.value) === Number(edit.value)) draft.delete(key);
+                    if (draft.get(key)?.value === edit.value || Number(draft.get(key)?.value) === Number(edit.value)) draft.delete(key);
                 }
+                reconcileFrontMaterialRows(result);
                 const previousQuantity = Number(objectQuantityInput()?.dataset.originalValue || 1);
                 for (const input of parentDoc.querySelectorAll('[data-field="labor_hours"]')) {
                     const perItem = result.labor_hours_overrides?.[input.dataset.lineId];
-                    input.dataset.originalValue = String(perItem != null
+                    const computed = result.labor_block_hours?.[input.dataset.lineId];
+                    input.dataset.originalValue = String(computed != null ? computed : perItem != null
                         ? Number(perItem) * Number(result.quantity)
                         : Number(input.dataset.originalValue) * Number(result.quantity) / previousQuantity);
                 }
@@ -2578,7 +2628,7 @@ def install_object_detail_input_guard(
                     if (Number(current.value) === Number(current.input.dataset.originalValue)) draft.delete(editKey(current));
                     else draft.set(editKey(current), {field: current.field, lineId: current.lineId, value: current.value});
                 }
-                saveButton()?.setAttribute("data-saved", "");
+                if (!result.preview) saveButton()?.setAttribute("data-saved", "");
                 previewMaterials();
                 previewLabor();
                 updateSaveControls();
@@ -2586,7 +2636,8 @@ def install_object_detail_input_guard(
                 performance.clearMeasures("object-detail-save");
                 performance.measure("object-detail-save",
                     {start: started, end: performance.now(), detail: result.timing});
-                if (approveAfterSave && !draft.size && !invalidMaterial()) {
+                if (result.preview && approveAfterSave) submitDraft(true);
+                else if (approveAfterSave && !draft.size && !invalidMaterial()) {
                     parentDoc.querySelector("[data-object-detail-approve]")?.click();
                 }
             }
@@ -3058,6 +3109,7 @@ def install_object_detail_input_guard(
             parentDoc.addEventListener("beforeinput", handleBeforeInput, true);
             parentDoc.addEventListener("paste", handlePaste, true);
             parentDoc.addEventListener("input", handleInput, true);
+            parentDoc.addEventListener("change", changeFrontMaterial, true);
             parentDoc.addEventListener("click", saveMaterialDraft, true);
             parentDoc.addEventListener("click", prepareApproveSnapshot, true);
             parentWindow.__costerlyReceiveMaterialEdit = receiveMaterialSave;
@@ -3086,6 +3138,7 @@ def install_object_detail_input_guard(
                 parentDoc.removeEventListener("beforeinput", handleBeforeInput, true);
                 parentDoc.removeEventListener("paste", handlePaste, true);
                 parentDoc.removeEventListener("input", handleInput, true);
+                parentDoc.removeEventListener("change", changeFrontMaterial, true);
                 parentDoc.removeEventListener("click", saveMaterialDraft, true);
                 parentDoc.removeEventListener("click", prepareApproveSnapshot, true);
                 if (activeSave) parentWindow.clearTimeout(activeSave.timeout);

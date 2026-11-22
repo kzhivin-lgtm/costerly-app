@@ -1,6 +1,6 @@
 import { statePath, reportPath, chromeOptions } from './support.mjs';
 import assert from 'node:assert/strict';
-import {readFileSync, writeFileSync, rmSync} from 'node:fs';
+import {readFileSync, writeFileSync, rmSync, existsSync} from 'node:fs';
 import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 const config=statePath('scenario.json'), journal=statePath('browser-journal');
@@ -23,6 +23,54 @@ async function boot(value={},width=1280){
  const frame=await (await page.locator('#costerly-app-frame').elementHandle()).contentFrame();
  return {page,core,frame};
 }
+
+async function frontPanelChecks(){
+ for(const width of [1280,390]){
+  rmSync(statePath('front-choice'),{force:true});
+  const {page,core,frame}=await boot({front_panels:true,front_delay:0.3},width);
+  await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
+  await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
+  await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+  await core.locator('.object-detail-materials-band > summary').click();
+  const picker=core.getByRole('combobox',{name:'Front panels',exact:true});
+  await picker.waitFor();
+  assert.equal(await picker.inputValue(),'ldsp');
+  assert.equal(await picker.locator('option').count(),4);
+  const initialPrice=await core.locator('.object-detail-unit-price').first().innerText();
+  const initialCost=await core.locator('.object-detail-final [data-final="excl_vat"]').innerText();
+  const save=core.getByRole('button',{name:'Save changes',exact:true});
+  await picker.selectOption('mdf');
+  await core.getByRole('button',{name:'Calculating…',exact:true}).waitFor();
+  await save.waitFor();
+  assert.equal(await picker.inputValue(),'mdf');
+  assert.equal(await core.locator('.object-detail-material-name').first().innerText(),'MDF 17 mm');
+  assert.notEqual(await core.locator('.object-detail-unit-price').first().innerText(),initialPrice);
+  assert.notEqual(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),initialCost);
+  assert.ok(!existsSync(statePath('front-choice')));
+  assert.equal(await save.isEnabled(),true);
+  if(width===1280){
+   settings({front_panels:true,front_failure:true});
+   await picker.selectOption('veneered_mdf');
+   await core.getByText('Controlled front material failure.',{exact:true}).waitFor();
+   assert.equal(await picker.inputValue(),'veneered_mdf');
+   settings({front_panels:true,front_delay:0.3});
+   await picker.selectOption('ldsp');
+   await picker.selectOption('mdf');
+   await save.waitFor();
+   await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
+  }
+  await save.click();
+  await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+  assert.equal(readFileSync(statePath('front-choice'),'utf8'),'mdf');
+  await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
+  await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+  await core.locator('.object-detail-materials-band > summary').click();
+  assert.equal(await core.getByRole('combobox',{name:'Front panels',exact:true}).inputValue(),'mdf');
+  await page.close();
+ }
+ report.frontPanels={viewports:[1280,390],automaticPreview:true,explicitSave:true};
+}
+await frontPanelChecks();
 try{
  for(const name of ['fresh-active','fresh-done','fresh-shell-ready','labor-hours.json','full-cost-totals.json','full-cost-lines.json','auth-expired'])rmSync(statePath(name),{force:true});
  const fresh=await boot({fresh_calculation:true,objects_refresh_delay:1.2});
