@@ -80,6 +80,29 @@ def apply_object_detail_css() -> None:
             border-color: #b43b46;
         }
 
+        .object-detail-material-changing {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(42, 31, 44, 0.28);
+            pointer-events: none;
+        }
+
+        .object-detail-material-changing > span {
+            padding: 18px 24px;
+            border-radius: 12px;
+            background: #FFFFFF;
+            color: var(--color-text-strong);
+            font-family: var(--font-sans);
+            font-size: 18px;
+            font-weight: 700;
+            box-shadow: 0 12px 40px rgba(42, 31, 44, 0.18);
+        }
+
         .object-detail-discard-modal {
             position: fixed;
             inset: 0;
@@ -684,8 +707,8 @@ def apply_object_detail_css() -> None:
         .object-detail-front-panels-control {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 12px;
+            justify-content: flex-start;
+            gap: 16px;
             color: inherit;
             font-size: 14px;
         }
@@ -694,10 +717,11 @@ def apply_object_detail_css() -> None:
             min-width: 0;
             width: 180px;
             max-width: 65%;
-            padding: 8px 10px;
+            padding: 8px 34px 8px 10px;
             border: 1px solid rgba(42, 31, 44, 0.14);
             border-radius: 8px;
-            background: white;
+            appearance: none;
+            background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%232a1f2c' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 12px center;
             color: inherit;
             font: inherit;
         }

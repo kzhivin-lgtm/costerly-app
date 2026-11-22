@@ -18,7 +18,12 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
-Current diagnostic release: **Estimation V3.3**,22November2026,
+Estimation **9.41** is in verification,22November2026: agreed point updates for
+front materials/fallback thickness plus immediate Changing material feedback,
+based on the successful V3.3 control. Recognition/geometry/Loading remain intact.
+[Scope and verification](notes/ESTIMATION_V9_41_FRONT_PANELS_2026_11_22.md).
+
+Current diagnostic release until publication: **Estimation V3.3**,22November2026,
 rollback commit`a6158588`, application/tests byte-identical to published`bcf9fdb4`.
 Local548 checks/nine browser suites and exact-SHA GitHub gate passed. Actual
 Core/wrapper/meta/version match V3.3 at11:03:07UTC, HTTP200. Preserve9.40 source,

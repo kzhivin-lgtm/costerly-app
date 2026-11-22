@@ -2167,6 +2167,19 @@ def install_object_detail_input_guard(
                 materialRows().some(row => row.querySelector('[aria-invalid="true"]')) ||
                 !!parentDoc.querySelector('[data-field="labor_hours"][aria-invalid="true"]');
             const updateSaveControls = message => {
+                let changing = parentDoc.querySelector(".object-detail-material-changing");
+                if (activeSave?.preview || activeSave?.frontMaterialPending) {
+                    if (!changing) {
+                        changing = parentDoc.createElement("div");
+                        changing.className = "object-detail-material-changing";
+                        changing.setAttribute("role", "status");
+                        changing.setAttribute("aria-live", "polite");
+                        const label = parentDoc.createElement("span");
+                        label.textContent = "Changing material…";
+                        changing.appendChild(label);
+                        parentDoc.body.appendChild(changing);
+                    }
+                } else changing?.remove();
                 const button = saveButton();
                 if (!button) return;
                 const invalid = invalidMaterial();
@@ -2510,6 +2523,7 @@ def install_object_detail_input_guard(
                 const edit = {field: "front_material", lineId: input.dataset.lineId, value: input.value};
                 if (input.value === input.dataset.originalValue) draft.delete(editKey(edit));
                 else draft.set(editKey(edit), edit);
+                if (activeSave) activeSave.frontMaterialPending = true;
                 updateSaveControls();
                 submitDraft(false, true);
             }
@@ -3149,6 +3163,7 @@ def install_object_detail_input_guard(
                 parentDoc.removeEventListener("click", confirmDiscard, true);
                 const modal = parentDoc.querySelector(".object-detail-discard-modal");
                 if (modal) modal.remove();
+                parentDoc.querySelector(".object-detail-material-changing")?.remove();
                 delete parentWindow.__costerlyObjectDetailDraft;
                 parentWindow[HANDLER_KEY] = null;
             };

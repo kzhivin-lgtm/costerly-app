@@ -41,6 +41,10 @@ Calculation additionally covers a delayed new-estimate shell, full reruns during
 progress and after completion, one pricing table, editable Sheet Processing and
 Assembly hours, whole grouped money, failed Save/retry and persisted reopen.
 These checks use synthetic data and do not establish production acceptance.
+Front material selection also checks immediate Changing material feedback at
+1280/390px, one continuous status during rapid/queued choices, success/error
+removal, existing-timeout cleanup and draft-preserving retry. Only the test
+accelerates the existing90s timeout; production timing remains unchanged.
 The version-refresh suite uses the real wrapper and workflow controller with
 synthetic screens. V2.9 covers a single Core build event, old-tab migration,
 one reload, deferred active work, failure recovery and zero version-file reads.

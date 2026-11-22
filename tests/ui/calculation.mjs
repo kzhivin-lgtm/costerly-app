@@ -27,35 +27,61 @@ async function boot(value={},width=1280){
 async function frontPanelChecks(){
  for(const width of [1280,390]){
   rmSync(statePath('front-choice'),{force:true});
-  const {page,core,frame}=await boot({front_panels:true,front_delay:0.3},width);
+  const {page,core,frame}=await boot({front_panels:true,front_delay:0.6},width);
   await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
   await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('.object-detail-materials-band > summary').click();
   const picker=core.getByRole('combobox',{name:'Front panels',exact:true});
   await picker.waitFor();
+  const placement=await picker.evaluate(input=>{
+   const label=input.closest('label'), text=label.querySelector('span');
+   return {gap:input.getBoundingClientRect().left-text.getBoundingClientRect().right,
+    arrow:getComputedStyle(input).backgroundPosition,appearance:getComputedStyle(input).appearance};
+  });
+  assert.ok(Math.abs(placement.gap-16)<1,JSON.stringify(placement));
+  assert.equal(placement.appearance,'none');
+  assert.ok(placement.arrow.includes('12px'),JSON.stringify(placement));
   assert.equal(await picker.inputValue(),'ldsp');
   assert.equal(await picker.locator('option').count(),4);
   const initialPrice=await core.locator('.object-detail-unit-price').first().innerText();
   const initialCost=await core.locator('.object-detail-final [data-final="excl_vat"]').innerText();
+  const originalDocument=await frame.evaluate(()=>{
+   window.frontPanelDocumentWitness=crypto.randomUUID();return window.frontPanelDocumentWitness;
+  });
   const save=core.getByRole('button',{name:'Save changes',exact:true});
-  await picker.selectOption('mdf');
+  const immediate=await picker.evaluate(input=>{
+   input.value='mdf';input.dispatchEvent(new Event('change',{bubbles:true}));
+   const overlays=document.querySelectorAll('.object-detail-material-changing'),node=overlays[0];
+   const rect=node?.getBoundingClientRect();
+   return {count:overlays.length,text:node?.textContent,role:node?.getAttribute('role'),
+    color:node&&getComputedStyle(node).backgroundColor,
+    covers:rect?.left===0&&rect?.top===0&&rect?.width===innerWidth&&rect?.height===innerHeight};
+  });
+  assert.equal(immediate.count,1);assert.equal(immediate.text,'Changing material…');
+  assert.equal(immediate.role,'status');assert.equal(immediate.covers,true);
+  assert.equal(immediate.color,'rgba(42, 31, 44, 0.28)');
   await core.getByRole('button',{name:'Calculating…',exact:true}).waitFor();
+  await page.screenshot({path:reportPath('front-material-changing-'+width+'.png')});
   await save.waitFor();
+  assert.equal(await core.locator('.object-detail-material-changing').count(),0);
   assert.equal(await picker.inputValue(),'mdf');
   assert.equal(await core.locator('.object-detail-material-name').first().innerText(),'MDF 17 mm');
   assert.notEqual(await core.locator('.object-detail-unit-price').first().innerText(),initialPrice);
   assert.notEqual(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),initialCost);
+  assert.equal(await frame.evaluate(()=>window.frontPanelDocumentWitness),originalDocument);
   assert.ok(!existsSync(statePath('front-choice')));
   assert.equal(await save.isEnabled(),true);
   if(width===1280){
    settings({front_panels:true,front_failure:true});
    await picker.selectOption('veneered_mdf');
    await core.getByText('Controlled front material failure.',{exact:true}).waitFor();
+   assert.equal(await core.locator('.object-detail-material-changing').count(),0);
    assert.equal(await picker.inputValue(),'veneered_mdf');
    settings({front_panels:true,front_delay:0.3});
    await picker.selectOption('ldsp');
    await picker.selectOption('mdf');
+   assert.equal(await core.locator('.object-detail-material-changing').count(),1);
    await save.waitFor();
    await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
   }
@@ -63,6 +89,7 @@ async function frontPanelChecks(){
   if(width===1280){
    await core.getByRole('button',{name:'Saving…',exact:true}).waitFor();
    await picker.selectOption('plywood');
+   assert.equal(await core.locator('.object-detail-material-changing').count(),1);
    await save.waitFor();
    await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
    assert.equal(readFileSync(statePath('front-choice'),'utf8'),'mdf');
@@ -80,12 +107,38 @@ async function frontPanelChecks(){
    await core.getByRole('button',{name:'Calculating…',exact:true}).waitFor();
    await core.getByRole('link',{name:'APPROVE',exact:true}).click();
    await core.locator('.objects-pricing-table').waitFor();
+   assert.equal(await core.locator('.object-detail-material-changing').count(),0);
    assert.equal(readFileSync(statePath('front-choice'),'utf8'),'plywood');
   }
   await page.close();
  }
  rmSync(statePath('object-approvals.json'),{force:true});
- report.frontPanels={viewports:[1280,390],automaticPreview:true,explicitSave:true};
+ rmSync(statePath('front-choice'),{force:true});
+ const {page,core,frame}=await boot({front_panels:true,front_delay:1});
+ await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
+ await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
+ await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+ await core.locator('.object-detail-materials-band > summary').click();
+ await frame.evaluate(()=>{
+  const original=window.setTimeout;
+  window.frontMaterialOriginalTimeout=original;
+  window.setTimeout=function(fn,ms,...args){return original.call(this,fn,ms===90000?200:ms,...args);};
+ });
+ const picker=core.getByRole('combobox',{name:'Front panels',exact:true});
+ await picker.selectOption('mdf');
+ await core.getByText('No response yet. Your changes are still here.',{exact:true}).waitFor();
+ assert.equal(await core.locator('.object-detail-material-changing').count(),0);
+ assert.equal(await picker.inputValue(),'mdf');
+ assert.equal(await core.getByRole('button',{name:'Save changes',exact:true}).isEnabled(),true);
+ await frame.evaluate(()=>{window.setTimeout=window.frontMaterialOriginalTimeout;});
+ settings({front_panels:true,front_delay:0.05});
+ await picker.selectOption('plywood');
+ await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
+ assert.equal(await core.locator('.object-detail-material-changing').count(),0);
+ assert.equal(await core.locator('.object-detail-material-name').first().innerText(),'Plywood 17 mm');
+ await page.close();
+ report.frontPanels={viewports:[1280,390],automaticPreview:true,explicitSave:true,
+  immediateChangingCover:true,timeoutRetainsDraft:true};
 }
 await frontPanelChecks();
 try{

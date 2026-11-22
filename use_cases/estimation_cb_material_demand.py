@@ -504,8 +504,20 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 name, family, selected_spec = FRONT_MATERIALS[choice]
                 if family not in allowed_material_families:
                     raise ValueError("The selected front panel material is not available in the catalog.")
-                spec = {**selected_spec, **({"thickness_mm": thickness_mm} if _positive(thickness_mm) else {})}
-                identity_hint = name
+                thickness_basis = str(measurements.get("thickness", {}).get("basis") or "")
+                keep_thickness = bool(thickness_basis and thickness_basis != "unknown"
+                                      and "assumption" not in thickness_basis and "default" not in thickness_basis)
+                spec = {**selected_spec, **({"thickness_mm": thickness_mm}
+                                          if keep_thickness and _positive(thickness_mm) else {})}
+                if not keep_thickness:
+                    thickness_mm = None
+                    measurements["thickness"] = {
+                        "mm": None, "basis": "unknown",
+                        "reason": "Use the selected material's approved catalog thickness default.",
+                    }
+                # Family and finish identify the choice. A UI label is not a
+                # catalog name constraint (Veneered MDF may be named MDF veneer).
+                identity_hint = None
                 visible_veneer = choice == "veneered_mdf"
                 basis = "user_selection"
                 fallback_reason = None
@@ -776,7 +788,11 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
                         and original["thickness"].get("mm") != dimensions["thickness"]["mm"]):
                     updated["thickness"] = dimensions["thickness"]
                 thickness = stock_default.get("thickness_mm", stock_default.get("thickness"))
-                if _positive(thickness) and not _positive(original.get("thickness", {}).get("mm")):
+                selected_front_default = (material.get("material_class") == "front_panels"
+                                          and material.get("basis") == "user_selection"
+                                          and not _positive(dimensions.get("thickness", {}).get("mm")))
+                if _positive(thickness) and (not _positive(original.get("thickness", {}).get("mm"))
+                                            or selected_front_default):
                     updated["thickness"] = {"mm": thickness, "basis": "israel_reference_default",
                                              "reason": "Approved catalog default for the missing thickness."}
                 if updated:

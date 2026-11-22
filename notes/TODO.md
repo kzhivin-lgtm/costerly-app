@@ -1317,7 +1317,21 @@ start; the remaining 18.44 s are not timed by substage.
 
 ## Estimation Parts Check, 3.17.4.6
 
-ACTIVE, P1, V3.3 DIAGNOSTIC ROLLBACK PUBLISHED, FRESH LEV2 CONTROL PASSED,22November2026.
+ACTIVE, P1, ESTIMATION9.41 CANDIDATE IN VERIFICATION,22November2026. Owner approved
+the agreed front point-update/fallback/placement changes on the successful V3.3
+base plus immediate dark Changing material feedback. Preserve source Front/
+Planner/Geometry/Detection and Objects V2.7 Loading byte-for-byte. Reuse existing
+preview/Save state; no timer/polling or full-cycle/Labor restart. Coating remains
+pending its separate scope. Four frozen control sets, including the new110-part
+Lev2, have identical original purchases/costs in isolated V3.3/candidate trees.
+Real read-only four-choice previews pass without Parts/Labor/writes; unrelated
+rows/source Parts are unchanged. Focused121 Python and48.783s Calculation UI
+checks pass1280/390, including cover success/error/timeout/retry/queued changes.
+Final exact-SHA local/full GitHub gates and actual Core/wrapper publication are
+pending. Do not claim fresh recognition stability or proven9.40 causality.
+[Scope, evidence and verification](ESTIMATION_V9_41_FRONT_PANELS_2026_11_22.md).
+
+HISTORICAL V3.3 DIAGNOSTIC ROLLBACK PUBLISHED, FRESH LEV2 CONTROL PASSED,22November2026.
 Rollbacka6158588 matches publishedbcf9fdb4 in all622 non-Markdown files. Local548/nine
 249.953s and exact-SHA GitHub548/nine277.770s passed, run45014753897. Mandatory
 no-bypass ruleset27499066 verified by publisher; Core deployment7977732825
@@ -1337,8 +1351,8 @@ or Assumption Fallback. New22November10:33UTC run_f4eb3f589fcb4f18a0d548e3a6a712
 offline replay reproduces both. Front omittedC11 in the failed run; loss of the
 plan-matched column precedes the missing geometry. This is not proof that9.40
 introduced it: the geometry source is identical to the last priced runtime.
-Dark Changing material overlay remains an approved pending request, deferred by
-this rollback experiment. No new model request or production-project edit.
+Dark Changing material overlay is carried forward into the9.41 candidate above.
+No new model request or production-project edit was used in the rollback analysis.
 Keep the9.40 requirements below preserved for a later forward correction.
 
 HISTORICAL PUBLISHED ESTIMATION9.40, OWNER AUTHENTICATED ACCEPTANCE PENDING. Keep Front panels
