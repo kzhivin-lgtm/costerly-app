@@ -18,14 +18,17 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
-Current Estimation release: **V3.3**,22November2026, runtime `bcf9fdb4`.
-Front panels material selection: LDSP, Veneered MDF, MDF and Plywood, with
-automatic read-only price preview and explicit Save/APPROVE. Local and exact-SHA
-GitHub gates passed548 checks/nine browser suites. Actual Core/wrapper builds
-match; owner authenticated saved-estimate acceptance is pending.
-[Release, source controls and verification limits](notes/ESTIMATION_V3_3_FRONT_PANELS_2026_11_22.md).
+Current Estimation release: **9.40**,22November2026, runtime `f99d17b3`.
+Front panels changes patch only selected front stock and its affected purchase
+baskets. Existing Labor/other materials stay saved; totals update without Save.
+The selector sits beside its label. Missing thickness uses the chosen material's
+approved catalog fallback. Save reuses the trusted preview, with stale-base checks.
+Clean local/exact-SHA563/nine gates and actual Core/wrapper identity passed.
+Owner authenticated UI acceptance remains pending.
+[Release and verification limits](notes/ESTIMATION_V9_40_FRONT_PANELS_2026_11_22.md).
+The cycle sequence resumes9.39 →9.40; earlier V3.x labels/tags remain history.
 
-Accepted Estimation checkpoint: **V3.2**,21November2026, runtime `07ac05d2`.
+Accepted historical source-bindings checkpoint (then labeled **V3.2**),21November2026, runtime `07ac05d2`.
 
 - [Checkpoint and restoration](notes/ESTIMATION_V3_2_SOURCE_BINDINGS_CHECKPOINT_2026_11_21.md).
 - [Implementation and evidence](notes/ESTIMATION_V3_2_SOURCE_BINDINGS_2026_11_20.md).

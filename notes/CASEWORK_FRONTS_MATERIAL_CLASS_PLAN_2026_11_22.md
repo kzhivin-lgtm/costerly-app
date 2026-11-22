@@ -1,6 +1,8 @@
 # Front panels: MVP material class and switching plan
 
-Status: implemented and published22November2026. Estimation V3.3. Owner authenticated acceptance pending.
+Current implementation: Estimation9.40, published22November2026. Owner authenticated acceptance pending.
+The originally approved V3.3 implementation remains a historical release.
+[Current incremental implementation and verification](ESTIMATION_V9_40_FRONT_PANELS_2026_11_22.md).
 [Runtime, verification and limits](ESTIMATION_V3_3_FRONT_PANELS_2026_11_22.md).
 The owner first requested a plan for changing facade/visible sheet stock, then
 explicitly narrowed MVP to fronts only. Exposed sides, wall/cabinet adjacency,

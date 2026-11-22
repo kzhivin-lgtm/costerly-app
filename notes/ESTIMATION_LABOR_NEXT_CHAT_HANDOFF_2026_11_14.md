@@ -1,3 +1,18 @@
+**[verified] Current cycle release: Estimation9.40,22November2026,f99d17b3.**
+Numbering resumes9.39 →9.40; the historical V3.x labels below are not the current
+whole-cycle version. Source-binding and Labor component versions remain separate.
+Front panels selection is now incremental: selected family/defaults, one front
+demand and only affected old/new purchase baskets. Do not rerun Parts or Labor.
+Saved Labor/source Parts and unrelated material rows are retained; future coating
+will attach to this same group. Unknown thickness uses catalog fallback; explicit
+values stay fixed. Save reuses the trusted server-side preview and rejects stale
+bases. Local563/nine251.807s, CI563/nine320.540s, actual Core/wrapper match10:28:34UTC.
+Read-only actual-estimate preview2.567s plus receipt0.591s,21reads,0 paid calls.
+Owner authenticated UI acceptance pending. Current release/scope/failures:
+`notes/ESTIMATION_V9_40_FRONT_PANELS_2026_11_22.md`; backlog only `notes/TODO.md`.
+Earlier statuses below are history. Do not start coating until its rules/rates
+and the next work-block boundary are agreed.
+
 **[verified] Current runtime: Estimation V3.3,22November2026,bcf9fdb4.**
 Front panels switching is published over Objects V2.7/Estimation V3.2. Four
 choices are LDSP, Veneered MDF, MDF and Plywood; an explicit outside material

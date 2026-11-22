@@ -1,5 +1,25 @@
 # Done Log
 
+Estimation9.40 published22November2026, work3.17.4.6, OWNER AUTHENTICATED
+UI ACCEPTANCE PENDING. Correct the cycle numbering: last9.39/15faa779, now9.40;
+historical V3.x Labor/source-binding labels/tags are retained. Runtimef99d17b3,
+release tagestimation-v9.40-2026-11-22. Selector16px beside Front panels,
+chevron12px inside. Read only selected stock/defaults; patch only changed front
+and affected source/destination purchase baskets. Reuse saved Labor and source
+Parts. Totals update automatically; Save reuses a trusted server-side draft and
+rejects a stale base. New purchase rows can be edited before Save. Unknown
+thickness uses active catalog defaults, explicit dimensions remain fixed.
+Actual saved-route read-only preview2.567s + receipt0.591s,21 reads; no full
+cycle/Labor/paid call/project write. Existing unedited saved controls matchV3.3.
+Local563/nine251.807s and exact-SHA GitHub563/nine320.540s passed, run45011971041/
+job137176043571/artifact14750540556. Active no-bypass27499066 checked by publisher.
+Core7977386711 success10:28:23UTC; actual Core/wrapper/meta/version match10:28:34.
+Initial15e1fa16 blocked by the80-character marker contract, fixed without changing
+the limit. Parallel full-catalog experiment was rejected by owner and discarded.
+Source ZIP813/4,654,216bytes verified; prior runtime/tags preserved. Final UI
+acceptance is open, coating is the next separate scope.
+[Release, failures, scope and limits](ESTIMATION_V9_40_FRONT_PANELS_2026_11_22.md).
+
 Estimation V3.3 published22November2026, work3.17.4.6, OWNER AUTHENTICATED
 ACCEPTANCE PENDING. Runtimebcf9fdb4fc53265b28f75ebbe48ae183ea7d73b7,
 release tagestimation-v3.3-2026-11-22. Front panels offers LDSP/Veneered MDF/MDF/

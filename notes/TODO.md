@@ -1317,7 +1317,7 @@ start; the remaining 18.44 s are not timed by substage.
 
 ## Estimation Parts Check, 3.17.4.6
 
-ACTIVE, P1, OWNER-REQUESTED ESTIMATION9.40 CORRECTION,22November2026. Keep Front panels
+ACTIVE, P1, PUBLISHED ESTIMATION9.40, OWNER AUTHENTICATED ACCEPTANCE PENDING,22November2026. Keep Front panels
 above the Materials table, place its selector16px beside its label, inset the
 chevron12px. Selecting a type must rebuild visible rows/prices/totals without
 Save, navigation or a full-page reload. Existing Save/APPROVE remains persistence.
@@ -1329,9 +1329,16 @@ Detection or the no-bypass release gate. V3.3 remains preserved atbcf9fdb4.
 Reproduce against the owner's saved Lev2 route and all three saved controls.
 Verify the existing selector/failure/rapid-change/Save/Approve matrix on both
 viewports, plus adjacent placement and unchanged document during preview.
+Publishedf99d17b3 through the no-bypass publisher; local563/nine251.807s and
+exact-SHA GitHub563/nine320.540s passed. Actual Core/wrapper build9.40 matches.
+Guarded actual-estimate preview2.567s + receipt0.591s; no full cycle or Labor.
+One server-side trusted draft is reused by Save; stale bases are rejected.
+Owner still needs the saved-estimate selector/row edit/Save/reopen/Approve check.
+No fresh model run is required. Coating stays deferred to its separate block.
 [Investigation and release](ESTIMATION_V9_40_FRONT_PANELS_2026_11_22.md).
 
-ACTIVE, P1, OWNER-APPROVED IMPLEMENTATION AND DEPLOYMENT, Estimation V3.3,
+HISTORICAL PUBLISHED BASE, Estimation V3.3. Its pending acceptance is carried
+forward to9.40 above. Original owner-approved scope,
 22November2026: casework Front panels material class and
 front-only material substitution. Owner approved the user-facing label
 `Front panels` and four selector options: `LDSP`, `Veneered MDF`, `MDF`, `Plywood`.

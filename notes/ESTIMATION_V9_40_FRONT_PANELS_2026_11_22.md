@@ -1,6 +1,6 @@
 # Estimation 9.40 Front panels live material recalculation
 
-Status: implementation candidate, publication pending. Existing work3.17.4.6.
+Status: published22November2026. Automated and deployment checks passed; owner authenticated UI acceptance pending. Existing work3.17.4.6.
 Owner requested the visual correction and automatic row/cost rebuilding, then
 confirmed missing thickness must use the existing fallback. Runtime baseV3.3
 bcf9fdb4, records a7a6a405; protected release tags remain intact.
@@ -102,3 +102,33 @@ exceeded the existing80-character observability contract. Local units had
 562 passes/one marker failure. Shorten only the shared Core/wrapper label; retain
 the same limit/test and every calculation change. The corrected exact SHA must
 pass the entire gate. Production stayedbcf9fdb4 throughout.
+
+## Publication,22November2026
+
+Runtimef99d17b3ccaf65596b2c6e574d102064edb19fc2, release tag
+`estimation-v9.40-2026-11-22`. Build:
+`estimation-v9.40-b20261122101923-fronts-objects-v2.7-detection-v8.4.29`.
+
+- Clean exact-SHA local563 checks/nine browser suites passed251.807s.
+- Exact-SHA GitHub563/nine passed320.540s: run45011971041, job137176043571,
+  artifact14750540556, retained in `ci-f99d17b3/`.
+- Existing publisher verified the trusted success and active no-bypass remote
+  ruleset27499066 before advancing main frombcf9fdb4 to f99d17b3.
+- Railway/Core deployment7977386711 succeeded10:28:23UTC. Actual executable
+  Core/wrapper, meta and version endpoint matched10:28:34UTC, HTTP200.
+- Evidence: `outputs/estimation-v9.40-front-panels/`. Earlier private diagnostic
+  attempts, saved controls and guarded real read-only preview remain under
+  `outputs/front-panels-v3.4/`; that was the superseded candidate label.
+- Source backup:813 files,4,654,216bytes, exact byte/CRC check; SHA256
+  `18736f6f7ee138a35891612004106b98142c0d624a88172ce66a814339741c14`,
+  `backups/estimation-v9.40_front_panels_marker_fix/`.
+
+Objects V2.7 workflow/profile code and all original required UI cases remain
+protected. No Detection prompt/model route or source Parts report was changed.
+No paid call or production-project write was used for verification. Public
+browser proof is anonymous Login; the actual estimate backend was exercised
+read-only and the interactive matrix used the real local UI with synthetic data.
+Owner should use the same saved estimate: switch Front panels, inspect the
+changed stock/amount, edit the new row if needed, Save/reopen and APPROVE.
+A new upload or model run is unnecessary. No new accepted checkpoint is declared.
+Coating remains the next separate block, with its rules/rates still to agree.
