@@ -571,6 +571,15 @@ def load_object_detail_quantity(*, estimate_id: str, object_id: str) -> float:
     return fetch_rfq_object_quantity(client, estimate_id=estimate_id, object_id=object_id)
 
 
+def _detail_batch_net(snapshot):
+    """Expose the existing batch audit for display, preserving stored unit costs."""
+    if not isinstance(snapshot, dict) or "materials_batch" not in snapshot:
+        return None
+    return round(_number(snapshot.get("materials_batch"), 0)
+                 + _number((snapshot.get("labor") or {}).get("total"), 0)
+                 + _number((snapshot.get("overhead") or {}).get("cost"), 0), 2)
+
+
 def load_object_detail_data(
     *, estimate_id: str, object_id: str, company_id: str | None = None,
 ) -> dict[str, Any]:
@@ -736,6 +745,7 @@ def load_object_detail_data(
             "title": f"{object_row.get('object_name') or 'Object'} self cost (SC)",
             "vat_percent": vat_percent,
             "excl_vat": object_row.get("self_cost_ex_vat"),
+            "batch_excl_vat": _detail_batch_net(object_row),
             "vat": object_row.get("vat_amount"),
             "total": object_row.get("self_cost_total"),
             "partial": bool(object_row.get("partial")),
@@ -756,17 +766,25 @@ def load_object_detail_material_receipt(
         plan_future = executor.submit(fetch_rfq_estimate_material_plan, client, estimate_id)
         obj, lines = object_future.result(), lines_future.result()
         saved_plan = _with_saved_led_catalog_specs(client, _first_row(plan_future.result()).get("plan_payload") or {})
-    cost_snapshot = next((row.get("raw_agent_json") or {} for row in lines.to_dict("records")
+    return _project_detail_receipt(obj, lines, saved_plan)
+
+
+def _project_detail_receipt(obj, lines, plan, cost_snapshot=None):
+    """Project an acknowledged write result without a second database read."""
+    object_id = str(obj["object_id"])
+    cost_snapshot = cost_snapshot or next((row.get("raw_agent_json") or {} for row in lines.to_dict("records")
                           if row.get("source") == _FULL_COST_SOURCE), {})
     return {
-        "sections": [{"key": "material", "rows": _object_detail_material_rows(saved_plan, lines, object_id),
-                      "front_panels": front_panel_controls(saved_plan, lines.to_dict("records"), object_id)}],
+        "sections": [{"key": "material", "rows": _object_detail_material_rows(plan, lines, object_id),
+                      "front_panels": front_panel_controls(plan, lines.to_dict("records"), object_id)}],
         "quantity": _number(obj.get("quantity"), 1),
         "labor_hours_overrides": overrides_from_lines(lines),
         "labor_block_hours": {key: value["hours"] for key, value in cost_snapshot.get("labor_blocks", {}).items() if value},
-        "cost_policy": next((row.get("source") for row in lines.to_dict("records") if row.get("source") == _FULL_COST_SOURCE), None),
-        "self_cost": {"excl_vat": obj.get("self_cost_ex_vat"), "vat": obj.get("vat_amount"),
-                      "total": obj.get("self_cost_total"),
+        "cost_policy": _FULL_COST_SOURCE if cost_snapshot.get("version") == _FULL_COST_SOURCE else None,
+        "self_cost": {"excl_vat": cost_snapshot.get("self_cost_ex_vat", obj.get("self_cost_ex_vat")),
+                      "vat": cost_snapshot.get("vat_amount", obj.get("vat_amount")),
+                      "total": cost_snapshot.get("self_cost_total", obj.get("self_cost_total")),
+                      "batch_excl_vat": _detail_batch_net(cost_snapshot),
                       **({"partial": bool(cost_snapshot.get("partial"))} if cost_snapshot else {})},
     }
 
@@ -1702,6 +1720,7 @@ def front_material_preview_receipt(*, estimate_id, object_id, plan):
                       "front_panels": front_panel_controls(plan, lines.to_dict("records"), object_id)}],
         "quantity": _number(obj.get("quantity"), 1), "cost_policy": _FULL_COST_SOURCE,
         "self_cost": {"excl_vat": summary["self_cost_ex_vat"], "vat": summary["vat_amount"],
+                      "batch_excl_vat": _detail_batch_net(summary),
                       "total": summary["self_cost_total"], "partial": summary["partial"]},
         "labor_hours_overrides": overrides_from_lines(lines),
         "labor_block_hours": {key: value["hours"] for key, value in summary["labor_blocks"].items() if value},
@@ -1718,13 +1737,14 @@ def apply_material_plan_allocations(
     object_contexts: dict[str, dict[str, Any]] | None = None,
     protected_approval_objects: set[str] | None = None,
     preserve_labor: bool = False,
-) -> None:
+) -> dict[str, dict[str, Any]]:
     """Project rounded purchase costs back into the owning Object Detail rows."""
     # A partial plan is still authoritative for the requirements it actually
     # resolved. Do not hide priced Company/Israel materials merely because a
     # different requirement remains review-required.
     if str(plan_snapshot.get("status") or "") not in {"planned", "needs_review"}:
-        return
+        return {}
+    receipts = {}
     allocation_costs = {
         (str(row.get("object_id") or ""), str(row.get("material_requirement_id") or "")): _number(
             row.get("cost_ex_vat"), 0
@@ -1769,7 +1789,7 @@ def apply_material_plan_allocations(
     }
     checked_objects = plan_snapshot.get("parts_check") or {}
     if not allocation_costs and not assumption_fallbacks and not checked_objects and not changed_quantity_objects:
-        return
+        return {}
     lines_df = fetch_rfq_estimate_lines(client, estimate_id)
     affected_object_ids: set[str] = set()
     for _, item in lines_df.iterrows():
@@ -1890,6 +1910,12 @@ def apply_material_plan_allocations(
             ]
         if changed_policy_lines:
             upsert_rfq_estimate_lines(client, lines=changed_policy_lines)
+        # Use the same newly published policy values for both costing and its receipt.
+        if policy_lines:
+            import pandas as pd
+            policy_ids = {row["line_id"] for row in policy_lines}
+            object_rows = pd.DataFrame([row for row in object_rows.to_dict("records")
+                                        if row.get("line_id") not in policy_ids] + policy_lines)
         if plan_snapshot.get("parts_check_source") and full_context is None:
             full_context = _full_cost_context(
                 client, {**object_context, "estimate_id": estimate_id}, plan_snapshot, settings,
@@ -1913,6 +1939,12 @@ def apply_material_plan_allocations(
             progress_percent=100,
             progress_label="material_plan_needs_review" if review_required else "materials_costed",
         )
+
+        if cost_summary:
+            receipts[object_id] = _project_detail_receipt(
+                {**object_context, "object_id": object_id}, object_rows, plan_snapshot, cost_summary)
+            receipts[object_id]["self_cost"]["vat_percent"] = _number(settings.get("vat_percent"), 18)
+    return receipts
 
 
 def update_object_quantity(

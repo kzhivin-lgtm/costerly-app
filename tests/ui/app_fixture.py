@@ -235,6 +235,9 @@ def save_materials(**kwargs):
   record('front preview' if preview else 'front save')
   sleep(float(scenario().get('front_delay',0.15)))
   result=Future()
+  if not preview and scenario().get('front_save_failure'):
+   result.set_exception(RuntimeError('Controlled persistence failure'))
+   return result
   if scenario().get('front_failure'):
    result.set_exception(ValueError('Controlled front material failure.'))
    return result

@@ -8,6 +8,7 @@ from typing import Callable
 import streamlit as st
 
 from config import get_optional_secret
+from observability.runtime import report_runtime_failure
 from db.repositories import delete_rfq_object_detail_draft, fetch_rfq_object_detail_draft
 from db.supabase_client import get_supabase_client
 from screens.estimation_labor_v1 import render_labor_v1
@@ -312,6 +313,7 @@ def _material_editor(context: ObjectDetailContext) -> None:
     preview = request.get("preview") is True
     result = {"id": request_id, "scope": list(key), "preview": preview}
     started = perf_counter()
+    phase = "validation"
     try:
         edits = request.get("edits")
         if not isinstance(edits, list):
@@ -325,16 +327,25 @@ def _material_editor(context: ObjectDetailContext) -> None:
                and any(edit.get('field') == 'front_material' for edit in edits) else {}),
         )
         submitted = perf_counter()
+        phase = "pricing"
         plan = future.result()
         published = perf_counter()
         if preview:
             st.session_state.object_detail_front_preview = {'scope': key, 'plan': plan}
             data = front_material_preview_receipt(estimate_id=context.estimate_id, object_id=context.object_id, plan=plan)
         else:
+            phase = "receipt"
+            base = st.session_state.get("object_detail_data_cache", {}).get(key, {})
+            data = (plan.get("_object_detail_receipts") or {}).get(context.object_id) if isinstance(plan, dict) else None
+            if data is None:
+                data = load_object_detail_material_receipt(estimate_id=context.estimate_id, object_id=context.object_id)
             st.session_state.pop('object_detail_front_preview', None)
             st.session_state.pop("approved_object_keys", None)
             _mark_objects_estimation_dirty(context.estimate_id)
-            data = load_object_detail_material_receipt(estimate_id=context.estimate_id, object_id=context.object_id)
+            if base:
+                st.session_state.setdefault("object_detail_data_cache", {})[key] = {
+                    **base, **data, "self_cost": {**base.get("self_cost", {}), **data["self_cost"]}}
+                st.session_state.setdefault("object_detail_data_cache_dirty", set()).discard(context.estimate_id)
         result.update(
             rows=object_detail_view.material_preview_rows(data),
             self_cost=data["self_cost"],
@@ -354,9 +365,12 @@ def _material_editor(context: ObjectDetailContext) -> None:
         }
     except ValueError as exc:
         result["error"] = str(exc)
-    except Exception:
-        _LOG.exception("Could not save material edits for estimate %s", context.estimate_id)
-        result["error"] = "Could not save changes. Your edits are still here."
+    except Exception as exc:
+        _LOG.exception("Could not save material edits for estimate %s at %s", context.estimate_id, phase)
+        report_runtime_failure("object_detail.save." + phase, exc, estimate_id=context.estimate_id,
+                               object_id=context.object_id, rfq_run_id=context.run_id)
+        result["error"] = "Save failed. Your changes are retained."
+        result["error_phase"] = phase
     results[key] = result
     st.rerun(scope="fragment")
 

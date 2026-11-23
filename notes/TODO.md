@@ -537,6 +537,35 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+ACTIVE, P1, USER-REPORTED9.43 PARTIAL ACCEPTANCE, release9.44,23November2026.
+Quantity now persists. Investigate and repair Object Detail totals mixing batch
+section totals with per-item final cost, failed Save, and any Save navigation.
+Save must remain on the card and turn green until another edit; Back confirms
+unsaved changes, APPROVE saves/approves then returns. Keep unit prices on Objects.
+Measure both Review/open and return/approval latency using actual events and
+read/write/render timings. Standardise the content-to-fixed-Privacy footer gap
+across screens, preserving the fixed footer. Owner explicitly requests these
+repairs; no new block. Keep costing source/recognition and all prior checkpoints.
+Save processes only changed inputs and their dependent material/formula/SC totals,
+not a repeated Parts Check or recognition cycle. Front and numeric material edits
+reuse saved Labor unless object quantity changes. Return the acknowledged worker
+receipt into the existing scoped cache, avoiding a second read after persistence.
+Owner confirmed the failed edit was front material. Exact historical backend
+exception remains UNKNOWN; a post-write receipt-read failure is reproduced as a
+supported failure mode, not asserted as the original transport error.
+Route witness run_186f97810a4b4506a8fe356c0d5abf9b, object-001, quantity3:
+4979.21 unit net/5875.47 incl VAT. Actual transitions8.382s cold Review,
+3.487s warm Review,7.252s APPROVE return; stage breakdown retained privately.
+
+PENDING PROPOSAL, P2, OWNER-REQUESTED TRANSITION PERFORMANCE OPTIONS,23November2026.
+Actual cold/warm Review8.382/3.487s has server render4.717/0.661s; APPROVE return
+7.252s has render3.776s. Guarded profiling confirms detail reads attempt unchanged
+pricing-policy writes. Proposed next: avoid no-op writes and parallelise independent
+reads; then cache Parts/geometry/preview by immutable source revision. Assess each
+with event/write/read/render/visible timing and existing tenant/auth/quantity checks.
+These broader changes are not implemented by9.44. Its committed Save receipt/cache
+reuse is part of the authorised repair, not an extra polling/prefetch system.
+
 PUBLISHED9.43, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING,23November2026,
 runtimed41eb127. Both old quantity failures reproduced and repaired: warm card
 quantity validation, and Review waiting only for its target's pending quantity

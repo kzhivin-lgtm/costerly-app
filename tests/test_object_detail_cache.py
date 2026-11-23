@@ -236,11 +236,39 @@ def test_open_second_object_after_return_uses_foreground_read_if_prefetch_is_pen
     running = Future()
     running.set_running_or_notify_cancel()
     st.session_state.object_detail_prefetch_futures = {("estimate-1", "object-2"): running}
-    st.session_state.object_detail_data_cache = {("estimate-1", "object-1"): {"name": "First"}}
+    st.session_state.object_detail_data_cache = {("estimate-1", "object-1"): {"name": "First", "quantity": 1}}
     monkeypatch.setattr(object_detail, "load_object_detail_data", lambda **kw: {"name": kw["object_id"]})
+    monkeypatch.setattr(object_detail, "load_object_detail_quantity", lambda **kw: 1)
     objects._open_object_detail("object-1")
-    assert object_detail._load_object_detail_or_render_error(object_detail._current_object_detail_context()) == {"name": "First"}
+    assert object_detail._load_object_detail_or_render_error(object_detail._current_object_detail_context()) == {"name": "First", "quantity": 1}
     object_detail._return_to_objects()
     objects._open_object_detail("object-2")
     assert object_detail._load_object_detail_or_render_error(object_detail._current_object_detail_context()) == {"name": "object-2"}
     assert not running.done()
+
+
+def test_material_save_uses_committed_receipt_without_a_fallible_second_read(monkeypatch):
+    st.session_state.clear()
+    context=object_detail.ObjectDetailContext('estimate-1','object-1','run-1');key=('estimate-1','object-1')
+    st.session_state.current_estimate_id='estimate-1';st.session_state.current_object_id='object-1'
+    st.session_state.current_run_id='run-1';st.session_state.screen='object_detail'
+    st.session_state.object_detail_data_cache={key:{'name':'Preserved name','preview_url':'preserved-preview',
+        'sections':[], 'self_cost':{'vat_percent':18,'excl_vat':100},'quantity':3}}
+    receipt={'sections':[{'key':'material','rows':[],'front_panels':[]}],
+             'self_cost':{'excl_vat':200,'vat':36,'total':236,'batch_excl_vat':600},
+             'quantity':3,'cost_policy':'object_costs_v3_1'}
+    future=Future();future.set_result({'_object_detail_receipts':{'object-1':receipt}})
+    request={'id':'save-front','scope':list(key),'edits':[{'field':'front_material','lineId':'__front_panels__:g','value':'mdf'}]}
+    monkeypatch.setattr(object_detail,'material_edit_bridge',lambda **k:request)
+    monkeypatch.setattr(object_detail,'save_object_detail_material_edits',lambda **k:future)
+    def failed_read(**k):raise ConnectionError('The acknowledged save must not depend on this read')
+    monkeypatch.setattr(object_detail,'load_object_detail_material_receipt',failed_read)
+    monkeypatch.setattr(st,'rerun',lambda **k:None)
+    object_detail._material_editor.__wrapped__(context)
+    result=st.session_state.object_detail_material_edit_results[key]
+    assert 'error' not in result
+    assert result['self_cost']['excl_vat']==200
+    cached=st.session_state.object_detail_data_cache[key]
+    assert cached['name']=='Preserved name' and cached['preview_url']=='preserved-preview'
+    assert cached['self_cost']['vat_percent']==18 and cached['self_cost']['batch_excl_vat']==600
+    assert st.session_state.screen=='object_detail'

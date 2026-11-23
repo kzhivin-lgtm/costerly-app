@@ -77,6 +77,7 @@ def test_scoped_material_save_reprices_only_edited_stock_and_its_owners(monkeypa
 
     assert snapshot["lines"][0]["purchase_quantity"] == 2
     assert snapshot["lines"][1] == unrelated
+    assert writes["allocations"]["preserve_labor"] is True
     assert writes["allocations"]["changed_requirements"] == {("object-a", "LED"), ("object-b", "led")}
     assert writes["upsert_rfq_estimate_material_norm_overrides"]["rows"] == list(edit.values())
     assert writes["delete_rfq_estimate_material_purchase_overrides"]["selection_keys"] == {"LED"}

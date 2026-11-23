@@ -801,7 +801,7 @@ def apply_object_detail_css() -> None:
 
         .object-detail-material-edit-status:empty { margin: 0; }
 
-        .object-detail-material-edit-status[data-confirmation] {
+        .object-detail-material-edit-status {
             position: absolute;
             width: 1px;
             height: 1px;
@@ -809,6 +809,10 @@ def apply_object_detail_css() -> None:
             overflow: hidden;
             clip-path: inset(50%);
             white-space: nowrap;
+        }
+
+        .object-detail-material-save[data-save-error] {
+            border-color: var(--color-danger, #b43b46);
         }
 
         .object-detail-material-save:disabled {
@@ -859,9 +863,18 @@ def apply_object_detail_css() -> None:
         .stApp:has(.object-detail-footer-actions) {
             --object-detail-summary-bottom: 24px;
             --object-detail-action-gap: 24px;
-            /* The fixed link starts 31px above the viewport bottom. The final
-               Markdown container carries 16px of margin after the actions. */
-            --post-upload-bottom: calc(var(--object-detail-summary-bottom) + var(--object-detail-action-gap) + 47px);
+        }
+
+        /* Use the shared 72px reserve: fixed Privacy footer plus a 26px gap.
+           On short cards, place the summary/actions together at the page end. */
+        .stApp:has(.object-detail-page-end) [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {
+            min-height: calc(100dvh - var(--post-upload-screen-top) - var(--post-upload-bottom));
+        }
+        [data-testid="stElementContainer"]:has(.object-detail-page-end) {
+            margin-top: auto;
+        }
+        [data-testid="stMarkdownContainer"]:has(.object-detail-page-end) {
+            margin-bottom: 0;
         }
 
         /* Keep the zero-height Streamlit bridges mounted without their layout gaps. */
@@ -869,6 +882,7 @@ def apply_object_detail_css() -> None:
             [data-testid="stLayoutWrapper"]:has(.st-key-object_detail_navigation_bridges),
             [data-testid="stElementContainer"]:has(iframe[title="st.iframe"]),
             [data-testid="stElementContainer"]:has([data-costerly-screen="object_detail"]),
+            [data-testid="stLayoutWrapper"]:has(.st-key-object_detail_material_edit),
             .st-key-object_detail_material_edit,
             [class*="st-key-object_detail_overlay"]
         ) {

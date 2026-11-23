@@ -470,22 +470,28 @@ def _section_html(section: dict[str, object]) -> str:
 def _final_html(data: dict[str, object]) -> str:
     """Render final self-cost block."""
     summary = data["self_cost"]
+    quantity = float(data.get("quantity") or 1)
+    net = summary.get("batch_excl_vat")
+    if net is None and summary["excl_vat"] is not None:
+        net = round(float(summary["excl_vat"]) * quantity, 2)
+    vat = None if net is None else round(float(net) * float(summary.get("vat_percent", 18)) / 100, 2)
+    total = None if net is None else round(float(net) + vat, 2)
     return (
         f'<div class="object-detail-final" data-vat-percent="{_escape(summary.get("vat_percent", 18))}" '
         f'data-full-cost="{str(data.get("cost_policy") == "object_costs_v3_1").lower()}" '
-        f'data-base-cost="{_escape(summary["excl_vat"])}">'
+        f'data-base-cost="{_escape(summary["excl_vat"])}" data-base-batch-cost="{_escape(net)}">'
         '<div class="object-detail-final-title">Self Cost (SC)</div>'
         '<div class="object-detail-final-metric">'
         '<div class="object-detail-final-label">Excl. VAT</div>'
-        f'<div class="object-detail-final-value" data-final="excl_vat">{_money(summary["excl_vat"])}</div>'
+        f'<div class="object-detail-final-value" data-final="excl_vat">{_money(net)}</div>'
         '</div>'
         '<div class="object-detail-final-metric">'
         f'<div class="object-detail-final-label">VAT {_escape(_number_text(summary.get("vat_percent", 18)))}%</div>'
-        f'<div class="object-detail-final-value" data-final="vat">{_money(summary["vat"])}</div>'
+        f'<div class="object-detail-final-value" data-final="vat">{_money(vat)}</div>'
         '</div>'
         '<div class="object-detail-final-metric">'
         '<div class="object-detail-final-label">Total</div>'
-        f'<div class="object-detail-final-value object-detail-final-total" data-final="total">{_money(summary["total"])}</div>'
+        f'<div class="object-detail-final-value object-detail-final-total" data-final="total">{_money(total)}</div>'
         '</div>'
         '</div>'
     )
@@ -729,10 +735,10 @@ def detail_summary_html(
 ) -> str:
     """Render Object Detail totals and footer actions."""
     return (
-        _final_html(data)
+        '<div class="object-detail-page-end">' + _final_html(data)
         + _footer_html(
             run_id=run_id,
             estimate_id=estimate_id,
             object_id=object_id,
-        )
+        ) + "</div>"
     )

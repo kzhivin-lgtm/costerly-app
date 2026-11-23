@@ -192,6 +192,37 @@ placeholders so an overhead read never replaces Labor input nodes. One bounded
 DOM observer reconciles a delayed Overhead with current edits; it disconnects on
 resolution/error or editor teardown, without a timer or another Python rerun.
 
+## Estimation9.44 explicit delta Save and consistent quantity display,23November2026
+
+The owner requires Save to process only edited inputs and their dependent totals.
+Front choices reprice the affected saved material baskets, preserving Parts,
+geometry and Labor. Numeric material edits also reuse saved Labor unless object
+quantity changes. A changed norm remains saved even when purchase rounding leaves
+its cost unchanged. Whole-cycle validation/model calls are not part of Save.
+The queued worker returns a projected receipt only after acknowledged persistence;
+merge that receipt into the existing scoped card cache, preserving source preview
+and immutable content. A committed modern material Save must not depend on a
+second detail read. Existing ownership/validation, ordering and explicit Save stay.
+
+Save stays on the card and turns green Saved after success, until another edit.
+It never approves/navigates. Back still confirms unsaved edits, APPROVE alone
+saves/approves then returns. Failure retains the draft and offers Retry save on
+the existing button, without a second paragraph under the actions. Keep its
+accessible status and diagnostic stage logging. Never show green success before
+the writer acknowledges persistence.
+
+Persisted Self Cost and Objects retain per-item prices. Object Detail sections and
+bottom Self Cost all display the selected quantity's batch. Prefer the existing
+exact batch audit, rather than multiply already rounded unit VAT. Apply configured
+VAT once to the displayed batch net. This supersedes only the previous per-item
+presentation at the card bottom, not costing formulas or Objects unit prices.
+
+Privacy remains fixed. Retain the shared72px bottom reserve (46px fixed footer,
+26px content gap). On short detail cards, keep Self Cost and actions together at
+the viewport end. On long cards, the same gap applies at the scroll end. Remove
+the invisible material bridge's layout gap without unmounting its iframe. Other
+screen geometry, shared header/menu, source previews and all prior checks remain.
+
 ## V2.9 one deployment event and retained login, approved 19 November 2026
 
 Owner explicitly requires a page refresh with the user still signed in and

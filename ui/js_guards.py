@@ -2301,7 +2301,9 @@ def install_object_detail_input_guard(
                 const saved = button.hasAttribute("data-saved") && !draft.size && !activeSave && !invalid;
                 button.disabled = !draft.size || !!activeSave || invalid;
                 button.classList.toggle("object-detail-material-save--saved", saved);
-                button.textContent = activeSave ? (activeSave.preview ? "Calculating…" : "Saving…") : saved ? "Saved" : "Save changes";
+                button.toggleAttribute("data-save-error", Boolean(message));
+                button.title = message || "";
+                button.textContent = activeSave ? (activeSave.preview ? "Calculating…" : "Saving…") : message ? "Retry save" : saved ? "Saved" : "Save changes";
                 setStatus(message || (saved ? "Changes saved" : ""), saved && !message);
             };
             __MOVE_CARET_TO_END__
@@ -2446,11 +2448,10 @@ def install_object_detail_input_guard(
                 }
                 const final = parentDoc.querySelector(".object-detail-final");
                 if (!final || !Number.isFinite(Number(final.dataset.baseCost))) return;
-                const cost = (Number(final.dataset.baseCost) * count + materialDelta + formulaDelta) / nextCount;
-                const vat = cost * Number(final.dataset.vatPercent || 0) / 100;
-                setFinal("excl_vat", cost);
-                setFinal("vat", vat);
-                setFinal("total", cost + vat);
+                const baseBatch = Number(final.dataset.baseBatchCost);
+                const cost = (Number.isFinite(baseBatch) ? baseBatch : Number(final.dataset.baseCost) * count)
+                    + materialDelta + formulaDelta;
+                setBatchFinal(cost);
             }
 
             function stageMaterialEdit(ctx, reportInvalid = false) {
@@ -2591,11 +2592,7 @@ def install_object_detail_input_guard(
                     const quantity = objectQuantityInput();
                     const edit = quantity && draft.get(editKey(objectQuantityContext(quantity)));
                     const count = Number(edit?.value ?? quantity?.dataset.originalValue ?? 1);
-                    const net = round((materialCost + laborCost + cost) / count);
-                    const tax = round(net * Number(final.dataset.vatPercent || 0) / 100);
-                    setFinal("excl_vat", net);
-                    setFinal("vat", tax);
-                    setFinal("total", round(net + tax));
+                    setBatchFinal(round(materialCost + laborCost + cost));
                 }
                 for (const group of host.querySelectorAll('.object-detail-group')) {
                     const cell = group.querySelector('summary .object-detail-group-total:last-child');
@@ -2629,7 +2626,11 @@ def install_object_detail_input_guard(
 
             function saveMaterialDraft(event) {
                 if (event.target?.closest?.('[data-field="labor_hours"]')) event.preventDefault();
-                if (event.target?.closest?.(".object-detail-material-save")) submitDraft();
+                if (event.target?.closest?.(".object-detail-material-save")) {
+                    event.preventDefault();event.stopImmediatePropagation();
+                    if (activeSave) activeSave.approveAfterSave = false;
+                    else submitDraft(false);
+                }
             }
 
             function changeFrontMaterial(event) {
@@ -2743,14 +2744,14 @@ def install_object_detail_input_guard(
                 const final = parentDoc.querySelector(".object-detail-final");
                 if (final) {
                     final.dataset.baseCost = result.self_cost.excl_vat ?? "";
+                    final.dataset.baseBatchCost = result.self_cost.batch_excl_vat ?? Number(result.self_cost.excl_vat) * Number(result.quantity || 1);
+                    if (result.self_cost.vat_percent != null) final.dataset.vatPercent = String(result.self_cost.vat_percent);
                     final.dataset.fullCost = String(result.cost_policy === "object_costs_v3_1");
                     const subtotal = final.querySelector('[data-full-cost-subtotal]');
                     if (subtotal) subtotal.hidden = !result.self_cost.partial;
                 }
-                for (const field of ["excl_vat", "vat", "total"]) {
-                    const node = parentDoc.querySelector(`[data-final="${field}"]`);
-                    if (node) node.textContent = result.self_cost[field] == null ? "—" : formatMoney(result.self_cost[field]);
-                }
+                setBatchFinal(result.self_cost.batch_excl_vat ?? (result.self_cost.excl_vat == null
+                    ? null : Number(result.self_cost.excl_vat) * Number(result.quantity || 1)));
                 if (current && validAmount(current.value) && current.value !== current.input.dataset.editStartValue &&
                     !draft.has(editKey(current)) && !submitted.some(edit => editKey(edit) === editKey(current))) {
                     if (Number(current.value) === Number(current.input.dataset.originalValue)) draft.delete(editKey(current));
@@ -2889,6 +2890,20 @@ def install_object_detail_input_guard(
                 if (node) node.textContent = formatMoney(value);
             }
 
+            function setBatchFinal(net) {
+                const host = parentDoc.querySelector(".object-detail-final");
+                if (net == null || !Number.isFinite(Number(net))) {
+                    for (const field of ["excl_vat", "vat", "total"]) {
+                        const node = host?.querySelector(`[data-final="${field}"]`);
+                        if (node) node.textContent = "—";
+                    }
+                    return;
+                }
+                const amount = Math.round(Number(net) * 100) / 100;
+                const tax = Math.round(amount * Number(host?.dataset.vatPercent || 0)) / 100;
+                setFinal("excl_vat", amount);setFinal("vat", tax);setFinal("total", amount + tax);
+            }
+
             function updateRowCost(row) {
                 if (!row) return;
                 const section = String(row.dataset.section || "");
@@ -2949,10 +2964,7 @@ def install_object_detail_input_guard(
                 setMetric("overhead", "total", overheadCost * (1 + overheadVatPct / 100), formatMoney);
 
                 const exclVat = materialCost + laborCost + employerLoad + overheadCost;
-                const finalVatPct = 18;
-                setFinal("excl_vat", exclVat);
-                setFinal("vat", exclVat * finalVatPct / 100);
-                setFinal("total", exclVat * (1 + finalVatPct / 100));
+                setBatchFinal(exclVat);
             }
 
             function updateCalculations(row) {

@@ -62,6 +62,12 @@ requires a fully opaque shared loading background, retaining all earlier font,
 viewport, success/error/timeout and queued-selection assertions. Python additionally
 checks stale completed-prefetch, no revalidation on edit, unchanged-cache reuse
 and no stale fallback after an access/read failure.
+Estimation9.44 adds quantity3 batch-total presentation and front material Save
+failure/retry/stay/green Saved/new edit/Back Stay/Leave/APPROVE at1758/390 widths.
+The fixed footer remains and the closing action gap is26px. Python also covers
+committed-receipt cache merge without a second read; the existing Object Detail
+cache, material runtime and norm suites are now explicitly included in the full
+gate. Existing numeric/labor, queued preview, timeout and all nine suites remain.
 The version-refresh suite uses the real wrapper and workflow controller with
 synthetic screens. V2.9 covers a single Core build event, old-tab migration,
 one reload, deferred active work, failure recovery and zero version-file reads.

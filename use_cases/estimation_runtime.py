@@ -332,6 +332,13 @@ def _recalculate_edited_material_lines(
                          for row in saved["object_material_costs"]}
         changed = {(row["object_id"], row["material_requirement_id"]) for row in snapshot["object_material_costs"]
                    if row["cost_ex_vat"] != previous_cost.get((row["object_id"], row["material_requirement_id"]))}
+    # A changed norm must be published even if the rounded purchase cost is
+    # unchanged (for example, both areas still fit into the same two sheets).
+    changed.update(norm_edits)
+    changed.update((row["object_id"], row["material_requirement_id"])
+                   for line in snapshot["lines"] for row in line["allocations"]
+                   if line["selection_key"] in purchase_keys
+                   or object_purchase_key(row["object_id"], line["selection_key"]) in purchase_edits)
     if not changed_stock and not changed and not ratios and not purchase_edits and not approve_objects:
         return snapshot
     checked_objects = snapshot.get("parts_check") or {}
@@ -370,11 +377,12 @@ def _recalculate_edited_material_lines(
         )
         update_rfq_detected_object(client, run_id=run_id, object_id=oid, values={"quantity": quantities[oid]})
         object_contexts[oid]["quantity"] = quantities[oid]
-    apply_material_plan_allocations(
+    receipts = apply_material_plan_allocations(
         client, estimate_id=estimate_id, plan_snapshot=snapshot, changed_requirements=changed,
         changed_quantity_objects=set(ratios),
         object_contexts=object_contexts,
         protected_approval_objects=set(review_order or ()),
+        preserve_labor=not bool(ratios),
     )
     upsert_rfq_estimate_material_plan(
         client, estimate_id=estimate_id, company_id=company_id,
@@ -384,7 +392,7 @@ def _recalculate_edited_material_lines(
         update_rfq_object_estimate_approved(client, estimate_id=estimate_id, object_id=oid, approved=False)
     for oid in approve_objects:
         update_rfq_object_estimate_approved(client, estimate_id=estimate_id, object_id=oid, approved=True)
-    return snapshot
+    return {**snapshot, "_object_detail_receipts": receipts} if receipts else snapshot
 
 
 def _saved_material_inputs(client, estimate_id, run_id, company_id, quantities, *, object_ids=None):
@@ -540,14 +548,16 @@ def _recalculate_front_panel_materials(client, *, estimate_id, run_id, company_i
     for oid, quantity in quantity_edits.items():
         update_rfq_object_estimate_quantity(client, estimate_id=estimate_id, object_id=oid, quantity=quantity)
         update_rfq_detected_object(client, run_id=run_id, object_id=oid, values={"quantity": quantity})
+    receipts = {}
     if affected:
-        apply_material_plan_allocations(client, estimate_id=estimate_id, plan_snapshot=snapshot,
+        receipts = apply_material_plan_allocations(client, estimate_id=estimate_id, plan_snapshot=snapshot,
                                         changed_requirements=affected, changed_quantity_objects=set(quantity_edits),
                                         preserve_labor=not bool(quantity_edits),
                                         protected_approval_objects=set(quantities) - edited_objects - set(quantity_edits))
         upsert_rfq_estimate_material_plan(client, estimate_id=estimate_id, company_id=company_id,
                                          plan_payload=snapshot, plan_status=snapshot["status"])
-    return snapshot
+    # Receipts are returned only after the plan write; they are not persisted in the plan.
+    return {**snapshot, "_object_detail_receipts": receipts} if receipts else snapshot
 
 
 def preview_front_panel_materials(**kwargs):

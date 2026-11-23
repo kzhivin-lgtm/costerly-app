@@ -108,6 +108,7 @@ def apply_base_css() -> None:
             --post-upload-top: 73px;
             --post-upload-screen-top: 26px;
             --processing-stage-top: var(--post-upload-top);
+            /* Fixed Privacy footer (46px) and the shared content gap (26px). */
             --post-upload-bottom: 72px;
             --post-upload-title-size: 40px;
             --post-upload-title-line-height: 1.1;

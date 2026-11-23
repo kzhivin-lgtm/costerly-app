@@ -189,3 +189,37 @@ def test_project_material_purchase_rows_preserve_whole_sheet_cost():
         "item": "LDSP 18 mm", "purchase": "2 sheet", "unit_price": 211.99,
         "total_cost": 423.98, "price_source": "I",
     }]
+
+
+def test_incremental_cost_summary_uses_the_new_policy_amounts(monkeypatch):
+    from copy import deepcopy
+    obj = {"object_id": "cabinet", "company_id": "company", "quantity": 1}
+    rows = [{"section": "material", "object_id": "cabinet", "line_id": "body", "cost": 1000,
+             "source": "parts_check", "raw_agent_json": {"facts": {"requirement_id": "mdf"}}}]
+    settings = {"consumables_percent": 5, "paint_consumables_percent": 10, "packaging_percent": 1}
+    rows += estimation._material_policy_lines(estimate_id="estimate", object_id="cabinet", company_id="company",
+                    settings=settings, primary_material_total=1000, coating_material_total=0)
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines", lambda *_: pd.DataFrame(deepcopy(rows)))
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines_for_object", lambda *a, **kw: pd.DataFrame(deepcopy(rows)))
+    monkeypatch.setattr(estimation, "fetch_company_overhead_settings", lambda *_: pd.DataFrame([settings]))
+    def update(_client, *, line_id, values, **kwargs):
+        next(row for row in rows if row['line_id'] == line_id).update(values)
+    monkeypatch.setattr(estimation, "update_rfq_estimate_line", update)
+    published = []
+    monkeypatch.setattr(estimation, "upsert_rfq_estimate_lines", lambda *a, lines: published.extend(lines))
+    calculated = []
+    monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals", lambda *a, **kw: calculated.append(kw))
+    monkeypatch.setattr(estimation, "update_rfq_object_estimate_progress", lambda *a, **kw: None)
+    estimation.apply_material_plan_allocations(None, estimate_id="estimate", object_contexts={"cabinet": obj},
+        changed_requirements={("cabinet", "mdf")}, plan_snapshot={"status": "planned",
+            "object_material_costs": [{"object_id": "cabinet", "material_requirement_id": "mdf", "cost_ex_vat": 2000}],
+            "lines": [{"purchase_kind": "sheet", "allocations": [{"object_id": "cabinet",
+                        "material_requirement_id": "mdf", "area_mm2": 1_000_000}]}]})
+    policy = {row['item_name']: row['cost'] for row in published}
+    consumed = {row['item_name']: row['cost'] for row in calculated[0]['lines_df'].to_dict('records')
+                if row.get('source') == 'pricing_policy'}
+    assert policy == {'Consumables': 100, 'Packaging': 20}
+    assert consumed == {**policy, 'Paint consumables': 0}
+    # The unchanged zero Paint consumables row is reused, not written again.
+    assert next(row['cost'] for row in calculated[0]['lines_df'].to_dict('records')
+                if row.get('item_name') == 'Paint consumables') == 0

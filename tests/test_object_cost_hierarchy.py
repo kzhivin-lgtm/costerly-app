@@ -154,3 +154,14 @@ def test_new_estimate_refresh_waits_for_durable_shell_without_masking_access(mon
     future.estimate_shell_ready.set()
     assert 'foreign' in objects._persisted_objects_state('new').data_error
     assert reads == ['new']
+
+
+def test_detail_summary_displays_batch_cost_for_selected_quantity():
+    from ui.object_detail_view import _final_html
+    html = _final_html({'quantity':3,'self_cost':{
+        'vat_percent':18,'excl_vat':4979.21,'vat':896.26,'total':5875.47,
+        'batch_excl_vat':14937.63}})
+    assert 'data-final="excl_vat">₪14 938<' in html
+    assert 'data-final="vat">₪2 689<' in html
+    assert 'data-final="total">₪17 626<' in html
+    assert 'data-base-cost="4979.21"' in html, 'Persisted unit cost stays separate from the batch display'

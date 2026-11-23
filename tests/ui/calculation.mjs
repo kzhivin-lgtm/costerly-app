@@ -12,9 +12,9 @@ const server=createServer((req,res)=>{
 });
 await new Promise(resolve=>server.listen(8796,'127.0.0.1',resolve));
 const browser=await chromium.launch(chromeOptions), report={};
-async function boot(value={},width=1280){
+async function boot(value={},width=1280,height=1000){
  settings(value);
- const page=await browser.newPage({viewport:{width,height:1000}});
+ const page=await browser.newPage({viewport:{width,height}});
  page.on('pageerror',error=>console.error('browser error',error.message));
  page.setDefaultTimeout(12000);
  await page.goto('http://127.0.0.1:8796/');
@@ -49,7 +49,7 @@ async function frontPanelChecks(){
   const originalDocument=await frame.evaluate(()=>{
    window.frontPanelDocumentWitness=crypto.randomUUID();return window.frontPanelDocumentWitness;
   });
-  const save=core.getByRole('button',{name:'Save changes',exact:true});
+  const save=core.locator('.object-detail-material-save');
   const immediate=await picker.evaluate(input=>{
    input.value='mdf';input.dispatchEvent(new Event('change',{bubbles:true}));
    const overlays=document.querySelectorAll('.object-detail-material-changing'),node=overlays[0];
@@ -71,7 +71,7 @@ async function frontPanelChecks(){
   assert.equal(immediate.shadow,'none');assert.equal(immediate.padding,'0px');assert.equal(immediate.border,'0px');
   await core.getByRole('button',{name:'Calculating…',exact:true}).waitFor();
   await page.screenshot({path:reportPath('front-material-changing-'+width+'.png')});
-  await save.waitFor();
+  await core.getByRole('button',{name:'Save changes',exact:true}).waitFor();
   assert.equal(await core.locator('.object-detail-material-changing').count(),0);
   assert.equal(await picker.inputValue(),'mdf');
   assert.equal(await core.locator('.object-detail-material-name').first().innerText(),'MDF 17 mm');
@@ -90,7 +90,7 @@ async function frontPanelChecks(){
    await picker.selectOption('ldsp');
    await picker.selectOption('mdf');
    assert.equal(await core.locator('.object-detail-material-changing').count(),1);
-   await save.waitFor();
+   await core.getByRole('button',{name:'Save changes',exact:true}).waitFor();
    await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
   }
   await save.click();
@@ -98,7 +98,7 @@ async function frontPanelChecks(){
    await core.getByRole('button',{name:'Saving…',exact:true}).waitFor();
    await picker.selectOption('plywood');
    assert.equal(await core.locator('.object-detail-material-changing').count(),1);
-   await save.waitFor();
+   await core.getByRole('button',{name:'Save changes',exact:true}).waitFor();
    await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
    assert.equal(readFileSync(statePath('front-choice'),'utf8'),'mdf');
    assert.equal(await picker.inputValue(),'plywood');
@@ -134,10 +134,10 @@ async function frontPanelChecks(){
  });
  const picker=core.getByRole('combobox',{name:'Front panels',exact:true});
  await picker.selectOption('mdf');
- await core.getByText('No response yet. Your changes are still here.',{exact:true}).waitFor();
+ await core.getByRole('button',{name:'Retry save',exact:true}).waitFor();
  assert.equal(await core.locator('.object-detail-material-changing').count(),0);
  assert.equal(await picker.inputValue(),'mdf');
- assert.equal(await core.getByRole('button',{name:'Save changes',exact:true}).isEnabled(),true);
+ assert.equal(await core.getByRole('button',{name:'Retry save',exact:true}).isEnabled(),true);
  await frame.evaluate(()=>{window.setTimeout=window.frontMaterialOriginalTimeout;});
  settings({front_panels:true,front_delay:0.05});
  await picker.selectOption('plywood');
@@ -148,6 +148,70 @@ async function frontPanelChecks(){
  report.frontPanels={viewports:[1280,390],automaticPreview:true,explicitSave:true,
   immediateChangingCover:true,timeoutRetainsDraft:true};
 }
+
+async function detailSaveChecks(){
+ for(const width of [1758,390]){
+  for(const name of ['front-choice','object-quantities.json','object-totals.json','labor-hours.json','object-approvals.json'])rmSync(statePath(name),{force:true});
+  const {page,core,frame}=await boot({front_panels:true,labor_ready:true},width,933);
+  await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
+  await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
+  // The Objects suite covers the real quantity RPC. This case begins with its
+  // persisted quantity, then exercises the production detail editor end to end.
+  writeFileSync(statePath('object-quantities.json'),JSON.stringify({'estimate-ui-saved:object-001':3}));
+  await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+  await core.locator('[data-overhead-ready="true"]').waitFor();
+  const net=core.locator('.object-detail-final [data-final="excl_vat"]');
+  assert.equal(await net.innerText(),'₪1\u202f000');
+  await page.waitForURL('**/o/**');
+  const originalUrl=page.url();
+  await core.locator('.object-detail-materials-band > summary').click();
+  const picker=core.getByRole('combobox',{name:'Front panels',exact:true});
+  await picker.selectOption('mdf');
+  const save=core.locator('.object-detail-material-save');
+  await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
+  const preview=await net.innerText();
+  settings({front_panels:true,labor_ready:true,front_save_failure:true});
+  await save.click();await core.getByRole('button',{name:'Retry save',exact:true}).waitFor();
+  assert.equal(page.url(),originalUrl);assert.equal(await picker.inputValue(),'mdf');
+  assert.equal(await net.innerText(),preview);
+  assert.equal(await save.getAttribute('data-save-error'),'');
+  assert.equal(await save.evaluate(n=>n.classList.contains('object-detail-material-save--saved')),false);
+  assert.ok(await core.locator('.object-detail-material-edit-status').evaluate(n=>n.getBoundingClientRect().height<=1 && getComputedStyle(n).clipPath==='inset(50%)'));
+  assert.equal(existsSync(statePath('front-choice')),false);
+  settings({front_panels:true,labor_ready:true});
+  const started=Date.now();await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+  assert.equal(page.url(),originalUrl);assert.equal(await core.locator('.object-detail-title--name').count(),1);
+  assert.equal(await net.innerText(),preview);assert.equal(readFileSync(statePath('front-choice'),'utf8'),'mdf');
+  assert.equal(await save.evaluate(n=>n.classList.contains('object-detail-material-save--saved')),true);
+  await core.locator('.object-detail-materials-band > summary').click();
+  await save.scrollIntoViewIfNeeded();
+  const gap=await frame.evaluate(()=>{
+   const actions=document.querySelector('.object-detail-footer-actions').getBoundingClientRect();
+   return innerHeight-46-actions.bottom;
+  });
+  assert.ok(Math.abs(gap-26)<2,JSON.stringify({width,gap}));
+  await page.screenshot({path:reportPath('detail-save-'+width+'.png'),fullPage:true});
+  report['detailSave'+width]={seconds:(Date.now()-started)/1000,footerGap:gap,quantity:3,net:preview};
+  await core.locator('.object-detail-materials-band > summary').click();
+  await picker.selectOption('plywood');
+  await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
+  assert.equal(await save.evaluate(n=>n.classList.contains('object-detail-material-save--saved')),false);
+  await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
+  await core.getByRole('button',{name:'Stay',exact:true}).click();
+  assert.equal(await picker.inputValue(),'plywood');
+  await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
+  await core.getByRole('button',{name:'Leave without saving',exact:true}).click();
+  await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+  await core.locator('.object-detail-materials-band > summary').click();
+  assert.equal(await picker.inputValue(),'mdf');
+  await core.getByRole('link',{name:'APPROVE',exact:true}).click();
+  await core.locator('.objects-pricing-table').waitFor();
+  assert.equal(JSON.parse(readFileSync(statePath('object-approvals.json')))['object-001'],true);
+  await page.close();
+ }
+ for(const name of ['front-choice','object-quantities.json','object-totals.json','labor-hours.json','object-approvals.json'])rmSync(statePath(name),{force:true});
+}
+await detailSaveChecks();
 await frontPanelChecks();
 try{
  for(const name of ['fresh-active','fresh-done','fresh-shell-ready','labor-hours.json','full-cost-totals.json','full-cost-lines.json','auth-expired'])rmSync(statePath(name),{force:true});
@@ -193,7 +257,7 @@ try{
   await hours.click();
   assert.equal(await assembly.evaluate(node=>node.open),inputOpen);
   const total=assembly.locator(':scope > summary [data-labor-column="total"]');
-  const save=core.getByRole('button',{name:'Save changes',exact:true});
+  const save=core.locator('.object-detail-material-save');
   await hours.fill('40.5');
   assert.equal(await hours.innerText(),'40.5');
   assert.equal((await frame.evaluate(()=>window.__costerlyObjectDetailDraft.pendingEdits()))[0].value,'40.5');
@@ -208,7 +272,8 @@ try{
   if(width===1280){
    settings({labor_ready:true,hours_write_failure:true});
    await save.click();
-   await core.getByText('Could not save changes. Your edits are still here.',{exact:true}).waitFor();
+   await core.getByRole('button',{name:'Retry save',exact:true}).waitFor();
+   assert.equal(await save.getAttribute('data-save-error'),'');
    assert.equal(await hours.innerText(),'40.5');
    settings({labor_ready:true});
   }
