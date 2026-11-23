@@ -195,3 +195,87 @@ plan are historical. Numeric coating/additional assembly/preparation/packing wor
 remains deferred until boundaries and rates are agreed. Future Labor 2.x naming
 will be reconciled before the next release, without reusing historical tags.
 [Accepted checkpoint](ESTIMATION_V9_48_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
+## Current focus: Preparation and Packing, owner request 23 November 2026
+
+The owner now selects this stage before Coating. The earlier recommended order
+is historical. The authoritative task state remains in notes/TODO.md. Preserve
+the accepted 9.48 runtime/checkpoint and all existing hours, saved overrides,
+commercial quantity rules, Parts/Material Plan and protected UI behavior.
+The owner wants dimensional S/M/L/XL categories first, followed by agreed time
+norms and automatic application to the already calculated blocks.
+
+### Checking and separation
+
+One work unit is one actual checkable mating interface between physical blocks
+within the priced item. Trial mating, alignment/fit checking and separation for
+dispatch belong to that unit. A reverse reference B-A repeats the same A-B
+interface; multiple drawings/evidence refs are retained without charging again.
+If one pair has distinct physical interfaces, retain their identities rather
+than merging by pair alone. Fastener count is not the checking-unit quantity.
+Count actual interfaces; a three-block chain A-B-C has two, and a verified extra
+A-C interface would add a third. Block count minus one is not a general rule.
+
+Proposed calculation:
+T_check = sum(interface_quantity * (t_mate + t_check + t_separate)).
+Time norms will be in man-minutes, so ten elapsed minutes with two workers is
+twenty man-minutes. Retain the established wage/payroll aggregation; explicitly
+define whether future norms are active or planned time before applying any pace
+or working-share factor. Do not duplicate carcass assembly or existing drawer/
+hinge adjustments. The proposed audit identifies object, interface, both block
+instances, quantity, source evidence and applied norm. Schema changes await scope
+confirmation and must reuse the existing persisted source contracts.
+
+[verified] Current calculate_block_assembly() has block-owned Parts operations,
+not this interface list. The four frozen Parts reports contain no explicit
+physical interface field. Inventory/Analyze preserve some shared-component
+attached_block_ids upstream. These can provide attachment evidence, but are not
+automatically direct pairwise block mating interfaces. Locate and reuse the
+existing source evidence before introducing a new recognition call or assumption.
+An unavailable interface list must not be treated as proven zero connections.
+
+### Packing classes
+
+Start from the dimensions of the actual unit being packed, normally the saved
+block in its dispatch configuration. A loose shared top/panel or dismantled
+subassembly requires its own identified packing unit when applicable. Retain
+object/block/part provenance so these elements are not omitted or counted twice.
+Commercial selling copies remain distinct from the physical contents of the
+configured item. Confirm transport-unit rules before mapping complex logical
+Blocks directly to parcel counts.
+
+Draft boundaries, not yet owner-approved and not industry norms:
+
+| Class | Three sorted side limits, largest to smallest, mm |
+| --- | --- |
+| S | 600 x 600 x 400 |
+| M | 1200 x 800 x 600 |
+| L | 2000 x 1200 x 800 |
+| XL | Beyond L |
+
+For three known positive dimensions, sort descending and choose the smallest
+class whose three limits all contain the unit. Boundary equality belongs to the
+smaller class. Rotation does not change the class. Proposed packing time:
+T_pack = N_S*t_S + N_M*t_M + N_L*t_L + N_XL*t_XL.
+The owner will assign time norms after agreeing the classes. No minutes are
+invented in this iteration. Existing Materials' Packaging formula remains a
+separate material allowance and is not replaced or charged again as labor.
+
+The saved controls provide 30 block records: 19 complete three-axis envelopes and
+11 with missing axes. Some contain an explicitly named depth_proxy. Resolve
+missing packing geometry from existing block/part evidence or a separately
+audited, approved budget assumption before treating a category as known. An
+unresolved case is not silently S, zero work or omitted from the calculation.
+Full source audit and draft classifications are private diagnostic artifacts in
+outputs/labor-preparation-packing-20261123/source-audit.json. This audit uses only
+saved inputs and makes no paid call or production write.
+
+### Verification before activation
+
+Verify unique interfaces and repeated evidence, physical multiplicity, common
+parts, separated packing units, all class boundaries/rotations, missing/invalid
+dimensions, man-minute conversion, unchanged existing overrides and commercial
+quantity invariance. Verify single inclusion of the new stage in Labor, payroll,
+Overhead and Self Cost. Preserve all accepted UI checks and add only the agreed
+stage behavior to the exact-SHA release gate. No new UI warnings or controls are
+authorized by this planning note. No new runtime version is assigned here.

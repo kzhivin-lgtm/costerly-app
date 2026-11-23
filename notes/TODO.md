@@ -1059,8 +1059,9 @@ Acceptance supersedes the prior pending state. [Release evidence](ESTIMATION_V9_
 
 ## Estimation Labor: four production stages
 
-STEPS 1/2 COMPLETED AND OWNER ACCEPTED, P1, 23 November 2026. FUTURE NUMERIC WORK
-DEFERRED pending agreed boundaries and rates. Organize Labor into four
+STEPS 1/2 COMPLETED AND OWNER ACCEPTED, P1, 23 November 2026. Preparation and
+Packing is now ACTIVE for rule definition at the owner's request below. Coating
+and Additional Assembly remain DEFERRED pending agreed boundaries and rates. Organize Labor into four
 stages: Part Production, Part Coating, Assembly (Block Assembly + Additional
 Assembly), and Preparation/Packing (trial fit/check/disassembly/packing). Reuse
 existing Sheet Processing/Block Assembly and shared totals. Apply company
@@ -1097,6 +1098,40 @@ Before the next authorized Labor runtime release, reconcile the minor against
 GitHub/project records. Historical Labor 2.8 and 2.9 tags already exist; do not
 reuse them, rename deployed 9.48 or assign a new hierarchical block by inference.
 This records a future naming decision, not authorization to start numerical work.
+
+### Preparation and Packing: checking interfaces and size-based packing
+
+ACTIVE, P1, OWNER REQUEST, 23 November 2026, existing Labor work reference
+3.17.4.6 retained. Owner selected this stage ahead of Coating. Outcome: calculate
+trial mating, checking and subsequent separation per physical block interface,
+and packing labor per S/M/L/XL block or transport unit. Establish categories from
+dimensions first; owner will assign minutes afterward. No new numeric norm is
+approved yet. Reuse existing Labor/payroll/Overhead and saved source ownership.
+
+User requirements: count actual checking connections, preserve all four Labor
+stages and the accepted 9.48 checkpoint, automatically apply agreed minutes to
+existing physical quantities. Existing Block Assembly adjustment work and
+Materials' Packaging percentage retain their meanings. Packing labor is separate
+from the packaging-material allowance. No Detection or paid-call change requested.
+
+[verified] Current Block Assembly consumes per-block Parts roles and does not
+consume a physical inter-block interface list. Frozen Parts reports for Lev1,
+both Lev2 controls and Ada contain 30 block records, 19 with all three positive
+envelope dimensions and 11 missing at least one axis. They have no explicit
+block_connections/interfaces/assembly_graph field. Upstream Inventory retains
+attached_block_ids for some shared elements; those attachments alone do not
+establish every direct physical block-to-block checking interface. This is a
+bounded data finding, not a claim that the drawing lacks joining evidence.
+Read-only audit: outputs/labor-preparation-packing-20261123/source-audit.json.
+
+Pending decisions: confirm proposed size boundaries, define recoverable physical
+interfaces and actual packing units, then agree man-minutes per joining/checking/
+separation operation and per size class. Proposed sorted dimensions (mm):
+S <=600/600/400, M <=1200/800/600, L <=2000/1200/800, XL beyond L.
+These are agent proposals awaiting owner confirmation, not industry standards.
+Missing axes require explicit recovery/derived assumptions, never silent zero or S.
+No new schema, rates, UI controls or runtime deployment is activated by this note.
+Detailed rules and acceptance: existing four-stage plan, latest section below.
 
 
 
