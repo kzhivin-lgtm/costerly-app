@@ -1124,11 +1124,13 @@ establish every direct physical block-to-block checking interface. This is a
 bounded data finding, not a claim that the drawing lacks joining evidence.
 Read-only audit: outputs/labor-preparation-packing-20261123/source-audit.json.
 
-Pending decisions: confirm proposed size boundaries, define recoverable physical
-interfaces and actual packing units, then agree man-minutes per joining/checking/
-separation operation and per size class. Proposed sorted dimensions (mm):
+Size boundaries OWNER APPROVED, 23 November 2026: sorted dimensions (mm),
 S <=600/600/400, M <=1200/800/600, L <=2000/1200/800, XL beyond L.
-These are agent proposals awaiting owner confirmation, not industry standards.
+Smallest fitting class, all three limits inclusive; rotation does not change class.
+These are the owner's accepted estimation policy, not industry standards.
+Pending: define recoverable physical interfaces and actual packing units, then
+agree man-minutes for one complete mating/checking/separation cycle and each
+packing size. The five time norms have been requested; none is assumed or active.
 Missing axes require explicit recovery/derived assumptions, never silent zero or S.
 No new schema, rates, UI controls or runtime deployment is activated by this note.
 Detailed rules and acceptance: existing four-stage plan, latest section below.

@@ -244,7 +244,8 @@ Commercial selling copies remain distinct from the physical contents of the
 configured item. Confirm transport-unit rules before mapping complex logical
 Blocks directly to parcel counts.
 
-Draft boundaries, not yet owner-approved and not industry norms:
+Owner-approved boundaries, confirmed 23 November 2026. These define our estimation
+policy and are not claimed to be industry norms:
 
 | Class | Three sorted side limits, largest to smallest, mm |
 | --- | --- |
@@ -257,8 +258,9 @@ For three known positive dimensions, sort descending and choose the smallest
 class whose three limits all contain the unit. Boundary equality belongs to the
 smaller class. Rotation does not change the class. Proposed packing time:
 T_pack = N_S*t_S + N_M*t_M + N_L*t_L + N_XL*t_XL.
-The owner will assign time norms after agreeing the classes. No minutes are
-invented in this iteration. Existing Materials' Packaging formula remains a
+The owner approved the classes; time norms are now requested for S/M/L/XL and one
+complete mating/checking/separation cycle. No minutes are invented or activated
+in this iteration. Existing Materials' Packaging formula remains a
 separate material allowance and is not replaced or charged again as labor.
 
 The saved controls provide 30 block records: 19 complete three-axis envelopes and
