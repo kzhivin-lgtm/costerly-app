@@ -1028,7 +1028,45 @@ checkout; no row content or owner-project change was used. Evidence and
 remaining manual production-acceptance boundary are in the V2.5 release record.
 Keep V2.4, V1.3.3 behavior and V3.2 costing protected. No new work number yet.
 
+## Company Profile: Prices responsiveness
+
+ACTIVE, IMPLEMENTATION APPROVED, P1, OWNER REQUEST23November2026, separate Profile/Prices
+outcome. Show closed material groups promptly and load/prep selected group first;
+warm other groups without blocking interaction. Existing asynchronous loading
+already exists, but the current view awaits four projections and constructs all
+open category rows. Measure read/render/visible delay before choosing changes.
+Extend existing bounded, scoped/revision-aware loading; do not stack new polling.
+Preserve upload/edit/save/delete/review, drafts, focus/scroll, access and other
+Profile tabs. Add large/delayed-catalog priority/reuse/error/stale-result browser
+coverage plus full UI gate. Agent recommends this small responsiveness change
+first, then Labor structural/route work. Owner approved Prices and the structural Labor step together. New numerical
+coating/special-assembly/packing norms stay deferred. All four Labor stages and
+Additional Assembly are explicitly always shown, with0 for new empty work. Detailed acceptance: [four-stage plan](ESTIMATION_LABOR_FOUR_STAGE_PLAN_2026_11_23.md).
+
 ## Estimation Labor V1
+
+ACTIVE, STEPS1/2 APPROVED, P1, OWNER REQUEST23November2026. Organize Labor into four
+stages: Part Production, Part Coating, Assembly (Block Assembly + Additional
+Assembly), and Preparation/Packing (trial fit/check/disassembly/packing). Reuse
+existing Sheet Processing/Block Assembly and shared totals. Apply company
+Machinery to production routes; the owner's CNC case excludes the competing
+manual/panel-saw route for eligible production, not the physical block assembly.
+Add MDF/veneer coatings first, then source-driven LED/profile/wiring/glass/mirror
+assembly and packing by transport-unit S/M/L/XL norms. Agree numeric rates,
+finish/sides, trial-fit boundaries, pack units/size cutoffs and legacy manual-hour
+scope before activating them. Preserve9.47 UI, saved Parts/Plan/overrides,
+front-material Labor preservation, quantity basis and one payroll/VAT. Source
+coverage must account for required work or included supplier scope, with no new
+unrequested notices. This owner request broadens the earlier coating-only next
+step. Existing reference3.17.4.6 retained, new block/version numbers unassigned.
+Plan and before/after/protected behavior:
+[Four-stage Labor plan](ESTIMATION_LABOR_FOUR_STAGE_PLAN_2026_11_23.md).
+Implementation in Estimation9.48 candidate, base9.47. Empty new stages show0
+as explicitly approved; existing norms/hour keys/full SC are preserved. Full
+UI gate and actual build checks are required. Authoritative queue remains here.
+
+
+
 
 PUBLISHED, OWNER ACCEPTANCE PENDING, P1, USER REQUEST, V2.4, 2026-11-18. Rebuild locally from V2.2.2 and reapply
 V2.2.3 paid-hour editing/persistence, money formatting, column layout, warning
@@ -7182,12 +7220,19 @@ transition timings before restoring Machinery or File Review metadata.
 
 PARTIALLY IMPLEMENTED, historical design entry, current scope in the Labor
 section and [current handoff](ESTIMATION_LABOR_NEXT_CHAT_HANDOFF_2026_11_14.md).
-Sheet Processing and Block Assembly are already implemented; extra assembly,
-finishing and final aggregation remain separate open work. Owner confirmed
-22November2026 that Front panels MDF/veneer coating is the next block after
-material switching. Reuse the chosen effective front material and its physical
-parts for coating quantities, retaining cutting and edge work separately.
-Agree the coating rules and rates at that stage. Original request:
+Sheet Processing and Block Assembly are already implemented. Extra assembly,
+finishing and full labor-operation coverage remain open. Final Materials + Labor
++ Overhead aggregation is already implemented in the accepted9.47 runtime;
+its earlier open status was historical. Owner confirmed22November2026 that Front
+panels MDF/veneer coating is the next block after material switching. Reuse the
+chosen effective front material and its physical parts for coating quantities,
+retaining cutting and edge work separately. Agree the coating rules and rates
+at that stage. CONTINUATION VERIFIED23November2026: owner returned to Labor with
+the21-23November handoff. Current source is the clean objects-v2 checkout,
+accepted9.47 runtime6764b9a7/records90478cee; remote main still6764b9a7. Preserve
+front switching's saved Labor, physical priced-configuration quantity basis,
+manual edits and Production monthly-hours Overhead. No coating implementation,
+new release number, provider call or runtime change is part of this review. Original request:
 design and agree Estimation Calculation from
 the same published Parts Check used for materials. Cover part fabrication,
 Block and Common assembly, finishing at the appropriate step, and readiness

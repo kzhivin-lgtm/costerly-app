@@ -78,9 +78,9 @@ def test_assembly_remains_available_when_materials_are_pending_and_quantity_is_a
     assert 'Assembly breakdown' not in html
 
 
-def test_labor_is_a_single_header_and_two_compact_work_rows():
+def test_labor_has_four_stages_and_retains_existing_work_rows():
     html = _labor_html({'status': 'waiting_for_materials'})
-    assert html.count('object-detail-work-row') == 2
+    assert html.count('object-detail-work-row') == 7
     assert html.count('object-detail-cost-band') == 1
     assert '>Labor<br>Pay<' in html
     assert '₪50/h' not in html and 'In-house labor</p>' not in html
@@ -90,7 +90,13 @@ def test_labor_is_a_single_header_and_two_compact_work_rows():
 def test_pending_labor_does_not_fabricate_zero_cost():
     html = _labor_html({'status': 'preparing'})
     assert 'Preparing Sheet Processing' in html and 'Preparing Assembly' in html
-    assert '₪0' not in html
+    # Owner-approved empty stages show0; existing unavailable work stays unknown.
+    for key in ('labor', 'part-production', 'sheet-processing', 'assembly-stage', 'assembly'):
+        summary = html.split(f'data-cost-band="{key}"', 1)[1].split('</summary>', 1)[0]
+        assert '₪0' not in summary
+    for key in ('part-coating', 'additional-assembly', 'preparation-packing'):
+        summary = html.split(f'data-cost-band="{key}"', 1)[1].split('</summary>', 1)[0]
+        assert '₪0' in summary and 'contenteditable' not in summary
 
 
 def test_hours_save_roundtrip_is_per_item_and_recalculates_full_sc_without_changing_norms(monkeypatch):
@@ -165,3 +171,22 @@ def test_detail_summary_displays_batch_cost_for_selected_quantity():
     assert 'data-final="vat">₪2 689<' in html
     assert 'data-final="total">₪17 626<' in html
     assert 'data-base-cost="4979.21"' in html, 'Persisted unit cost stays separate from the batch display'
+
+
+def test_four_stage_parents_do_not_create_additional_manual_hour_writers():
+    from html.parser import HTMLParser
+    class Bands(HTMLParser):
+        def __init__(self):
+            super().__init__(); self.stack = []; self.children = []
+        def handle_starttag(self, tag, attrs):
+            if tag == 'details':
+                key = dict(attrs).get('data-cost-band')
+                if key and self.stack and self.stack[-1] == 'labor': self.children.append(key)
+                self.stack.append(key)
+        def handle_endtag(self, tag):
+            if tag == 'details': self.stack.pop()
+    html = _labor_html({'status': 'waiting_for_materials'})
+    parsed = Bands(); parsed.feed(html)
+    assert parsed.children == ['part-production', 'part-coating', 'assembly-stage', 'preparation-packing']
+    assert 'Block Assembly' in html and 'Additional Assembly' in html
+    assert 'Part Production' in html and 'Part Coating' in html and 'Preparation and Packing' in html

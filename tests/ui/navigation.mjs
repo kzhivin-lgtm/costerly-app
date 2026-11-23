@@ -201,6 +201,12 @@ try {
   await page.screenshot({path:reportPath('object-details-compact-'+cfg.name+'.png'),fullPage:true});
   await materials.locator(':scope > summary').click();
   await labor.locator(':scope > summary').click();
+  const production=labor.locator('[data-cost-band="part-production"]');
+  const assemblyStage=labor.locator('[data-cost-band="assembly-stage"]');
+  for(const parent of [production,assemblyStage]){
+   assert.equal(await parent.evaluate(node=>node.open),false);
+   await parent.locator(':scope > summary').click();
+  }
   assert.equal(await materials.locator('.object-detail-cost-body > .object-detail-table-head-row > div').first().innerText(),'');
   assert.equal(await labor.locator('.object-detail-cost-column-headings > div').first().innerText(),'');
   for(const row of [sheet,assembly]){
@@ -208,6 +214,15 @@ try {
    assert.ok((await row.locator(':scope > summary').evaluate(node=>node.getBoundingClientRect().height))<=48);
    assert.equal(await row.locator(':scope > summary [data-labor-column="hours"]').isVisible(),true);
   }
+  // Native scroll-into-view can pan a narrow independent table when opening
+  // the new parent rows. Compare the protected axes at equal scroll positions.
+  const tableScroll=await frame.evaluate(()=>{
+   const tables=[document.querySelector('.object-detail-materials-band'),document.querySelector('[data-cost-band="labor"]')];
+   const before=tables.map(n=>n.scrollLeft);for(const n of tables)n.scrollLeft=0;
+   return {before,after:tables.map(n=>n.scrollLeft)};
+  });
+  assert.deepEqual(tableScroll.after,[0,0]);
+  console.log(cfg.name,'axis scroll precondition',JSON.stringify(tableScroll));
   const alignment=await frame.evaluate(()=>{
    const cells=document.querySelector('.object-detail-materials-band .object-detail-cost-body > .object-detail-table-head-row').children;
    const center=node=>{const r=node.getBoundingClientRect();return r.x+r.width/2;};
@@ -237,7 +252,7 @@ try {
   assert.equal(await labor.locator('.object-detail-cost-column-headings .object-detail-cost-label').last().innerText(),'TOTAL');
   assert.equal(await labor.locator('.object-detail-labor-body > .object-detail-cnc-caption:not(.object-detail-labor-review)').count(),0);
   const cardRender=await core.locator('[data-costerly-render-id]').last().getAttribute('data-costerly-render-id');
-  for(const band of [materials,labor,sheet,assembly]){
+  for(const band of [materials,labor,production,assemblyStage,sheet,assembly]){
    const summary=band.locator(':scope > summary');
    await summary.focus();
    const initial=await band.evaluate(node=>node.open);

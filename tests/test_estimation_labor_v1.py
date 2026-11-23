@@ -54,6 +54,8 @@ class LaborV1Test(TestCase):
         machinery["availability"].update(wood_cnc_router="in_house", wood_edge_bander="in_house")
         cnc = calculate_sheet_processing(report, layout, plan, object_id=oid, machinery=machinery)
         self.assertEqual(cnc["in_house_route"], "cnc")
+        self.assertIsNone(cnc["panel_saw"])
+        self.assertNotIn("Panel saw and manual drilling", _comparison_html(cnc))
         self.assertAlmostEqual(cnc["cnc_edging"]["minutes"], 10.886 / .85)
         self.assertEqual(cnc["subcontractor"], manual["subcontractor"])
 

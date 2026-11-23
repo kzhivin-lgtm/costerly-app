@@ -341,7 +341,22 @@ def sign_out_fixture():
 company_auth.sign_out=sign_out_fixture
 
 def projection_jobs(*_args,**kwargs):
- return {name:complete_projection() for name in kwargs['loaders']}
+ settings=scenario()
+ if not settings.get('prices_catalog_size') and not settings.get('prices_projection_delays'):
+  return {name:complete_projection() for name in kwargs['loaders']}
+ from use_cases.price_source_runtime import _PRICE_LISTS_READ_EXECUTOR
+ def load(name):
+  record('prices started '+name)
+  sleep(float(settings.get('prices_projection_delays',{}).get(name,0)))
+  record('prices finished '+name)
+  if name!='catalog':return []
+  size=int(settings.get('prices_catalog_size',120))
+  return [{'source_id':'price-source','source_row_id':f'price-row-{i}',
+   'department':'Metal' if i<10 else 'Wood','material_type':'Metal' if i<10 else 'Plywood',
+   'supplier_name':'Fixture supplier','canonical_name':f'Fixture material {i}',
+   'display_label':f'Fixture material {i}','normalized_price':100,'normalized_unit':'piece',
+   'currency':'ILS','vat_included':False,'updated_at':'2026-11-23','source_kind':'link'} for i in range(size)]
+ return {name:_PRICE_LISTS_READ_EXECUTOR.submit(load,name) for name in kwargs['loaders']}
 def complete_projection():
  result=Future()
  result.set_result([])

@@ -269,6 +269,37 @@ and native cancellation apply. No JS font waiter, loader timer or new API read.
 New Estimate keeps the existing protected native callback/auth/uploader path;
 the requested timing investigation does not authorise an alternate uploader.
 
+## Estimation9.48 Prices and four Labor stages,23November2026
+
+Owner explicitly approved steps1/2 of the four-stage plan and requires every
+Labor stage to remain visible, with0 for not-yet-implemented work. Materials,
+Labor and Overhead retain their accepted collapsed root presentation. Labor
+contains Part Production (existing Sheet Processing), Part Coating, Assembly
+(Block Assembly + Additional Assembly), and Preparation and Packing. Coating,
+Additional Assembly and Preparation/Packing show read-only0 hours/pay/taxes/total.
+The existing sheet/assembly hours keep their persistence keys and meanings;
+new parent rows aggregate them without extra writers or double counting. Existing
+unavailable work stays unknown. These explicit new empty stages alone supersede
+previous no-zero expectations. No new coating/packing/assembly norms or notices.
+The configured-item, Overhead, manual sale, payroll/VAT and source contracts stay.
+An explicitly in-house CNC route skips the alternate panel-saw calculation;
+actual CNC/operator/edge work and other companies' existing routes stay intact.
+
+Price Lists starts with collapsed native groups and prepares row controls only
+for open groups, keeping an active editor mounted to preserve its draft. The
+selected group is prepared before other open groups while visual header order
+stays fixed. Existing four independent background projections no longer share a
+first-render completion barrier. Pending catalog headers are usable before the
+source library/review/supplier reads finish. Native count-label changes preserve
+user open/closed intent independently, since label participates in widget identity.
+Source library retains explicit user-action open-once behavior. Identity scopes,
+upload/row-save/delete/review, failed-save retry, current drafts and other Profile
+paths remain protected. Reuse existing bounded reads and existing completion
+fragment. The only new callback is the user's native group toggle, once per
+interaction, scoped to that Prices fragment; it records disclosure/priority only.
+No new polling, backend reader pool or user-facing notification. Live responsiveness
+and owner acceptance remain separate from the controlled browser evidence.
+
 ## Estimation9.47 Profile Save, Contacts and closed-cost spacing,23November2026
 
 Owner explicitly replaces Profile's green bottom success blocks with an

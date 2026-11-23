@@ -3017,6 +3017,55 @@ def _remove_price_source_row_action(
         _set_price_source_action_notice("Saved")
 
 
+_PRICE_CATALOG_DEPARTMENTS = ("Wood", "Metal", "Glass & Plastics", "Stone", "Coating", "Hardware")
+
+
+def _price_group_changed(key, priority_key, name):
+    opened = bool(st.session_state.get(key))
+    st.session_state[key + "_open_intent"] = opened
+    if opened:
+        st.session_state[priority_key] = name
+
+
+def _price_group_priority_key(access):
+    return f"price_group_priority_{access.company_id}_{access.user_id}"
+
+
+def _price_group(access, name, label, *, open_once=False):
+    # Native widget identity also includes its count label. Preserve the last
+    # explicit user intent outside widget state when background counts change.
+    key = f"price_group_{access.company_id}_{access.user_id}_{name}"
+    label_key, intent_key = key + "_label", key + "_open_intent"
+    if open_once:
+        st.session_state[intent_key] = True
+        st.session_state[key] = True
+    elif st.session_state.get(label_key) != label or key not in st.session_state:
+        st.session_state[key] = bool(st.session_state.get(intent_key, False))
+    st.session_state[label_key] = label
+    return st.expander(label, expanded=False, key=key, on_change=_price_group_changed,
+                       args=(key, _price_group_priority_key(access), name))
+
+
+def _render_pending_price_catalog(access):
+    columns = st.columns(3)
+    for column, label, key, value in zip(columns,
+            ("Department", "Material type", "Supplier"),
+            ("price_catalog_department", "price_catalog_material_type", "price_catalog_supplier"),
+            ("All departments", "All material types", "All suppliers")):
+        with column:
+            st.selectbox(label, [value], key=key, disabled=True)
+    st.markdown('<div class="price-catalog-title price-catalog-title-main"><span>Material prices</span></div>', unsafe_allow_html=True)
+    opened = []
+    for name in _PRICE_CATALOG_DEPARTMENTS:
+        group = _price_group(access, name, name)
+        if group.open:
+            opened.append((name, group))
+    priority = st.session_state.get(_price_group_priority_key(access))
+    for _name, group in sorted(opened, key=lambda item: item[0] != priority)[:1]:
+        with group:
+            _render_price_lists_loading()
+
+
 def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: list[dict]) -> None:
     # A loaded empty department must not take vertical space.  Review and
     # Source Library are deliberately rendered by their own projections below.
@@ -3095,16 +3144,23 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
         f'<span>{len(visible)} active {"price" if len(visible) == 1 else "prices"}</span></div>',
         unsafe_allow_html=True,
     )
-    for department_name in (
-        "Wood", "Metal", "Glass & Plastics", "Stone", "Coating", "Hardware",
-    ):
+    opened = []
+    for department_name in _PRICE_CATALOG_DEPARTMENTS:
         rows = departments.get(department_name) or []
         if not rows:
             continue
-        with st.expander(
-            f'{department_labels[department_name]} · {_price_catalog_count(len(rows))}',
-            expanded=True,
-        ):
+        group = _price_group(access, department_name,
+                f'{department_labels[department_name]} · {_price_catalog_count(len(rows))}')
+        # Keep an active editor mounted if its group is closed, preserving drafts.
+        actions = (st.session_state.get("_editing_price_source_row"),
+                   st.session_state.get("_removing_price_source_row"))
+        owns_action = any((str(r.get("source_id") or ""), str(r.get("source_row_id") or "")) in actions for r in rows)
+        if group.open or owns_action:
+            opened.append((department_name, group, rows))
+    # Headers keep their visual order; fill the last requested section first.
+    priority = st.session_state.get(_price_group_priority_key(access))
+    for _department_name, group, rows in sorted(opened, key=lambda item: item[0] != priority):
+        with group:
             _render_price_catalog_grid_header("Material")
             for row in rows:
                 source_id = str(row.get("source_id") or "")
@@ -3561,9 +3617,10 @@ def _render_material_jobs(access: CompanyAccess, jobs: list[dict]) -> None:
     if not jobs:
         return
     with st.container(key="material_jobs_section"):
-        with st.expander(
-            f'Supplier Operations · {_material_jobs_count(len(jobs))}', expanded=True
-        ):
+        with _price_group(access, "supplier-operations",
+                f'Supplier Operations · {_material_jobs_count(len(jobs))}') as group:
+            if not group.open:
+                return
             _render_price_catalog_grid_header("Job")
             for job in jobs:
                 job_id = str(job.get("operation_offer_id") or job.get("source_row_id") or "job")
@@ -4327,17 +4384,8 @@ def _render_price_lists_projections(access: CompanyAccess, *, trace=None) -> Non
     review_rows = projection("review")
     material_jobs = projection("material_jobs")
 
-    # Keep the first visible load deliberate and calm. The upload card above
-    # remains usable, while all four independent reads finish in background.
-    # Rendering individual section loaders caused the page to jump and made
-    # the ordered catalog look unstable.
-    if any(
-        name not in results and name not in errors
-        for name in ("sources", "catalog", "review", "material_jobs")
-    ):
-        _render_price_lists_loading()
-        return
-
+    # Each projection can become usable independently. Closed groups do not
+    # build row widgets, so a selected catalog group takes rendering priority.
     with st.container(key="price_catalog_shell"):
         with st.container(key="price_catalog_section"):
             if st.session_state.get("_price_source_purge_refresh_pending"):
@@ -4346,6 +4394,8 @@ def _render_price_lists_projections(access: CompanyAccess, *, trace=None) -> Non
                 _render_price_source_save_progress()
                 if errors.get("catalog"):
                     st.info(errors["catalog"])
+                elif catalog is None:
+                    _render_pending_price_catalog(access)
                 elif catalog:
                     _render_price_catalog(access, catalog, sources or [])
 
@@ -4356,8 +4406,10 @@ def _render_price_lists_projections(access: CompanyAccess, *, trace=None) -> Non
 
                 if errors.get("review"):
                     st.info(errors["review"])
-                else:
-                    _render_price_source_review_queue(access, review_rows)
+                elif review_rows:
+                    with _price_group(access, "review", f"Needs review · {len(review_rows)}") as group:
+                        if group.open or st.session_state.get("_editing_price_source_row"):
+                            _render_price_source_review_queue(access, review_rows)
 
         with st.container(key="price_source_library_section"):
             st.markdown(
@@ -4367,10 +4419,14 @@ def _render_price_lists_projections(access: CompanyAccess, *, trace=None) -> Non
             library_open_once = bool(
                 st.session_state.pop("_price_source_library_open_once", False)
             )
-            with st.expander(
-                f'Source library · {len(sources) if sources is not None else "…"}',
-                expanded=library_open_once,
-            ):
+            with _price_group(access, "source-library",
+                    f'Source library · {len(sources) if sources is not None else "…"}',
+                    open_once=library_open_once) as group:
+                if not group.open:
+                    return
+                if sources is None and not errors.get("sources"):
+                    _render_price_lists_loading()
+                    return
                 visible_sources = sources or []
                 if errors.get("sources"):
                     st.info(errors["sources"])

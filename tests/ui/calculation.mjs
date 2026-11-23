@@ -302,7 +302,11 @@ try{
   await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('[data-cost-band="labor"] > summary').click();
-  const hours=core.getByRole('textbox',{name:'Assembly hours',exact:true});
+  const stages=core.locator('[data-cost-band="labor"] > .object-detail-labor-body > details');
+  assert.deepEqual(await stages.evaluateAll(nodes=>nodes.map(n=>n.dataset.costBand)),['part-production','part-coating','assembly-stage','preparation-packing']);
+  for(const key of ['part-coating','preparation-packing'])assert.equal(await core.locator(`[data-cost-band="${key}"] > summary [data-labor-column="total"]`).innerText(),'₪0');
+  for(const key of ['part-production','assembly-stage'])await core.locator(`[data-cost-band="${key}"] > summary`).click();
+  const hours=core.getByRole('textbox',{name:'Block Assembly hours',exact:true});
   await hours.waitFor();
   await frame.waitForFunction(()=>window.__costerlyObjectDetailDraft?.context?.objectId==='object-001');
   const assembly=core.locator('[data-cost-band="assembly"]');
@@ -321,6 +325,7 @@ try{
   assert.equal(await hours.innerText(),'40.5');
   assert.equal(await assembly.evaluate(node=>node.open),inputOpen);
   assert.equal(await total.innerText(),'₪2\u202f531');
+  assert.equal(await core.locator('[data-cost-band="assembly-stage"] > summary [data-labor-column="total"]').innerText(),'₪2\u202f531');
   assert.notEqual(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪1\u202f000');
   if(width===1280){
    settings({labor_ready:true,hours_write_failure:true});
@@ -351,6 +356,7 @@ try{
   await core.getByText('₪8\u202f250',{exact:true}).first().waitFor();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('[data-cost-band="labor"] > summary').click();
+  for(const key of ['part-production','assembly-stage'])await core.locator(`[data-cost-band="${key}"] > summary`).click();
   await hours.waitFor();assert.equal(await hours.innerText(),'0.0');
   assert.equal(await sheetHours.innerText(),'100.0');
   const body=await core.locator('body').innerText();

@@ -17,7 +17,7 @@ The synthetic saved bench costs ILS 1,000; this is an interaction fixture,
 not a fresh Lev1 material or labor benchmark. The private V1.3.3 archive
 retains the real saved controls and their evidence.
 
-The protected behavior is defined in `notes/UI_GUIDELINES.md`. The nine suites
+The protected behavior is defined in `notes/UI_GUIDELINES.md`. The ten suites
 cover the page/header/footer/Profile transition matrix across desktop/mobile and safe migration of an older open wrapper,
 Save/reopen in seven Profile paths, preload/read reuse, keyboard, actor access,
 expired auth, handled read/write failures, timeout/double click and recovery.
@@ -283,3 +283,20 @@ Owner accepted the achieved Estimation9.47 interface23November2026 and requested
 full preservation. Existing9.47 amendments and all earlier protected scenarios
 remain. This records acceptance, changes no test or threshold.
 [Full checkpoint and restoration](../../notes/ESTIMATION_V9_47_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
+## Estimation9.48 Prices and Labor structure
+
+All earlier nine browser suites remain mandatory. The additional `prices.mjs`
+suite uses a300-price catalog, a delayed catalog and much slower independent
+projections. At1280/390 it verifies closed groups create no rows, the selected
+10-row group opens without waiting for Source library, count updates preserve
+open intent, reopen reuses one snapshot and Contacts stays usable. This is
+controlled interaction/read evidence, not a measured production speed claim.
+Calculation additionally verifies four direct Labor stages, explicit empty-stage
+zeros, Block Assembly nesting, unchanged hour keys, parent amount updates,
+unchanged full totals and saved-hour reopen. Existing Save/error/navigation/
+auth/material/VAT assertions remain, with only the owner-approved new hierarchy
+and Block Assembly input label updated. New parents/zero stages have no editors.
+The Python gate adds existing sheet-route and Price Sources coverage plus lazy
+3,000-row-group and asynchronous-projection checks. Explicit in-house CNC skips
+the unselected panel-saw estimate; source ownership and other routes are retained.

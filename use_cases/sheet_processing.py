@@ -146,7 +146,7 @@ def calculate_sheet_processing(report, layout, plan, *, object_id, machinery, pa
     result["cnc_edging"] = _edging(edge, runs, use_machine=bander_status != "not_in_house", rate=wage, params=params)
     result["in_house_route"] = None if cnc_status == "not_in_house" else "cnc"
     result["panel_saw"] = None
-    if not result["work"]["blank_count"] or saw_status == "not_in_house":
+    if cnc_status == "in_house" or not result["work"]["blank_count"] or saw_status == "not_in_house":
         return result
 
     base, volume, materials, missing, geometry_review = _saw_work(report, layout, plan, object_id=object_id)

@@ -84,7 +84,7 @@ _pay_metrics = labor_pay_metrics
 _sheet_pay_metrics = sheet_pay_metrics
 
 
-def _cost_band(title, body, metrics=None, *, key, open_by_default=False):
+def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True):
     is_row = key != 'labor'
 
     def metric(label, value, column, *, total=False):
@@ -93,7 +93,7 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False):
         cell = 'object-detail-table-cell' if is_row else 'object-detail-table-head'
         content = (f'<span class="object-detail-cost-value">{escape(str(value))}</span>' if is_row else
                    f'<span class="object-detail-cost-label">{label}</span>')
-        if is_row and column == 'hours' and metrics:
+        if is_row and column == 'hours' and metrics and editable:
             exact = str(metrics['hours'])
             content = (
                 '<div class="object-detail-material-input" data-quantity-decimals="1">'
@@ -379,7 +379,16 @@ def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, 
     else:
         message = 'Preparing Assembly…' if state['status'] == 'preparing' else 'Assembly is unavailable.'
         assembly_body = f'<p class="object-detail-cnc-caption">{message}</p>'
-    body = sheet + _cost_band('Assembly', assembly_body, assembly_metrics, key='assembly')
+    zero = labor_pay_metrics(0)
+    block_assembly = _cost_band('Block Assembly', assembly_body, assembly_metrics, key='assembly')
+    additional = _cost_band('Additional Assembly', '', zero, key='additional-assembly', editable=False)
+    body = (
+        _cost_band('Part Production', sheet, sheet_metrics, key='part-production', editable=False)
+        + _cost_band('Part Coating', '', zero, key='part-coating', editable=False)
+        + _cost_band('Assembly', block_assembly + additional, assembly_metrics,
+                     key='assembly-stage', editable=False)
+        + _cost_band('Preparation and Packing', '', zero, key='preparation-packing', editable=False)
+    )
     return '<div class="object-detail-labor-band">' + _cost_band('Labor', body, total, key='labor') + '</div>'
 
 

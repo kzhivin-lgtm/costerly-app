@@ -1110,10 +1110,19 @@ def _wait_for_price_lists_projections(app: AppTest) -> AppTest:
     for _ in range(10):
         time.sleep(0.01)
         app.run()
-        markup = "\n".join(item.value for item in app.markdown)
-        if "price-lists-projection-loading" not in markup:
+        state = app.session_state["_price_lists_projection_state"]
+        if all(name in state["results"] or name in state["errors"] for name in state["futures"]):
             return app
     pytest.fail("Price Lists projections did not finish in the test window")
+
+
+def _open_price_test_group(app: AppTest, name: str) -> AppTest:
+    # AppTest's expander element has no toggle API. Browser Prices suite covers
+    # real pointer disclosure; here set the same public widget/intent state.
+    key = "price_group_company-a_user-1_" + name
+    app.session_state[key] = True
+    app.session_state[key + "_open_intent"] = True
+    return app.run()
 
 
 def _render_url_price_source_details_test():
@@ -1793,6 +1802,8 @@ def test_needs_review_is_paginated_to_keep_actions_responsive():
 
 def test_price_catalog_renders_material_first_grouped_table():
     app = AppTest.from_function(_render_price_catalog_test).run()
+    assert "Birch plywood 10 mm" not in "\n".join(item.value for item in app.markdown)
+    app = _open_price_test_group(app, "Wood")
     markup = "\n".join(item.value for item in app.markdown)
 
     assert not app.exception
@@ -1851,6 +1862,7 @@ def test_price_catalog_edit_opens_row_level_price_and_unit_form(monkeypatch):
         ],
     )
     app = AppTest.from_function(_render_price_catalog_test).run()
+    app = _open_price_test_group(app, "Wood")
     next(button for button in app.button if button.label == "Edit").click()
     app.run()
 
@@ -1902,6 +1914,7 @@ def test_unresolved_prices_render_as_visible_row_level_review_queue(monkeypatch)
     app = _wait_for_price_lists_projections(
         AppTest.from_function(_render_price_lists_test).run()
     )
+    app = _open_price_test_group(app, "review")
     markup = "\n".join(item.value for item in app.markdown)
 
     assert not app.exception
@@ -1966,6 +1979,7 @@ def test_price_review_pagination_reuses_the_tenant_snapshot(monkeypatch):
     app = _wait_for_price_lists_projections(
         AppTest.from_function(_render_price_lists_test).run()
     )
+    app = _open_price_test_group(app, "review")
     assert calls == {"sources": 1, "catalog": 1, "review": 1}
     assert "Review item 1" in "\n".join(item.value for item in app.markdown)
 
@@ -2032,6 +2046,7 @@ def test_price_review_save_callback_uses_current_form_values(monkeypatch):
     app = _wait_for_price_lists_projections(
         AppTest.from_function(_render_price_lists_test).run()
     )
+    app = _open_price_test_group(app, "review")
     next(button for button in app.button if button.label == "Review").click()
     app.run()
     next(field for field in app.text_input if field.label == "Price (excl VAT)").set_value("125")
@@ -2096,6 +2111,9 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     assert not any(field.label == "Paste supplier page URL" for field in app.text_input)
     source_library = next(item for item in app.expander if item.proto.label == "Source library · 2")
     assert source_library.proto.expanded is False
+    assert "Multiple departments" not in markup
+    app = _open_price_test_group(app, "source-library")
+    markup = "\n".join(item.value for item in app.markdown)
     assert "Multiple departments" in markup
     assert "Document type" in markup
 
@@ -2117,6 +2135,10 @@ def test_price_lists_renders_upload_before_background_projections(monkeypatch):
     assert not app.exception
     assert "Add price source" in markup
     assert any(button.label == "Extract prices" for button in app.button)
+    assert "Loading catalog…" not in markup
+    assert "Wood" in [item.proto.label for item in app.expander]
+    app = _open_price_test_group(app, "Wood")
+    markup = "\n".join(item.value for item in app.markdown)
     assert "Loading catalog…" in markup
     assert "Loading Material Jobs…" not in markup
     assert "Loading Review…" not in markup

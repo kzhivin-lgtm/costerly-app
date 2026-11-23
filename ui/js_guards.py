@@ -2554,8 +2554,9 @@ def install_object_detail_input_guard(
                 let total = 0;
                 let totalHours = 0;
                 let knownRows = 0;
+                const stageTotals = new Map();
                 for (const row of parentDoc.querySelectorAll('.object-detail-work-row')) {
-                    const input = row.querySelector('[data-field="labor_hours"]');
+                    const input = row.querySelector(':scope > summary [data-field="labor_hours"]');
                     if (!input) continue;
                     const pending = draft.get(editKey(contextFor(input)));
                     if (row.dataset.costUnknown === "true" && !pending) continue;
@@ -2570,8 +2571,20 @@ def install_object_detail_input_guard(
                         const cell = row.querySelector(`[data-labor-column="${column}"] .object-detail-cost-value`);
                         if (cell) cell.textContent = formatMoney(value);
                     }
+                    const stage = row.parentElement.closest('.object-detail-work-row');
+                    if (stage) {
+                        const sums = stageTotals.get(stage) || {hours: 0, pay: 0, taxes: 0, total: 0};
+                        for (const [key, value] of Object.entries({hours, pay, taxes, total: pay + taxes})) sums[key] += value;
+                        stageTotals.set(stage, sums);
+                    }
                     total += pay + taxes;
                     totalHours += hours;
+                }
+                for (const [stage, sums] of stageTotals) {
+                    for (const [column, value] of Object.entries(sums)) {
+                        const cell = stage.querySelector(`:scope > summary [data-labor-column="${column}"] .object-detail-cost-value`);
+                        if (cell) cell.textContent = column === "hours" ? value.toFixed(1) : formatMoney(value);
+                    }
                 }
                 const cell = parentDoc.querySelector('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value');
                 if (!knownRows) return;
