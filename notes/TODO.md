@@ -1151,8 +1151,13 @@ Detailed rules and acceptance: existing four-stage plan, latest section below.
 ACTIVE, P1, USER REQUEST, Labor2.12,24November2026, existing work3.17.4.6.
 After complete2.11 preservation: editable hours throughout Labor, including
 coating/additional assembly/checking/packing and CNC operator/file preparation/
-edge banding; clarify aggregate input semantics to retain coherent totals.
-Taxes & Social header includes +25%. Align equal row heights and remove extra
+edge banding. Owner confirmed only terminal work rows are editable; parents
+and department/root totals remain computed. Existing saved aggregate Sheet
+Processing overrides remain the total basis for the new CNC operational split,
+with explicit new leaf edits overriding their own share.
+Unknown terminal hours remain unknown until explicit manual input, including0;
+Save can complete their Overhead through the existing receipt. Taxes & Social
+header includes +25%. Align equal row heights and remove extra
 nested row gaps. For a company's explicit CNC route, retain Elements and CNC
 time breakdown, remove in-house/subcontractor comparison/material duplication
 and Subcontractor rates. Keep Materials in Materials, labor in Labor. Other

@@ -135,18 +135,18 @@ def test_saved_side_parts_resolve_depth_with_front_thickness_and_keep_source_imm
     assert r==before
 
 
-def test_both_new_paid_leaves_are_readonly_and_expose_exact_hours_to_existing_preview():
+def test_preparation_leaves_are_editable_and_preserve_exact_source_hours():
     from screens.estimation_labor_v1 import _labor_html
     r=report(block('A'),block('B'),interfaces=[{'unit_ids':['A','B'],'source_refs':['drawing']}])
     result=calculate_preparation_packing(r,object_id='o')
     html=_labor_html({'status':'waiting_for_materials','preparation':result})
-    assert 'data-cost-band="trial-fit" data-labor-fixed-hours="0.5"' in html
-    assert 'data-cost-band="packing" data-labor-fixed-hours=' in html
+    assert 'data-field="labor_hours" data-line-id="trial-fit" data-original-value="0.5"' in html
+    assert 'data-field="labor_hours" data-line-id="packing"' in html
     assert 'A ↔ B' in html and '1 × 30 min' in html
     assert 'A · S · 1 × 10 min' in html and 'B · S · 1 × 10 min' in html
     for key in ['trial-fit','packing']:
         summary=html.split(f'data-cost-band="{key}"',1)[1].split('</summary>',1)[0]
-        assert 'contenteditable' not in summary
+        assert 'contenteditable="true"' in summary
 
 
 @pytest.mark.parametrize('broken_source',[False,True])

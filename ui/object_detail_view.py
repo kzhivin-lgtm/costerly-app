@@ -378,6 +378,8 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
             f'{"".join(body_parts)}'
             '</div>'
         )
+    if collapse_title:
+        body_parts.append(f'<div class="object-detail-table-head-row object-detail-overhead-column-headings">{header}</div>')
     grouped_rows: dict[object, list[dict[str, object]]] = {}
     for row in rows:
         grouped_rows.setdefault(row.get("group"), []).append(row)
@@ -394,9 +396,6 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
             + "".join(summary_cells)
             + "</summary>"
         )
-        if collapse_title:
-            body_parts.append(f'<div class="object-detail-table-head-row">{header}</div>')
-
         for row in group_rows:
             values = _row_values(section, row)
             policy_percent = row.get("policy_percent") if row.get("locked") else ""

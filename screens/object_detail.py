@@ -343,8 +343,14 @@ def _material_editor(context: ObjectDetailContext) -> None:
             st.session_state.pop("approved_object_keys", None)
             _mark_objects_estimation_dirty(context.estimate_id)
             if base:
+                # A write receipt carries new rows, not the section's column schema.
+                incoming = {section['key']: section for section in data.get('sections', [])}
+                sections = [{**section, **incoming.pop(section['key'], {})}
+                            for section in base.get('sections', [])]
+                sections.extend(incoming.values())
                 st.session_state.setdefault("object_detail_data_cache", {})[key] = {
-                    **base, **data, "self_cost": {**base.get("self_cost", {}), **data["self_cost"]}}
+                    **base, **data, "sections": sections,
+                    "self_cost": {**base.get("self_cost", {}), **data["self_cost"]}}
                 st.session_state.setdefault("object_detail_data_cache_dirty", set()).discard(context.estimate_id)
         result.update(
             rows=object_detail_view.material_preview_rows(data),
@@ -353,8 +359,14 @@ def _material_editor(context: ObjectDetailContext) -> None:
             quantity=data["quantity"],
             labor_hours_overrides=data.get("labor_hours_overrides", {}),
             labor_block_hours=data.get("labor_block_hours", {}),
+            labor=data.get("labor"),
             cost_policy=data.get("cost_policy"),
         )
+        if (data.get("overhead") or {}).get("status") == "ready":
+            result["overhead_html"] = object_detail_view.overhead_section_html({
+                **data["overhead"], "run_id": context.run_id, "estimate_id": context.estimate_id,
+                "object_id": context.object_id,
+            })
         if any(edit.get("field") == "front_material" for edit in edits):
             section = data["sections"][0]
             result["material_rows_html"] = object_detail_view.material_rows_html(section["rows"])

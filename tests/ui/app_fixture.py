@@ -222,6 +222,13 @@ labor.get_supabase_client = Client
 labor.load_parts_check = lambda **_: {'status':'ready', 'payload':parts}
 labor.fetch_rfq_estimate_material_plan = read_plans
 labor.load_sheet_processing_machinery = lambda *_: {}
+_original_labor_loader = labor.load_object_labor
+def fixture_labor_loader(*args, **kwargs):
+ if scenario().get('labor_unknown'):return {'status':'preparing'}
+ return _original_labor_loader(*args, **kwargs)
+labor.load_object_labor = fixture_labor_loader
+estimation.load_object_labor = fixture_labor_loader
+
 def read_overhead(_client, scoped_company, *, delay=True):
  assert scoped_company == company_id
  if delay:sleep(scenario().get('overhead_delay', 0))
@@ -237,6 +244,8 @@ estimation._full_cost_context=full_cost_context
 
 def save_materials(**kwargs):
  assert kwargs['estimate_id']==estimate_id and kwargs['object_id']=='object-001'
+ if kwargs['edits'] and all(edit['field']=='labor_hours' for edit in kwargs['edits']):
+  return estimation.save_object_detail_material_edits(**kwargs)
  assert len(kwargs['edits'])==1
  if kwargs['edits'][0]['field']=='front_material':
   choice=kwargs['edits'][0]['value']
@@ -262,6 +271,8 @@ def save_materials(**kwargs):
  return result
 
 def saved_receipt(**kwargs):
+ if scenario().get('labor_ready') and hours_path.exists():
+  return estimation.load_object_detail_material_receipt(**kwargs)
  data=estimation.load_object_detail_data(**kwargs)
  edit=st.session_state.get('fixture_material_edit')
  if not edit:return data

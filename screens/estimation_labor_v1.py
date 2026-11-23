@@ -21,7 +21,7 @@ from use_cases.estimation_labor_v1 import (
     LAYOUT_VERSION, SPLIT_ROLES, build_sheet_layout, describe_layout_issues, sheet_layout_basis,
     labor_pay_metrics, sheet_pay_metrics, object_labor_metrics, load_object_labor,
     DISPLAY_HOURLY_RATE, DISPLAY_PAYROLL_SHARE,
-    preparation_pay_metrics,
+    preparation_pay_metrics, labor_work_metrics,
 )
 from use_cases.estimation_parts_check_runtime import load_parts_check
 from use_cases.machinery import load_sheet_processing_machinery
@@ -85,7 +85,7 @@ _pay_metrics = labor_pay_metrics
 _sheet_pay_metrics = sheet_pay_metrics
 
 
-def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False, aggregate=False):
+def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False, aggregate=False, cost_quantity=1, explicit_keys=()):
     is_row = key != 'labor'
 
     def metric(label, value, column, *, total=False):
@@ -94,14 +94,15 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
         cell = 'object-detail-table-cell' if is_row else 'object-detail-table-head'
         content = (f'<span class="object-detail-cost-value">{escape(str(value))}</span>' if is_row else
                    f'<span class="object-detail-cost-label">{label}</span>')
-        if is_row and column == 'hours' and metrics and editable:
-            exact = str(metrics['hours'])
+        if is_row and column == 'hours' and editable:
+            original = f' data-original-value="{metrics["hours"]}"' if metrics is not None else ''
+            displayed = value
             content = (
                 '<div class="object-detail-material-input" data-quantity-decimals="1">'
                 '<div class="object-detail-cell-input object-detail-cell-input--number"'
                 ' role="textbox" contenteditable="true" tabindex="0" inputmode="decimal"'
                 f' aria-label="{escape(title)} hours" data-field="labor_hours" data-line-id="{key}"'
-                f' data-original-value="{exact}">{value}</div></div>'
+                f'{original} data-placeholder="—">{displayed}</div></div>'
             )
         return f'<div class="{cell} {css}" data-labor-column="{column}">{content}</div>'
 
@@ -109,7 +110,7 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
     fields = metric('Hours', format_labor_hours(value['hours']) if metrics else None, 'hours')
     fields += '<div class="object-detail-labor-money-pair">'
     fields += metric('Labor<br>Pay', _money(value.get('pay')), 'pay')
-    fields += metric('Taxes &amp;<br>Social', _money(value.get('taxes')), 'taxes') + '</div>'
+    fields += metric('Taxes &amp;<br>Social +25%', _money(value.get('taxes')), 'taxes') + '</div>'
     fields += metric('Total', _money(value.get('total')), 'total', total=True)
     classes = 'object-detail-work-row' if is_row else 'object-detail-table object-detail-cost-band object-detail-labor-table'
     cell = 'object-detail-table-cell' if is_row else 'object-detail-table-head'
@@ -121,6 +122,9 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
             f' data-cost-unknown="{str(metrics is None).lower()}"'
             f' data-cost-partial="{str(bool(value.get("partial"))).lower()}"'
             f' data-labor-total-hours="{value.get("hours", "")}"'
+            f' data-labor-cost-quantity="{cost_quantity}"'
+            f' data-labor-explicit-keys="{escape(json.dumps(list(explicit_keys)), quote=True)}"'
+            f' data-labor-base-hours="{value.get("hours", "")}" data-labor-base-total="{value.get("total", "")}"'
             + (' open' if open_by_default else '') + '>'
             '<summary class="object-detail-table-head-row object-detail-cost-summary object-detail-band-summary">'
             f'<div class="{cell} object-detail-cost-title">{escape(title)}</div>'
@@ -221,6 +225,48 @@ def _panel_saw_breakdown(panel_saw, *, tape_stock, tape_stock_complete, layout_c
         f'<tbody>{rows}</tbody><tfoot><tr><th scope="row">Total</th>'
         f'<td>{panel_saw["minutes"]:.1f}</td></tr></tfoot></table>{note_html}</details>'
     )
+
+
+def _cnc_time_breakdown(result, *, inline=False):
+    work, issues = result['work'], result['issues']
+    breakdown = (
+        ("Setup", "setup_minutes"), ("Load sheets", "load_minutes"),
+        ("Unload parts and scrap", "unload_minutes"), ("Clean table", "cleanup_minutes"),
+        ("Cutting", "cut_minutes"), ("Moves", "move_minutes"), ("Drilling", "drilling_minutes"),
+        ("Tool changes", "tool_change_minutes"),
+    )
+    minutes = "".join(
+        f'<tr><td>{label}</td><td>{work[key]:.1f}</td></tr>' for label, key in breakdown
+    )
+    excluded = (
+        '<p><strong>Excluded from this calculation</strong></p><ul>'
+        + "".join(f"<li>{escape(row['description'])}</li>" for row in issues)
+        + "</ul>"
+    ) if issues else ""
+    joined = _joined_parts_html(result["joined_parts"])
+    body = (
+        '<table><thead><tr><th scope="col">Operation</th><th scope="col">Minutes</th></tr></thead>'
+        f'<tbody>{minutes}</tbody><tfoot><tr><th scope="row">Total</th>'
+        f'<td>{work["machine_minutes"]:.1f}</td></tr></tfoot></table>{joined}{excluded}'
+    )
+    if inline:
+        return '<div class="object-detail-table object-detail-cnc-breakdown" data-section="cnc">' + body + '</div>'
+    return ('<details class="object-detail-table object-detail-cnc-breakdown" data-section="cnc">'
+            '<summary>CNC time breakdown</summary>' + body + '</details>')
+
+
+def _cnc_sheet_html(result, *, elements_html, work):
+    operations = (
+        _cost_band('Operator', _cnc_time_breakdown(result, inline=True), work['cnc-operator'], key='cnc-operator')
+        + _cost_band('File Preparation', '', work['file-preparation'], key='file-preparation')
+        + _cost_band('Edge Banding', '', work['edge-banding'], key='edge-banding')
+    )
+    body = '<div class="object-detail-cnc-elements">' + elements_html + '</div>'
+    body += ('<details class="object-detail-cnc-work" data-labor-detail="cnc">'
+             '<summary>CNC time breakdown</summary><div class="object-detail-cnc-work-body">'
+             + operations + '</div></details>')
+    return _cost_band('Sheet Processing', body, work['sheet-processing'], key='sheet-processing',
+                      editable=False, aggregate=True)
 
 
 def _comparison_html(result, *, elements_html='', metrics=None):
@@ -329,28 +375,7 @@ def _comparison_html(result, *, elements_html='', metrics=None):
         comparison_rows = [(None, outside) for _, outside in comparison_rows]
         comparison_rows[1] = (("In-house route unavailable", "—", "See Machinery settings"), comparison_rows[1][1])
     comparison = _comparison_table(comparison_rows)
-    breakdown = (
-        ("Setup", "setup_minutes"), ("Load sheets", "load_minutes"),
-        ("Unload parts and scrap", "unload_minutes"), ("Clean table", "cleanup_minutes"),
-        ("Cutting", "cut_minutes"), ("Moves", "move_minutes"), ("Drilling", "drilling_minutes"),
-        ("Tool changes", "tool_change_minutes"),
-    )
-    minutes = "".join(
-        f'<tr><td>{label}</td><td>{work[key]:.1f}</td></tr>' for label, key in breakdown
-    )
-    excluded = (
-        '<p><strong>Excluded from this calculation</strong></p><ul>'
-        + "".join(f"<li>{escape(row['description'])}</li>" for row in issues)
-        + "</ul>"
-    ) if issues else ""
-    joined = _joined_parts_html(result["joined_parts"])
-    details = (
-        '<details class="object-detail-table object-detail-cnc-breakdown" data-section="cnc">'
-        '<summary>CNC time breakdown</summary>'
-        '<table><thead><tr><th scope="col">Operation</th><th scope="col">Minutes</th></tr></thead>'
-        f'<tbody>{minutes}</tbody><tfoot><tr><th scope="row">Total</th>'
-        f'<td>{work["machine_minutes"]:.1f}</td></tr></tfoot></table>{joined}{excluded}</details>'
-    )
+    details = _cnc_time_breakdown(result)
     saw_details = _panel_saw_breakdown(panel_saw, tape_stock=tape_stock, tape_stock_complete=tape_stock_complete,
                                       layout_complete=layout_complete)
     return _sheet_section(elements_html + comparison + _supplier_stock_html(external["materials"])
@@ -365,8 +390,8 @@ def _estimate(value, complete):
 _labor_pay_metrics = object_labor_metrics
 
 
-def _preparation_html(state, *, quantity=1):
-    checking, packing, total = preparation_pay_metrics(state, quantity=quantity)
+def _preparation_html(state, *, quantity=1, overrides=None):
+    checking, packing, total = preparation_pay_metrics(state, quantity=quantity, overrides=overrides)
     result = state.get('preparation') or {}
     interfaces = result.get('interfaces', ())
     checking_body = '<ul>' + ''.join(
@@ -376,17 +401,19 @@ def _preparation_html(state, *, quantity=1):
         '<li>' + escape(row['id']) + f' · {row["size"] or "—"} · '
         + escape(str(row['quantity'])) + f' × {row["minutes_per_unit"] if row["minutes_per_unit"] is not None else "—"} min</li>'
         for row in result.get('packing_units', ())) + '</ul>' if result.get('packing_units') else ''
-    body = _cost_band('Trial Fit and Separation', checking_body, checking, key='trial-fit',
-                      editable=False, fixed_leaf=True)
-    body += _cost_band('Packing', packing_body, packing, key='packing', editable=False, fixed_leaf=True)
+    body = _cost_band('Trial Fit and Separation', checking_body, checking, key='trial-fit')
+    body += _cost_band('Packing', packing_body, packing, key='packing')
     return _cost_band('Preparation and Packing', body, total, key='preparation-packing', editable=False, aggregate=True)
 
 
 def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, quantity=1, overrides=None):
-    sheet_metrics, assembly_metrics, total = _labor_pay_metrics(state, quantity=quantity, overrides=overrides)
+    work = labor_work_metrics(state, quantity=quantity, overrides=overrides)
+    sheet_metrics, assembly_metrics, total = (work[key] for key in ('sheet-processing', 'assembly', 'labor'))
     elements_html = detail_elements_html(elements, revision=overlay_revision, object_id=object_id)
     if state['status'] == 'ready':
-        sheet = _comparison_html(state['result'], elements_html=elements_html, metrics=sheet_metrics)
+        sheet = (_cnc_sheet_html(state['result'], elements_html=elements_html, work=work)
+                 if state['result'].get('in_house_route', 'cnc') == 'cnc' else
+                 _comparison_html(state['result'], elements_html=elements_html, metrics=sheet_metrics))
     else:
         messages = {
             'preparing': 'Preparing Sheet Processing…', 'running': 'Waiting for Parts Check.',
@@ -395,7 +422,8 @@ def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, 
             'failed': 'Parts Check failed.', 'unavailable': 'Parts Check is unavailable for this object.',
             'read_failed': 'Sheet Processing could not be loaded.',
         }
-        sheet = _sheet_section(elements_html + f'<p class="object-detail-cnc-caption">{messages[state["status"]]}</p>')
+        sheet = _sheet_section(elements_html + f'<p class="object-detail-cnc-caption">{messages[state["status"]]}</p>',
+                               metrics=sheet_metrics)
     assembly = state.get('assembly')
     if assembly is not None:
         assembly_body = assembly_breakdown_html(assembly, quantity=quantity, payroll_share=DISPLAY_PAYROLL_SHARE, inline=True)
@@ -404,17 +432,16 @@ def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, 
     else:
         message = 'Preparing Assembly…' if state['status'] == 'preparing' else 'Assembly is unavailable.'
         assembly_body = f'<p class="object-detail-cnc-caption">{message}</p>'
-    zero = labor_pay_metrics(0)
     block_assembly = _cost_band('Block Assembly', assembly_body, assembly_metrics, key='assembly')
-    additional = _cost_band('Additional Assembly', '', zero, key='additional-assembly', editable=False)
+    additional = _cost_band('Additional Assembly', '', work['additional-assembly'], key='additional-assembly')
     body = (
         _cost_band('Part Production', sheet, sheet_metrics, key='part-production', editable=False, aggregate=True)
-        + _cost_band('Part Coating', '', zero, key='part-coating', editable=False)
-        + _cost_band('Assembly', block_assembly + additional, assembly_metrics,
+        + _cost_band('Part Coating', '', work['part-coating'], key='part-coating')
+        + _cost_band('Assembly', block_assembly + additional, work['assembly-stage'],
                      key='assembly-stage', editable=False, aggregate=True)
-        + _preparation_html(state, quantity=quantity)
+        + _preparation_html(state, quantity=quantity, overrides=overrides)
     )
-    return '<div class="object-detail-labor-band">' + _cost_band('Labor', body, total, key='labor') + '</div>'
+    return '<div class="object-detail-labor-band">' + _cost_band('Labor', body, total, key='labor', cost_quantity=quantity, explicit_keys=(overrides or {}).keys()) + '</div>'
 
 
 def _overhead_html(state, *, identity, material_cost, material_partial=False, quantity=1, overrides=None):

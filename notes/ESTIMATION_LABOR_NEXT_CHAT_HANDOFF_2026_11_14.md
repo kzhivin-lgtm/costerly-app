@@ -1344,3 +1344,12 @@ while expanded/restores collapsed, adds hours beside root money, and aligns
 nested numeric axes/text. Allocation and source math stay. Existing work3.17.4.6,
 base published2.10/runtime20e34aa1, accepted9.48 checkpoint preserved.
 See [current candidate and verification](LABOR_V2_11_DISCLOSURE_HOURS_2026_11_23.md).
+
+## Active Labor 2.12,24November2026
+
+Owner approved release after the full2.11 checkpoint. Decision: edit terminal
+work groups only, never departments/root/rows with children. All new work editors
+use the existing paid-hour override writer. CNC view contains Elements and CNC
+time breakdown with Operator/File Preparation/Edge Banding; comparison/rate/
+duplicate material tables disappear for CNC. Tax header +25%, contiguous equal
+rows and one shared Overhead header. [Scope, decisions and verification](LABOR_V2_12_WORK_EDITING_CNC_2026_11_24.md).

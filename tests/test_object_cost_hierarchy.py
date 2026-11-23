@@ -97,7 +97,7 @@ def test_pending_labor_does_not_fabricate_zero_cost():
         assert '₪0' not in summary
     for key in ('part-coating', 'additional-assembly'):
         summary = html.split(f'data-cost-band="{key}"', 1)[1].split('</summary>', 1)[0]
-        assert '₪0' in summary and 'contenteditable' not in summary
+        assert '₪0' in summary and 'contenteditable="true"' in summary
 
 
 def test_hours_save_roundtrip_is_per_item_and_recalculates_full_sc_without_changing_norms(monkeypatch):

@@ -47,7 +47,7 @@ from use_cases.retry import read_with_retry
 from use_cases.detection_previews import saved_presentation_preview_ref
 from use_cases.labor_hours import overrides_from_lines, override_lines, validate_hours
 from use_cases.estimation_front_panels import FRONT_PART_ROLES as _FRONT_PART_ROLES, front_panel_controls
-from use_cases.estimation_labor_v1 import load_object_labor, object_labor_metrics, preparation_pay_metrics, sheet_layout_basis
+from use_cases.estimation_labor_v1 import load_object_labor, object_labor_metrics, preparation_pay_metrics, sheet_layout_basis, labor_work_metrics
 from use_cases.estimation_parts_check_runtime import load_parts_check
 from use_cases.machinery import load_sheet_processing_machinery
 from use_cases.overhead_engine import estimate_object_overhead, with_production_capacity
@@ -113,14 +113,16 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
         assembly_labor = saved["labor_blocks"]["assembly"]
         preparation_labor = saved["labor_blocks"].get("preparation_packing")
         preparation_audit = saved.get("preparation_packing")
+        labor_work = saved.get("labor_work")
     else:
         state = load_object_labor(
             client, identity=(str(obj["company_id"]), str(obj["run_id"]), estimate_id, str(obj["object_id"])),
             plan=plan, parts_result=context["parts"] if "payload" in context["parts"] else None,
             machinery_loader=lambda *_: context["machinery"],
         )
-        sheet_labor, assembly_labor, labor = object_labor_metrics(state, quantity=quantity, overrides=overrides)
-        _, _, preparation_labor = preparation_pay_metrics(state, quantity=quantity)
+        labor_work = labor_work_metrics(state, quantity=quantity, overrides=overrides)
+        sheet_labor, assembly_labor, labor = (labor_work[key] for key in ('sheet-processing', 'assembly-stage', 'labor'))
+        preparation_labor = labor_work['preparation-packing']
         preparation_audit = state.get("preparation")
     overhead = estimate_object_overhead(
         estimate_id=estimate_id, object_id=str(obj["object_id"]), company_id=str(obj["company_id"]),
@@ -140,8 +142,10 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
                "partial": bool(partial), "self_cost_ex_vat": net, "vat_amount": vat,
                "self_cost_total": round(net + vat, 2),
                "labor_blocks": {"sheet_processing": sheet_labor, "assembly": assembly_labor,
-                                **({"preparation_packing": preparation_labor} if preparation_audit is not None else {})},
+                                **({"preparation_packing": preparation_labor} if preparation_audit is not None or preparation_labor is not None else {}),
+                                **({"part_coating": labor_work['part-coating']} if labor_work and 'part-coating' in overrides else {})},
                "preparation_packing": preparation_audit,
+               **({"labor_work": labor_work} if labor_work is not None else {}),
                "parts_check_source": plan.get("parts_check_source"),
                "previous_totals": saved.get("previous_totals") if isinstance(saved, dict) else {
                    key: None if isinstance(obj.get(key), float) and not isfinite(obj[key]) else obj.get(key)
@@ -794,8 +798,10 @@ def _project_detail_receipt(obj, lines, plan, cost_snapshot=None):
                       "front_panels": front_panel_controls(plan, lines.to_dict("records"), object_id)}],
         "quantity": _number(obj.get("quantity"), 1),
         "cost_quantity": _number((plan.get("object_quantities") or {}).get(object_id), _number(obj.get("quantity"), 1)),
+        "labor": cost_snapshot.get("labor"), "overhead": cost_snapshot.get("overhead"),
         "labor_hours_overrides": overrides_from_lines(lines),
-        "labor_block_hours": {key: value["hours"] for key, value in cost_snapshot.get("labor_blocks", {}).items() if value},
+        "labor_block_hours": {**{key: value["hours"] for key, value in cost_snapshot.get("labor_blocks", {}).items() if value},
+                              **{key: value["hours"] for key, value in cost_snapshot.get("labor_work", {}).items() if value}},
         "cost_policy": _FULL_COST_SOURCE if cost_snapshot.get("version") == _FULL_COST_SOURCE else None,
         "self_cost": {"excl_vat": cost_snapshot.get("self_cost_ex_vat", obj.get("self_cost_ex_vat")),
                       "vat": cost_snapshot.get("vat_amount", obj.get("vat_amount")),
@@ -1743,8 +1749,10 @@ def front_material_preview_receipt(*, estimate_id, object_id, plan):
         "self_cost": {"excl_vat": summary["self_cost_ex_vat"], "vat": summary["vat_amount"],
                       "batch_excl_vat": _detail_batch_net(summary),
                       "total": summary["self_cost_total"], "partial": summary["partial"]},
+        "labor": summary.get("labor"), "overhead": summary.get("overhead"),
         "labor_hours_overrides": overrides_from_lines(lines),
-        "labor_block_hours": {key: value["hours"] for key, value in summary["labor_blocks"].items() if value},
+        "labor_block_hours": {**{key: value["hours"] for key, value in summary["labor_blocks"].items() if value},
+                              **{key: value["hours"] for key, value in summary.get("labor_work", {}).items() if value}},
     }
 
 

@@ -491,30 +491,87 @@ def sheet_pay_metrics(result):
     return labor_pay_metrics(hours, partial=partial or bool(edge.get('unestimated')))
 
 
-def object_labor_metrics(state, *, quantity=1, overrides=None):
+def _sum_labor_metrics(rows):
+    known = [row for row in rows if row is not None]
+    if not known:
+        return None
+    total = {key: sum(row[key] for row in known) for key in ('hours', 'pay', 'taxes', 'total')}
+    total['partial'] = len(known) != len(rows) or any(row['partial'] for row in known)
+    return total
+
+
+def labor_work_metrics(state, *, quantity=1, overrides=None):
+    """One paid-work tree for render, saved costs and Overhead; norms stay intact."""
     overrides = overrides or {}
-    def manual(block, calculated):
-        return (labor_pay_metrics(Decimal(str(overrides[block])) * Decimal(str(quantity)))
-                if block in overrides else calculated)
-    sheet = manual('sheet-processing', sheet_pay_metrics(state['result'])) if state['status'] == 'ready' else None
+    count = Decimal(str(quantity))
+    def manual(key, calculated):
+        return (labor_pay_metrics(Decimal(str(overrides[key])) * count)
+                if key in overrides else calculated)
+    work = {}
+    sheet = sheet_pay_metrics(state['result']) if state['status'] == 'ready' else None
+    sheet = manual('sheet-processing', sheet)
+    if state['status'] == 'ready' and state['result'].get('in_house_route', 'cnc') == 'cnc':
+        result = state['result']
+        edge = result.get('cnc_edging', {'minutes': result['edge_banding']['minutes']})
+        values = {
+            'cnc-operator': Decimal(str(result['in_house']['operator_hours'])),
+            'file-preparation': Decimal(str(result['file_preparation']['minutes'])) / 60,
+            'edge-banding': Decimal(str(edge['minutes'])) / 60,
+        }
+        # Existing saved Sheet Processing overrides remain a total-hours basis.
+        # More-specific new operation edits supersede their share, not the norms.
+        if 'sheet-processing' in overrides:
+            total = sum(values.values())
+            target = Decimal(str(overrides['sheet-processing'])) * count
+            remaining = target
+            keys = list(values)
+            if total:
+                for key in keys[:-1]:
+                    values[key] = target * values[key] / total
+                    remaining -= values[key]
+                values[keys[-1]] = remaining
+            else:
+                # A legacy manual budget without a calculated split stays manual
+                # operator work, rather than inventing edge-banding demand.
+                values = {key: target if key == keys[0] else Decimal(0) for key in keys}
+        for key, hours in values.items():
+            partial = bool(sheet and sheet['partial'])
+            work[key] = manual(key, labor_pay_metrics(hours, partial=partial))
+        sheet = labor_pay_metrics(sum(work[key]['hours'] for key in values),
+                                  partial=any(work[key]['partial'] for key in values))
+    work['sheet-processing'] = sheet
     assembly = state.get('assembly')
     assembled = None
     if assembly is not None:
         partial = bool(assembly['common_roles_for_review'] or any(block['issues'] for block in assembly['blocks']))
-        assembled = manual('assembly', labor_pay_metrics(assembly['planned_minutes'] * Decimal(str(quantity)) / 60, partial=partial))
-    _, _, preparation = preparation_pay_metrics(state, quantity=quantity)
-    known = [metrics for metrics in (sheet, assembled, preparation) if metrics is not None]
-    total = None
-    if known:
-        total = {key: sum(item[key] for item in known) for key in ('hours', 'pay', 'taxes', 'total')}
-        total['partial'] = len(known) != 3 or any(item['partial'] for item in known)
-    return sheet, assembled, total
+        assembled = labor_pay_metrics(assembly['planned_minutes'] * count / 60, partial=partial)
+    work['assembly'] = manual('assembly', assembled)
+    work['part-coating'] = manual('part-coating', labor_pay_metrics(0))
+    work['additional-assembly'] = manual('additional-assembly', labor_pay_metrics(0))
+    checking, packing, _ = preparation_pay_metrics(state, quantity=quantity, overrides=overrides)
+    work['trial-fit'], work['packing'] = checking, packing
+    work['part-production'] = sheet
+    work['assembly-stage'] = (_sum_labor_metrics([work['assembly'], work['additional-assembly']])
+                              if work['assembly'] is not None or 'additional-assembly' in overrides else None)
+    work['preparation-packing'] = _sum_labor_metrics([checking, packing])
+    work['labor'] = (_sum_labor_metrics([sheet, work['part-coating'], work['assembly-stage'], work['preparation-packing']])
+                     if any(work[key] is not None for key in ('sheet-processing', 'assembly-stage', 'preparation-packing'))
+                     or 'part-coating' in overrides else None)
+    return work
 
 
-def preparation_pay_metrics(state, *, quantity=1):
+def object_labor_metrics(state, *, quantity=1, overrides=None):
+    work = labor_work_metrics(state, quantity=quantity, overrides=overrides)
+    return work['sheet-processing'], work['assembly'], work['labor']
+
+
+def preparation_pay_metrics(state, *, quantity=1, overrides=None):
     result = state.get('preparation')
     if result is None:
-        return None, None, None
+        known = {key: labor_pay_metrics(Decimal(str(value)) * Decimal(str(quantity)))
+                 for key, value in (overrides or {}).items() if key in {'trial-fit', 'packing'}}
+        checking, packing = known.get('trial-fit'), known.get('packing')
+        return checking, packing, _sum_labor_metrics([checking, packing])
     count = Decimal(str(quantity))
     checking = labor_pay_metrics(Decimal(result['checking_minutes']) * count / 60,
                                  partial=not result['checking_known'])
@@ -524,6 +581,10 @@ def preparation_pay_metrics(state, *, quantity=1):
                                 partial=result['packing_partial'])
     if result['packing_partial'] and not any(row.get('man_minutes') is not None for row in result['packing_units']):
         packing = None
+    if 'trial-fit' in (overrides or {}):
+        checking = labor_pay_metrics(Decimal(str(overrides['trial-fit'])) * count)
+    if 'packing' in (overrides or {}):
+        packing = labor_pay_metrics(Decimal(str(overrides['packing'])) * count)
     known = [row for row in (checking, packing) if row is not None]
     if not known:
         return checking, packing, None

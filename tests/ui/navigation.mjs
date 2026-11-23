@@ -285,6 +285,14 @@ try {
   assert.ok(rowGeometry.length>=20,JSON.stringify(rowGeometry));
   assert.ok(rowGeometry.every(r=>r.x<1 && r.y<2),JSON.stringify(rowGeometry));
   console.log(cfg.name,'Labor nested text geometry',JSON.stringify(rowGeometry));
+  const rowGaps=await frame.evaluate(()=>{
+   const summary=key=>document.querySelector(`[data-cost-band="${key}"] > summary`).getBoundingClientRect();
+   return [['part-production','sheet-processing'],['assembly-stage','assembly'],['preparation-packing','trial-fit'],
+     ['sheet-processing','part-coating'],['additional-assembly','preparation-packing']]
+     .map(([a,b])=>({a,b,gap:summary(b).top-summary(a).bottom}));
+  });
+  assert.ok(rowGaps.every(r=>Math.abs(r.gap)<1),JSON.stringify(rowGaps));
+
 
   assert.equal(await labor.locator('.object-detail-cost-column-headings .object-detail-cost-label').last().innerText(),'TOTAL');
   assert.equal(await labor.locator('.object-detail-labor-body > .object-detail-cnc-caption:not(.object-detail-labor-review)').count(),0);
@@ -306,6 +314,18 @@ try {
   await group.locator(':scope > summary').click();
   assert.equal(await group.locator('.object-detail-table-row').first().isVisible(),true);
   assert.notEqual(await group.locator(':scope > summary').evaluate(n=>getComputedStyle(n).backgroundColor),closedColor);
+  assert.equal(await overhead.locator('.object-detail-overhead-column-headings').count(),1);
+  assert.equal(await overhead.locator('.object-detail-group .object-detail-table-head-row').count(),0);
+  const overheadAxes=await overhead.evaluate(host=>{
+   const cx=n=>{const b=n.getBoundingClientRect();return b.x+b.width/2;};
+   const head=host.querySelector('.object-detail-overhead-column-headings');
+   const summary=host.querySelector('.object-detail-group > summary');
+   return {cost:Math.abs(cx(head.children[3])-cx(summary.lastElementChild)),
+    rows:[...host.querySelectorAll('.object-detail-group[open] > .object-detail-table-row')].map(row=>
+     [...row.children].slice(1).map((cell,i)=>Math.abs(cx(cell)-cx(head.children[i+1]))))};
+  });
+  assert.ok(overheadAxes.cost<1 && overheadAxes.rows.every(row=>row.every(x=>x<1)),JSON.stringify(overheadAxes));
+
   await overhead.locator(':scope > summary').click();
   await sheet.locator(':scope > summary .object-detail-cost-title').click();
   await sheet.locator('.object-detail-elements > summary').click();

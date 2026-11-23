@@ -552,7 +552,7 @@ def apply_object_detail_css() -> None:
         .object-detail-labor-table > .object-detail-band-summary [data-labor-column="total"] { grid-column: 3; }
         .object-detail-labor-table.object-detail-cost-band[data-cost-band="labor"]:not([open]) > .object-detail-cost-summary > [data-labor-column="hours"] { display: flex; visibility: visible; }
         .object-detail-labor-hours-value { font: 700 16px/1.2 var(--font-mono); white-space: nowrap; text-transform: none; }
-        .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body { padding: 12px 0; }
+        .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body { padding: 0; }
         .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 20px; }
         .object-detail-work-row[data-labor-aggregate="true"][open] > summary [data-labor-column] > * { visibility: hidden; }
         .object-detail-labor-table [data-labor-column] { justify-content: center; align-self: stretch; }
@@ -572,6 +572,11 @@ def apply_object_detail_css() -> None:
         .object-detail-work-row > summary [data-labor-column="hours"] { padding-block: 3px; }
         .object-detail-labor-review { padding: 8px 12px; margin: 0; }
         .object-detail-work-body { padding: 12px; }
+        .object-detail-cnc-elements { padding: 12px; }
+        .object-detail-cnc-work > summary { padding: 12px; font: 400 14px/1.24 var(--font-sans); cursor: pointer; }
+        .object-detail-cnc-work .object-detail-work-row > summary > .object-detail-cost-title { padding-left: 32px; }
+        [data-field="labor_hours"]:empty::before { content: attr(data-placeholder); font-weight: 400; }
+
         .object-detail-work-body > .object-detail-elements-section { margin-bottom: 12px; }
         .object-detail-work-body > .object-detail-element-group { border-top: 0; }
         .object-detail-work-body .object-detail-section-title { font-size: 18px; }
@@ -630,9 +635,11 @@ def apply_object_detail_css() -> None:
 
         .object-detail-group[open] > .object-detail-group-summary { background: rgba(128, 73, 198, 0.075); }
         .object-detail-overhead-band .object-detail-group-summary {
-            grid-template-columns: minmax(0, 1fr) 132px;
-            padding-inline: 20px 0;
+            grid-template-columns: var(--detail-grid);
+            padding: 0;
         }
+        .object-detail-overhead-band .object-detail-group-title { grid-column: 1 / 4; padding-left: 20px; }
+        .object-detail-overhead-band .object-detail-group-total:last-child { grid-column: 4; }
         .object-detail-overhead-band .object-detail-group-summary > :not(:first-child):not(:last-child) { display: none; }
         .object-detail-overhead-band .object-detail-group > .object-detail-table-row > :first-child { padding-left: 44px; }
 
@@ -1078,6 +1085,10 @@ def apply_object_detail_css() -> None:
             .object-detail-table--cols-6[data-section="material"] :is(.object-detail-table-head-row, .object-detail-table-row) {
                 min-width: 609px;
             }
+            .object-detail-work-row > .object-detail-cost-summary .object-detail-cost-title { gap: 2px; padding-inline: 6px; }
+            .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 12px; }
+            .object-detail-cnc-work .object-detail-work-row > summary > .object-detail-cost-title { padding-left: 20px; }
+            .object-detail-overhead-band .object-detail-group-summary { min-width: 760px; }
             .object-detail-labor-table > summary, .object-detail-cost-column-headings, .object-detail-work-row > summary { min-width: 609px; }
             .object-detail-cost-band:not([open]) > .object-detail-cost-summary {
                 grid-template-columns: minmax(0, 1fr) 70px;

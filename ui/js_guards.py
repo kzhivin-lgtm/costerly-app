@@ -127,7 +127,7 @@ def install_workflow_header_alignment_guard(
             }
 
             function scheduleLaborAlign(event) {
-                if (event.target.matches?.('.object-detail-labor-table, .object-detail-work-row')) scheduleAlign();
+                if (event.target.matches?.('.object-detail-labor-table, .object-detail-work-row, .object-detail-cnc-work')) scheduleAlign();
             }
 
             function scheduleAlign() {
@@ -2280,7 +2280,10 @@ def install_object_detail_input_guard(
             let activeSave = null;
             const materialField = field => field === "required_material" || field === "purchase_quantity" || field === "labor_hours";
             const editKey = ctx => JSON.stringify([ctx.field, ctx.lineId]);
-            const materialValue = input => String(editableValue(input) || "").trim().replace(",", ".");
+            const materialValue = input => {
+                const value = String(editableValue(input) || "").trim().replace(",", ".");
+                return input.dataset.field === 'labor_hours' && value === '—' ? '' : value;
+            };
             const validAmount = raw => /^(?:\\d+(?:\\.\\d{0,4})?|\\.\\d{1,4})$/.test(raw)
                 && Number(raw) > 0 && Number(raw) < 1e10;
             const rowPreview = row => JSON.parse(row.dataset.materialPreview);
@@ -2501,6 +2504,11 @@ def install_object_detail_input_guard(
                 const previous = prior?.value ?? input.dataset.materialPreviewValue ?? input.dataset.originalValue;
                 const unchanged = raw !== "" && (raw === input.dataset.editStartValue || Number(raw) === Number(previous));
                 const baseline = input.dataset.originalValue;
+                if (ctx.field === 'labor_hours' && baseline == null && raw === '') {
+                    draft.delete(key); input.removeAttribute('aria-invalid');
+                    if (input !== parentDoc.activeElement) setEditableValue(input, '—');
+                    previewLabor(); updateSaveControls(); return;
+                }
                 const displayedBaseline = materialField(ctx.field) ? quantityText(baseline, input) : null;
                 const restored = raw !== "" && baseline != null && (
                     Number(raw) === Number(baseline) ||
@@ -2557,56 +2565,73 @@ def install_object_detail_input_guard(
             }
 
             function previewLabor() {
-                if (!parentDoc.querySelector('[data-field="labor_hours"]')) return;
+                const labor = parentDoc.querySelector('[data-cost-band="labor"]');
+                if (!labor) return;
                 const quantity = objectQuantityInput();
                 const count = Number(quantity?.dataset.originalValue || 1);
                 const nextCount = Number(draft.get(editKey({field: "object_quantity", lineId: "__object__"}))?.value ?? count);
-                let total = 0;
-                let totalHours = 0;
-                let knownRows = 0;
-                const stageTotals = new Map();
-                for (const row of parentDoc.querySelectorAll('.object-detail-work-row')) {
-                    const input = row.querySelector(':scope > summary [data-field="labor_hours"]');
-                    const fixed = row.dataset.laborFixedHours;
-                    if (!input && fixed === undefined) continue;
-                    const pending = input ? draft.get(editKey(contextFor(input))) : null;
-                    if (row.dataset.costUnknown === "true" && !pending) continue;
-                    knownRows += 1;
-                    const hours = fixed !== undefined ? Number(fixed) : pending ? Number(pending.value) : Number(input.dataset.originalValue) * nextCount / count;
-                    if (input && input !== parentDoc.activeElement && input.getAttribute("aria-invalid") !== "true") {
-                        setEditableValue(input, laborHoursText(hours));
+                const explicit = new Set(JSON.parse(labor.dataset.laborExplicitKeys || '[]'));
+                const round = value => Math.round(value * 100) / 100;
+                const paid = hours => { const pay = round(hours * 50), taxes = round(pay * 0.25); return {hours, pay, taxes, total: pay + taxes}; };
+                const add = rows => rows.reduce((sum, row) => {
+                    for (const key of ['hours','pay','taxes','total']) sum[key] += row[key];
+                    sum.qualified ||= row.qualified;
+                    return sum;
+                }, {hours:0,pay:0,taxes:0,total:0,qualified:false});
+                const children = host => [...host.querySelectorAll('.object-detail-work-row')]
+                    .filter(row => row.parentElement.closest('.object-detail-work-row') === (host === labor ? null : host));
+                const update = (row, value) => {
+                    const summary = row.querySelector(':scope > summary');
+                    const input = summary.querySelector('[data-field="labor_hours"]');
+                    if (input && input !== parentDoc.activeElement && input.getAttribute('aria-invalid') !== 'true')
+                        setEditableValue(input, laborHoursText(value.hours));
+                    for (const [column, amount] of Object.entries(value)) {
+                        if (column === 'qualified') continue;
+                        const cell = summary.querySelector(`[data-labor-column="${column}"] .object-detail-cost-value`);
+                        if (cell) cell.textContent = column === 'hours' ? laborHoursText(amount) : formatMoney(amount);
                     }
-                    const pay = Math.round(hours * 50 * 100) / 100;
-                    const taxes = Math.round(pay * 0.25 * 100) / 100;
-                    for (const [column, value] of Object.entries({pay, taxes, total: pay + taxes})) {
-                        const cell = row.querySelector(`[data-labor-column="${column}"] .object-detail-cost-value`);
-                        if (cell) cell.textContent = formatMoney(value);
+                };
+                const clearUnknown = row => {
+                    if (row.dataset.costUnknown !== 'true') return;
+                    for (const cell of row.querySelectorAll(':scope > summary .object-detail-cost-value')) cell.textContent = '—';
+                };
+                const valueFor = row => {
+                    let value;
+                    if (row.dataset.laborAggregate === 'true') {
+                        const known = children(row).map(valueFor).filter(Boolean);
+                        if (!known.length) { clearUnknown(row); return null; }
+                        value = add(known);
+                        if (!value.qualified && row.dataset.costUnknown === 'true') { clearUnknown(row); return null; }
+                        if (row.dataset.costBand === 'sheet-processing') value = {...paid(value.hours),qualified:value.qualified};
+                    } else {
+                        const input = row.querySelector(':scope > summary [data-field="labor_hours"]');
+                        if (!input) return null;
+                        const pending = draft.get(editKey(contextFor(input)));
+                        if (!pending && !input.hasAttribute('data-original-value')) {
+                            if (input !== parentDoc.activeElement) setEditableValue(input, '—');
+                            clearUnknown(row); return null;
+                        }
+                        const hours = pending ? Number(pending.value) : Number(input.dataset.originalValue) * nextCount / count;
+                        if (!Number.isFinite(hours)) return null;
+                        value = {...paid(hours),qualified: !['part-coating','additional-assembly'].includes(row.dataset.costBand)
+                            || hours > 0 || !!pending || explicit.has(row.dataset.costBand)};
                     }
-                    const stage = row.parentElement.closest('.object-detail-work-row');
-                    if (stage) {
-                        const sums = stageTotals.get(stage) || {hours: 0, pay: 0, taxes: 0, total: 0};
-                        for (const [key, value] of Object.entries({hours, pay, taxes, total: pay + taxes})) sums[key] += value;
-                        stageTotals.set(stage, sums);
-                    }
-                    total += pay + taxes;
-                    totalHours += hours;
+                    update(row, value);
+                    return value;
+                };
+                const total = add(children(labor).map(valueFor).filter(Boolean));
+                const cell = labor.querySelector(':scope > summary [data-labor-column="total"] .object-detail-cost-value');
+                const hours = labor.querySelector(':scope > summary .object-detail-labor-hours-value');
+                if (!total.qualified) {
+                    labor.dataset.laborTotalHours = labor.dataset.laborBaseHours || '';
+                    if (cell) cell.textContent = labor.dataset.laborBaseTotal === '' ? '—' : formatMoney(Number(labor.dataset.laborBaseTotal));
+                    if (hours) hours.textContent = labor.dataset.laborBaseHours === '' ? '—' : `${laborHoursText(Number(labor.dataset.laborBaseHours))} h`;
+                    return;
                 }
-                for (const [stage, sums] of stageTotals) {
-                    for (const [column, value] of Object.entries(sums)) {
-                        const cell = stage.querySelector(`:scope > summary [data-labor-column="${column}"] .object-detail-cost-value`);
-                        if (cell) cell.textContent = column === "hours" ? laborHoursText(value) : formatMoney(value);
-                    }
-                }
-                const cell = parentDoc.querySelector('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value');
-                if (!knownRows) return;
-                if (cell) cell.textContent = formatMoney(total);
-                const labor = parentDoc.querySelector('[data-cost-band="labor"]');
-                if (labor) {
-                    labor.dataset.laborTotalHours = String(totalHours);
-                    const hours = labor.querySelector(':scope > summary .object-detail-labor-hours-value');
-                    if (hours) hours.textContent = `${laborHoursText(totalHours)} h`;
-                }
-                previewOverhead(totalHours, total);
+                labor.dataset.laborTotalHours = String(total.hours);
+                if (cell) cell.textContent = formatMoney(total.total);
+                if (hours) hours.textContent = `${laborHoursText(total.hours)} h`;
+                previewOverhead(total.hours, total.total);
             }
 
             function overheadHost(ready = true) {
@@ -2767,13 +2792,44 @@ def install_object_detail_input_guard(
                     if (draft.get(key)?.value === edit.value || Number(draft.get(key)?.value) === Number(edit.value)) draft.delete(key);
                 }
                 reconcileFrontMaterialRows(result);
+                // A first explicit unknown-hours override can complete Overhead.
+                // Reuse server rendering only for a previously pending host;
+                // ready groups and all hour input nodes stay mounted.
+                const pendingOverhead = overheadHost(false);
+                if (pendingOverhead && pendingOverhead.dataset.overheadReady !== 'true' && result.overhead_html) {
+                    const template = parentDoc.createElement('template'); template.innerHTML = result.overhead_html;
+                    const next = template.content.firstElementChild;
+                    if (next?.dataset.overheadObjectId === String(OBJECT_ID) && next.dataset.overheadEstimateId === String(ESTIMATE_ID)
+                        && next.dataset.overheadRunId === String(RUN_ID)) {
+                        const open = pendingOverhead.querySelector('.object-detail-overhead-band')?.open;
+                        const restoreFocus = pendingOverhead.contains(parentDoc.activeElement);
+                        next.querySelector('.object-detail-overhead-band').open = !!open;
+                        pendingOverhead.replaceWith(next);
+                        if (restoreFocus) next.querySelector('summary')?.focus();
+                    }
+                }
                 const previousQuantity = Number(objectQuantityInput()?.dataset.originalValue || 1);
+                const laborRoot = parentDoc.querySelector('[data-cost-band="labor"]');
+                // Original hour values belong to the priced configuration, not commercial copies.
+                const previousCostQuantity = Number(laborRoot?.dataset.laborCostQuantity || previousQuantity);
+                const nextCostQuantity = Number(result.cost_quantity ?? result.quantity);
                 for (const input of parentDoc.querySelectorAll('[data-field="labor_hours"]')) {
                     const perItem = result.labor_hours_overrides?.[input.dataset.lineId];
                     const computed = result.labor_block_hours?.[input.dataset.lineId];
+                    if (computed == null && perItem == null && !input.hasAttribute('data-original-value')) continue;
                     input.dataset.originalValue = String(computed != null ? computed : perItem != null
                         ? Number(perItem) * Number(result.cost_quantity ?? result.quantity)
-                        : Number(input.dataset.originalValue) * Number(result.cost_quantity ?? result.quantity) / previousQuantity);
+                        : Number(input.dataset.originalValue) * nextCostQuantity / previousCostQuantity);
+                }
+                if (laborRoot) {
+                    laborRoot.dataset.laborCostQuantity = String(nextCostQuantity);
+                    laborRoot.dataset.laborExplicitKeys = JSON.stringify(Object.keys(result.labor_hours_overrides || {}));
+                }
+                if (laborRoot && result.labor) {
+                    laborRoot.dataset.laborBaseHours = String(result.labor.hours);
+                    laborRoot.dataset.laborBaseTotal = String(result.labor.total);
+                    laborRoot.dataset.costUnknown = 'false';
+                    laborRoot.dataset.costPartial = String(!!result.labor.partial);
                 }
                 const quantity = objectQuantityInput();
                 if (quantity && result.quantity != null) {
@@ -3069,6 +3125,7 @@ def install_object_detail_input_guard(
                         const editable = quantityText(exact, ctx.input);
                         if (editable !== materialValue(ctx.input)) setEditableValue(ctx.input, editable);
                     }
+                    if (ctx.field === 'labor_hours' && exact == null && editableValue(ctx.input) === '—') setEditableValue(ctx.input, '');
                     ctx.input.dataset.editStartValue = materialValue(ctx.input);
                     moveCaretToEnd(ctx.input);
                     return;

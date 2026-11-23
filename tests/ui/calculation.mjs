@@ -225,7 +225,8 @@ async function detailSaveChecks(){
   assert.equal(await core.locator('[data-object-detail-approve]').getAttribute('aria-disabled'),null);
   assert.equal(existsSync(statePath('object-approvals.json')),false,'Approve during explicit Save must not queue approval');
   assert.equal(page.url(),originalUrl);assert.equal(await core.locator('.object-detail-title--name').count(),1);
-  assert.equal(await net.innerText(),preview);assert.equal(readFileSync(statePath('front-choice'),'utf8'),'mdf');
+  assert.equal(await net.innerText(),preview,JSON.stringify(await frame.evaluate(()=>({inputs:[...document.querySelectorAll('[data-field="labor_hours"]')].map(n=>({key:n.dataset.lineId,original:n.dataset.originalValue,text:n.textContent})),pending:window.__costerlyObjectDetailDraft.pendingEdits(),root:document.querySelector('[data-cost-band="labor"]').dataset,overhead:document.querySelector('[data-overhead-summary]').dataset}))));assert.equal(readFileSync(statePath('front-choice'),'utf8'),'mdf');
+  assert.equal(Number(await core.locator('[data-cost-band="labor"]').getAttribute('data-labor-cost-quantity')),1);
   assert.equal(await save.evaluate(n=>n.classList.contains('object-detail-material-save--saved')),true);
   await core.locator('.object-detail-materials-band > summary').click();
   await save.scrollIntoViewIfNeeded();
@@ -310,10 +311,27 @@ try{
   await preparation.locator(':scope > summary').click();
   const packing=core.locator('[data-cost-band="packing"]');
   assert.equal(await packing.locator(':scope > summary [data-labor-column="hours"]').innerText(),'0.3');
-  assert.equal(await packing.locator('[contenteditable="true"]').count(),0);
-  await packing.locator(':scope > summary').click();
+  assert.equal(await packing.locator('[contenteditable="true"]').count(),1);
+  const packingOpen=await packing.evaluate(n=>n.open);
+  await packing.getByRole('textbox',{name:'Packing hours',exact:true}).click();
+  assert.equal(await packing.evaluate(n=>n.open),packingOpen);
+  await packing.locator(':scope > summary .object-detail-cost-title').click();
   assert.match(await packing.innerText(),/B01 · M · 1 × 15 min/);
   for(const key of ['part-production','assembly-stage'])await core.locator(`[data-cost-band="${key}"] > summary`).click();
+  const openCnc=async()=>{
+   const sheet=core.locator('[data-cost-band="sheet-processing"]');
+   if(!await sheet.evaluate(n=>n.open))await sheet.locator(':scope > summary .object-detail-cost-title').click();
+   const cnc=sheet.locator('[data-labor-detail="cnc"]');
+   if(!await cnc.evaluate(n=>n.open))await cnc.locator(':scope > summary').click();
+  };
+  await openCnc();
+  assert.equal(await core.getByRole('textbox',{name:'Sheet Processing hours',exact:true}).count(),0);
+  for(const title of ['Labor','Part Production','Assembly','Preparation and Packing'])
+   assert.equal(await core.getByRole('textbox',{name:title+' hours',exact:true}).count(),0);
+  const cncSheet=core.locator('[data-cost-band="sheet-processing"]');
+  assert.ok(!/In-house|Subcontractor|Materials \+ labor/.test(await cncSheet.innerText()));
+  assert.match(await core.locator('.object-detail-cost-column-headings').innerText(),/SOCIAL \+25%/);
+
   const hours=core.getByRole('textbox',{name:'Block Assembly hours',exact:true});
   await hours.waitFor();
   await frame.waitForFunction(()=>window.__costerlyObjectDetailDraft?.context?.objectId==='object-001');
@@ -344,9 +362,9 @@ try{
    settings({labor_ready:true});
   }
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
-  const sheetHours=core.getByRole('textbox',{name:'Sheet Processing hours',exact:true});
+  const sheetHours=core.getByRole('textbox',{name:'Operator hours',exact:true});
   await sheetHours.fill('100.0');await sheetHours.press('Enter');
-  assert.equal(await core.locator('[data-cost-band="sheet-processing"] > summary [data-labor-column="total"]').innerText(),'₪6\u202f250');
+  assert.equal(await core.locator('[data-cost-band="sheet-processing"] > summary [data-labor-column="total"]').textContent(),'₪6\u202f250');
   assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪8\u202f797');
   assert.equal(await preparation.locator(':scope > summary [data-labor-column="total"]').textContent(),'₪16');
   const laborRoot=core.locator('[data-cost-band="labor"]');
@@ -381,10 +399,51 @@ try{
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('[data-cost-band="labor"] > summary').click();
   for(const key of ['part-production','assembly-stage'])await core.locator(`[data-cost-band="${key}"] > summary`).click();
+  await openCnc();
   await hours.waitFor();assert.equal(await hours.innerText(),'0.0');
   assert.equal(await sheetHours.innerText(),'100.0');
   await overhead.waitFor();
   await assertSharedHours(100.25);
+  await core.locator('[data-cost-band="preparation-packing"] > summary').click();
+  const extraHours={'File Preparation': '1.0','Edge Banding':'2.0','Part Coating':'1.2',
+    'Additional Assembly':'0.4','Trial Fit and Separation':'0.5','Packing':'0.7'};
+  for(const [title,value] of Object.entries(extraHours)){
+   const input=core.getByRole('textbox',{name:title+' hours',exact:true});
+   await input.fill(value);await input.press('Tab');
+  }
+  await assertSharedHours(105.8);
+  assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪6\u202f613');
+  assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f058');
+  assert.equal(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪8\u202f671');
+  await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+  await assertSharedHours(105.8);
+  await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
+  await core.getByText('₪8\u202f671',{exact:true}).first().waitFor();
+  await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+  await core.locator('[data-cost-band="labor"] > summary').click();
+  for(const key of ['part-production','assembly-stage','preparation-packing'])await core.locator(`[data-cost-band="${key}"] > summary`).click();
+  await openCnc();
+  for(const [title,value] of Object.entries(extraHours))
+   assert.equal(await core.getByRole('textbox',{name:title+' hours',exact:true}).innerText(),value);
+  await overhead.waitFor();await assertSharedHours(105.8);
+  await frame.evaluate(()=>{document.querySelector('[data-cost-band="labor"]').scrollLeft=0;});
+  await frame.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+  const workGeometry=await frame.evaluate(()=>{
+   const head=document.querySelector('.object-detail-cost-column-headings');
+   const cx=n=>{const b=n.getBoundingClientRect();return b.x+b.width/2;};
+   const axes=Object.fromEntries(['hours','pay','taxes','total'].map(c=>[c,cx(head.querySelector(`[data-labor-column="${c}"] > span`))]));
+   return [...document.querySelectorAll('.object-detail-work-row > summary')].filter(n=>n.getClientRects().length).map(row=>{
+    const b=row.getBoundingClientRect();
+    return {key:row.parentElement.dataset.costBand,height:b.height,cells:[...row.querySelectorAll('[data-labor-column]')]
+     .filter(n=>getComputedStyle(n.firstElementChild).visibility==='visible').map(n=>{
+      const value=n.querySelector('[contenteditable],.object-detail-cost-value');const range=document.createRange();range.selectNodeContents(value);const t=range.getBoundingClientRect();
+      return {column:n.dataset.laborColumn,x:Math.abs(cx(value)-axes[n.dataset.laborColumn]),y:Math.abs(t.y+t.height/2-(b.y+(b.height-1)/2))};
+     })};
+   });
+  });
+  assert.ok(workGeometry.length>=12,JSON.stringify(workGeometry));
+  assert.ok(workGeometry.every(row=>Math.abs(row.height-workGeometry[0].height)<1 && row.cells.every(c=>c.x<1&&c.y<2)),JSON.stringify(workGeometry));
+  console.log('editable work geometry',width,JSON.stringify(workGeometry));
   const body=await core.locator('body').innerText();
   assert.ok(!/Some work needs review|outside this estimate/.test(body));
   assert.equal(await core.locator('[data-testid="stException"]').count(),0);
@@ -392,6 +451,40 @@ try{
   report[width]={savedHours:await hours.innerText(),total:await total.innerText()};
   await page.close();
  }
+ for(const name of ['labor-hours.json','full-cost-totals.json','full-cost-lines.json'])rmSync(statePath(name),{force:true});
+ const unknown=await boot({labor_ready:true,labor_unknown:true},1280);
+ await unknown.core.getByRole('button',{name:'Last Estimate',exact:true}).click();
+ await unknown.core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
+ await unknown.core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+ await unknown.core.locator('[data-cost-band="labor"] > summary').click();
+ await unknown.core.locator('[data-cost-band="preparation-packing"] > summary').click();
+ const manual=unknown.core.getByRole('textbox',{name:'Trial Fit and Separation hours',exact:true});
+ const unknownRoot=unknown.core.locator('[data-cost-band="labor"]');
+ const unknownSave=unknown.core.locator('.object-detail-material-save');
+ assert.equal(await manual.getAttribute('data-original-value'),null);
+ await manual.click();await manual.press('Tab');
+ assert.equal(await manual.getAttribute('aria-invalid'),null);
+ assert.equal(await unknownRoot.locator(':scope > summary .object-detail-labor-hours-value').innerText(),'—');
+ await manual.fill('0');await manual.press('Tab');
+ assert.equal(await unknownRoot.locator(':scope > summary .object-detail-labor-hours-value').innerText(),'0.0 h');
+ await manual.fill('');await manual.press('Tab');
+ assert.equal(await unknownRoot.locator(':scope > summary .object-detail-labor-hours-value').innerText(),'—');
+ assert.equal(await unknownSave.isDisabled(),true);
+ await manual.fill('1.0');await manual.press('Tab');await unknownSave.click();
+ await unknown.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+ const recovered=unknown.core.locator('[data-overhead-summary][data-overhead-ready="true"]');await recovered.waitFor();
+ assert.equal(await recovered.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪10');
+ assert.equal(await unknown.core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪1\u202f073');
+ assert.equal(await manual.innerText(),'1.0');
+ assert.equal(await unknown.core.locator('[data-cost-band="assembly-stage"] > summary [data-labor-column="hours"]').textContent(),'—');
+ await recovered.locator('.object-detail-overhead-band > summary').click();
+ const readyGroup=recovered.locator('.object-detail-group').first();await readyGroup.locator(':scope > summary').click();
+ await manual.fill('2.0');await manual.press('Tab');await unknownSave.click();
+ await unknown.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+ assert.equal(await readyGroup.evaluate(n=>n.open),true,'Healthy Overhead keeps native disclosure state on later saves');
+ assert.equal(await recovered.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪20');
+ assert.equal(await unknown.core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪1\u202f145');
+ await unknown.page.close();
  console.log(JSON.stringify({freshFrames:report.fresh.length,...report[1280],mobile:report[390]}));
  writeFileSync(reportPath('calculation.json'),JSON.stringify(report,null,2));
 }finally{

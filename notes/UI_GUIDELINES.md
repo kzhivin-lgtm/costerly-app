@@ -713,3 +713,33 @@ Display boundary check: Python Overhead previously rounded100.25h to100.2h,
 while Labor/JS showed100.3h. Use shared half-up one-decimal display for Labor
 and Overhead, including saved/reopened rows; allocation retains exact100.25h
 and all costs are unchanged. Tests cover100.25,140.75,1.15 and28.3h.
+
+## Labor 2.12, owner approved24November2026
+
+Preserve the full2.11 checkpoint before implementation. All operational paid
+hours become editable through the existing draft/Save pipeline, including zero
+coating/additional assembly, checking/packing and CNC operator/file preparation/
+edge banding. Retain the old saved keys and source norms. The owner confirmed only terminal work rows are editable. Any row with
+children and the root total remain computed. All terminal fields are editable, including unknown hours: preserve the unknown
+state until explicit manual input. Never infer zero from an empty field. Tax header
+states Taxes & Social +25%, one existing charge. Draft and saved/reopened totals
+must feed the same Labor/Overhead/Self Cost/Objects pipeline, once per operation.
+
+All Labor work summaries have equal row heights and contiguous row boundaries;
+aggregate-body padding must not introduce extra gaps. Keep full-height centered
+cells and title-only indentation. For explicit CNC route remove duplicate
+in-house/subcontractor/material comparison and supplier-rate panels. Sheet
+Processing retains Elements, operational labor-hour rows and CNC time breakdown.
+Keep other machinery-route behavior. Overhead renders its column headings once,
+before all groups, using one shared aligned grid. Native disclosures, current
+editors, Save/retry/reopen, Front panels, scroll/footer/auth/navigation stay.
+No new poll, callback, writer, model request or duplicated material charge.
+
+Unknown-hour completion reuses the existing Save receipt and shared Overhead
+renderer once when a previously pending host becomes ready. Ready Overhead
+hosts keep their nodes/disclosure state, all hour editors remain mounted, and
+response scope must match object/run/estimate. Clearing an unsaved unknown-hour
+edit restores unknown, not0. No extra read/request/writer/callback is added.
+Real partial receipt testing exposed section columns being lost in the detail
+cache on Save/reopen. Merge new rows into the existing section metadata instead
+of replacing its schema. Preserve geometry, source facts and all previous state.

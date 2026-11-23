@@ -309,3 +309,29 @@ metrics tolerance), after normalizing independent table scroll positions. Native
 toggle remains local, no render-id change. Calculation compares exact root and
 Overhead hours during edits, retains packing once, and tests Save/retry/reopen.
 The28.3h screenshot regression is covered by a Python source/allocation check.
+
+## Labor 2.12 terminal hours and CNC
+
+The owner confirmed only terminal work is editable, superseding the readonly
+zero/checking/packing rules in earlier sections. In-house CNC exposes Operator,
+File Preparation and Edge Banding under Sheet Processing/CNC time breakdown,
+with Elements retained and comparison/material/supplier-rate panels absent.
+Tests keep old aggregate override compatibility and add every new leaf's actual
+save, multiple-hour edits, server acknowledgement, failure/retry and reopen.
+Parent rows and root total have no editors. Input clicks do not toggle details.
+
+Calculation at1280/390 keeps the old monetary assertions and adds the complete
+manual-work case105.8h/6612.50 labor/1058 overhead/8670.50 Self Cost (Materials1000),
+including Objects and saved reopen. It measures all12 work summaries at equal
+42px height and existing1px axes/2px actual-text tolerance. Navigation verifies
+zero gaps at aggregate/child boundaries, one top Overhead header and shared Cost
+axes. Legacy Front panels Save keeps packing0.25h at commercial quantity3 and
+physical configuration1, without replacing its accepted1118.13 expected total.
+All ten mandatory browser suites and the full Python contract remain required.
+
+Unknown terminal hours also have editors. Browser tests distinguish initial
+unknown, untouched focus, explicit0, clearing an unsaved edit, manual1h Save
+completing pending Overhead and later2h Save retaining open ready groups. Hour
+saves use the real partial receipt projection; reopening must retain columns
+and the full section schema. Old unknown costs remain unknown until explicit
+manual input. No additional model request or automatic zero is permitted.

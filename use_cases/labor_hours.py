@@ -1,7 +1,8 @@
 """Manual paid-hour overrides, independent of physical production norms."""
 from decimal import Decimal, InvalidOperation
 
-BLOCKS = frozenset({'sheet-processing', 'assembly'})
+BLOCKS = frozenset({'sheet-processing', 'assembly', 'part-coating', 'additional-assembly',
+                    'trial-fit', 'packing', 'cnc-operator', 'file-preparation', 'edge-banding'})
 SOURCE = 'labor_hours_override'
 
 
