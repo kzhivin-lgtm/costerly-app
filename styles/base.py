@@ -29,7 +29,7 @@ def apply_base_css() -> None:
     st.markdown(
         """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+        __WORKFLOW_STATUS_CSS__
 
         @font-face {
             font-family: "Garet";
@@ -52,7 +52,6 @@ def apply_base_css() -> None:
             /* Primitive brand palette */
             --primitive-warm-bg: #F1EFEF;
             --primitive-purple-500: #8049C6;
-            --primitive-purple-900: #3B2E48;
             --primitive-dark-900: #2A1F2C;
             --primitive-white: #FFFFFF;
 
@@ -78,10 +77,8 @@ def apply_base_css() -> None:
             --primitive-progress-blue: #2F80ED;
 
             /* Typography */
-            --font-hero: var(--font-mono);
             --font-brand: "Space Grotesk", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             --font-sans: "Space Grotesk", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
             /* Spacing scale */
             --space-1: 4px;
@@ -163,27 +160,6 @@ def apply_base_css() -> None:
             --review-card-gap: 20px;
         }
 
-        .upload-screen__hero,
-        .costerly-workflow-status {
-            margin: 0;
-            color: var(--color-purple, var(--primitive-purple-900));
-            font-family: var(--font-hero);
-            font-size: 24px;
-            font-weight: 400;
-            font-synthesis: none;
-            letter-spacing: -0.045em;
-            line-height: 1.18;
-            text-align: center;
-            -webkit-font-smoothing: antialiased;
-            text-rendering: geometricPrecision;
-        }
-
-        @media (max-width: 760px) {
-            .upload-screen__hero,
-            .costerly-workflow-status {
-                font-size: clamp(20px, 6vw, 24px);
-            }
-        }
 
         :root,
         [data-costerly-theme="light"] {
@@ -760,6 +736,7 @@ def apply_base_css() -> None:
         </style>
         """
 
+        .replace("__WORKFLOW_STATUS_CSS__", (Path(__file__).resolve().parents[1] / "ui/workflow_status.css").read_text())
         .replace("__GARET_BOOK_SRC__", garet_book_src)
         .replace("__GARET_HEAVY_SRC__", garet_heavy_src),
         unsafe_allow_html=True,

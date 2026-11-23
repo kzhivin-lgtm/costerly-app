@@ -105,6 +105,7 @@ try {
    });
    const profileTab=label.startsWith('Profile tab ');
    if(profileTab)await frame.evaluate(()=>window.__profileHeader=document.querySelector('.company-profile-heading'));
+   const clickStarted=Date.now();
    await loc.click();
    const ready=core.locator('[data-costerly-screen="'+screen+'"]:not([data-costerly-render-id="'+oldId+'"])');
    await ready.waitFor({state:'attached'});
@@ -139,6 +140,7 @@ try {
     }else assert.ok(counts.coveredFrames>0,JSON.stringify(samples));
     assert.ok(!(await frame.evaluate(()=>document.querySelector('.stMain').scrollTop)));
    } else assert.equal(covered.length,0);
+   if(label.includes('New Estimate'))counts.clickToReadyMs=Date.now()-clickStarted;
    actions.push(counts);
    console.log(cfg.name, label, JSON.stringify(counts));
   }

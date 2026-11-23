@@ -205,6 +205,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
             + "display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;"
             + "color:#392c47;font:500 1rem system-ui,sans-serif;text-align:center;padding:24px;";
         const status = doc.createElement("span");
+        status.className = "costerly-workflow-status";
         status.setAttribute("role", "status");
         status.textContent = "Update the app to continue.";
         const hint = doc.createElement("p");

@@ -246,6 +246,29 @@ footer x/width/height, field hit boundaries, confirmation, Save and navigation.
 On short pages unused space goes above closing actions. Zero-height iframe and
 screen-marker rows after actions remain mounted without consuming layout gaps.
 
+## Estimation9.46 explicit Save navigation lock,23November2026
+
+Owner reports explicit Save followed by Approve can leave the card. During a
+non-preview Save, immediately mark footer navigation links aria-disabled, grey
+and outside Tab order, and suppress both mouse/programmatic and keyboard click
+activation. Do not queue approval from that rejected click. Restore only the
+lock's attributes after a success, error, existing timeout or runtime teardown.
+Keep Save on-card/green Saved/new edit, Back discard confirmation, direct Approve
+with an unsaved draft and preview-time Approve queuing. This supersedes only the
+previous explicit-Save→queued-Approve behavior. Use the existing Save lifecycle;
+no new timer, polling, request or server callback. The new capture listener's
+trigger is footer-link activation during persistence, scope is the current card,
+constant2-link work per event, removed on editor teardown.
+
+Shared loading typography is authored in ui/workflow_status.css, injected into
+Core's existing base style and embedded byte-identically in wrapper HTML, with a
+mandatory parity test. Updating app uses a span with that class, not mask default
+system-ui16px. Recovery status uses the same class. The wrapper registers the
+same existing Google font stylesheet once per document; browser resource cache
+and native cancellation apply. No JS font waiter, loader timer or new API read.
+New Estimate keeps the existing protected native callback/auth/uploader path;
+the requested timing investigation does not authorise an alternate uploader.
+
 ## V2.9 one deployment event and retained login, approved 19 November 2026
 
 Owner explicitly requires a page refresh with the user still signed in and

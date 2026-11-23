@@ -174,16 +174,38 @@ async function detailSaveChecks(){
   const save=core.locator('.object-detail-material-save');
   await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
   const preview=await net.innerText();
-  settings({front_panels:true,labor_ready:true,front_save_failure:true});
-  await save.click();await core.getByRole('button',{name:'Retry save',exact:true}).waitFor();
+  async function startSaveAndCheckLock(){
+   const state=await save.evaluate(button=>{
+    button.click();
+    const footer=document.querySelector('.object-detail-footer-actions');
+    const links=[...footer.querySelectorAll('a')];
+    for(const link of links)link.click(); // Exercise the delegated guard, not only CSS hit testing.
+    return {busy:footer.getAttribute('aria-busy'),links:links.map(n=>({
+     text:n.textContent,disabled:n.getAttribute('aria-disabled'),tab:n.getAttribute('tabindex'),
+     background:getComputedStyle(n).backgroundColor,color:getComputedStyle(n).color}))};
+   });
+   assert.equal(state.busy,'true');assert.equal(state.links.length,2);
+   assert.ok(state.links.every(n=>n.disabled==='true'&&n.tab==='-1'&&n.background==='rgb(247, 247, 247)'&&n.color==='rgb(159, 155, 156)'),JSON.stringify(state));
+   await core.getByRole('button',{name:'Saving…',exact:true}).waitFor();
+   const approve=core.locator('[data-object-detail-approve]');
+   await approve.focus();await approve.press('Enter');
+   await page.screenshot({path:reportPath('save-navigation-locked-'+width+'.png')});
+   assert.equal(page.url(),originalUrl);
+  }
+  settings({front_panels:true,labor_ready:true,front_delay:0.7,front_save_failure:true});
+  await startSaveAndCheckLock();await core.getByRole('button',{name:'Retry save',exact:true}).waitFor();
+  assert.equal(await core.locator('[data-object-detail-approve]').getAttribute('aria-disabled'),null);
+  assert.equal(await core.locator('[data-streamlit-bridge-key="object_detail_back_bridge"]').getAttribute('aria-disabled'),null);
   assert.equal(page.url(),originalUrl);assert.equal(await picker.inputValue(),'mdf');
   assert.equal(await net.innerText(),preview);
   assert.equal(await save.getAttribute('data-save-error'),'');
   assert.equal(await save.evaluate(n=>n.classList.contains('object-detail-material-save--saved')),false);
   assert.ok(await core.locator('.object-detail-material-edit-status').evaluate(n=>n.getBoundingClientRect().height<=1 && getComputedStyle(n).clipPath==='inset(50%)'));
   assert.equal(existsSync(statePath('front-choice')),false);
-  settings({front_panels:true,labor_ready:true});
-  const started=Date.now();await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+  settings({front_panels:true,labor_ready:true,front_delay:0.7});
+  const started=Date.now();await startSaveAndCheckLock();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+  assert.equal(await core.locator('[data-object-detail-approve]').getAttribute('aria-disabled'),null);
+  assert.equal(existsSync(statePath('object-approvals.json')),false,'Approve during explicit Save must not queue approval');
   assert.equal(page.url(),originalUrl);assert.equal(await core.locator('.object-detail-title--name').count(),1);
   assert.equal(await net.innerText(),preview);assert.equal(readFileSync(statePath('front-choice'),'utf8'),'mdf');
   assert.equal(await save.evaluate(n=>n.classList.contains('object-detail-material-save--saved')),true);

@@ -85,3 +85,15 @@ the bundle and check out the records tag. Do not restore over a dirty checkout.
 Production rollback uses9.44 runtimefa67572a via the same protected release gate;
 its deterministic basis refresh restores the old unit policy. Keep saved source
 facts, project prices and unrelated changes. No paid recognition is needed.
+
+## Owner hold before preservation
+
+23November2026: owner explicitly paused checkpoint creation and further work while
+checking9.45. Runtime1f872f01 is published and its build identity verified. Records
+commit86056cde was initiated before this instruction; its production promotion is
+cancelled, since the owner now requires the next deploy to be9.46. No9.45 release/
+records tags, source archive, inventory, restore run or Git bundle were created.
+The preservation text above describes the planned procedure, not completed proof.
+full-checkpoint.json does not exist. Existing9.44 and9.41 checkpoints are preserved.
+9.46 Upload app style and immediate New Estimate are recorded as pending requests
+in the authoritative TODO; wait for the owner, no implementation started.

@@ -48,6 +48,13 @@ async function recovery(core,control){
  const covered=await core.locator('#costerly-workflow-recovery').evaluate(node=>
   [[10,10],[innerWidth/2,innerHeight/2],[innerWidth-10,innerHeight-10]].every(([x,y])=>node.contains(document.elementFromPoint(x,y))));
  assert(covered,'Recovery must cover the full screen');
+ const typography=await core.locator('#costerly-workflow-recovery > .costerly-workflow-status').evaluate(n=>{
+  const ref=document.createElement('span');ref.className='costerly-workflow-status';document.body.append(ref);
+  const a=getComputedStyle(n),b=getComputedStyle(ref);
+  const same=['fontFamily','fontSize','fontWeight','letterSpacing','lineHeight','color'].every(k=>a[k]===b[k]);
+  ref.remove();return same;
+ });
+ assert.equal(typography,true,'Update recovery uses the shared loading typography');
 }
 try{
  for(const fixture of ['v1223','no_ack','wrong_protocol']){

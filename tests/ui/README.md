@@ -73,6 +73,12 @@ MDF Raw/MDF Veneered labels, and26px fixed-Privacy closing checks on Objects and
 File Review at desktop/narrow widths. Only terminal actions' previous y-coordinate
 and the formerly equal summary/action gap are superseded by the owner's closing
 placement; all other geometry axes, dimensions, inputs and prior scenarios stay.
+Estimation9.46 checks immediate grey/disabled Back/Approve during explicit Save,
+programmatic clicks and keyboard Enter, no queued approval, restored links after
+failure/retry/success at1758/390. Preview→Approve remains required. Core/wrapper
+loading CSS parity is a Python check; browser recovery/update checks verify shared
+font family/24px desktop size/weight/color. Existing correlated New Estimate
+measurements now retain click-to-ready time, with no new production observer.
 The version-refresh suite uses the real wrapper and workflow controller with
 synthetic screens. V2.9 covers a single Core build event, old-tab migration,
 one reload, deferred active work, failure recovery and zero version-file reads.

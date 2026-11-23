@@ -537,6 +537,33 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+ACTIVE, P1, OWNER-APPROVED9.46,23November2026, existing work3.17.4.6.
+Owner returned from checking9.45 and authorised the deploy. During explicit Object
+Detail Save, all footer Back/Approve links must immediately turn grey and be
+inert to mouse/keyboard until the acknowledged result. Clicking Approve during
+Save must not queue a later approval/navigation. Unlock on success/failure/timeout,
+retain green Saved/new edit and failure draft/retry. Preserve preview→Approve
+and direct Approve-with-draft behavior outside an explicit Save. Actual card has
+Back to Objects and APPROVE; the footer-wide lock covers any return-link variant.
+Updating app status uses the same shared typography as other loaders. One
+ui/workflow_status.css source is embedded in Core and wrapper, parity required.
+Every deployment/commit title must explicitly include Estimation9.46.
+Checkpoint creation remains on owner-requested hold.9.45 runtime1f872f01 remains
+published until exact-SHA gates pass;9.44/9.41 preserved. No new checkpoint archive.
+[Scope, mechanisms and evidence](ESTIMATION_V9_46_SAVE_LOCK_2026_11_23.md).
+
+DIAGNOSIS COMPLETE, P2, NEW ESTIMATE LATENCY, USER QUESTION23November2026.
+Latest recorded click7ec536e1 took3.7761s, old wrapper9.44/new Core9.45 reconnect,
+auth restore0.687758s, platform header0.505571s. Earlier deployment transition
+4.6189s includes1.001308s token refresh. No new calculation; local reset only,
+then native Streamlit uploader generation and authenticated render. Warm-session
+latency is not established by these cold/deploy witnesses. Proposed next: compare
+warm/cold click→reset→auth→render→visible before changing the header/read path.
+An immediate presentation shell and an immediately interactive native uploader
+are different guarantees. No alternate uploader, auth bypass, extra request or
+client-only accepted-state UI introduced in9.46. Existing immediate cover remains.
+
+
 PUBLISHED9.45, P1, OWNER REAL-PROJECT ACCEPTANCE PENDING,23November2026, work3.17.4.6.
 Owner accepts9.44 Save/card calculations. Fix configured unit SC dividing by
 commercial copy quantity; preserve costed recipe and manual sale price, copies
@@ -547,8 +574,8 @@ existing card net16295.89. Guarded saved-data replay gives16295.89 for1/3/5 copi
 Rename front options MDF Raw/MDF Veneered, keys unchanged. Match Objects and File
 Review fixed-Privacy gap to26px, preserve remaining geometry and all prior flows.
 Wide/narrow probes26.406/26.125px File Review,26.25/25.688px Objects. Full gates pass:606/nine344.036s local,349.026s GitHub45170507325. Runtime source1f872f01
-published; Core/wrapper/meta/version match9.45. Full checkpoint preservation receipt
-is outputs/estimation-v9.45/full-checkpoint.json. Owner next: reopen existing run,
+published; Core/wrapper/meta/version match9.45. Full checkpoint preservation is on owner-requested hold; no full-checkpoint.json
+receipt has been created. Owner next: reopen existing run,
 check unit SC then change copies, confirm unchanged unit price/sale total factor,
 footer and labels. No new block.
 [Release and preservation plan](ESTIMATION_V9_45_UNIT_COST_2026_11_23.md).

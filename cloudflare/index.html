@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="estimation-v9.45-b20261123115800-ui-objects-v2.7-detection-v8.4.29" />
+    <meta name="costerly-wrapper-version" content="estimation-v9.46-b20261123122700-ui-objects-v2.7-detection-v8.4.29" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -11,6 +11,32 @@
 
     <link rel="icon" type="image/svg+xml" href="/favicon-large.svg?v=2" />
     <link rel="shortcut icon" href="/favicon-large.svg?v=2" />
+
+    <style data-costerly-workflow-status>
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+:root { --primitive-purple-900: #3B2E48; --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; --font-hero: var(--font-mono); }
+.upload-screen__hero,
+        .costerly-workflow-status {
+            margin: 0;
+            color: var(--color-purple, var(--primitive-purple-900));
+            font-family: var(--font-hero);
+            font-size: 24px;
+            font-weight: 400;
+            font-synthesis: none;
+            letter-spacing: -0.045em;
+            line-height: 1.18;
+            text-align: center;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: geometricPrecision;
+        }
+
+        @media (max-width: 760px) {
+            .upload-screen__hero,
+            .costerly-workflow-status {
+                font-size: clamp(20px, 6vw, 24px);
+            }
+        }
+    </style>
 
     <style>
       html,
@@ -92,7 +118,7 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "estimation-v9.45-b20261123115800-ui-objects-v2.7-detection-v8.4.29";
+        const BUILD_VERSION = "estimation-v9.46-b20261123122700-ui-objects-v2.7-detection-v8.4.29";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -422,8 +448,11 @@
           mask.classList.remove("is-hidden");
           mask.removeAttribute("aria-hidden");
           mask.setAttribute("role", "status");
-          mask.style.cssText = "display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;font:500 1rem system-ui;color:#392c47;";
-          mask.textContent = "Updating app…";
+          mask.style.cssText = "display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;";
+          const label = document.createElement('span');
+          label.className = 'costerly-workflow-status';
+          label.textContent = 'Updating app…';
+          mask.replaceChildren(label);
           let canReload = false;
           try {
             canReload = window.sessionStorage.getItem(deployRefreshKey) !== serverBuildVersion;

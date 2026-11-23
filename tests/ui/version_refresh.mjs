@@ -137,6 +137,12 @@ try{
   passed(mode+': ordinary upload needs no version/auth precheck');await page.close();
  }
  page=await boot('guard_failure');await page.getByRole('button',{name:'Reload page',exact:true}).waitFor();assert.equal(deliveries,1);
+ const updateStyle=await page.locator('#app-loading-mask .costerly-workflow-status').evaluate(n=>{
+  const s=getComputedStyle(n);return {family:s.fontFamily,size:s.fontSize,weight:s.fontWeight,spacing:s.letterSpacing,line:s.lineHeight,color:s.color};
+ });
+ assert.equal(updateStyle.size,'24px');assert.equal(updateStyle.weight,'400');
+ assert.ok(updateStyle.family.includes('IBM Plex Mono'));assert.equal(updateStyle.color,'rgb(59, 46, 72)');
+ await page.screenshot({path:reportPath('updating-app-shared.png')});
  passed('Unavailable reload-guard storage offered manual retry without a loop');await page.close();
  assert.equal(versionReads,0,'No periodic or startup version-file request');
  writeFileSync(reportPath('version-refresh.json'),JSON.stringify(results,null,2));console.log(JSON.stringify(results));

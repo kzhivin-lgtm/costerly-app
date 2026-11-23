@@ -119,3 +119,14 @@ def test_each_post_detail_screen_aligns_to_its_own_title():
 
     assert '".objects-estimation-header h1.workflow-title"' in objects_source
     assert 'install_workflow_header_alignment_guard("h1.object-detail-title", even_labor_columns=True)' in detail_source
+
+
+def test_core_and_wrapper_embed_the_same_shared_loading_styles():
+    from pathlib import Path
+    root=Path(__file__).resolve().parents[1]
+    shared=(root/'ui/workflow_status.css').read_text().strip()
+    wrapper=(root/'cloudflare/index.html').read_text()
+    embedded=wrapper.split('<style data-costerly-workflow-status>',1)[1].split('</style>',1)[0].strip()
+    assert embedded==shared
+    assert 'font-size: 24px' in shared and 'font-family: var(--font-hero)' in shared
+    assert 'workflow_status.css' in (root/'styles/base.py').read_text()

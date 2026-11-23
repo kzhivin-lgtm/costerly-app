@@ -29,8 +29,8 @@ sale totals and does not divide unit cost. Saved pricing recipe and manual price
 stay. Front options are MDF Raw/MDF Veneered. Objects/File Review retain fixed
 Privacy with the same26px closing gap as Object Detail. Clean local606/nine344.036s
 and exact-SHA GitHub606/nine349.026s pass. Actual Core/wrapper/meta/version match
-9.45. Full checkpoint source/records tags, archive, inventory, Git bundle and
-standalone restore receipts are retained. Owner real-project acceptance is pending.
+9.45. Full checkpoint creation is on owner-requested hold. No9.45 checkpoint tags,
+archive or Git bundle have been created; earlier checkpoints remain intact. Owner real-project acceptance is pending.
 [Release, checkpoint and evidence](notes/ESTIMATION_V9_45_UNIT_COST_2026_11_23.md).
 Preserve9.44 runtime`fa67572a`/records`23bd6103`,9.41 full checkpoint and earlier
 accepted interactions. No new model cycle or schema migration.

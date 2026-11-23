@@ -2280,7 +2280,32 @@ def install_object_detail_input_guard(
             const invalidMaterial = () => objectQuantityInput()?.getAttribute("aria-invalid") === "true" ||
                 materialRows().some(row => row.querySelector('[aria-invalid="true"]')) ||
                 !!parentDoc.querySelector('[data-field="labor_hours"][aria-invalid="true"]');
+            function lockSaveNavigation(locked) {
+                const footer = parentDoc.querySelector('.object-detail-footer-actions');
+                if (locked) footer?.setAttribute('aria-busy', 'true');
+                else footer?.removeAttribute('aria-busy');
+                for (const link of footer?.querySelectorAll('a') || []) {
+                    if (locked && !link.hasAttribute('data-save-locked')) {
+                        link.dataset.saveTabIndex = link.getAttribute('tabindex') ?? '';
+                        link.setAttribute('data-save-locked', '');
+                        link.setAttribute('aria-disabled', 'true');
+                        link.setAttribute('tabindex', '-1');
+                    } else if (!locked && link.hasAttribute('data-save-locked')) {
+                        if (link.dataset.saveTabIndex) link.setAttribute('tabindex', link.dataset.saveTabIndex);
+                        else link.removeAttribute('tabindex');
+                        link.removeAttribute('aria-disabled');
+                        link.removeAttribute('data-save-locked');
+                        delete link.dataset.saveTabIndex;
+                    }
+                }
+            }
+            function blockSaveNavigation(event) {
+                if (activeSave && !activeSave.preview && event.target?.closest?.('.object-detail-footer-actions a')) {
+                    event.preventDefault();event.stopImmediatePropagation();
+                }
+            }
             const updateSaveControls = message => {
+                lockSaveNavigation(Boolean(activeSave && !activeSave.preview));
                 let changing = parentDoc.querySelector(".object-detail-material-changing");
                 if (activeSave?.preview || activeSave?.frontMaterialPending) {
                     if (!changing) {
@@ -3191,7 +3216,7 @@ def install_object_detail_input_guard(
                     event.preventDefault();
                     event.stopImmediatePropagation();
                     if (invalidMaterial()) updateSaveControls("Correct the highlighted quantity before approving.");
-                    else if (activeSave) activeSave.approveAfterSave = true;
+                    else if (activeSave?.preview) activeSave.approveAfterSave = true;
                     else submitDraft(true);
                     return;
                 }
@@ -3254,6 +3279,7 @@ def install_object_detail_input_guard(
             parentDoc.addEventListener("input", handleInput, true);
             parentDoc.addEventListener("change", changeFrontMaterial, true);
             parentDoc.addEventListener("click", saveMaterialDraft, true);
+            parentDoc.addEventListener("click", blockSaveNavigation, true);
             parentDoc.addEventListener("click", prepareApproveSnapshot, true);
             parentWindow.__costerlyReceiveMaterialEdit = receiveMaterialSave;
             parentDoc.addEventListener("focusout", handleBlur, true);
@@ -3283,7 +3309,9 @@ def install_object_detail_input_guard(
                 parentDoc.removeEventListener("input", handleInput, true);
                 parentDoc.removeEventListener("change", changeFrontMaterial, true);
                 parentDoc.removeEventListener("click", saveMaterialDraft, true);
+                parentDoc.removeEventListener("click", blockSaveNavigation, true);
                 parentDoc.removeEventListener("click", prepareApproveSnapshot, true);
+                lockSaveNavigation(false);
                 if (activeSave) parentWindow.clearTimeout(activeSave.timeout);
                 if (parentWindow.__costerlyReceiveMaterialEdit === receiveMaterialSave) delete parentWindow.__costerlyReceiveMaterialEdit;
                 parentDoc.removeEventListener("focusout", handleBlur, true);

@@ -815,6 +815,14 @@ def apply_object_detail_css() -> None:
             border-color: var(--color-danger, #b43b46);
         }
 
+        .object-detail-footer-actions .object-detail-footer-button[data-save-locked] {
+            background: #f7f7f7;
+            border-color: rgba(42, 31, 44, 0.10);
+            color: #9f9b9c;
+            box-shadow: none;
+            cursor: wait;
+        }
+
         .object-detail-material-save:disabled {
             opacity: 0.55;
             cursor: default;
