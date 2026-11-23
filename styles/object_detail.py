@@ -818,8 +818,9 @@ def apply_object_detail_css() -> None:
         .object-detail-footer-actions .object-detail-footer-button[data-save-locked] {
             background: #f7f7f7;
             border-color: rgba(42, 31, 44, 0.10);
-            color: #9f9b9c;
+            color: #9f9b9c !important;
             box-shadow: none;
+            transition: none;
             cursor: wait;
         }
 

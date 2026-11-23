@@ -44,3 +44,9 @@ acceptance remains distinct from these tests and anonymous live build identity.
 Every corrective commit/deploy must include Estimation9.46 in its title. Failed
 candidates must remain blocked; preserve exact-SHA gate/artifacts and source
 comparison. No checkpoint tags/archive/bundle are authorised this iteration.
+
+Initial candidatec47aacff was blocked in the new immediate-grey UI assertion.
+Logical disabling worked, but existing140ms color/background transitions retained
+the old first-frame paint, and link-state important colors overrode disabled text.
+The scoped Save-lock state now disables that transition and wins the existing
+important link color. No assertion or deadline is relaxed; failure logs retained.
