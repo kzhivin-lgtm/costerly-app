@@ -98,3 +98,12 @@ owner authenticated Delivery/Installation edit → Review → Back remains the
 production acceptance step. Full local UI uses authenticated synthetic data.
 Do not turn these checks into a claim of fresh recognition stability. The9.41
 full checkpoint, V3.3 rollback and all prior UI gates remain preserved.
+
+## Owner production report23November2026
+
+Partially accepted: commercial price edits and VAT18% work. Quantity inside the
+card remains inconsistent, and Changing material text overlaps underlying text.
+The original quantity test only checked the list after Back.9.43 addresses both
+verified quantity boundaries and makes the status fully opaque. Keep this9.42
+source/tag/evidence; its previous gate success does not override the production
+failure. [Next repair](ESTIMATION_V9_43_DETAIL_QUANTITY_2026_11_23.md).

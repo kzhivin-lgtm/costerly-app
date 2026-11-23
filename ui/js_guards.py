@@ -1684,6 +1684,7 @@ def install_objects_price_input_guard(
             const MANUAL_PRICES_KEY = "__costerlyObjectsManualSalePrices";
             const PRICE_WRITES_KEY = "__costerlyObjectsPriceWrites";
             const priceWrites = parentWindow[PRICE_WRITES_KEY] ||= new Map();
+            const quantityWrites = parentWindow.__costerlyObjectsQuantityWrites ||= new Map();
             let pointerStartedInPriceInput = false;
 
             if (parentWindow[HANDLER_KEY]) parentWindow[HANDLER_KEY]();
@@ -1743,15 +1744,21 @@ def install_objects_price_input_guard(
                 return overlay;
             }
 
-            async function persistQuantity(ctx, quantity) {
-                const overlay = savingOverlay();
-                overlay.classList.add("is-visible");
-                try {
+            function persistQuantity(ctx, quantity) {
+                quantity = Math.round(quantity * 1000) / 1000;
+                const objectKey = ctx.row.dataset.objectKey || "";
+                const key = JSON.stringify([ESTIMATE_ID, objectKey]);
+                const previous = quantityWrites.get(key);
+                const write = {value: quantity, done: false, failed: false};
+                quantityWrites.set(key, write);
+                savingOverlay().classList.add("is-visible");
+                write.promise = Promise.resolve(previous?.promise).then(async () => {
+                  try {
                     if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_ACCESS_TOKEN) {
                         throw new Error("Authenticated quantity persistence is unavailable");
                     }
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/save_rfq_object_quantity`, {
-                        method: "POST",
+                        method: "POST", keepalive: true,
                         headers: {
                             apikey: SUPABASE_ANON_KEY,
                             Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}`,
@@ -1760,21 +1767,51 @@ def install_objects_price_input_guard(
                         body: JSON.stringify({
                             p_estimate_id: ESTIMATE_ID,
                             p_run_id: ctx.row.dataset.runId || "",
-                            p_object_id: ctx.row.dataset.objectKey || "",
+                            p_object_id: objectKey,
                             p_quantity: quantity,
                         }),
                     });
                     if (!response.ok) throw new Error(`Quantity save failed (${response.status})`);
-                    ctx.input.dataset.savedQuantity = String(quantity);
-                    updateLineTotal(ctx.row);
-                    updateProjectPricing();
-                } catch (error) {
-                    ctx.input.textContent = ctx.input.dataset.savedQuantity || "1";
-                    if (parentWindow.console && parentWindow.console.error) {
-                        parentWindow.console.error("Could not persist object quantity", error);
+                    write.done = true;
+                    if (quantityWrites.get(key) === write) {
+                        const row = rowForObject(objectKey), input = row?.querySelector("[data-object-quantity-input]");
+                        if (input) {
+                            input.dataset.savedQuantity = String(quantity);
+                            input.removeAttribute("aria-invalid");input.removeAttribute("title");
+                        }
+                        if (row) {updateLineTotal(row);updateProjectPricing();}
                     }
-                } finally {
-                    overlay.classList.remove("is-visible");
+                    return true;
+                  } catch (error) {
+                    write.failed = true;
+                    if (quantityWrites.get(key) === write) {
+                        const input = rowForObject(objectKey)?.querySelector("[data-object-quantity-input]");
+                        input?.setAttribute("aria-invalid", "true");
+                        if (input) input.title = "Could not save. Leave the field to retry.";
+                    }
+                    parentWindow.console?.error("Could not persist object quantity", error);
+                    return false;
+                  } finally {
+                    if (![...quantityWrites.values()].some(entry => !entry.done && !entry.failed)) {
+                        savingOverlay().classList.remove("is-visible");
+                    }
+                  }
+                });
+                return write.promise;
+            }
+
+            function seedQuantitiesFromDom() {
+                for (const [key, write] of quantityWrites) {
+                    const [estimate, objectKey] = JSON.parse(key);
+                    if (estimate !== ESTIMATE_ID) continue;
+                    const input = rowForObject(objectKey)?.querySelector("[data-object-quantity-input]");
+                    if (!input) continue;
+                    if (write.done && quantityValue(input) === write.value) {quantityWrites.delete(key);continue;}
+                    input.textContent = String(write.value);
+                    if (write.failed) {
+                        input.setAttribute("aria-invalid", "true");
+                        input.title = "Could not save. Leave the field to retry.";
+                    }
                 }
             }
 
@@ -1916,16 +1953,19 @@ def install_objects_price_input_guard(
                 return write.promise;
             }
 
-            function confirmAfterPriceWrites(event) {
-                const button = event.target.closest?.('.st-key-objects_set_prices button, [class*="st-key-objects_generate_proposal_"] button');
+            function confirmAfterPendingWrites(event) {
+                const button = event.target.closest?.('.st-key-objects_set_prices button, [class*="st-key-objects_generate_proposal_"] button, a.objects-pricing-review-button');
                 if (!button || button.disabled) return;
                 if (button.getAttribute("aria-busy") === "true") {
                     event.preventDefault();
                     event.stopImmediatePropagation();
                     return;
                 }
-                const pending = [...priceWrites.entries()].filter(([key, write]) =>
-                    JSON.parse(key)[0] === ESTIMATE_ID && !write.done).map(([, write]) => write.promise);
+                const review = button.matches("a.objects-pricing-review-button");
+                const targetObject = button.dataset.objectId;
+                const pending = (review ? [...quantityWrites] : [...priceWrites, ...quantityWrites])
+                    .filter(([key, write]) => JSON.parse(key)[0] === ESTIMATE_ID && !write.done &&
+                        (!review || JSON.parse(key)[1] === targetObject)).map(([, write]) => write.promise);
                 if (!pending.length) return;
                 event.preventDefault();
                 event.stopImmediatePropagation();
@@ -1933,7 +1973,7 @@ def install_objects_price_input_guard(
                 Promise.all(pending).then(results => {
                     button.removeAttribute("aria-busy");
                     if (results.every(Boolean) && button.isConnected) button.click();
-                    else parentDoc.querySelector('.objects-pricing-price-input[aria-invalid="true"]')?.focus();
+                    else parentDoc.querySelector('.objects-pricing-price-input[aria-invalid="true"], .objects-pricing-quantity-input[aria-invalid="true"]')?.focus();
                 });
             }
 
@@ -2103,13 +2143,14 @@ def install_objects_price_input_guard(
             function handleBlur(event) {
                 const quantity = quantityContext(event);
                 if (quantity) {
-                    const value = quantityValue(quantity.input);
+                    const rejected = quantityWrites.get(JSON.stringify([ESTIMATE_ID, quantity.row.dataset.objectKey || ""]));
+                    const value = quantityValue(quantity.input) ?? (rejected?.failed ? rejected.value : null);
                     if (value == null) {
                         quantity.input.textContent = quantity.input.dataset.savedQuantity || "1";
                         return;
                     }
                     quantity.input.textContent = String(Math.round(value * 1000) / 1000);
-                    if (String(value) !== String(quantity.input.dataset.savedQuantity || "")) {
+                    if (quantity.input.getAttribute("aria-invalid") === "true" || String(value) !== String(quantity.input.dataset.savedQuantity || "")) {
                         persistQuantity(quantity, value);
                     }
                     return;
@@ -2140,7 +2181,7 @@ def install_objects_price_input_guard(
             }
 
             parentDoc.addEventListener("pointerdown", handlePointerDown, true);
-            parentDoc.addEventListener("click", confirmAfterPriceWrites, true);
+            parentDoc.addEventListener("click", confirmAfterPendingWrites, true);
             parentDoc.addEventListener("focusin", handleFocus, true);
             parentDoc.addEventListener("keydown", handleKeydown, true);
             parentDoc.addEventListener("beforeinput", handleBeforeInput, true);
@@ -2150,7 +2191,7 @@ def install_objects_price_input_guard(
 
             parentWindow[HANDLER_KEY] = () => {
                 parentDoc.removeEventListener("pointerdown", handlePointerDown, true);
-                parentDoc.removeEventListener("click", confirmAfterPriceWrites, true);
+                parentDoc.removeEventListener("click", confirmAfterPendingWrites, true);
                 parentDoc.removeEventListener("focusin", handleFocus, true);
                 parentDoc.removeEventListener("keydown", handleKeydown, true);
                 parentDoc.removeEventListener("beforeinput", handleBeforeInput, true);
@@ -2162,6 +2203,7 @@ def install_objects_price_input_guard(
                 parentWindow[HANDLER_KEY] = null;
             };
             seedManualPricesFromDom();
+            seedQuantitiesFromDom();
         })();
         """
         .replace("__ESTIMATE_ID__", estimate_id_json)

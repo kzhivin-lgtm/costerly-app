@@ -66,7 +66,7 @@ async function frontPanelChecks(){
   });
   assert.equal(immediate.count,1);assert.equal(immediate.text,'Changing material…');
   assert.equal(immediate.role,'status');assert.equal(immediate.covers,true);
-  assert.equal(immediate.color,'rgba(42, 31, 44, 0.28)');
+  assert.equal(immediate.color,'rgb(241, 239, 239)','Opaque shared loading background prevents underlying table text from showing through');
   assert.equal(immediate.typography,true);assert.equal(immediate.background,'rgba(0, 0, 0, 0)');
   assert.equal(immediate.shadow,'none');assert.equal(immediate.padding,'0px');assert.equal(immediate.border,'0px');
   await core.getByRole('button',{name:'Calculating…',exact:true}).waitFor();

@@ -53,6 +53,15 @@ auth/proposal assertions stay required. Calculation additionally checks shared
 computed loading typography, transparent/no-border/no-padding/no-shadow material
 status. Existing cover success/error/timeout/queued changes remain unchanged.
 Python checks integral/fractional VAT and commercial-only refresh boundaries.
+Estimation9.43 enables actual production detail prefetch in the Objects suite,
+checks quantity inside the warm card after increase/decrease, keyboard Review
+while its quantity write is pending, older delayed writes, HTTP503 and blur
+retry. The proposal disabled assertion is unchanged and now checks its completed
+native footer render, within1s, after the earlier table-stage delta. Calculation
+requires a fully opaque shared loading background, retaining all earlier font,
+viewport, success/error/timeout and queued-selection assertions. Python additionally
+checks stale completed-prefetch, no revalidation on edit, unchanged-cache reuse
+and no stale fallback after an access/read failure.
 The version-refresh suite uses the real wrapper and workflow controller with
 synthetic screens. V2.9 covers a single Core build event, old-tab migration,
 one reload, deferred active work, failure recovery and zero version-file reads.

@@ -537,7 +537,19 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-PUBLISHED, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING, release9.42,
+ACTIVE CANDIDATE, P1, USER-REPORTED9.42 REGRESSION, release9.43,23November2026.
+Both quantity causes reproduced: stale warm card1 vs saved2; keyboard Review
+before500ms RPC shows2 vs requested3. Review now waits only for its target's
+quantity write and validates a warm cache/prefetch against one canonical scoped
+read. No recheck per edit, no full-cycle restart, unchanged cards stay cached.
+Ordered quantity writes/failure-retention/blur retry and an opaque shared-style
+Changing material cover pass focused Objects21.595s, Calculation48.485s and29
+Python checks. Actual guarded projection0.804s/1 read/0 writes. Full exact-SHA
+local/CI/publication and owner production acceptance pending. Preserve VAT,
+autosaved prices, explicit Detail Save, source costing and all original gates.
+Existing work3.17.4.6. [Causes, repairs and retained failures](ESTIMATION_V9_43_DETAIL_QUANTITY_2026_11_23.md).
+
+PRESERVED9.42, P1, PARTIAL OWNER ACCEPTANCE23November2026, release9.42,
 23November2026 Israel (22NovemberUTC), runtime185e3c02. Objects Delivery/
 Installation/object Sale Price/quantity persist on blur without Set Prices;
 ordinary Review/Back/reopen, delayed/failed write/retry and latest-edit ordering

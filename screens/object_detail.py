@@ -24,6 +24,7 @@ from use_cases.estimation import (
     apply_object_detail_snapshot,
     approve_object_estimate,
     load_object_detail_data,
+    load_object_detail_quantity,
     load_object_detail_material_receipt,
     front_material_preview_receipt,
     save_object_detail_material_edits,
@@ -120,10 +121,32 @@ def _load_object_detail_or_render_error(context: ObjectDetailContext) -> dict[st
     cache_key = (context.estimate_id, context.object_id)
     cache = st.session_state.setdefault("object_detail_data_cache", {})
     dirty_estimates = st.session_state.setdefault("object_detail_data_cache_dirty", set())
+    prefetches = st.session_state.setdefault("object_detail_prefetch_futures", {})
+    # Revalidate once on Review, not on editing/rerenders. The browser quantity
+    # RPC cannot invalidate Python snapshots, including completed prefetches.
+    if st.session_state.get("object_detail_quantity_check") == cache_key and (
+        cache_key in cache or cache_key in prefetches
+    ):
+        try:
+            quantity = load_object_detail_quantity(estimate_id=context.estimate_id, object_id=context.object_id)
+        except Exception as exc:
+            st.error(f"Could not load Object Detail: {exc}")
+            _back_to_objects_button()
+            return None
+        if cache_key in cache and cache[cache_key].get("quantity") != quantity:
+            cache.pop(cache_key)
+        candidate = prefetches.get(cache_key)
+        if candidate is not None and candidate.done():
+            try:
+                matches = candidate.result().get("quantity") == quantity
+            except Exception:
+                matches = False
+            if not matches:
+                prefetches.pop(cache_key)
+    st.session_state.pop("object_detail_quantity_check", None)
     if cache_key in cache and context.estimate_id not in dirty_estimates:
         return cache[cache_key]
 
-    prefetches = st.session_state.setdefault("object_detail_prefetch_futures", {})
     prefetch = prefetches.pop(cache_key, None)
     if prefetch is not None:
         if prefetch.done():

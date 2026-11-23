@@ -88,7 +88,7 @@ def apply_object_detail_css() -> None:
             align-items: center;
             justify-content: center;
             padding: 24px;
-            background: rgba(42, 31, 44, 0.28);
+            background: #f1efef;
             pointer-events: none;
         }
 

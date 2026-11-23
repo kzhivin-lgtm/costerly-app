@@ -23,6 +23,11 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
+Estimation **9.43 candidate** repairs the owner-reported quantity mismatch in
+warm Object Detail cards and the pending-write Review race. Changing material
+uses a fully opaque shared loading screen. Full publication checks pending.
+[Scope and evidence](notes/ESTIMATION_V9_43_DETAIL_QUANTITY_2026_11_23.md).
+
 Current Estimation release: **9.42**,23November2026 Israel (22NovemberUTC),
 runtime`185e3c02`. Objects Delivery/Installation/Sale Price/quantity save on blur
 without Set Prices and survive Review/Back. Commercial-only refresh, no cost or

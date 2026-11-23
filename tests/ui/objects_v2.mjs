@@ -4,9 +4,9 @@ import {readFileSync,writeFileSync,rmSync,existsSync} from 'node:fs';
 import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 const config=statePath('scenario.json'),prices=statePath('objects-prices.json');
-let priceDelay=0,priceFailure=false;
+let priceDelay=0,priceFailure=false,quantityDelay=0,quantityFailure=false;
 for(const file of ['object-approvals.json','objects-prices.json','object-quantities.json','generated-proposal.json','generation-failure','browser-journal'])rmSync(statePath(file),{force:true});
-writeFileSync(config,JSON.stringify({objects_v2:true}));
+writeFileSync(config,JSON.stringify({objects_v2:true,detail_prefetch:true}));
 
 const server=createServer(async(req,res)=>{
  if(req.url.startsWith('/rest/v1/')){
@@ -15,6 +15,8 @@ const server=createServer(async(req,res)=>{
   let body='';for await(const chunk of req)body+=chunk;
   const row=JSON.parse(body);
   if(req.url.includes('/rpc/save_rfq_object_quantity')){
+   await new Promise(resolve=>setTimeout(resolve,row.p_quantity===4?300:quantityDelay));
+   if(quantityFailure)return res.writeHead(503,headers).end();
    const file=statePath('object-quantities.json'),values=existsSync(file)?JSON.parse(readFileSync(file)):{};
    values[row.p_estimate_id+':'+row.p_object_id]=row.p_quantity;
    const approvalsFile=statePath('object-approvals.json'),approvals=existsSync(approvalsFile)?JSON.parse(readFileSync(approvalsFile)):{};
@@ -257,11 +259,37 @@ try{
  await quantity.fill('2');await quantity.press('Tab');
  await core.locator('.objects-quantity-saving-overlay.is-visible').waitFor({state:'hidden'});
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
+ assert.equal(await core.locator('.object-detail-quantity-input').innerText(),'2','Object Detail must show the saved quantity, including a warm cached card');
  await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
  assert.equal(await quantity.innerText(),'2','Quantity blur save survives Review/Back');
+ quantityDelay=500;
+ await quantity.fill('3');await quantity.press('Tab');
+ await core.getByRole('link',{name:/^(Done|Review)$/i}).press('Enter');
+ await core.locator('.object-detail-quantity-input').waitFor();
+ assert.equal(await core.locator('.object-detail-quantity-input').innerText(),'3','Keyboard Review waits for its pending quantity write');
+ quantityDelay=0;
+ await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ await quantity.fill('4');await quantity.press('Tab');
+ await quantity.fill('5');await quantity.press('Tab');
+ await core.locator('.objects-quantity-saving-overlay.is-visible').waitFor({state:'hidden'});
+ assert.equal(JSON.parse(readFileSync(statePath('object-quantities.json')))['estimate-ui-saved:object-001'],5,'A delayed older quantity cannot overwrite the latest edit');
+ quantityFailure=true;
+ await quantity.fill('6');await quantity.press('Tab');
+ await frame.waitForFunction(()=>document.querySelector('[data-object-quantity-input]')?.getAttribute('aria-invalid')==='true');
+ assert.equal(await quantity.innerText(),'6','Failed quantity save retains the requested value');
+ assert.equal(JSON.parse(readFileSync(statePath('object-quantities.json')))['estimate-ui-saved:object-001'],5);
+ await core.getByRole('link',{name:/^(Done|Review)$/i}).press('Enter');
+ assert.equal(await core.locator('.object-detail-quantity-input').count(),0,'Review must not proceed after a rejected quantity write');
+ quantityFailure=false;
+ await quantity.press('Tab');
+ await core.locator('.objects-quantity-saving-overlay.is-visible').waitFor({state:'hidden'});
+ await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
+ assert.equal(await core.locator('.object-detail-quantity-input').innerText(),'6','Retry publishes the accepted canonical quantity');
+ await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
  await quantity.fill('1');await quantity.press('Tab');
  await core.locator('.objects-quantity-saving-overlay.is-visible').waitFor({state:'hidden'});
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
+ assert.equal(await core.locator('.object-detail-quantity-input').innerText(),'1','The card also reflects quantity reduced back to one');
  await move(core.locator('.object-detail-footer-button--primary'),'objects');
  const reopened=await browser.newPage({viewport:{width:390,height:1000}});
  await reopened.goto('http://127.0.0.1:8798/');await reopened.locator('iframe.is-ready').waitFor();
@@ -274,7 +302,8 @@ try{
  }
  await reopened.close();
  report.blurPersistence={roundTripWithoutSetPrices:true,slowWrite:true,failedWriteRetained:true,retry:true,
-  latestEditWins:true,quantityRoundTrip:true,newBrowserContext:true,confirmationWaitsForWrite:true};
+  latestEditWins:true,quantityRoundTrip:true,detailQuantity:true,pendingQuantityReview:true,
+  latestQuantityWins:true,quantityFailureRetry:true,realDetailPrefetch:true,newBrowserContext:true,confirmationWaitsForWrite:true};
  await editPrice(1750);await set().click();
  await frame.waitForFunction(()=>{const button=document.querySelector('[class*="st-key-objects_generate_proposal_"] button');return button&&!button.disabled;});
  assert.equal(await core.locator('.objects-workflow-stages [data-stage="2"]').getAttribute('data-state'),'complete');
@@ -304,6 +333,9 @@ try{
  writeFileSync(statePath('generation-failure'),'fail');await generate().click();await core.getByText('Controlled proposal failure',{exact:true}).waitFor();assert(await generate().isEnabled());
  rmSync(statePath('generation-failure'));await generate().click();
  await frame.waitForFunction(()=>document.querySelector('.objects-workflow-stages [data-stage="3"]')?.dataset.state==='complete');
+ // The stage table is emitted before native footer actions. Assert the
+ // completed native render, not the outgoing button between Streamlit deltas.
+ await core.locator('.st-key-final_approval_approved button').waitFor({state:'attached',timeout:1000});
  assert(await generate().isDisabled());
  const proposal=JSON.parse(readFileSync(statePath('generated-proposal.json')));assert.equal(proposal.rows[0].sale_price_unit,1850);
  assert.equal((readFileSync(statePath('browser-journal'),'utf8').match(/proposal generated/g)||[]).length,1);

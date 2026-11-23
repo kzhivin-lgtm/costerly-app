@@ -17,6 +17,7 @@ from db.repositories import (
     fetch_rfq_estimate_lines_for_object,
     fetch_rfq_estimate_material_plan,
     fetch_rfq_object_estimates,
+    fetch_rfq_object_quantity,
     fetch_rfq_detected_objects,
     fetch_rfq_detected_object_presentation,
     fetch_rfq_run,
@@ -561,6 +562,13 @@ def _objects_project_pricing(
         ],
         {"project_price": project_price, "vat": vat, "total": total, "vat_percent": vat_percent},
     )
+
+
+def load_object_detail_quantity(*, estimate_id: str, object_id: str) -> float:
+    """Validate a warm card against one canonical quantity read, without costing."""
+    client = get_supabase_client()
+    _assert_screen_estimate_access(client, estimate_id)
+    return fetch_rfq_object_quantity(client, estimate_id=estimate_id, object_id=object_id)
 
 
 def load_object_detail_data(

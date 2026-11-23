@@ -679,6 +679,15 @@ def fetch_rfq_object_estimates(client: Client, estimate_id: str) -> pd.DataFrame
     )
 
 
+def fetch_rfq_object_quantity(client: Client, *, estimate_id: str, object_id: str) -> float:
+    """Read only the canonical quantity for one saved object."""
+    rows = (client.table("rfq_object_estimates").select("quantity")
+            .eq("estimate_id", estimate_id).eq("object_id", object_id).limit(1).execute()).data or []
+    if not rows:
+        raise PermissionError("Object is not part of this estimate")
+    return float(rows[0]["quantity"])
+
+
 def fetch_rfq_estimate_pricing_overrides(client: Client, estimate_id: str) -> pd.DataFrame:
     return fetch_table(
         client,

@@ -159,7 +159,13 @@ estimation.fetch_rfq_estimate_material_plan = read_plans
 objects.get_supabase_client = Client
 objects._data_with_object_routes = lambda data, **_: data
 objects.submit_prepared_estimation_job = no_estimation
-objects._prefetch_completed_object_details = lambda *a, **kw: None
+_original_detail_prefetch = objects._prefetch_completed_object_details
+def prefetch_details(*args, **kwargs):
+ if scenario().get('detail_prefetch'):
+  return _original_detail_prefetch(*args, **kwargs)
+objects._prefetch_completed_object_details = prefetch_details
+estimation.fetch_rfq_object_quantity = lambda client, *, estimate_id, object_id: float(
+ read_objects(client, estimate_id).set_index('object_id').loc[object_id, 'quantity'])
 objects.load_parts_check = lambda **_: {'status':'ready'}
 objects.load_estimation_cycle_cost = lambda **_: None
 ocr_adapter.warm_mistral_http_client_async = lambda: None

@@ -613,6 +613,7 @@ def _cache_routed_objects_data(
 
 
 def _open_object_detail(object_id: str) -> None:
+    st.session_state.object_detail_quantity_check = (str(st.session_state.get("current_estimate_id") or ""), str(object_id))
     st.session_state.current_object_id = str(object_id)
     st.session_state.screen = "object_detail"
 

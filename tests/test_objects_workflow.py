@@ -55,6 +55,66 @@ def test_commercial_refresh_reads_saved_inputs_without_cost_or_material_rebuild(
     assert original==before
 
 
+@pytest.mark.parametrize("source", ["cache", "prefetch"])
+def test_review_rejects_stale_quantity_snapshot_and_keeps_other_cards(monkeypatch, source):
+    from concurrent.futures import Future
+    from contextlib import nullcontext
+    from screens import object_detail
+    key=("e","one"); old={"quantity":1}; fresh={"quantity":2,"sections":["canonical"]}
+    future=Future();future.set_result(old)
+    session={"object_detail_quantity_check":key,"object_detail_data_cache":{("e","other"):old},
+             "object_detail_prefetch_futures":{},"object_detail_data_cache_dirty":set()}
+    session["object_detail_data_cache" if source=="cache" else "object_detail_prefetch_futures"][key]=old if source=="cache" else future
+    monkeypatch.setattr(object_detail.st,"session_state",session)
+    monkeypatch.setattr(object_detail.st,"spinner",lambda *a,**k:nullcontext())
+    reads=[];loads=[]
+    monkeypatch.setattr(object_detail,"load_object_detail_quantity",lambda **k:reads.append(k) or 2)
+    monkeypatch.setattr(object_detail,"load_object_detail_data",lambda **k:loads.append(k) or fresh)
+    context=object_detail.ObjectDetailContext("e","one","r")
+    assert object_detail._load_object_detail_or_render_error(context) is fresh
+    assert session["object_detail_data_cache"][("e","other")] is old
+    assert len(reads)==len(loads)==1
+    assert object_detail._load_object_detail_or_render_error(context) is fresh
+    assert len(reads)==len(loads)==1, "Editing rerenders must not repeat quantity reads"
+
+
+def test_review_keeps_matching_snapshot_without_loading_costs(monkeypatch):
+    from screens import object_detail
+    key=("e","one");snapshot={"quantity":2,"sections":["preserved"]}
+    monkeypatch.setattr(object_detail.st,"session_state",{
+        "object_detail_quantity_check":key,"object_detail_data_cache":{key:snapshot}})
+    monkeypatch.setattr(object_detail,"load_object_detail_quantity",lambda **k:2)
+    monkeypatch.setattr(object_detail,"load_object_detail_data",lambda **k:pytest.fail("Unchanged card reloaded costs"))
+    assert object_detail._load_object_detail_or_render_error(object_detail.ObjectDetailContext("e","one","r")) is snapshot
+
+
+def test_quantity_read_failure_never_exposes_old_card_on_rerender(monkeypatch):
+    from screens import object_detail
+    key=("e","one");session={"object_detail_quantity_check":key,"object_detail_data_cache":{key:{"quantity":1}}}
+    monkeypatch.setattr(object_detail.st,"session_state",session)
+    def rejected(**k):raise PermissionError("Quantity unavailable")
+    monkeypatch.setattr(object_detail,"load_object_detail_quantity",rejected)
+    errors=[];monkeypatch.setattr(object_detail.st,"error",errors.append)
+    monkeypatch.setattr(object_detail,"_back_to_objects_button",lambda:None)
+    for _ in range(2):
+        assert object_detail._load_object_detail_or_render_error(object_detail.ObjectDetailContext("e","one","r")) is None
+    assert len(errors)==2 and session["object_detail_quantity_check"]==key
+
+
+def test_quantity_projection_is_scoped_and_checks_access_before_read(monkeypatch):
+    from use_cases import estimation
+    client=object();calls=[]
+    monkeypatch.setattr(estimation,"get_supabase_client",lambda:client)
+    monkeypatch.setattr(estimation,"_assert_screen_estimate_access",lambda *a,**k:calls.append("access"))
+    monkeypatch.setattr(estimation,"fetch_rfq_object_quantity",lambda c,**k:calls.append((c,k)) or 3)
+    assert estimation.load_object_detail_quantity(estimate_id="e",object_id="one")==3
+    assert calls==["access",(client,{"estimate_id":"e","object_id":"one"})]
+    def rejected(*a,**k):raise PermissionError("foreign")
+    monkeypatch.setattr(estimation,"_assert_screen_estimate_access",rejected)
+    with pytest.raises(PermissionError):estimation.load_object_detail_quantity(estimate_id="foreign",object_id="one")
+    assert len(calls)==2
+
+
 @pytest.mark.parametrize("field,value", [("quantity", 2), ("self_cost_unit", 110), ("sale_price_unit", 150), ("sale_price_total", 150), ("reviewed", False)])
 def test_confirmation_is_bound_to_the_current_review_and_commercial_basis(field, value):
     before = data()
