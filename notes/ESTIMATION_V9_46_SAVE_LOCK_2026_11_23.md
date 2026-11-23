@@ -50,3 +50,9 @@ Logical disabling worked, but existing140ms color/background transitions retaine
 the old first-frame paint, and link-state important colors overrode disabled text.
 The scoped Save-lock state now disables that transition and wins the existing
 important link color. No assertion or deadline is relaxed; failure logs retained.
+
+Candidate079faac7 passed607 unit checks and all Save scenarios, but the new
+wrapper style probe found the unavailable-storage recovery path replaced the
+shared status span with a bare text node. Retain the same label for the retry
+message, preserving its shared typography and the existing retry behavior.
+No deadline/assertion is relaxed and no new observer/request is introduced.
