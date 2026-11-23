@@ -1,3 +1,21 @@
+**[verified] Current release: Estimation9.48 published23November2026, owner production acceptance pending.**
+Runtime862e28f0a848d387f2cf540c34f5769c6a16a3fe, existing work3.17.4.6.
+Prices now shows closed groups promptly and prepares selected/open contents using
+the existing asynchronous readers, without waiting for unrelated source/review/jobs.
+Labor always has Part Production, Part Coating, Assembly (Block Assembly and
+Additional Assembly), Preparation and Packing. Existing Sheet Processing/Block
+Assembly arithmetic and saved hour keys remain; unimplemented new work shows0.
+Explicit in-house CNC skips the unused manual production alternative, not physical
+block assembly. Parts/Material Plan/Detection/provider behavior unchanged.
+Local964/ten420.358s and exact-SHA GitHub45220109273/job137851749969 passed964/ten
+400.189s. Required remote ruleset27499066 active, no bypass. Core8005194941 and
+Cloudflare Pages48d7b621 succeeded; actual Core/wrapper/meta/version.json all match
+9.48 at16:55:50UTC. Source backup829files/4,742,110B validated, private evidence in
+outputs/estimation-v9.48/. No paid run, production-project test write or new accepted
+checkpoint. Owner should check Prices responsiveness and the four Labor stages on
+app.costerly.ai. Numeric finishing/special assembly/packing norms remain deferred.
+[Release evidence and failed test diagnosis](ESTIMATION_V9_48_PRICES_LABOR_STRUCTURE_2026_11_23.md).
+
 **[verified] Latest full checkpoint: Estimation9.47, owner accepted23November2026.**
 Estimation 9.47 full owner-accepted checkpoint, 23 November 2026, work3.17.4.6.
 Preserve runtime6764b9a7 and separate immutable runtime/records tags; no redeploy.
@@ -10,7 +28,7 @@ capacity audit, project records and portable controls. Owner acceptance supersed
 the previous acceptance-pending state. Earlier checkpoints and deferred items
 remain. [Checkpoint and restore](ESTIMATION_V9_47_PRODUCTION_CHECKPOINT_2026_11_23.md).
 
-**[verified] Current release: Estimation 9.47, published; owner UI acceptance pending.**
+**[verified] Previous release: Estimation9.47, subsequently owner accepted as the checkpoint above.**
 Estimation 9.47, 23 November 2026, existing work 3.17.4.6. Runtime 6764b9a7.
 Contacts' stored-logo branch previously raised StreamlitInvalidLayoutContextError:
 a fragment entered a sidebar slot not created in the full render. The existing

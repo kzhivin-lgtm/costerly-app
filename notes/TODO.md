@@ -1030,11 +1030,11 @@ Keep V2.4, V1.3.3 behavior and V3.2 costing protected. No new work number yet.
 
 ## Company Profile: Prices responsiveness
 
-ACTIVE, IMPLEMENTATION APPROVED, P1, OWNER REQUEST23November2026, separate Profile/Prices
+ACTIVE, PUBLISHED9.48, OWNER PRODUCTION ACCEPTANCE PENDING, P1, OWNER REQUEST23November2026, separate Profile/Prices
 outcome. Show closed material groups promptly and load/prep selected group first;
-warm other groups without blocking interaction. Existing asynchronous loading
-already exists, but the current view awaits four projections and constructs all
-open category rows. Measure read/render/visible delay before choosing changes.
+warm other groups without blocking interaction. Before9.48 asynchronous loading
+already existed, but the view awaited four projections and constructed all open
+category rows. Measure read/render/visible delay before choosing changes.
 Extend existing bounded, scoped/revision-aware loading; do not stack new polling.
 Preserve upload/edit/save/delete/review, drafts, focus/scroll, access and other
 Profile tabs. Add large/delayed-catalog priority/reuse/error/stale-result browser
@@ -1043,9 +1043,20 @@ first, then Labor structural/route work. Owner approved Prices and the structura
 coating/special-assembly/packing norms stay deferred. All four Labor stages and
 Additional Assembly are explicitly always shown, with0 for new empty work. Detailed acceptance: [four-stage plan](ESTIMATION_LABOR_FOUR_STAGE_PLAN_2026_11_23.md).
 
+[verified] Implemented and published23November2026, runtime862e28f0. Existing
+projection pool retained; ready catalog no longer waits for source/review/jobs.
+Native closed groups defer row construction, keep drafts and explicit open intent,
+and render the selected group first. Local964 checks/ten browser suites420.358s;
+exact-SHA GitHub45220109273 passed964/ten400.189s. Prices evidence on1280/390:
+selected10 rows usable before unrelated reads finish,290 closed rows unbuilt,
+one catalog read reused across close/reopen. All original nine suites retained.
+Actual Core/wrapper/meta/version.json match9.48 at16:55:50UTC; protected main
+ruleset27499066 active with no bypass. Owner's real-account responsiveness check
+remains pending. [Release evidence](ESTIMATION_V9_48_PRICES_LABOR_STRUCTURE_2026_11_23.md).
+
 ## Estimation Labor V1
 
-ACTIVE, STEPS1/2 APPROVED, P1, OWNER REQUEST23November2026. Organize Labor into four
+ACTIVE, STEPS1/2 PUBLISHED9.48, OWNER PRODUCTION ACCEPTANCE PENDING, P1, OWNER REQUEST23November2026. Organize Labor into four
 stages: Part Production, Part Coating, Assembly (Block Assembly + Additional
 Assembly), and Preparation/Packing (trial fit/check/disassembly/packing). Reuse
 existing Sheet Processing/Block Assembly and shared totals. Apply company
@@ -1061,9 +1072,14 @@ unrequested notices. This owner request broadens the earlier coating-only next
 step. Existing reference3.17.4.6 retained, new block/version numbers unassigned.
 Plan and before/after/protected behavior:
 [Four-stage Labor plan](ESTIMATION_LABOR_FOUR_STAGE_PLAN_2026_11_23.md).
-Implementation in Estimation9.48 candidate, base9.47. Empty new stages show0
+Implementation published as Estimation9.48 runtime862e28f0, base9.47. Empty new stages show0
 as explicitly approved; existing norms/hour keys/full SC are preserved. Full
-UI gate and actual build checks are required. Authoritative queue remains here.
+UI gate passed964 checks/ten suites locally and at exact-SHA GitHub45220109273.
+Actual Core/wrapper/meta/version.json match9.48. Existing in-house CNC route now
+skips constructing the unused panel-saw alternative; physical assembly remains.
+No Parts/material/provider/norm change or paid call. Steps1/2 await owner production
+acceptance. Numeric coating/additional-assembly/preparation/packing work stays
+deferred until its boundaries and rates are agreed. Authoritative queue remains here.
 
 
 

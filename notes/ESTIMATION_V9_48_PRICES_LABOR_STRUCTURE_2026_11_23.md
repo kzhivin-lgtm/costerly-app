@@ -73,3 +73,41 @@ An instrumented closure timeline also confirmed that native details.open settles
 after rows disappear during the rerender (about600ms locally). The test awaits
 both observable conditions within its existing timeout, then verifies reopening.
 No additional sleep, increased timeout or application change was introduced.
+
+## Published release receipt
+
+Status: published, owner production acceptance pending. Runtime
+862e28f0a848d387f2cf540c34f5769c6a16a3fe. The original approved9.47 checkpoint
+and rollback refs remain accepted; this release is not a new accepted checkpoint.
+
+- Full local gate:964 Python checks and ten browser suites,420.358s,
+  outputs/estimation-v9.48/full-local-04/gate-report.json. After the test-only
+  closure correction, focused Prices passed both1280/390 in19.540s.
+- Exact clean-SHA remote gate:964 checks/ten suites,400.189s,
+  [run45220109273](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/45220109273),
+  job137851749969, artifact14840671173. All nine retained suites passed.
+- Existing protected publisher promoted that exact SHA to main. Actual remote
+  ruleset27499066 was active, trusted Actions gate required, bypass_actors=[].
+  Local checks and remote enforcement were verified independently.
+- Railway deployment8005194941 succeeded. Cloudflare Pages production deployment
+  48d7b621-bd3b-4684-a9aa-8d6045530f23 succeeded. The unrelated existing Workers
+  Builds service is a separate check and was not modified.
+- Read-only production DOM at app.costerly.ai verified executable wrapper, wrapper
+  meta and rendered Core equal
+  estimation-v9.48-b20261123160825-prices-labor-structure-detection-v8.4.29.
+  Static version.json also returned HTTP200 with that build at16:55:50UTC.
+  No owner-account Calculation/Prices interaction was performed by this probe.
+- Complete source backup829files/4,742,110B, helper validation and byte comparison
+  passed: backups/v9.48_prices_labor_ci_verified/. The initial archive attempt
+  exceeded the unchanged5MiB cap due to a temporary compression-wrapper mistake;
+  helper rejected it. Correcting that wrapper reproduced the established LZMA
+  workflow; helper code, exclusions and cap were not changed.
+- Retained evidence: candidate.json, backup.json, ci-job.json, ci-artifact.zip,
+  ci-gate-report.json, promotion.json, deployments.json, served-builds.json,
+  remote-checks-after-publish.json, local and failed/diagnostic reports under
+  outputs/estimation-v9.48/. No credentials are included in these receipts.
+
+Next acceptance: owner opens Prices and a saved Calculation through app.costerly.ai,
+checks collapsed/selected groups and all four Labor stages with unchanged totals.
+No paid OCR/model run is needed to verify this structural change. New numerical
+coating, additional-assembly and preparation/packing work remains deferred.

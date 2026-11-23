@@ -1,5 +1,22 @@
 # Done Log
 
+Estimation9.48 published23November2026, existing work3.17.4.6, runtime862e28f0.
+Prices shows closed groups immediately, renders only selected/open contents and
+reuses the existing projection reads without waiting for unrelated projections.
+Labor always shows Part Production, Part Coating, Assembly, Preparation and Packing.
+Sheet Processing/Block Assembly and saved hour keys are retained; new coating,
+Additional Assembly and final preparation/packing show explicit read-only0.
+In-house CNC skips the unused manual production alternative. No new norms,
+Parts/material/Detection/provider change or paid call. Full local964/ten420.358s;
+exact-SHA GitHub45220109273/job137851749969/artifact14840671173 passed964/ten
+400.189s. Protected publisher confirmed active no-bypass ruleset27499066 and
+promoted exact862e28f0. Railway8005194941 and Cloudflare Pages48d7b621 succeeded.
+Actual executable Core/wrapper/meta/version.json match9.48 at16:55:50UTC.
+Validated source archive829files/4,742,110B remains local. Initial remote Prices
+test failure and closure-rerender diagnosis are retained; app code did not change
+after the full local pass. Owner production acceptance pending, no new accepted
+checkpoint. Accepted9.47 rollback preserved. [Release record](ESTIMATION_V9_48_PRICES_LABOR_STRUCTURE_2026_11_23.md).
+
 Estimation 9.47 full owner-accepted checkpoint, 23 November 2026, work3.17.4.6.
 Preserve runtime6764b9a7 and separate immutable runtime/records tags; no redeploy.
 Exact824-file runtime ZIP, 4721547bytes, helper cap retained,
