@@ -1,5 +1,17 @@
 # Done Log
 
+Estimation 9.48 full owner-accepted checkpoint, 23 November 2026, work 3.17.4.6.
+Preserve runtime 862e28f0 and separate immutable runtime/records tags, no redeploy.
+Prices lazy groups and the four always-present Labor stages are accepted. Existing
+calculation keys and totals remain; new coating/additional assembly/preparation/
+packing rows are zero placeholders pending agreed norms. Exact 829-file source
+ZIP (4,742,110 bytes), bundle, full local 964/ten and exact-SHA CI 964/ten evidence,
+failure diagnosis and frozen material controls are preserved. Independent restore
+matched all 829 source bytes; four network-blocked purchase controls passed.
+Owner acceptance supersedes the prior pending status. Future Labor 2.x naming is
+recorded without reusing historical 2.8/2.9 tags or changing the deployed identity.
+[Checkpoint and restoration](ESTIMATION_V9_48_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
 Estimation9.48 published23November2026, existing work3.17.4.6, runtime862e28f0.
 Prices shows closed groups immediately, renders only selected/open contents and
 reuses the existing projection reads without waiting for unrelated projections.

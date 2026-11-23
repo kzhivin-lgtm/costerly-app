@@ -1030,7 +1030,7 @@ Keep V2.4, V1.3.3 behavior and V3.2 costing protected. No new work number yet.
 
 ## Company Profile: Prices responsiveness
 
-ACTIVE, PUBLISHED9.48, OWNER PRODUCTION ACCEPTANCE PENDING, P1, OWNER REQUEST23November2026, separate Profile/Prices
+COMPLETED, OWNER ACCEPTED 23 November 2026, P1, separate Profile/Prices
 outcome. Show closed material groups promptly and load/prep selected group first;
 warm other groups without blocking interaction. Before9.48 asynchronous loading
 already existed, but the view awaited four projections and constructed all open
@@ -1051,12 +1051,16 @@ exact-SHA GitHub45220109273 passed964/ten400.189s. Prices evidence on1280/390:
 selected10 rows usable before unrelated reads finish,290 closed rows unbuilt,
 one catalog read reused across close/reopen. All original nine suites retained.
 Actual Core/wrapper/meta/version.json match9.48 at16:55:50UTC; protected main
-ruleset27499066 active with no bypass. Owner's real-account responsiveness check
-remains pending. [Release evidence](ESTIMATION_V9_48_PRICES_LABOR_STRUCTURE_2026_11_23.md).
+ruleset27499066 active with no bypass. Owner reported normal production operation
+and requested the full checkpoint.
+Acceptance supersedes the prior pending state. [Release evidence](ESTIMATION_V9_48_PRICES_LABOR_STRUCTURE_2026_11_23.md).
 
-## Estimation Labor V1
+<a id="estimation-labor-v1"></a>
 
-ACTIVE, STEPS1/2 PUBLISHED9.48, OWNER PRODUCTION ACCEPTANCE PENDING, P1, OWNER REQUEST23November2026. Organize Labor into four
+## Estimation Labor: four production stages
+
+STEPS 1/2 COMPLETED AND OWNER ACCEPTED, P1, 23 November 2026. FUTURE NUMERIC WORK
+DEFERRED pending agreed boundaries and rates. Organize Labor into four
 stages: Part Production, Part Coating, Assembly (Block Assembly + Additional
 Assembly), and Preparation/Packing (trial fit/check/disassembly/packing). Reuse
 existing Sheet Processing/Block Assembly and shared totals. Apply company
@@ -1077,9 +1081,22 @@ as explicitly approved; existing norms/hour keys/full SC are preserved. Full
 UI gate passed964 checks/ten suites locally and at exact-SHA GitHub45220109273.
 Actual Core/wrapper/meta/version.json match9.48. Existing in-house CNC route now
 skips constructing the unused panel-saw alternative; physical assembly remains.
-No Parts/material/provider/norm change or paid call. Steps1/2 await owner production
-acceptance. Numeric coating/additional-assembly/preparation/packing work stays
+No Parts/material/provider/norm change or paid call. Owner accepted steps 1/2
+and requested the full checkpoint. Numeric coating/additional assembly/
+preparation/packing work stays
 deferred until its boundaries and rates are agreed. Authoritative queue remains here.
+
+[verified] Full accepted checkpoint: runtime 862e28f0, separate source/records tags,
+829-file source ZIP, independent byte-identical restoration and four network-blocked
+material controls. Exact-runtime 964/ten local and GitHub gates reused. See
+[checkpoint](ESTIMATION_V9_48_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
+PENDING, P2, OWNER NAMING CORRECTION, 23 November 2026. The owner intended Labor
+2.x for this work, suggested 2.8 approximately and deferred resolving the number.
+Before the next authorized Labor runtime release, reconcile the minor against
+GitHub/project records. Historical Labor 2.8 and 2.9 tags already exist; do not
+reuse them, rename deployed 9.48 or assign a new hierarchical block by inference.
+This records a future naming decision, not authorization to start numerical work.
 
 
 

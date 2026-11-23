@@ -184,3 +184,14 @@ focus/scroll and other Profile actions usable. Browser scenarios must cover a
 large synthetic catalog, delayed selected/unselected groups, rapid open/close,
 row-save failure/retry, upload/delete invalidation, tenant/role change and keyboard.
 Actual production timings remain a separate acceptance observation.
+
+## Accepted implementation checkpoint, 23 November 2026
+
+The owner accepted steps 1 and 2, Prices responsiveness and the four-stage Labor
+structure, after production use. The full checkpoint pins runtime 862e28f0, build
+9.48, exact 829-file source, 964-check/ten-suite evidence and restored-source
+material controls. Earlier pending implementation/acceptance descriptions in this
+plan are historical. Numeric coating/additional assembly/preparation/packing work
+remains deferred until boundaries and rates are agreed. Future Labor 2.x naming
+will be reconciled before the next release, without reusing historical tags.
+[Accepted checkpoint](ESTIMATION_V9_48_PRODUCTION_CHECKPOINT_2026_11_23.md).

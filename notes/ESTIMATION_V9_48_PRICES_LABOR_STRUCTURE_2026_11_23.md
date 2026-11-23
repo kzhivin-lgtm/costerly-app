@@ -111,3 +111,14 @@ Next acceptance: owner opens Prices and a saved Calculation through app.costerly
 checks collapsed/selected groups and all four Labor stages with unchanged totals.
 No paid OCR/model run is needed to verify this structural change. New numerical
 coating, additional-assembly and preparation/packing work remains deferred.
+
+## Owner acceptance and full checkpoint
+
+On 23 November 2026 the owner reported normal production operation and requested
+a full checkpoint with all project records. This supersedes every earlier
+acceptance-pending statement in this chronological release record. Runtime and
+build remain unchanged. The source archive, complete checks, failed candidate,
+independent restore, frozen controls and final refs are preserved in the
+[accepted checkpoint](ESTIMATION_V9_48_PRODUCTION_CHECKPOINT_2026_11_23.md).
+Future Labor 2.x naming is recorded for the next release; historical 2.8/2.9 tags
+are not reused and deployed 9.48 is not retroactively renamed.

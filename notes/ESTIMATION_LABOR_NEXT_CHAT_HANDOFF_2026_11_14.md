@@ -1,4 +1,17 @@
-**[verified] Current release: Estimation9.48 published23November2026, owner production acceptance pending.**
+**[verified] Latest full checkpoint: Estimation 9.48, owner accepted 23 November 2026.**
+Estimation 9.48 full owner-accepted checkpoint, 23 November 2026, work 3.17.4.6.
+Preserve runtime 862e28f0 and separate immutable runtime/records tags, no redeploy.
+Prices lazy groups and the four always-present Labor stages are accepted. Existing
+calculation keys and totals remain; new coating/additional assembly/preparation/
+packing rows are zero placeholders pending agreed norms. Exact 829-file source
+ZIP (4,742,110 bytes), bundle, full local 964/ten and exact-SHA CI 964/ten evidence,
+failure diagnosis and frozen material controls are preserved. Independent restore
+matched all 829 source bytes; four network-blocked purchase controls passed.
+Owner acceptance supersedes the prior pending status. Future Labor 2.x naming is
+recorded without reusing historical 2.8/2.9 tags or changing the deployed identity.
+[Checkpoint and restoration](ESTIMATION_V9_48_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
+**[verified] Current release: Estimation 9.48, subsequently owner accepted as the checkpoint above.**
 Runtime862e28f0a848d387f2cf540c34f5769c6a16a3fe, existing work3.17.4.6.
 Prices now shows closed groups promptly and prepares selected/open contents using
 the existing asynchronous readers, without waiting for unrelated source/review/jobs.
@@ -11,9 +24,10 @@ Local964/ten420.358s and exact-SHA GitHub45220109273/job137851749969 passed964/t
 400.189s. Required remote ruleset27499066 active, no bypass. Core8005194941 and
 Cloudflare Pages48d7b621 succeeded; actual Core/wrapper/meta/version.json all match
 9.48 at16:55:50UTC. Source backup829files/4,742,110B validated, private evidence in
-outputs/estimation-v9.48/. No paid run, production-project test write or new accepted
-checkpoint. Owner should check Prices responsiveness and the four Labor stages on
-app.costerly.ai. Numeric finishing/special assembly/packing norms remain deferred.
+outputs/estimation-v9.48/. No paid run or production-project test write was used
+for release verification. Owner subsequently reported normal production operation
+and requested the full checkpoint. Numeric finishing/special assembly/packing
+norms remain deferred.
 [Release evidence and failed test diagnosis](ESTIMATION_V9_48_PRICES_LABOR_STRUCTURE_2026_11_23.md).
 
 **[verified] Latest full checkpoint: Estimation9.47, owner accepted23November2026.**

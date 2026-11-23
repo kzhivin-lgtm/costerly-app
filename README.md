@@ -1,6 +1,13 @@
 # Costerly
 
-Latest full checkpoint: **Estimation9.47**, owner accepted23November2026,
+Latest full checkpoint: **Estimation 9.48**, owner accepted 23 November 2026,
+runtime `862e28f0`. Prices lazy loading and four Labor stages are accepted.
+Exact source, separate runtime/records tags, bundle, 964-check/ten-suite evidence
+and four frozen material controls are preserved. Fresh restore matches all 829
+source files. Future Labor 2.x naming is deferred without renaming this build.
+[Identities, verification and restoration](notes/ESTIMATION_V9_48_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
+Preserved full checkpoint: **Estimation9.47**, owner accepted23November2026,
 runtime`6764b9a7`. Exact824-file source ZIP, bundle, immutable runtime/records
 tags, UI/capacity evidence and frozen material controls are preserved. Reuses the
 successful613/nine exact-runtime gates; preservation introduces no runtime change.
@@ -30,7 +37,7 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
-Current Estimation release: **9.47**, 23 November 2026, runtime `6764b9a7`.
+Preserved Estimation release: **9.47**, 23 November 2026, runtime `6764b9a7`.
 Contacts with a saved logo now opens without the fragment/sidebar layout error.
 Profile Save feedback appears on the same button after an acknowledged write.
 All-collapsed cost sections no longer push Self Cost down the viewport. Fixed
