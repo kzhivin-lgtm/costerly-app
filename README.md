@@ -1,10 +1,13 @@
 # Costerly
 
-Latest full checkpoint: **Estimation 9.46**, owner-requested23November2026,
-runtime`c731f2ac`. Exact source, Git bundle, runtime/records tags, full UI evidence,
-four frozen material controls and independent821-file restoration are preserved.
-607 restored Python checks and network-blocked purchase replays passed.
-[Identities, evidence, limits and restoration](notes/ESTIMATION_V9_46_PRODUCTION_CHECKPOINT_2026_11_23.md).
+Latest full checkpoint: **Estimation9.47**, owner accepted23November2026,
+runtime`6764b9a7`. Exact824-file source ZIP, bundle, immutable runtime/records
+tags, UI/capacity evidence and frozen material controls are preserved. Reuses the
+successful613/nine exact-runtime gates; preservation introduces no runtime change.
+[Identities, verification and restoration](notes/ESTIMATION_V9_47_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
+Preserved full checkpoint: **Estimation9.46**, runtime`c731f2ac`.
+[9.46 restoration](notes/ESTIMATION_V9_46_PRODUCTION_CHECKPOINT_2026_11_23.md).
 
 Previous Estimation full checkpoint: **9.41**, runtime`077264c0`, remains intact.
 [9.41 restoration](notes/ESTIMATION_V9_41_PRODUCTION_CHECKPOINT_2026_11_22.md).
@@ -34,8 +37,8 @@ All-collapsed cost sections no longer push Self Cost down the viewport. Fixed
 Privacy and expanded spacing remain. Overhead uses current Production monthly
 hours from Labor Costs, with scoped invalidation and explicit audited fallback.
 Clean local/exact-SHA GitHub gates pass 613 checks/nine browser suites. Actual
-Core/wrapper/meta/version.json match 9.47 at14:32:26UTC, HTTP200. Owner real-session
-acceptance remains pending. Current UI-contract amendments are published; final
+Core/wrapper/meta/version.json match 9.47, HTTP200. Owner accepted the achieved
+UI and requested the full9.47 checkpoint. Current UI-contract amendments are published; final
 whole-interface consolidation is separately queued. The full9.46 checkpoint
 and all prior protected releases remain intact. No paid run or Detection/Parts/
 material/catalog/schema change.

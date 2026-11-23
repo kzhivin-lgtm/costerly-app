@@ -1,3 +1,15 @@
+**[verified] Latest full checkpoint: Estimation9.47, owner accepted23November2026.**
+Estimation 9.47 full owner-accepted checkpoint, 23 November 2026, work3.17.4.6.
+Preserve runtime6764b9a7 and separate immutable runtime/records tags; no redeploy.
+Exact824-file runtime ZIP, 4721547bytes, helper cap retained,
+SHA25620b0658c7d876ddc75aaebb54c52679a43d86677699434923491c5eae4417de5. Full613/nine runtime gates and four frozen purchase
+controls reused; no repeated model/calculation run. Live Core/wrapper/meta/version
+match9.47 at14:48:23UTC, HTTP200. Source bytes, manifest, bundle and independent
+restore are checked in the final receipt. Includes UI/diagnostic evidence,
+capacity audit, project records and portable controls. Owner acceptance supersedes
+the previous acceptance-pending state. Earlier checkpoints and deferred items
+remain. [Checkpoint and restore](ESTIMATION_V9_47_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
 **[verified] Current release: Estimation 9.47, published; owner UI acceptance pending.**
 Estimation 9.47, 23 November 2026, existing work 3.17.4.6. Runtime 6764b9a7.
 Contacts' stored-logo branch previously raised StreamlitInvalidLayoutContextError:

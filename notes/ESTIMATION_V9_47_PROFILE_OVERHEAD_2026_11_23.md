@@ -1,6 +1,6 @@
 # Estimation 9.47 Profile reliability and Production overhead capacity
 
-Status: published, owner authenticated acceptance pending, 23 November 2026,
+Status: owner accepted and requested full checkpoint, 23 November 2026,
 existing work3.17.4.6. Runtime6764b9a738983bcc2ef29773ca4736bbcb3b04ea. Owner authorised
 continuing the cycle from the full9.46 checkpoint (runtimec731f2ac,
 records6606568f). No Detection/Parts/material/catalog/provider/schema change.
@@ -95,3 +95,6 @@ Evidence: outputs/estimation-v9.47 in the handoff workspace. The existing separa
 Workers Builds failure remains deferred. Full UI-contract consolidation after
 the owner's final UI acceptance remains a separate pending request; current
 approved changes and all preceding protection are added to the contract now.
+
+Owner acceptance supersedes the earlier acceptance-pending state.
+[Full checkpoint and restoration](ESTIMATION_V9_47_PRODUCTION_CHECKPOINT_2026_11_23.md). No new runtime change.

@@ -542,7 +542,7 @@ Naming or calculation evidence to hide this source-layout limitation.
 ## Objects Estimation workflow and proposal revisions
 
 
-PUBLISHED, P0/P1, OWNER AUTHENTICATED ACCEPTANCE PENDING, Estimation9.47,23November2026, existing work3.17.4.6.
+COMPLETED, P0/P1, OWNER-ACCEPTED FULL CHECKPOINT Estimation9.47,23November2026, existing work3.17.4.6.
 Protected baseline is the full9.46 checkpoint/runtimec731f2ac, records6606568f.
 Sequence: (P0) diagnose/fix Contacts becoming permanently covered after a Profile
 switch and Reload, preserve correlated ready, auth/role and all other tabs;
@@ -568,7 +568,11 @@ at14:32:26UTC. Runtime6764b9a7. Scope and retained evidence below.
 The owner asks to update the GitHub UI contract after the verified changes,
 retaining all earlier accepted behavior except the named spacing/save-feedback
 amendments. No new notices/controls, no speculative infrastructure replacement.
-[Current scope and evidence](ESTIMATION_V9_47_PROFILE_OVERHEAD_2026_11_23.md).
+Owner reports the achieved UI works and requests full preservation. Exact source,
+runtime/records tags, bundle, full existing gates, portable controls and restoration
+are retained with no runtime redeploy or paid call.
+[Full checkpoint and restore](ESTIMATION_V9_47_PRODUCTION_CHECKPOINT_2026_11_23.md).
+[Scope and evidence](ESTIMATION_V9_47_PROFILE_OVERHEAD_2026_11_23.md).
 
 PENDING, P1, OWNER REQUEST23November2026: consolidate the complete GitHub UI
 contract after the owner declares the interface phase finished. Preserve every

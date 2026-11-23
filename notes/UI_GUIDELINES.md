@@ -628,3 +628,8 @@ code rollback reference is the published V1.2.23 `447b4892`.
 Owner-requested full9.46 checkpoint23November2026 preserves this contract and
 all earlier accepted behavior. See[checkpoint](ESTIMATION_V9_46_PRODUCTION_CHECKPOINT_2026_11_23.md). No new runtime behavior
 is introduced by preservation.
+
+Owner accepted the achieved Estimation9.47 interface23November2026 and requested
+full preservation. Existing9.47 amendments and all earlier protected scenarios
+remain. This records acceptance, changes no test or threshold.
+[Full checkpoint and restoration](ESTIMATION_V9_47_PRODUCTION_CHECKPOINT_2026_11_23.md).

@@ -278,3 +278,8 @@ so a missing ready timestamp cannot vacuously pass. No input mechanics change.
 Owner-requested full Estimation9.46 preservation23November2026 freezes the
 existing accepted behavior and verification contract. No test or threshold is
 weakened. See[checkpoint](../../notes/ESTIMATION_V9_46_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
+Owner accepted the achieved Estimation9.47 interface23November2026 and requested
+full preservation. Existing9.47 amendments and all earlier protected scenarios
+remain. This records acceptance, changes no test or threshold.
+[Full checkpoint and restoration](../../notes/ESTIMATION_V9_47_PRODUCTION_CHECKPOINT_2026_11_23.md).
