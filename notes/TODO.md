@@ -537,7 +537,7 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-ACTIVE, P1, OWNER-APPROVED9.46,23November2026, existing work3.17.4.6.
+DEPLOYED9.46, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING,23November2026, existing work3.17.4.6.
 Owner returned from checking9.45 and authorised the deploy. During explicit Object
 Detail Save, all footer Back/Approve links must immediately turn grey and be
 inert to mouse/keyboard until the acknowledged result. Clicking Approve during
@@ -548,8 +548,12 @@ Back to Objects and APPROVE; the footer-wide lock covers any return-link variant
 Updating app status uses the same shared typography as other loaders. One
 ui/workflow_status.css source is embedded in Core and wrapper, parity required.
 Every deployment/commit title must explicitly include Estimation9.46.
-Checkpoint creation remains on owner-requested hold.9.45 runtime1f872f01 remains
-published until exact-SHA gates pass;9.44/9.41 preserved. No new checkpoint archive.
+Checkpoint creation remains on owner-requested hold. Runtimec731f2ac is published
+after clean local607/nine349.486s and exact-SHA GitHub607/nine338.972s gates
+(run45176459497). Actual Core/wrapper/meta/version match9.46 at12:49:26UTC.
+Save mouse/keyboard immediate-grey, success/failure/retry and shared status pass.
+Owner next: Save, immediately attempt Back/APPROVE, confirm no navigation until
+receipt and green Saved.9.45/9.44/9.41 preserved. No checkpoint archive.
 [Scope, mechanisms and evidence](ESTIMATION_V9_46_SAVE_LOCK_2026_11_23.md).
 
 DIAGNOSIS COMPLETE, P2, NEW ESTIMATE LATENCY, USER QUESTION23November2026.
@@ -557,7 +561,8 @@ Latest recorded click7ec536e1 took3.7761s, old wrapper9.44/new Core9.45 reconnec
 auth restore0.687758s, platform header0.505571s. Earlier deployment transition
 4.6189s includes1.001308s token refresh. No new calculation; local reset only,
 then native Streamlit uploader generation and authenticated render. Warm-session
-latency is not established by these cold/deploy witnesses. Proposed next: compare
+latency is not established by these cold/deploy witnesses. Eight local synthetic
+New Estimate transitions in9.46 were228-350ms, not production timing. Proposed next: compare
 warm/cold click→reset→auth→render→visible before changing the header/read path.
 An immediate presentation shell and an immediately interactive native uploader
 are different guarantees. No alternate uploader, auth bypass, extra request or

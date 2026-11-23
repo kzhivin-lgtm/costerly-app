@@ -1,6 +1,7 @@
 # Estimation9.46 explicit Save lock and shared update loading
 
-Status: candidate23November2026, existing work3.17.4.6. Deploy authorised by owner.
+Status: deployed23November2026, existing work3.17.4.6, runtimec731f2ac.
+Owner authenticated acceptance pending. No checkpoint creation authorised.
 Checkpoint remains on hold. Preserve9.45 runtime1f872f01, its pending records and
 all earlier accepted source/behavior. No Parts/material/cost/Detection change.
 
@@ -56,3 +57,31 @@ wrapper style probe found the unavailable-storage recovery path replaced the
 shared status span with a bare text node. Retain the same label for the retry
 message, preserving its shared typography and the existing retry behavior.
 No deadline/assertion is relaxed and no new observer/request is introduced.
+
+## Verified release result
+
+Estimation 9.46, 23 November 2026, existing work 3.17.4.6. Runtime c731f2ac.
+Explicit Object Detail Save immediately greys and disables all footer Back/APPROVE
+links, excludes them from Tab order and ignores click/Enter without queuing later
+approval/navigation. Success, failure, timeout and teardown restore controls.
+Save stays on card, green Saved appears only after receipt. Existing direct
+Approve-with-draft and preview-to-Approve remain intact. No new worker, timer,
+poll, server callback, pricing/Parts/Detection change or paid provider request.
+Updating app and its retry state now retain the same shared loader typography,
+with one CSS source and a parity check. Initial candidates c47aacff and 079faac7
+were blocked before main: first-frame disabled paint, then a recovery message
+replacing the shared span. Both failures and corrected assertions are retained.
+Clean local 607 checks/nine browser suites passed in 349.486s. Independent GitHub
+45176459497/job137698866111/artifact14819277791 passed 607/nine in 338.972s.
+Protected publisher verified the active no-bypass ruleset 27499066 before main.
+Railway 7999117929 succeeded 12:48:15UTC. Actual executable Core, wrapper, meta
+and version.json all match 9.46 at 12:49:26UTC, HTTP200. This live identity probe
+observes anonymous Login, separate from authenticated owner acceptance.
+New Estimate remains a local reset with native authenticated render, no model.
+Production reconnect witness 3.7761s is not a warm-session benchmark; eight local
+synthetic transitions were 228-350ms. A warm/cold production breakdown remains
+P2 diagnostic follow-up, no alternate uploader/auth bypass was introduced.
+Checkpoint creation is still on owner hold: no tags, archive or bundle were made.
+9.45 runtime1f872f01 and earlier independently verified checkpoints remain.
+Evidence: outputs/estimation-v9.46/{local-release,github-release,live-builds.json}
+in the handoff workspace. [Scope and evidence](ESTIMATION_V9_46_SAVE_LOCK_2026_11_23.md).

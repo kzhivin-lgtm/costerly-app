@@ -23,17 +23,17 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
-Current Estimation release: **9.45**,23November2026, verified source`1f872f01`.
-Configured unit SC equals the card's cost; commercial copy quantity multiplies
-sale totals and does not divide unit cost. Saved pricing recipe and manual prices
-stay. Front options are MDF Raw/MDF Veneered. Objects/File Review retain fixed
-Privacy with the same26px closing gap as Object Detail. Clean local606/nine344.036s
-and exact-SHA GitHub606/nine349.026s pass. Actual Core/wrapper/meta/version match
-9.45. Full checkpoint creation is on owner-requested hold. No9.45 checkpoint tags,
-archive or Git bundle have been created; earlier checkpoints remain intact. Owner real-project acceptance is pending.
-[Release, checkpoint and evidence](notes/ESTIMATION_V9_45_UNIT_COST_2026_11_23.md).
-Preserve9.44 runtime`fa67572a`/records`23bd6103`,9.41 full checkpoint and earlier
-accepted interactions. No new model cycle or schema migration.
+Current Estimation release: **9.46**, 23 November 2026, verified runtime `c731f2ac`.
+Object Detail Save immediately greys/disables footer Back and APPROVE, then
+restores them on the acknowledged result. No queued approval from clicks during
+Save. Green Saved, failure/retry, direct Approve and preview behavior are retained.
+Updating app and recovery use the shared loader typography. Clean local607/nine
+349.486s and exact-SHA GitHub607/nine338.972s pass. Actual executable Core, wrapper,
+meta and version.json match9.46, HTTP200. Owner authenticated acceptance is pending.
+[Release, failed candidates and evidence](notes/ESTIMATION_V9_46_SAVE_LOCK_2026_11_23.md).
+Checkpoint creation remains on owner-requested hold: no9.46 tags/archive/bundle.
+Preserve9.45 runtime`1f872f01`,9.44 runtime`fa67572a` and the9.41 full checkpoint.
+No new model cycle, calculation/Detection change or schema migration.
 
 Preserved diagnostic release: **Estimation V3.3**,22November2026,
 rollback commit`a6158588`, application/tests byte-identical to published`bcf9fdb4`.
