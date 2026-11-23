@@ -50,7 +50,7 @@ from use_cases.estimation_front_panels import FRONT_PART_ROLES as _FRONT_PART_RO
 from use_cases.estimation_labor_v1 import load_object_labor, object_labor_metrics, sheet_layout_basis
 from use_cases.estimation_parts_check_runtime import load_parts_check
 from use_cases.machinery import load_sheet_processing_machinery
-from use_cases.overhead_engine import estimate_object_overhead
+from use_cases.overhead_engine import estimate_object_overhead, with_production_capacity
 from observability.runtime import LABOR_BUILD_VERSION
 
 
@@ -60,7 +60,7 @@ _FULL_COST_SOURCE = "object_costs_v3_1"
 def _full_cost_context(client, obj, plan, settings=None, *, preserve_labor=False):
     company = str(obj["company_id"])
     return {
-        "settings": settings if settings is not None else _first_row(fetch_company_overhead_settings(client, company)),
+        "settings": with_production_capacity(client, company, settings if settings is not None else _first_row(fetch_company_overhead_settings(client, company))),
         "monthly": _first_row(fetch_company_overhead_monthly(client, company)),
         "machinery": {} if preserve_labor else load_sheet_processing_machinery(client, company), "plan": plan,
         "parts": {} if preserve_labor else load_parts_check(client=client, company_id=company,

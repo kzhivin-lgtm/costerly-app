@@ -541,6 +541,40 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+
+ACTIVE, P0/P1, OWNER-APPROVED Estimation9.47,23November2026, existing work3.17.4.6.
+Protected baseline is the full9.46 checkpoint/runtimec731f2ac, records6606568f.
+Sequence: (P0) diagnose/fix Contacts becoming permanently covered after a Profile
+switch and Reload, preserve correlated ready, auth/role and all other tabs;
+(P1) derive Overhead monthly allocation capacity from active Production employees'
+Labor Costs hours, not the legacy workers*days*hours or a hard-coded1200;
+(P1) remove the all-collapsed Object Detail Overhead-to-Self-Cost spacer while
+retaining fixed Privacy and the normal expanded view; (P1) replace green bottom
+Profile Save notices with acknowledged inline button Saved feedback across the
+Profile Save paths, resetting to the original label and on a subsequent edit.
+Preserve actual saved owner Pricing settings (markup50, buffer3, warranty3,
+installation15, packaging1, delivery5), no seed/default overwrite. No Parts,
+Detection, model or catalog work. Any capacity fallback must be explicit in the
+cost audit; no new salary-hours policy is silently invented.
+Verification matrix: all collapse combinations at desktop/narrow widths; saved
+Overhead denominator equals current Production capacity and updates after worker
+changes without rerunning Parts/materials; Pricing→Contacts with/without stored
+logo, cold/warm/reload, success/failure and subsequent tab navigation; Save pending,
+acknowledged Saved/default reset, failure/retry/new edit, same-tab/reopen and
+company/user isolation in each existing Profile Save path. Current captures show
+company+logo reads completed but no Contacts ready, cause not yet established.
+The owner asks to update the GitHub UI contract after the verified changes,
+retaining all earlier accepted behavior except the named spacing/save-feedback
+amendments. No new notices/controls, no speculative infrastructure replacement.
+[Current scope and evidence](ESTIMATION_V9_47_PROFILE_OVERHEAD_2026_11_23.md).
+
+PENDING, P1, OWNER REQUEST23November2026: consolidate the complete GitHub UI
+contract after the owner declares the interface phase finished. Preserve every
+accepted behavior and its regression scenarios across future changes. Current
+release amendments remain mandatory now; this final consolidation is separate
+from the9.47 repairs and is not permission for unrelated interface changes.
+
+
 COMPLETED, P1, OWNER-REQUESTED FULL CHECKPOINT9.46,23November2026, existing work3.17.4.6.
 Owner returned from checking9.45 and authorised the deploy. During explicit Object
 Detail Save, all footer Back/Approve links must immediately turn grey and be

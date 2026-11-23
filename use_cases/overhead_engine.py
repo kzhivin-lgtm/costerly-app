@@ -13,6 +13,16 @@ _RESERVES = (
 )
 
 
+def with_production_capacity(client, company_id: str, settings: dict[str, Any]) -> dict[str, Any]:
+    """Use Labor Costs capacity; retain an audited legacy fallback when none is reported."""
+    from db.repositories import fetch_company_production_capacity
+    capacity = fetch_company_production_capacity(client, company_id)
+    reported = capacity["reported_hours"]
+    return {**settings, "production_monthly_hours": reported,
+            "capacity_source": "production_employee_hours" if reported > 0 else "legacy_settings_fallback",
+            "production_capacity_audit": capacity}
+
+
 def estimate_object_overhead(
     *, estimate_id: str, object_id: str, company_id: str,
     settings: dict[str, Any], overhead_monthly: dict[str, Any],
@@ -28,6 +38,7 @@ def estimate_object_overhead(
     result: dict[str, Any] = {
         "status": "pending_labor", "object_id": object_id, "estimate_id": estimate_id,
         "company_id": company_id, "lines": [], "capacity_hours": capacity,
+        "capacity_source": settings.get("capacity_source", "legacy_production_settings"),
         "labor_hours": labor_hours, "material_cost": material_cost,
         "cost": None, "vat": None, "total": None,
         "vat_percent": _number(settings.get("vat_percent"), 18), "partial": partial,
@@ -56,7 +67,9 @@ def estimate_object_overhead(
                     item_name=label, monthly_cost=amount, allocation_basis=f"0h / {_format_number(capacity)}h",
                     cost=0, sort_order=10000 + len(lines),
                     raw_json={"source_column": field, "labor_hours_total": 0,
-                              "monthly_capacity_hours": capacity},
+                              "monthly_capacity_hours": capacity,
+                              "capacity_source": settings.get("capacity_source", "legacy_production_settings"),
+                              "production_capacity_audit": settings.get("production_capacity_audit")},
                 ))
         for field, label in _RESERVES:
             percent = _number(settings.get(field), 0)
@@ -101,7 +114,9 @@ def build_overhead_lines(
             allocation_basis=f"{_format_number(labor_hours_total)}h / {_format_number(monthly_capacity_hours)}h",
             cost=cost, sort_order=sort_order,
             raw_json={"source_column": column, "labor_hours_total": labor_hours_total,
-                      "monthly_capacity_hours": monthly_capacity_hours},
+                      "monthly_capacity_hours": monthly_capacity_hours,
+                      "capacity_source": settings.get("capacity_source", "legacy_production_settings"),
+                      "production_capacity_audit": settings.get("production_capacity_audit")},
         ))
     reserve_base = subtotal_before_overhead + monthly_overhead_total
     for column, label in _RESERVES:
@@ -130,6 +145,9 @@ def _overhead_line(**values: Any) -> dict[str, Any]:
 
 
 def _monthly_capacity_hours(settings: dict[str, Any]) -> float:
+    reported = _number(settings.get("production_monthly_hours"), 0)
+    if isfinite(reported) and reported > 0:
+        return reported
     return (
         _number(settings.get("production_workers"), 0)
         * _number(settings.get("workdays_per_month"), 0)

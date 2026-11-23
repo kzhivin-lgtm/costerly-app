@@ -30,6 +30,30 @@ def fetch_company_overhead_settings(client: Client, company_id: str) -> pd.DataF
     return fetch_table(client, "overhead_settings", filters={"company_id": company_id})
 
 
+def fetch_company_production_capacity(client: Client, company_id: str) -> dict:
+    """Aggregate reported Production hours, without reading private pay/name fields."""
+    response = (client.table("company_employees").select("monthly_hours", count="exact")
+                .eq("company_id", company_id).eq("department", "production")
+                .is_("deleted_at", "null").execute())
+    rows = response.data or []
+    if getattr(response, "count", None) is not None and response.count > len(rows):
+        raise ValueError("Production hours response was truncated.")
+    from math import isfinite
+    hours = 0.0
+    unreported = 0
+    for row in rows:
+        try:
+            value = float(row.get("monthly_hours") or 0)
+        except (TypeError, ValueError):
+            value = 0.0
+        if isfinite(value) and value > 0:
+            hours += value
+        else:
+            unreported += 1
+    return {"reported_hours": hours, "employee_count": len(rows),
+            "unreported_hours_count": unreported}
+
+
 def fetch_company_overhead_monthly(client: Client, company_id: str) -> pd.DataFrame:
     return fetch_table(client, "overhead_monthly", filters={"company_id": company_id})
 

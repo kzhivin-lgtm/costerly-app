@@ -269,6 +269,40 @@ and native cancellation apply. No JS font waiter, loader timer or new API read.
 New Estimate keeps the existing protected native callback/auth/uploader path;
 the requested timing investigation does not authorise an alternate uploader.
 
+## Estimation9.47 Profile Save, Contacts and closed-cost spacing,23November2026
+
+Owner explicitly replaces Profile's green bottom success blocks with an
+acknowledged Saved state on the existing action. Retain actual persistence,
+validation, failure/retry, actor isolation and reopen. Native and HTML Save
+buttons show Saving only while their existing request runs, Saved only after a
+fresh company/action-scoped server receipt, then the original label after2s or
+new input. No additional write/price cycle or Profile rerun for presentation.
+One save-scoped receipt observer and30s UI timeout are cancelled on result,
+relevant tab/navigation/disposal; the2s Saved timer is likewise cancellable.
+Do not mark edits made after submission as saved. Deletes retain the confirmed
+row removal and an invisible receipt, without another success notice.
+
+A stored Company Logo must not cause Contacts to draw outside its fragment.
+Keep the native Change Logo picker/validation/storage behavior, fragment-owned
+hidden guard, genuine ready result and regional Profile cover. Stored/missing
+logo, warm/cold/Reload, mouse/keyboard, later tab navigation and error recovery
+are required. An anonymous Login or a fixture without a stored logo does not
+prove this owner-reported Contacts path works.
+
+Only when Materials, Labor and Overhead are all collapsed, Self Cost follows
+Overhead naturally instead of being pushed to the viewport bottom. This
+supersedes the collapsed-state pinned terminal placement, not expanded geometry,
+inputs or fixed Privacy. The prior26px clearance remains in expanded states;
+collapsed content keeps clear of Privacy and may leave free viewport below it.
+All eight collapse combinations must preserve amounts, actions and focus.
+
+Overhead uses reported monthly hours of active Production employees from Labor
+Costs. Keep company scoping and existing reserve/VAT formulas. Missing reported
+hours may use the existing configured capacity only as an audited fallback;
+failed reads are not fallback. Employee mutations invalidate company overhead
+views, not saved Labor/Parts/material selection. The same capacity must reach
+persisted cost and the visible Object Detail allocator.
+
 ## V2.9 one deployment event and retained login, approved 19 November 2026
 
 Owner explicitly requires a page refresh with the user still signed in and

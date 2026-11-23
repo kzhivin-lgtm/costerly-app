@@ -15,7 +15,7 @@ from db.supabase_client import get_supabase_client
 from observability.runtime import report_runtime_failure
 from screens.block_assembly import assembly_breakdown_html
 from ui.object_detail_view import detail_elements_html, overhead_section_html, _money as display_money
-from use_cases.overhead_engine import estimate_object_overhead
+from use_cases.overhead_engine import estimate_object_overhead, with_production_capacity
 from use_cases.block_assembly import calculate_block_assembly
 from use_cases.estimation_labor_v1 import (
     LAYOUT_VERSION, SPLIT_ROLES, build_sheet_layout, describe_layout_issues, sheet_layout_basis,
@@ -403,7 +403,7 @@ def _load_overhead_context(client, company_id):
     """Read the existing company inputs within the existing parallel fragment."""
     settings = fetch_company_overhead_settings(client, company_id)
     monthly = fetch_company_overhead_monthly(client, company_id)
-    return {"status": "ready", "settings": settings.iloc[0].to_dict() if not settings.empty else {},
+    return {"status": "ready", "settings": with_production_capacity(client, company_id, settings.iloc[0].to_dict() if not settings.empty else {}),
             "monthly": monthly.iloc[0].to_dict() if not monthly.empty else {}}
 
 

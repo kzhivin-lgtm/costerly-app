@@ -180,6 +180,14 @@ def install_workflow_header_alignment_guard(
     )
 
 
+def install_company_profile_save_feedback(company_id: str) -> None:
+    """Reuse existing write receipts, no Profile rerun or persistence request."""
+    script = Path(__file__).with_name("profile_save_feedback.js").read_text()
+    components.html("<script>" + script + "\nconst cleanup = installProfileSaveFeedback(window.parent, "
+                    + json.dumps(str(company_id)) + ");window.addEventListener('pagehide', cleanup, {once:true});</script>",
+                    height=0, width=0)
+
+
 def install_company_metrics_input_guard() -> None:
     """Bridge the shared Object Detail-style Metrics table to Save Metrics."""
     components.html(
@@ -5138,7 +5146,7 @@ def install_price_source_notice_guard() -> None:
 
 def install_company_logo_picker_guard() -> None:
     """Let the full-width Change Logo action open the native logo picker."""
-    with st.sidebar:
+    with st.container(key="company_logo_picker_guard"):
         components.html(
             """
             <script>

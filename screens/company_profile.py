@@ -32,6 +32,7 @@ from ui.js_guards import (
     install_company_contacts_input_guard,
     install_company_logo_picker_guard,
     install_company_metrics_input_guard,
+    install_company_profile_save_feedback,
     install_price_source_notice_guard,
     install_price_source_processing_guard,
     install_price_source_remove_guard,
@@ -1124,8 +1125,10 @@ def _render_owner_machinery(
         )
         st.rerun(scope="fragment")
     except (MachineryError, PermissionError) as exc:
+        _profile_save_ack(access, "machinery", ok=False)
         st.error(str(exc))
     except Exception:
+        _profile_save_ack(access, "machinery", ok=False)
         logger.exception("Company machinery batch save failed")
         st.error("Machinery settings could not be saved. Check the values and try again")
     finally:
@@ -1143,7 +1146,7 @@ def _render_machinery(access: CompanyAccess) -> None:
         f"company_machinery_notice:{access.company_id}", None
     )
     if notice:
-        st.success(str(notice))
+        _profile_save_ack(access, "machinery")
     snapshot_key = f"company_machinery_snapshot:{access.company_id}"
     snapshot = st.session_state.get(snapshot_key)
     if not isinstance(snapshot, dict):
@@ -1616,6 +1619,7 @@ def add_company_employee(
         raise RuntimeError("The worker was not added.")
     _load_company_employees_by_id.clear()
     _invalidate_profile_read(fresh, "employees")
+    _invalidate_object_overhead_context(fresh.company_id)
     return rows[0]
 
 
@@ -1731,6 +1735,7 @@ def update_company_employee(
         raise RuntimeError("The worker was not updated.")
     _load_company_employees_by_id.clear()
     _invalidate_profile_read(fresh, "employees")
+    _invalidate_object_overhead_context(fresh.company_id)
     return rows[0]
 
 
@@ -1756,6 +1761,7 @@ def archive_company_employee(access: CompanyAccess, employee_id: str) -> dict:
         raise RuntimeError("The worker was not removed.")
     _load_company_employees_by_id.clear()
     _invalidate_profile_read(fresh, "employees")
+    _invalidate_object_overhead_context(fresh.company_id)
     return rows[0]
 
 
@@ -1777,7 +1783,8 @@ def _text_input(
 
 def _profile_save_button(label: str) -> bool:
     """Render the single emphasized Save action used by every Profile form."""
-    return st.form_submit_button(label, type="primary", use_container_width=True)
+    action = label.removeprefix("Save ").lower().replace(" ", "_")
+    return st.form_submit_button(label, key=f"profile_save_{action}", type="primary", use_container_width=True)
 
 
 def _format_israeli_phone(value: object) -> str:
@@ -1810,20 +1817,35 @@ def _read_only_group(title: str, items: list[tuple[str, object]]) -> None:
     )
 
 
+def _profile_save_ack(access: CompanyAccess, action: str, *, ok: bool = True) -> None:
+    """An invisible receipt emitted only after an existing persistence result."""
+    st.markdown(
+        '<span style="display:none" data-profile-save-ack="' + uuid4().hex
+        + '" data-profile-save-company="' + escape(str(access.company_id), quote=True)
+        + '" data-profile-save-action="' + escape(action, quote=True)
+        + '" data-profile-save-ok="' + str(ok).lower() + '"></span>',
+        unsafe_allow_html=True,
+    )
+
+
 def _save_profile_section(
     access: CompanyAccess,
     values: dict[str, object],
     *,
     success_message: str,
 ) -> None:
+    action = success_message.removesuffix(" saved").lower().replace(" ", "_")
     try:
         save_company_profile(access, values)
-        st.success(success_message)
+        _profile_save_ack(access, action)
     except ValueError as exc:
+        _profile_save_ack(access, action, ok=False)
         st.error(str(exc))
     except PermissionError:
+        _profile_save_ack(access, action, ok=False)
         st.error("Only the company owner can save these details.")
     except Exception:
+        _profile_save_ack(access, action, ok=False)
         st.error("Company details were not saved. Try again in a moment.")
 
 
@@ -1999,7 +2021,7 @@ def _render_company_logo_card(
             if pending_error:
                 st.error(pending_error)
             if notice:
-                st.success(notice)
+                _profile_save_ack(access, "logo")
 
             button_label = "Change Logo" if reference else "Save Logo"
             if editable and reference:
@@ -2029,8 +2051,10 @@ def _render_company_logo_card(
                         trace=trace,
                     )
                 except PermissionError:
+                    _profile_save_ack(access, "logo", ok=False)
                     st.error("Only the company owner can save the logo.")
                 except Exception:
+                    _profile_save_ack(access, "logo", ok=False)
                     logger.exception("Company logo save failed")
                     st.error("The company logo was not saved. Try again in a moment.")
                 else:
@@ -4511,6 +4535,8 @@ def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
         invalid_fields = company_bank_details_validation_errors(bank_values)
         if not invalid_fields:
             _save_profile_section(access, bank_values, success_message="Bank details saved")
+        else:
+            _profile_save_ack(access, "bank_details", ok=False)
     install_company_bank_details_input_guard(invalid_fields)
 
 
@@ -4572,6 +4598,8 @@ def _render_owner_contacts(access: CompanyAccess, profile: dict, *, trace=None) 
         invalid_fields = company_contact_validation_errors(contact_values)
         if not invalid_fields:
             _save_profile_section(access, contact_values, success_message="Contacts saved")
+        else:
+            _profile_save_ack(access, "contacts", ok=False)
     install_company_contacts_input_guard(invalid_fields)
     _render_company_logo_card(access, profile, editable=True, trace=trace)
 
@@ -4700,16 +4728,19 @@ def _render_metrics_save(access: CompanyAccess) -> None:
             raw_snapshot = company_metrics_bridge(key="company_metrics_bridge", mode="metrics")
         save_message = _consume_company_metrics_snapshot(access, raw_snapshot)
     except ValueError as exc:
+        _profile_save_ack(access, "metrics", ok=False)
         st.error(str(exc))
     except PermissionError:
+        _profile_save_ack(access, "metrics", ok=False)
         st.error("Only the company owner can save these overhead expenses.")
     except Exception:
+        _profile_save_ack(access, "metrics", ok=False)
         logger.exception("Company overhead expenses save failed")
         st.error("Overhead expenses were not saved. Try again in a moment.")
         return
 
     if save_message:
-        st.success(save_message)
+        _profile_save_ack(access, "metrics")
 
 
 @st.fragment
@@ -4719,17 +4750,20 @@ def _render_pricing_save(access: CompanyAccess) -> None:
             raw_snapshot = company_metrics_bridge(key="company_pricing_bridge", mode="pricing")
         save_message = _consume_company_pricing_snapshot(access, raw_snapshot)
     except ValueError as exc:
+        _profile_save_ack(access, "pricing", ok=False)
         st.error(str(exc))
         return
     except PermissionError:
+        _profile_save_ack(access, "pricing", ok=False)
         st.error("Only the company owner can save these pricing settings.")
         return
     except Exception:
+        _profile_save_ack(access, "pricing", ok=False)
         logger.exception("Company pricing save failed")
         st.error("Pricing Cost was not saved. Try again in a moment.")
         return
     if save_message:
-        st.success(save_message)
+        _profile_save_ack(access, "pricing")
 
 
 def _render_metrics(access: CompanyAccess) -> None:
@@ -4891,7 +4925,7 @@ def _render_users(access: CompanyAccess) -> None:
         return
 
     if st.session_state.pop("_company_user_removed", False):
-        st.success("User access removed")
+        _profile_save_ack(access, "users_remove")
 
     def generate_invitation() -> None:
         started_at = time.perf_counter()
@@ -5234,11 +5268,11 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
 
     _apply_labor_form_reset()
     if st.session_state.pop("_labor_employee_added", False):
-        st.success("Worker added")
+        _profile_save_ack(access, "labor")
     if st.session_state.pop("_labor_employee_updated", False):
-        st.success("Worker updated")
+        _profile_save_ack(access, "labor")
     if st.session_state.pop("_labor_employee_archived", False):
-        st.success("Worker removed")
+        _profile_save_ack(access, "labor_remove")
 
     try:
         if trace is None:
@@ -5614,10 +5648,13 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
             ] = True
             _rerun_profile_fragment()
         except ValueError as exc:
+            _profile_save_ack(access, "labor", ok=False)
             st.error(str(exc))
         except PermissionError:
+            _profile_save_ack(access, "labor", ok=False)
             st.error("Only the company owner can change worker costs.")
         except Exception:
+            _profile_save_ack(access, "labor", ok=False)
             logger.exception("Company employee write failed")
             action = "updated" if editing else "added"
             st.error(f"The worker was not {action}. Try again in a moment.")
@@ -5685,6 +5722,8 @@ def render_company_profile(
     render_screen_header(render_profile_title, render_header_controls)
     finish_phase("server.company_profile_header", "p_header_ms")
 
+    with st.container(key="company_profile_feedback_bridge"):
+        install_company_profile_save_feedback(str(access.company_id))
     _render_profile_tabs(access, trace=trace, render_ready=render_ready)
 
 

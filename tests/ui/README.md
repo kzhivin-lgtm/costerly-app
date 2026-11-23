@@ -79,6 +79,16 @@ failure/retry/success at1758/390. Preview→Approve remains required. Core/wrapp
 loading CSS parity is a Python check; browser recovery/update checks verify shared
 font family/24px desktop size/weight/color. Existing correlated New Estimate
 measurements now retain click-to-ready time, with no new production observer.
+Estimation9.47 adds stored-logo Contacts/Reload/picker checks at1280/390 and
+Profile Save Saving/acknowledged Saved/reset/new-edit without another render.
+The former green-alert assertions now observe the owner-requested button or
+actual deletion receipt; existing write/reopen/auth/error assertions remain.
+The seven genuine-worker ready races use the persisted labor receipt instead
+of the removed Worker added alert, with identical ordering/coverage/write-count
+criteria. Calculation covers all eight root collapse combinations and replaces
+only collapsed bottom-pinning with natural summary flow, while retaining the
+expanded26px clearance, fixed Privacy and all9.46 Save/Approve controls. Python
+covers Production capacity/query scope/fallback and worker-mutation invalidation.
 The version-refresh suite uses the real wrapper and workflow controller with
 synthetic screens. V2.9 covers a single Core build event, old-tab migration,
 one reload, deferred active work, failure recovery and zero version-file reads.

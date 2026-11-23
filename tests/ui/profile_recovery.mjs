@@ -110,10 +110,10 @@ try{
  await ctx.core.getByText('Company details were not saved. Try again in a moment.',{exact:true}).waitFor();
  assert.equal(await email.inputValue(),'retry@fixture.invalid');
  assert.notEqual(database().companies[0].public_email,'retry@fixture.invalid');
- assert.equal(await ctx.core.getByText('Contacts saved',{exact:true}).count(),0);
+ assert.equal(await ctx.core.getByRole('button',{name:'Saved',exact:true}).count(),0);
  settings({});
  await ctx.core.getByRole('button',{name:'Save Contacts',exact:true}).click();
- await ctx.core.getByText('Contacts saved',{exact:true}).waitFor();
+ await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
  await waitDb(data=>data.companies[0].public_email==='retry@fixture.invalid');
  await tab(ctx,'Bank Details');await tab(ctx,'Contacts');
  assert.equal(await email.inputValue(),'retry@fixture.invalid');

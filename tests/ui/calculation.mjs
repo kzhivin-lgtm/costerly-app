@@ -168,6 +168,24 @@ async function detailSaveChecks(){
   assert.equal(await net.innerText(),'₪1\u202f000');
   await page.waitForURL('**/o/**');
   const originalUrl=page.url();
+  const bandSelectors=['.object-detail-materials-band','[data-cost-band="labor"]','.object-detail-overhead-band'];
+  const collapseCases=[];
+  for(let mask=0;mask<8;mask++) {
+   for(let index=0;index<3;index++) {
+    const band=core.locator(bandSelectors[index]);
+    if(await band.evaluate(n=>n.open)!==Boolean(mask&(1<<index))) await band.locator(':scope > summary').click();
+   }
+   const state=await frame.evaluate(()=>({
+    summaryGap:document.querySelector('.object-detail-page-end').getBoundingClientRect().top-document.querySelector('.object-detail-overhead-band').getBoundingClientRect().bottom,
+    final:document.querySelector('[data-final="excl_vat"]').textContent,
+   }));
+   if(mask===0)assert.ok(state.summaryGap>=0&&state.summaryGap<=40,JSON.stringify({width,mask,...state}));
+   assert.equal(state.final,'₪1\u202f000');collapseCases.push({mask,...state});
+  }
+  for(const selector of bandSelectors) {
+   const band=core.locator(selector);if(await band.evaluate(n=>n.open))await band.locator(':scope > summary').click();
+  }
+  report['collapseStates'+width]=collapseCases;
   await core.locator('.object-detail-materials-band > summary').click();
   const picker=core.getByRole('combobox',{name:'Front panels',exact:true});
   await picker.selectOption('mdf');
@@ -215,10 +233,19 @@ async function detailSaveChecks(){
    const actions=document.querySelector('.object-detail-footer-actions').getBoundingClientRect();
    return innerHeight-46-actions.bottom;
   });
-  assert.ok(Math.abs(gap-26)<2,JSON.stringify({width,gap}));
+  const collapsed=await frame.evaluate(()=>{
+   const overhead=document.querySelector('.object-detail-overhead-band').getBoundingClientRect();
+   const end=document.querySelector('.object-detail-page-end').getBoundingClientRect();
+   return {summaryGap:end.top-overhead.bottom,closed:[...document.querySelectorAll('.object-detail-materials-band,[data-cost-band="labor"],.object-detail-overhead-band')].every(n=>!n.open)};
+  });
+  assert.equal(collapsed.closed,true);assert.ok(collapsed.summaryGap>=0&&collapsed.summaryGap<=40,JSON.stringify({width,...collapsed}));
+  assert.ok(gap>=24,JSON.stringify({width,gap})); // Fixed Privacy remains clear; collapsed summary is no longer bottom-pinned.
   await page.screenshot({path:reportPath('detail-save-'+width+'.png'),fullPage:true});
   report['detailSave'+width]={seconds:(Date.now()-started)/1000,footerGap:gap,quantity:3,net:preview};
   await core.locator('.object-detail-materials-band > summary').click();
+  await save.scrollIntoViewIfNeeded();
+  const expandedGap=await frame.evaluate(()=>innerHeight-46-document.querySelector('.object-detail-footer-actions').getBoundingClientRect().bottom);
+  assert.ok(Math.abs(expandedGap-26)<2,JSON.stringify({width,expandedGap}));
   await picker.selectOption('plywood');
   await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
   assert.equal(await save.evaluate(n=>n.classList.contains('object-detail-material-save--saved')),false);

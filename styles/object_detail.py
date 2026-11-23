@@ -882,6 +882,11 @@ def apply_object_detail_css() -> None:
         [data-testid="stElementContainer"]:has(.object-detail-page-end) {
             margin-top: auto;
         }
+        /* Collapsed cost bands use natural flow; do not fill the viewport before Self Cost. */
+        .stApp:not(:has(.object-detail-materials-band[open], [data-cost-band="labor"][open], .object-detail-overhead-band[open]))
+        [data-testid="stElementContainer"]:has(.object-detail-page-end) {
+            margin-top: 0;
+        }
         [data-testid="stMarkdownContainer"]:has(.object-detail-page-end) {
             margin-bottom: 0;
         }

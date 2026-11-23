@@ -14,7 +14,7 @@ export function observeProfileReady() {
    value.ready=function(message){
     if(!state.mode)return original.call(this,message);
     const selected=document.querySelector('.st-key-company_profile_tab [aria-selected="true"]')?.textContent.trim();
-    if(selected==='Labor Costs'&&document.body.textContent.includes('Worker added')){
+    if(selected==='Labor Costs'&&document.querySelector('[data-profile-save-ack][data-profile-save-action="labor"]')){
      state.held=message;return true;
     }
     if(state.held&&message.runId===state.held.runId)return true;
@@ -84,7 +84,7 @@ async function addWorker(ctx,name) {
  await rendered(()=>core.getByRole('textbox',{name:'Average Hours per Month',exact:true}).fill('186').then(()=>core.getByRole('textbox',{name:'Average Hours per Month',exact:true}).press('Tab')));
  await core.getByRole('textbox',{name:'Total Monthly Cost',exact:true}).waitFor();
  await core.getByRole('button',{name:'Add Worker',exact:true}).click();
- await core.getByText('Worker added',{exact:true}).waitFor();
+ await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
 }
 
 export async function profileReadyRegressions({boot,move,tab,waitDb,database}) {

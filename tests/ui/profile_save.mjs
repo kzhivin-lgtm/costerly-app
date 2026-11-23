@@ -71,14 +71,14 @@ try{
  await rent.fill('321');
  await rent.press('Tab');
  await ctx.core.locator('[data-company-settings-save="metrics"]').click();
- await ctx.core.getByText('Overhead expenses saved',{exact:true}).waitFor();
+ await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
  await waitDb(data=>data.overhead_monthly[0][rentField]===321);
  await tab(ctx,'Pricing Cost');
  const reserve=ctx.core.locator('.company-pricing-input[data-field="warranty_reserve_percent"]');
  await reserve.fill('7');
  await reserve.press('Tab');
  await ctx.core.locator('[data-company-settings-save="pricing"]').click();
- await ctx.core.getByText('Pricing Cost saved',{exact:true}).waitFor();
+ await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
  await waitDb(data=>data.overhead_settings[0].warranty_reserve_percent===7);
  await tab(ctx,'Overhead Expenses');
  assert.match(await ctx.core.locator('.company-metrics-monthly-input').first().innerText(),/321/);
@@ -87,13 +87,13 @@ try{
  await email.fill('saved@fixture.invalid');
  await ctx.core.getByRole('button',{name:'Save Contacts',exact:true}).click();
  
- await ctx.core.getByText('Contacts saved',{exact:true}).waitFor();
+ await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
  await waitDb(data=>data.companies[0].public_email==='saved@fixture.invalid');
  await tab(ctx,'Bank Details');
  await ctx.core.getByRole('textbox',{name:/^Company registration number/}).fill('123456789');
  await ctx.core.getByRole('textbox',{name:/^Account number$/i}).fill('003123');
  await ctx.core.getByRole('button',{name:'Save Bank Details',exact:true}).click();
- await ctx.core.getByText('Bank details saved',{exact:true}).waitFor();
+ await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
  await waitDb(data=>data.companies[0].account_number==='003123');
  await tab(ctx,'Contacts');
  assert.equal(await email.inputValue(),'saved@fixture.invalid');
@@ -105,7 +105,7 @@ try{
  await ctx.core.getByRole('textbox',{name:/^Working width/}).fill('2.07');
  await ctx.core.getByRole('textbox',{name:/^Working width/}).press('Tab');
  await ctx.core.getByRole('button',{name:'Save',exact:true}).click();
- await ctx.core.getByText('Machinery saved',{exact:true}).waitFor();
+ await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
  await waitDb(data=>data.company_machinery.some(row=>row.machine_code==='wood_cnc_router'&&row.availability_status==='in_house'));
  await tab(ctx,'Pricing Cost');
  assert.match(await reserve.innerText(),/7/);
@@ -133,7 +133,7 @@ try{
  
  await ctx.core.getByRole('textbox',{name:'Total Monthly Cost',exact:true}).waitFor();
  await ctx.core.getByRole('button',{name:'Add Worker',exact:true}).click();
- await ctx.core.getByText('Worker added',{exact:true}).waitFor();
+ await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
  await waitDb(data=>data.company_employees.some(row=>row.worker_name==='Profile preload worker'));
  await tab(ctx,'Pricing Cost');
  await tab(ctx,'Labor Costs');
@@ -142,7 +142,7 @@ try{
  const remove=ctx.core.locator('.company-user-delete').first();
  await remove.click();
  await ctx.core.getByRole('button',{name:'Remove Access',exact:true}).click();
- await ctx.core.getByText('User access removed',{exact:true}).waitFor();
+ await ctx.core.locator('[data-profile-save-ack][data-profile-save-action="users_remove"]').waitFor({state:'attached'});
  await waitDb(data=>data.company_members.length===1);
  await tab(ctx,'Contacts');
  await tab(ctx,'Users');
@@ -155,6 +155,50 @@ try{
  writeFileSync(reportPath('profile-save.json'),JSON.stringify(results,null,2));
  console.log(results);
  await ctx.page.close();
+ for(const width of [1280,390]) {
+  const stored=await boot({profile_logo_present:true,read_delay:0.03});
+  await stored.page.setViewportSize({width,height:933});
+  await move(stored,'Profile','account');
+  const times=[];
+  for(const name of ['Contacts','Pricing Cost','Contacts','Bank Details','Contacts']) {
+   const at=performance.now();await tab(stored,name);times.push({name,ms:Math.round(performance.now()-at)});
+   assert.equal(await stored.core.locator('[data-testid="stException"]').count(),0);
+  }
+  await stored.core.locator('.company-logo-preview img').waitFor();
+  const chooser=stored.page.waitForEvent('filechooser');
+  await stored.core.getByRole('button',{name:'Change Logo',exact:true}).click();await chooser;
+  await stored.page.screenshot({path:reportPath('contacts-stored-logo-'+width+'.png')});
+  results.push({storedLogo:true,width,times,exceptions:0,picker:'opened'});
+  await stored.page.reload();
+  await stored.core.getByRole('tab',{name:'Contacts',exact:true}).click();
+  await stored.core.locator('.company-logo-preview img').waitFor();
+  await stored.core.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
+  assert.equal(await stored.core.locator('[data-testid="stException"]').count(),0);
+  await stored.page.close();
+ }
+ const feedback=await boot({write_delay:0.5,read_delay:0.03});
+ await move(feedback,'Profile','account');await tab(feedback,'Pricing Cost');
+ assert.equal(await feedback.core.locator('.st-key-company_profile_feedback_bridge').evaluate(n=>getComputedStyle(n.closest('[data-testid="stLayoutWrapper"]')||n).display),'none','Feedback bridge must not insert a visible layout slot');
+ const delivery=feedback.core.locator('.company-pricing-input[data-field="delivery_percent"]');
+ await delivery.fill('9');await delivery.press('Tab');
+ const feedbackSave=feedback.core.locator('[data-company-settings-save="pricing"]');
+ await feedbackSave.click();
+ await feedback.core.getByRole('button',{name:'Saving…',exact:true}).waitFor();
+ assert.equal(await feedbackSave.getAttribute('data-profile-save-saved'),null);
+ await feedback.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+ await waitDb(data=>data.overhead_settings[0].delivery_percent===9);
+ assert.equal(await feedback.core.locator('[data-testid="stAlertContentSuccess"]').count(),0);
+ const feedbackRender=await feedback.core.locator('[data-costerly-render-id]').last().getAttribute('data-costerly-render-id');
+ await feedback.core.getByRole('button',{name:'SAVE PRICING COST',exact:true}).waitFor({timeout:3500});
+ assert.equal(await feedback.core.locator('[data-costerly-render-id]').last().getAttribute('data-costerly-render-id'),feedbackRender,'Saved reset must not rerun Profile');
+ await delivery.fill('10');await delivery.press('Tab');await feedbackSave.click();
+ await feedback.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+ await delivery.fill('11');
+ assert.equal(await feedbackSave.getAttribute('data-profile-save-saved'),null,'A new edit immediately resets Saved');
+ assert.equal(await feedbackSave.isEnabled(),true);
+ await feedback.page.screenshot({path:reportPath('profile-save-feedback.png')});
+ results.push({feedback:'pending/acknowledged/reset/new-edit',writes:'existing settings path only'});
+ await feedback.page.close();
  const readyCases=await profileReadyRegressions({boot,move,tab,waitDb,database});
  writeFileSync(reportPath('profile-ready-regressions.json'),JSON.stringify(readyCases,null,2));
  console.log('Profile ready regressions',JSON.stringify(readyCases));

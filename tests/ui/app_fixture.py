@@ -325,7 +325,7 @@ company_profile.list_company_machinery=lambda *_args:[]
 company_profile.list_company_suppliers=lambda *_args:[]
 company_profile.list_supplier_services=lambda *_args:[]
 company_profile.load_company_profile=lambda *_args: guarded_load('account',{'company_name':'Lev1 workshop'})
-company_profile.load_company_logo_bytes=lambda *_args,**_kwargs:None
+company_profile.load_company_logo_bytes=lambda *_args,**_kwargs:(Path(__file__).resolve().parents[2] / 'cloudflare/assets/email/costerly-ai-logo.png').read_bytes() if scenario().get('profile_logo_present') else None
 company_profile.load_company_employees=lambda *_args:[]
 company_profile.load_company_members=lambda *_args:[]
 original_company_access=company_access
@@ -382,7 +382,7 @@ class ProfileQuery:
  def insert(self,payload):self.operation='insert';self.payload=payload;return self
  def upsert(self,payload,**_kwargs):self.operation='upsert';self.payload=payload;return self
  def execute(self):
-  delay=float(scenario().get('read_delay',0.08)) if self.operation=='select' else 0
+  delay=float(scenario().get('read_delay',0.08)) if self.operation=='select' else float(scenario().get('write_delay',0))
   if delay:sleep(delay)
   if self.operation!='select' and scenario().get('fail_write')==self.name:
    raise RuntimeError('Injected Profile write failure')
@@ -403,6 +403,8 @@ class ProfileQuery:
    else:
     if self.name=='company_employees':payload.setdefault('employee_id',str(uuid4()))
     rows.append(payload);selected=[payload]
+  if self.operation=='select' and self.name=='companies' and scenario().get('profile_logo_present'):
+   selected=[{**row,'logo_url':'storage://company-logos/'+company_id+'/fixture-logo.png'} for row in selected]
   if self.operation!='select':
    write_db(data);record('write '+self.name)
   else:record('read '+self.name)

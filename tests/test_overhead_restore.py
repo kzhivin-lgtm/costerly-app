@@ -1,4 +1,5 @@
 from decimal import Decimal
+import pytest
 
 from use_cases.overhead_engine import build_overhead_lines, estimate_object_overhead
 
@@ -119,9 +120,17 @@ def test_company_overhead_context_reads_are_scoped_to_the_current_company(monkey
         return pd.DataFrame([{"rent_facilities_cost": 20160}])
     monkeypatch.setattr(screen, "fetch_company_overhead_settings", read_settings)
     monkeypatch.setattr(screen, "fetch_company_overhead_monthly", read_monthly)
+    from db import repositories
+    def read_capacity(client, company_id):
+        calls.append((client, company_id, "capacity"))
+        return {"reported_hours": 1200, "employee_count": 6, "unreported_hours_count": 0}
+    monkeypatch.setattr(repositories, "fetch_company_production_capacity", read_capacity)
     client = object()
-    assert screen._load_overhead_context(client, "company")["status"] == "ready"
-    assert calls == [(client, "company", "settings"), (client, "company", "monthly")]
+    context = screen._load_overhead_context(client, "company")
+    assert context["status"] == "ready"
+    assert context["settings"]["production_monthly_hours"] == 1200
+    assert calls == [(client, "company", "settings"), (client, "company", "monthly"),
+                     (client, "company", "capacity")]
 
 
 def test_profile_save_invalidation_preserves_labor_and_other_companies(monkeypatch):
@@ -243,3 +252,78 @@ def test_copy_quantity_never_discounts_the_priced_configuration(monkeypatch):
         prices.append(result['self_cost_ex_vat'])
         assert result['quantity_basis'] == 'per_priced_configuration'
     assert prices == [1897.5, 1897.5, 1897.5]
+
+
+def test_reported_production_capacity_overrides_legacy_staff_count():
+    result = estimate(settings=settings(production_monthly_hours=1200,
+                      capacity_source="production_employee_hours"))
+    assert result["capacity_hours"] == 1200
+    assert result["lines"][0]["allocation_basis"] == "10h / 1200h"
+    assert result["lines"][0]["cost"] == 168
+    assert result["lines"][0]["raw_agent_json"]["capacity_source"] == "production_employee_hours"
+
+
+def test_production_capacity_is_scoped_and_does_not_read_wages():
+    from types import SimpleNamespace
+    from db.repositories import fetch_company_production_capacity
+    calls = []
+    class Query:
+        def select(self, columns, **kwargs):
+            calls.append(("select", columns, kwargs));return self
+        def eq(self, key, value):calls.append(("eq", key, value));return self
+        def is_(self, key, value):calls.append(("is", key, value));return self
+        def execute(self):return SimpleNamespace(data=[{"monthly_hours":200}] * 6, count=6)
+    client = SimpleNamespace(table=lambda name: calls.append(("table", name)) or Query())
+    result = fetch_company_production_capacity(client, "company-a")
+    assert result == {"reported_hours":1200, "employee_count":6, "unreported_hours_count":0}
+    assert calls == [("table", "company_employees"), ("select", "monthly_hours", {"count":"exact"}),
+                     ("eq", "company_id", "company-a"), ("eq", "department", "production"),
+                     ("is", "deleted_at", "null")]
+
+
+def test_capacity_fallback_is_explicit_and_does_not_hide_failed_reads(monkeypatch):
+    import pytest
+    from db import repositories
+    from use_cases.overhead_engine import with_production_capacity
+    monkeypatch.setattr(repositories, "fetch_company_production_capacity",
+                        lambda *_: {"reported_hours":0, "employee_count":0, "unreported_hours_count":0})
+    context = with_production_capacity(object(), "company", settings())
+    result = estimate(settings=context)
+    assert result["capacity_hours"] == 2016 and result["capacity_source"] == "legacy_settings_fallback"
+    assert result["lines"][0]["raw_agent_json"]["production_capacity_audit"]["reported_hours"] == 0
+    def fail(*_):raise RuntimeError("capacity read failed")
+    monkeypatch.setattr(repositories, "fetch_company_production_capacity", fail)
+    with pytest.raises(RuntimeError, match="capacity read failed"):
+        with_production_capacity(object(), "company", settings())
+
+
+@pytest.mark.parametrize("mutation", ["add", "update", "archive"])
+def test_employee_mutations_invalidate_only_their_company_overhead(monkeypatch, mutation):
+    from types import SimpleNamespace
+    import streamlit as st
+    from screens import company_profile as profile
+    owner = SimpleNamespace(company_id="company-a", user_id="owner", role="owner")
+    class Query:
+        def insert(self, *_):return self
+        def update(self, *_):return self
+        def eq(self, *_):return self
+        def is_(self, *_):return self
+        def execute(self):return SimpleNamespace(data=[{"company_id":"company-a", "employee_id":"employee"}])
+    client = SimpleNamespace(table=lambda _: Query())
+    monkeypatch.setattr(profile, "_owner_access", lambda _: (owner, client))
+    current={"overhead_context":{"capacity":1200},"labor_preserved":"saved"}
+    foreign={"overhead_context":{"capacity":400},"labor_preserved":"other"}
+    st.session_state.clear()
+    st.session_state["labor_v1_comparisons"]={("company-a","run","estimate-a","object"):current,
+                                             ("company-b","run","estimate-b","object"):foreign}
+    try:
+        values={"worker_name":"Worker", "department":"production", "position_code":"carpenter",
+                "pay_type":"hourly_rate", "gross_hourly_rate":50,"monthly_hours":200}
+        if mutation=="add":profile.add_company_employee(owner, **values)
+        elif mutation=="update":profile.update_company_employee(owner, "employee", **values)
+        else:profile.archive_company_employee(owner, "employee")
+        assert "overhead_context" not in current and current["labor_preserved"]=="saved"
+        assert foreign["overhead_context"]=={"capacity":400}
+        assert st.session_state["objects_estimation_cache_dirty"]=={"estimate-a"}
+        assert st.session_state["object_detail_data_cache_dirty"]=={"estimate-a"}
+    finally:st.session_state.clear()

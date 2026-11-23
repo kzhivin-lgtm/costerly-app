@@ -621,6 +621,25 @@ def apply_company_profile_css() -> None:
             margin-right: auto;
         }
 
+        .st-key-company_logo_picker_guard,
+        .st-key-company_profile_feedback_bridge,
+        [data-testid="stLayoutWrapper"]:has(> .st-key-company_logo_picker_guard),
+        [data-testid="stLayoutWrapper"]:has(> .st-key-company_profile_feedback_bridge) {
+            display: none !important;
+        }
+        .stApp:has(.company-profile-active) [data-profile-save-saved] {
+            background: #e3f1eb !important;
+            border-color: #198c5b !important;
+            color: #198c5b !important;
+            opacity: 1 !important;
+            text-transform: none !important;
+        }
+        .stApp:has(.company-profile-active) [data-profile-save-saved] p {
+            color: #198c5b !important;
+            text-transform: none !important;
+        }
+
+
         .company-logo-preview {
             display: flex;
             align-items: center;
