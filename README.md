@@ -6,7 +6,12 @@ Nested axes/text are aligned. Labor/Overhead use the same unchanged source hours
 Exact-SHA GitHub 999 checks/ten browser suites and served identities passed.
 Owner production acceptance pending. [Release and evidence](notes/LABOR_V2_11_DISCLOSURE_HOURS_2026_11_23.md).
 
-Latest full checkpoint: **Estimation 9.48**, owner accepted 23 November 2026,
+Latest full preservation checkpoint: **Labor 2.11**, owner requested24November2026,
+runtime`63db313d`. Exact835-file source, independent restore, frozen material
+controls,999/ten evidence and known UI limitations are retained. Labor2.12 follows
+this checkpoint. [Preservation and restore](notes/LABOR_V2_11_PRODUCTION_CHECKPOINT_2026_11_24.md).
+
+Previous full checkpoint: **Estimation 9.48**, owner accepted 23 November 2026,
 runtime `862e28f0`. Prices lazy loading and four Labor stages are accepted.
 Exact source, separate runtime/records tags, bundle, 964-check/ten-suite evidence
 and four frozen material controls are preserved. Fresh restore matches all 829

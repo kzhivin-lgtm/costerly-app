@@ -1,5 +1,17 @@
 # Done Log
 
+[verified] Full Labor 2.11 preservation checkpoint requested 24 November 2026,
+work 3.17.4.6. Runtime63db313d is pinned independently of records. Preserved835
+exact source files (4,771,308-byte helper-validated ZIP), full999/ten local and
+exact-SHA GitHub evidence, publication/served-build receipts, screenshot witness,
+Git bundle, SHA256 manifest and frozen Parts/material controls. Fresh restore
+matched all source bytes; four material controls passed with network blocked.
+No redeploy, fresh calculation, paid call or live database snapshot. The owner
+requests preservation before2.12, while reporting unequal Labor row heights;
+this is a known limitation, not a claim of perfect UI acceptance. Earlier9.48
+and all older immutable checkpoints remain.
+[Checkpoint and restore](LABOR_V2_11_PRODUCTION_CHECKPOINT_2026_11_24.md).
+
 [verified] Labor2.11 published23November2026, existing work3.17.4.6,
 runtime63db313d. Expanded Part Production, Assembly and Preparation and Packing
 hide own hours/pay/taxes/total and restore them on native collapse. Root Labor
