@@ -502,12 +502,34 @@ def object_labor_metrics(state, *, quantity=1, overrides=None):
     if assembly is not None:
         partial = bool(assembly['common_roles_for_review'] or any(block['issues'] for block in assembly['blocks']))
         assembled = manual('assembly', labor_pay_metrics(assembly['planned_minutes'] * Decimal(str(quantity)) / 60, partial=partial))
-    known = [metrics for metrics in (sheet, assembled) if metrics is not None]
+    _, _, preparation = preparation_pay_metrics(state, quantity=quantity)
+    known = [metrics for metrics in (sheet, assembled, preparation) if metrics is not None]
     total = None
     if known:
         total = {key: sum(item[key] for item in known) for key in ('hours', 'pay', 'taxes', 'total')}
-        total['partial'] = len(known) != 2 or any(item['partial'] for item in known)
+        total['partial'] = len(known) != 3 or any(item['partial'] for item in known)
     return sheet, assembled, total
+
+
+def preparation_pay_metrics(state, *, quantity=1):
+    result = state.get('preparation')
+    if result is None:
+        return None, None, None
+    count = Decimal(str(quantity))
+    checking = labor_pay_metrics(Decimal(result['checking_minutes']) * count / 60,
+                                 partial=not result['checking_known'])
+    if not result['checking_known'] and not any(row.get('man_minutes') is not None for row in result['interfaces']):
+        checking = None
+    packing = labor_pay_metrics(Decimal(result['packing_minutes']) * count / 60,
+                                partial=result['packing_partial'])
+    if result['packing_partial'] and not any(row.get('man_minutes') is not None for row in result['packing_units']):
+        packing = None
+    known = [row for row in (checking, packing) if row is not None]
+    if not known:
+        return checking, packing, None
+    total = {key: sum(row[key] for row in known) for key in ('hours', 'pay', 'taxes', 'total')}
+    total['partial'] = bool(result['issues']) or len(known) != 2
+    return checking, packing, total
 
 
 def load_object_labor(client, *, identity, parts_loader=None, plan_loader=None, machinery_loader=None, plan=None, parts_result=None):
@@ -515,6 +537,7 @@ def load_object_labor(client, *, identity, parts_loader=None, plan_loader=None, 
     from db.repositories import fetch_rfq_estimate_material_plan
     from use_cases.machinery import load_sheet_processing_machinery
     from use_cases.block_assembly import calculate_block_assembly
+    from use_cases.preparation_packing import calculate_preparation_packing
     from observability.runtime import report_runtime_failure
     parts_loader = parts_loader or load_parts_check
     plan_loader = plan_loader or fetch_rfq_estimate_material_plan
@@ -539,7 +562,13 @@ def load_object_labor(client, *, identity, parts_loader=None, plan_loader=None, 
         report_runtime_failure("cnc.calculate", exc, rfq_run_id=run_id, estimate_id=estimate_id, object_id=object_id)
         _LOG.exception("Could not calculate Sheet Processing for estimate %s", estimate_id)
         sheet = {"status": "read_failed"}
-    return {**sheet, "assembly": assembly}
+    preparation = None
+    try:
+        preparation = calculate_preparation_packing(report, object_id=object_id)
+    except Exception as exc:
+        report_runtime_failure("preparation.calculate", exc, rfq_run_id=run_id, estimate_id=estimate_id, object_id=object_id)
+        _LOG.exception("Could not calculate Preparation and Packing for estimate %s", estimate_id)
+    return {**sheet, "assembly": assembly, "preparation": preparation}
 
 
 def _load_object_sheet(client, report, *, company_id, estimate_id, object_id, plan_loader, machinery_loader, plan=None):

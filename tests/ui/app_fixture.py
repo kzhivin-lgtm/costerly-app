@@ -27,6 +27,13 @@ from time import sleep
 from state import company_auth
 from use_cases import estimation
 from use_cases.rfq_processing import _normalize_object
+import traceback
+
+_fixture_report_failure = objects.report_runtime_failure
+def _report_fixture_failure(stage, error, **scope):
+ traceback.print_exception(type(error), error, error.__traceback__)
+ _fixture_report_failure(stage, error, **scope)
+objects.report_runtime_failure = _report_fixture_failure
 
 import os
 STATE = Path(os.environ['COSTERLY_UI_STATE_DIR'])
@@ -34,6 +41,8 @@ STATE.mkdir(parents=True, exist_ok=True)
 sample = json.loads((Path(__file__).parent / 'fixtures/saved_estimate.json').read_text())
 sample['run_id'] = sample['routes'][0]['run_id']
 estimate_id = sample['routes'][0]['estimate_id']
+for fixture_object in sample['parts']['objects'].values():
+ fixture_object['preparation_evidence'] = {'status':'ready', 'interfaces':[]}
 parts = json.dumps(sample['parts'])
 lines = sample['lines']
 run_id = sample['run_id']

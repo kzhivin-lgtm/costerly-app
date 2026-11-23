@@ -47,7 +47,7 @@ from use_cases.retry import read_with_retry
 from use_cases.detection_previews import saved_presentation_preview_ref
 from use_cases.labor_hours import overrides_from_lines, override_lines, validate_hours
 from use_cases.estimation_front_panels import FRONT_PART_ROLES as _FRONT_PART_ROLES, front_panel_controls
-from use_cases.estimation_labor_v1 import load_object_labor, object_labor_metrics, sheet_layout_basis
+from use_cases.estimation_labor_v1 import load_object_labor, object_labor_metrics, preparation_pay_metrics, sheet_layout_basis
 from use_cases.estimation_parts_check_runtime import load_parts_check
 from use_cases.machinery import load_sheet_processing_machinery
 from use_cases.overhead_engine import estimate_object_overhead, with_production_capacity
@@ -111,6 +111,8 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
         labor = saved["labor"]
         sheet_labor = saved["labor_blocks"]["sheet_processing"]
         assembly_labor = saved["labor_blocks"]["assembly"]
+        preparation_labor = saved["labor_blocks"].get("preparation_packing")
+        preparation_audit = saved.get("preparation_packing")
     else:
         state = load_object_labor(
             client, identity=(str(obj["company_id"]), str(obj["run_id"]), estimate_id, str(obj["object_id"])),
@@ -118,6 +120,8 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
             machinery_loader=lambda *_: context["machinery"],
         )
         sheet_labor, assembly_labor, labor = object_labor_metrics(state, quantity=quantity, overrides=overrides)
+        _, _, preparation_labor = preparation_pay_metrics(state, quantity=quantity)
+        preparation_audit = state.get("preparation")
     overhead = estimate_object_overhead(
         estimate_id=estimate_id, object_id=str(obj["object_id"]), company_id=str(obj["company_id"]),
         settings=context["settings"], overhead_monthly=context["monthly"],
@@ -135,7 +139,9 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
                "quantity_basis": "per_priced_configuration",
                "partial": bool(partial), "self_cost_ex_vat": net, "vat_amount": vat,
                "self_cost_total": round(net + vat, 2),
-               "labor_blocks": {"sheet_processing": sheet_labor, "assembly": assembly_labor},
+               "labor_blocks": {"sheet_processing": sheet_labor, "assembly": assembly_labor,
+                                **({"preparation_packing": preparation_labor} if preparation_audit is not None else {})},
+               "preparation_packing": preparation_audit,
                "parts_check_source": plan.get("parts_check_source"),
                "previous_totals": saved.get("previous_totals") if isinstance(saved, dict) else {
                    key: None if isinstance(obj.get(key), float) and not isfinite(obj[key]) else obj.get(key)
@@ -174,6 +180,10 @@ def _ensure_full_object_costs(client, *, estimate_id, objects, plan, settings):
             objects.loc[objects["object_id"] == obj["object_id"], "cost_partial"] = int(summary.get("partial", False))
             for field in ("self_cost_ex_vat", "vat_amount", "self_cost_total", "approved"):
                 if field in summary:
+                    if field != "approved" and field in objects.columns and objects[field].dtype.kind in "iu":
+                        # A previously integral estimate can acquire fractional
+                        # labor costs. Pandas3 rejects cents in an int64 column.
+                        objects[field] = objects[field].astype(float)
                     objects.loc[objects["object_id"] == obj["object_id"], field] = summary[field]
             if summary.get("partial"):
                 objects.loc[objects["object_id"] == obj["object_id"], "status"] = "review_required"

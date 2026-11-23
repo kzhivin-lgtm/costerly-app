@@ -269,6 +269,30 @@ and native cancellation apply. No JS font waiter, loader timer or new API read.
 New Estimate keeps the existing protected native callback/auth/uploader path;
 the requested timing investigation does not authorise an alternate uploader.
 
+## Preparation and Packing norms, owner approved 23 November 2026
+
+Owner activates the existing fourth Labor stage. Before: Preparation and Packing
+was an intentional read-only zero placeholder. After: it contains read-only Trial
+Fit and Separation and Packing child rows with Hours, Labor Pay, Taxes/Social and
+Total in the existing columns. Keep four direct stages, collapsed presentation,
+footer layout and all existing editors/save/navigation behavior. No new notices.
+S/M/L/XL use sorted inclusive limits600/600/400,1200/800/600,2000/1200/800mm and
+beyond, with10/15/20/25 planned man-minutes; a complete sourced interface cycle
+uses30. These are total worker effort, not elapsed crew time. Add no extra pace
+or crew multiplier. Materials' Packaging allowance remains separate.
+
+Known packing/checking contributes once to Labor, payroll, Overhead and full SC.
+Editing old Sheet Processing/Block Assembly hours preserves both calculated new
+leaves in the browser preview and saved totals. Existing override keys/meanings
+and front-material Labor preservation remain. Commercial copies do not discount
+the configured item's SC. Missing source evidence remains unknown/partial, not
+zero work; legacy reports are not silently claimed to contain a connection graph.
+Source views and reverse pair references merge evidence without repeating work.
+No new model request or Detection/prompt change is part of this feature.
+Verify boundaries/rotation, man-minutes, source/material invariance, failure
+isolation, saved totals/reopen, old edits and the existing complete UI gate.
+Rollback reference: accepted9.48/runtime862e28f0 and its full immutable checkpoint.
+
 ## Estimation9.48 Prices and four Labor stages,23November2026
 
 Owner explicitly approved steps1/2 of the four-stage plan and requires every

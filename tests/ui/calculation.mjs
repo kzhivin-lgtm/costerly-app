@@ -165,7 +165,7 @@ async function detailSaveChecks(){
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('[data-overhead-ready="true"]').waitFor();
   const net=core.locator('.object-detail-final [data-final="excl_vat"]');
-  assert.equal(await net.innerText(),'₪1\u202f000');
+  assert.equal(await net.innerText(),'₪1\u202f018');
   await page.waitForURL('**/o/**');
   const originalUrl=page.url();
   const bandSelectors=['.object-detail-materials-band','[data-cost-band="labor"]','.object-detail-overhead-band'];
@@ -180,7 +180,7 @@ async function detailSaveChecks(){
     final:document.querySelector('[data-final="excl_vat"]').textContent,
    }));
    if(mask===0)assert.ok(state.summaryGap>=0&&state.summaryGap<=40,JSON.stringify({width,mask,...state}));
-   assert.equal(state.final,'₪1\u202f000');collapseCases.push({mask,...state});
+   assert.equal(state.final,'₪1\u202f018');collapseCases.push({mask,...state});
   }
   for(const selector of bandSelectors) {
    const band=core.locator(selector);if(await band.evaluate(n=>n.open))await band.locator(':scope > summary').click();
@@ -304,7 +304,15 @@ try{
   await core.locator('[data-cost-band="labor"] > summary').click();
   const stages=core.locator('[data-cost-band="labor"] > .object-detail-labor-body > details');
   assert.deepEqual(await stages.evaluateAll(nodes=>nodes.map(n=>n.dataset.costBand)),['part-production','part-coating','assembly-stage','preparation-packing']);
-  for(const key of ['part-coating','preparation-packing'])assert.equal(await core.locator(`[data-cost-band="${key}"] > summary [data-labor-column="total"]`).innerText(),'₪0');
+  assert.equal(await core.locator('[data-cost-band="part-coating"] > summary [data-labor-column="total"]').innerText(),'₪0');
+  const preparation=core.locator('[data-cost-band="preparation-packing"]');
+  assert.equal(await preparation.locator(':scope > summary [data-labor-column="total"]').innerText(),'₪16');
+  await preparation.locator(':scope > summary').click();
+  const packing=core.locator('[data-cost-band="packing"]');
+  assert.equal(await packing.locator(':scope > summary [data-labor-column="hours"]').innerText(),'0.3');
+  assert.equal(await packing.locator('[contenteditable="true"]').count(),0);
+  await packing.locator(':scope > summary').click();
+  assert.match(await packing.innerText(),/B01 · M · 1 × 15 min/);
   for(const key of ['part-production','assembly-stage'])await core.locator(`[data-cost-band="${key}"] > summary`).click();
   const hours=core.getByRole('textbox',{name:'Block Assembly hours',exact:true});
   await hours.waitFor();
@@ -339,8 +347,9 @@ try{
   const sheetHours=core.getByRole('textbox',{name:'Sheet Processing hours',exact:true});
   await sheetHours.fill('100.0');await sheetHours.press('Enter');
   assert.equal(await core.locator('[data-cost-band="sheet-processing"] > summary [data-labor-column="total"]').innerText(),'₪6\u202f250');
-  assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪8\u202f781');
-  assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f405',
+  assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪8\u202f797');
+  assert.equal(await preparation.locator(':scope > summary [data-labor-column="total"]').innerText(),'₪16');
+  assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f408',
    JSON.stringify(await overhead.evaluate(node=>({host:{...node.dataset},rows:[...node.querySelectorAll('[data-line-id]')].map(row=>({...row.dataset})),context:window.__costerlyObjectDetailDraft?.context}))));
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
   assert.equal(JSON.parse(readFileSync(statePath('labor-hours.json'),'utf8')).find(row=>row.raw_agent_json.block==='assembly').raw_agent_json.hours_per_item,'40.5');
@@ -348,12 +357,12 @@ try{
   assert.equal(await hours.getAttribute('aria-invalid'),'true');
   await hours.fill('0');await hours.press('Tab');
   assert.equal(await total.innerText(),'₪0');
-  assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪6\u202f250');
-  assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f000');
-  assert.equal(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪8\u202f250');
+  assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪6\u202f266');
+  assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f003');
+  assert.equal(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪8\u202f268');
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
   await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
-  await core.getByText('₪8\u202f250',{exact:true}).first().waitFor();
+  await core.getByText('₪8\u202f268',{exact:true}).first().waitFor();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('[data-cost-band="labor"] > summary').click();
   for(const key of ['part-production','assembly-stage'])await core.locator(`[data-cost-band="${key}"] > summary`).click();

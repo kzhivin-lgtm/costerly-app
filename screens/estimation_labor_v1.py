@@ -21,6 +21,7 @@ from use_cases.estimation_labor_v1 import (
     LAYOUT_VERSION, SPLIT_ROLES, build_sheet_layout, describe_layout_issues, sheet_layout_basis,
     labor_pay_metrics, sheet_pay_metrics, object_labor_metrics, load_object_labor,
     DISPLAY_HOURLY_RATE, DISPLAY_PAYROLL_SHARE,
+    preparation_pay_metrics,
 )
 from use_cases.estimation_parts_check_runtime import load_parts_check
 from use_cases.machinery import load_sheet_processing_machinery
@@ -84,7 +85,7 @@ _pay_metrics = labor_pay_metrics
 _sheet_pay_metrics = sheet_pay_metrics
 
 
-def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True):
+def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False):
     is_row = key != 'labor'
 
     def metric(label, value, column, *, total=False):
@@ -130,7 +131,8 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
         )
     return (
         f'<details class="{classes}" data-cost-band="{key}"'
-        f' data-cost-unknown="{str(metrics is None).lower()}"'
+        + (f' data-labor-fixed-hours="{value["hours"]}"' if fixed_leaf and metrics else '')
+        + f' data-cost-unknown="{str(metrics is None).lower()}"'
         f' data-cost-partial="{str(bool(value.get("partial"))).lower()}"'
         + (' open' if open_by_default else '') + '>'
         f'<summary class="{row} object-detail-cost-summary">'
@@ -357,6 +359,23 @@ def _estimate(value, complete):
 _labor_pay_metrics = object_labor_metrics
 
 
+def _preparation_html(state, *, quantity=1):
+    checking, packing, total = preparation_pay_metrics(state, quantity=quantity)
+    result = state.get('preparation') or {}
+    interfaces = result.get('interfaces', ())
+    checking_body = '<ul>' + ''.join(
+        '<li>' + escape(' ↔ '.join(row['unit_ids'])) +
+        f' · {row["quantity"] if row["quantity"] is not None else "—"} × 30 min</li>' for row in interfaces) + '</ul>' if interfaces else ''
+    packing_body = '<ul>' + ''.join(
+        '<li>' + escape(row['id']) + f' · {row["size"] or "—"} · '
+        + escape(str(row['quantity'])) + f' × {row["minutes_per_unit"] if row["minutes_per_unit"] is not None else "—"} min</li>'
+        for row in result.get('packing_units', ())) + '</ul>' if result.get('packing_units') else ''
+    body = _cost_band('Trial Fit and Separation', checking_body, checking, key='trial-fit',
+                      editable=False, fixed_leaf=True)
+    body += _cost_band('Packing', packing_body, packing, key='packing', editable=False, fixed_leaf=True)
+    return _cost_band('Preparation and Packing', body, total, key='preparation-packing', editable=False)
+
+
 def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, quantity=1, overrides=None):
     sheet_metrics, assembly_metrics, total = _labor_pay_metrics(state, quantity=quantity, overrides=overrides)
     elements_html = detail_elements_html(elements, revision=overlay_revision, object_id=object_id)
@@ -387,7 +406,7 @@ def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, 
         + _cost_band('Part Coating', '', zero, key='part-coating', editable=False)
         + _cost_band('Assembly', block_assembly + additional, assembly_metrics,
                      key='assembly-stage', editable=False)
-        + _cost_band('Preparation and Packing', '', zero, key='preparation-packing', editable=False)
+        + _preparation_html(state, quantity=quantity)
     )
     return '<div class="object-detail-labor-band">' + _cost_band('Labor', body, total, key='labor') + '</div>'
 
@@ -425,7 +444,7 @@ def render_labor_v1(*, company_id, run_id, estimate_id, object_id, elements=None
     overhead_view = st.empty()
     overhead_view.markdown(overhead_section_html({"status": "loading", "object_id": object_id}), unsafe_allow_html=True)
     state = cache.get(identity)
-    if not state or "assembly" not in state:
+    if not state or "assembly" not in state or "preparation" not in state:
         view.markdown(
             _labor_html({'status': 'preparing'}, elements=elements, overlay_revision=overlay_revision,
                         object_id=object_id, quantity=quantity, overrides=overrides), unsafe_allow_html=True,

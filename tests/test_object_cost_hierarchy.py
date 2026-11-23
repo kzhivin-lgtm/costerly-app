@@ -80,7 +80,7 @@ def test_assembly_remains_available_when_materials_are_pending_and_quantity_is_a
 
 def test_labor_has_four_stages_and_retains_existing_work_rows():
     html = _labor_html({'status': 'waiting_for_materials'})
-    assert html.count('object-detail-work-row') == 7
+    assert html.count('object-detail-work-row') == 9
     assert html.count('object-detail-cost-band') == 1
     assert '>Labor<br>Pay<' in html
     assert '₪50/h' not in html and 'In-house labor</p>' not in html
@@ -91,10 +91,11 @@ def test_pending_labor_does_not_fabricate_zero_cost():
     html = _labor_html({'status': 'preparing'})
     assert 'Preparing Sheet Processing' in html and 'Preparing Assembly' in html
     # Owner-approved empty stages show0; existing unavailable work stays unknown.
-    for key in ('labor', 'part-production', 'sheet-processing', 'assembly-stage', 'assembly'):
+    for key in ('labor', 'part-production', 'sheet-processing', 'assembly-stage', 'assembly',
+                'preparation-packing', 'trial-fit', 'packing'):
         summary = html.split(f'data-cost-band="{key}"', 1)[1].split('</summary>', 1)[0]
         assert '₪0' not in summary
-    for key in ('part-coating', 'additional-assembly', 'preparation-packing'):
+    for key in ('part-coating', 'additional-assembly'):
         summary = html.split(f'data-cost-band="{key}"', 1)[1].split('</summary>', 1)[0]
         assert '₪0' in summary and 'contenteditable' not in summary
 

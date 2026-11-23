@@ -2557,12 +2557,13 @@ def install_object_detail_input_guard(
                 const stageTotals = new Map();
                 for (const row of parentDoc.querySelectorAll('.object-detail-work-row')) {
                     const input = row.querySelector(':scope > summary [data-field="labor_hours"]');
-                    if (!input) continue;
-                    const pending = draft.get(editKey(contextFor(input)));
+                    const fixed = row.dataset.laborFixedHours;
+                    if (!input && fixed === undefined) continue;
+                    const pending = input ? draft.get(editKey(contextFor(input))) : null;
                     if (row.dataset.costUnknown === "true" && !pending) continue;
                     knownRows += 1;
-                    const hours = pending ? Number(pending.value) : Number(input.dataset.originalValue) * nextCount / count;
-                    if (input !== parentDoc.activeElement && input.getAttribute("aria-invalid") !== "true") {
+                    const hours = fixed !== undefined ? Number(fixed) : pending ? Number(pending.value) : Number(input.dataset.originalValue) * nextCount / count;
+                    if (input && input !== parentDoc.activeElement && input.getAttribute("aria-invalid") !== "true") {
                         setEditableValue(input, hours.toFixed(1));
                     }
                     const pay = Math.round(hours * 50 * 100) / 100;

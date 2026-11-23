@@ -1128,11 +1128,24 @@ Size boundaries OWNER APPROVED, 23 November 2026: sorted dimensions (mm),
 S <=600/600/400, M <=1200/800/600, L <=2000/1200/800, XL beyond L.
 Smallest fitting class, all three limits inclusive; rotation does not change class.
 These are the owner's accepted estimation policy, not industry standards.
-Pending: define recoverable physical interfaces and actual packing units, then
-agree man-minutes for one complete mating/checking/separation cycle and each
-packing size. The five time norms have been requested; none is assumed or active.
+OWNER APPROVED TIME NORMS, 23 November 2026: packing S=10, M=15, L=20, XL=25
+planned man-minutes, and 30 planned man-minutes per complete mating/checking/
+separation cycle. XL's25 is total labor effort, consistent with the question's
+explicit man-minute basis (two workers take12.5 elapsed minutes). No repeated
+crew, pace or working-share multiplier. Implementation is ACTIVE on accepted
+runtime862e28f0. Reuse existing native shared-boundary/structural attachment
+evidence, keep all repeated source refs, and add the resulting audit to Parts
+without changing existing recognition, Parts or Materials. Old saved reports
+without interface evidence stay unknown for checking, not zero connections.
 Missing axes require explicit recovery/derived assumptions, never silent zero or S.
-No new schema, rates, UI controls or runtime deployment is activated by this note.
+Existing saved side dimensions may derive depth with front thickness; an already
+known side beyond2000mm proves XL even if another axis is unresolved. Loose
+object-level parts remain identified bundles. New calculated child rows are
+read-only and feed one existing Labor/payroll/Overhead/Self Cost path. Preserve
+all earlier manual hour keys and material-change preservation. Labor2.10 is
+selected as the next free minor under the owner's explicit Labor2.x preference;
+occupied2.8/2.9 tags remain untouched. The optional naming question can still be
+steered by the owner; it does not introduce a new product/work-number block.
 Detailed rules and acceptance: existing four-stage plan, latest section below.
 
 

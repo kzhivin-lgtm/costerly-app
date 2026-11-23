@@ -327,3 +327,41 @@ def test_employee_mutations_invalidate_only_their_company_overhead(monkeypatch, 
         assert st.session_state["objects_estimation_cache_dirty"]=={"estimate-a"}
         assert st.session_state["object_detail_data_cache_dirty"]=={"estimate-a"}
     finally:st.session_state.clear()
+
+
+def test_preparation_packing_is_persisted_and_allocated_once_in_full_self_cost(monkeypatch):
+    import pandas as pd
+    from use_cases import estimation
+    state=labor_state()
+    state['preparation']={'version':'preparation_packing_v1','checking_minutes':30,'packing_minutes':30,
+        'checking_known':True,'packing_partial':False,'interfaces':[{'unit_ids':['A','B']}],
+        'packing_units':[{'id':'A'},{'id':'B'}],'issues':[]}
+    monkeypatch.setattr(estimation,'load_object_labor',lambda *a,**k:state)
+    summary,_=estimation._full_cost_summary(None,estimate_id='estimate',
+        obj={'object_id':'object','run_id':'run','company_id':'company','quantity':1},
+        lines=pd.DataFrame([{'section':'material','source':'parts_check','line_id':'m','cost':1000}]),
+        material_batch=1000,context={'plan':{'lines':[]},'parts':{'status':'ready','payload':'saved'},
+            'machinery':{},'settings':settings(warranty_reserve_percent=0,management_buffer_percent=0),
+            'monthly':{'rent_facilities_cost':20160}},persist=False)
+    assert Decimal(summary['labor']['hours'])==5
+    assert Decimal(summary['labor']['total'])==Decimal('312.50')
+    assert Decimal(summary['labor_blocks']['preparation_packing']['total'])==Decimal('62.50')
+    assert summary['overhead']['cost']==50
+    assert summary['self_cost_ex_vat']==1362.5 and summary['vat_amount']==245.25
+    assert summary['preparation_packing']['packing_minutes']==30
+
+
+def test_new_fractional_labor_costs_update_previously_integral_objects_columns(monkeypatch):
+    import pandas as pd
+    from use_cases import estimation
+    frame=pd.DataFrame([{'object_id':'o','company_id':'c','run_id':'r','status':'completed',
+        'self_cost_ex_vat':1000,'vat_amount':180,'self_cost_total':1180,'approved':True}])
+    monkeypatch.setattr(estimation,'_full_cost_context',lambda *a,**k:{})
+    monkeypatch.setattr(estimation,'fetch_rfq_estimate_lines',lambda *a:pd.DataFrame())
+    monkeypatch.setattr(estimation,'_recalculate_object_estimate_totals',lambda *a,**k:{
+        'self_cost_ex_vat':1018.13,'vat_amount':183.26,'self_cost_total':1201.39,'approved':False,'partial':False})
+    estimation._ensure_full_object_costs(None,estimate_id='e',objects=frame,
+        plan={'status':'planned','parts_check_source':{'run_id':'r'}},settings={})
+    assert frame.iloc[0]['self_cost_ex_vat']==1018.13
+    assert frame.iloc[0]['self_cost_total']==1201.39
+    assert not frame.iloc[0]['approved']
