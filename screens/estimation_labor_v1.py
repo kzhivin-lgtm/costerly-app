@@ -1,7 +1,7 @@
 """Sheet Processing comparison for the open Object Detail card."""
 
 from html import escape
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 import json
 import logging
 
@@ -15,7 +15,7 @@ from db.supabase_client import get_supabase_client
 from observability.runtime import report_runtime_failure
 from screens.block_assembly import assembly_breakdown_html
 from ui.object_detail_view import detail_elements_html, overhead_section_html, _money as display_money
-from use_cases.overhead_engine import estimate_object_overhead, with_production_capacity
+from use_cases.overhead_engine import estimate_object_overhead, with_production_capacity, format_labor_hours
 from use_cases.block_assembly import calculate_block_assembly
 from use_cases.estimation_labor_v1 import (
     LAYOUT_VERSION, SPLIT_ROLES, build_sheet_layout, describe_layout_issues, sheet_layout_basis,
@@ -106,7 +106,7 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
         return f'<div class="{cell} {css}" data-labor-column="{column}">{content}</div>'
 
     value = metrics or {}
-    fields = metric('Hours', str(value['hours'].quantize(Decimal('.1'), rounding=ROUND_HALF_UP)) if metrics else None, 'hours')
+    fields = metric('Hours', format_labor_hours(value['hours']) if metrics else None, 'hours')
     fields += '<div class="object-detail-labor-money-pair">'
     fields += metric('Labor<br>Pay', _money(value.get('pay')), 'pay')
     fields += metric('Taxes &amp;<br>Social', _money(value.get('taxes')), 'taxes') + '</div>'
@@ -126,7 +126,7 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
             f'<div class="{cell} object-detail-cost-title">{escape(title)}</div>'
             '<div class="object-detail-table-head object-detail-cost-hours" data-labor-column="hours">'
             '<span class="object-detail-labor-hours-value">'
-            + (f'{value["hours"].quantize(Decimal(".1"), rounding=ROUND_HALF_UP)} h' if metrics else '—')
+            + (f'{format_labor_hours(value["hours"])} h' if metrics else '—')
             + '</span></div>'
             '<div class="object-detail-table-head object-detail-cost-total" data-labor-column="total">'
             f'<span class="object-detail-cost-value">{_money(value.get("total"))}</span></div></summary>'

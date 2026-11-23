@@ -2552,6 +2552,10 @@ def install_object_detail_input_guard(
                 updateSaveControls();
             }
 
+            function laborHoursText(hours) {
+                return (Math.round((hours + Number.EPSILON) * 10) / 10).toFixed(1);
+            }
+
             function previewLabor() {
                 if (!parentDoc.querySelector('[data-field="labor_hours"]')) return;
                 const quantity = objectQuantityInput();
@@ -2570,7 +2574,7 @@ def install_object_detail_input_guard(
                     knownRows += 1;
                     const hours = fixed !== undefined ? Number(fixed) : pending ? Number(pending.value) : Number(input.dataset.originalValue) * nextCount / count;
                     if (input && input !== parentDoc.activeElement && input.getAttribute("aria-invalid") !== "true") {
-                        setEditableValue(input, hours.toFixed(1));
+                        setEditableValue(input, laborHoursText(hours));
                     }
                     const pay = Math.round(hours * 50 * 100) / 100;
                     const taxes = Math.round(pay * 0.25 * 100) / 100;
@@ -2590,7 +2594,7 @@ def install_object_detail_input_guard(
                 for (const [stage, sums] of stageTotals) {
                     for (const [column, value] of Object.entries(sums)) {
                         const cell = stage.querySelector(`:scope > summary [data-labor-column="${column}"] .object-detail-cost-value`);
-                        if (cell) cell.textContent = column === "hours" ? value.toFixed(1) : formatMoney(value);
+                        if (cell) cell.textContent = column === "hours" ? laborHoursText(value) : formatMoney(value);
                     }
                 }
                 const cell = parentDoc.querySelector('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value');
@@ -2600,7 +2604,7 @@ def install_object_detail_input_guard(
                 if (labor) {
                     labor.dataset.laborTotalHours = String(totalHours);
                     const hours = labor.querySelector(':scope > summary .object-detail-labor-hours-value');
-                    if (hours) hours.textContent = `${totalHours.toFixed(1)} h`;
+                    if (hours) hours.textContent = `${laborHoursText(totalHours)} h`;
                 }
                 previewOverhead(totalHours, total);
             }
@@ -2629,7 +2633,7 @@ def install_object_detail_input_guard(
                 for (const row of rows.filter(row => row.dataset.overheadMonthly !== "" && Number.isFinite(Number(row.dataset.overheadMonthly)))) {
                     const amount = round(Number(row.dataset.overheadMonthly) * hours / capacity);
                     setCost(row, amount);
-                    row.children[2].textContent = `${hours.toFixed(1).replace(/[.]0$/, "")}h / ${capacity}h`;
+                    row.children[2].textContent = `${laborHoursText(hours).replace(/[.]0$/, "")}h / ${capacity}h`;
                     monthly += amount;
                 }
                 const materials = parentDoc.querySelector('[data-material-section-total]');

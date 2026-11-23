@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 from math import isfinite
 
@@ -111,7 +112,7 @@ def build_overhead_lines(
             estimate_id=estimate_id, object_id=object_id, company_id=company_id,
             line_id=f"{object_id}_overhead_{sort_order:04d}", group_name=group_name,
             item_name=item_name, monthly_cost=monthly_cost,
-            allocation_basis=f"{_format_number(labor_hours_total)}h / {_format_number(monthly_capacity_hours)}h",
+            allocation_basis=f"{format_labor_hours(labor_hours_total).removesuffix(".0")}h / {_format_number(monthly_capacity_hours)}h",
             cost=cost, sort_order=sort_order,
             raw_json={"source_column": column, "labor_hours_total": labor_hours_total,
                       "monthly_capacity_hours": monthly_capacity_hours,
@@ -182,3 +183,8 @@ def _number(value: Any, default: float) -> float:
 
 def _format_number(value: float) -> str:
     return str(int(value)) if value == int(value) else f"{value:.1f}".rstrip("0").rstrip(".")
+
+
+def format_labor_hours(value: float | Decimal) -> str:
+    """Display exact paid-hour totals once, consistently with Labor (not allocation)."""
+    return str(Decimal(str(value)).quantize(Decimal('.1'), rounding=ROUND_HALF_UP))

@@ -708,3 +708,8 @@ with listener cleanup. No new observer, polling, request, write or app rerun.
 Verify desktop/mobile/old wrapper/restored document, disclosure restore, leaf
 editing, Save failure/retry/reopen and shared exact hours with Overhead.
 Rollback is the published2.10 runtime20e34aa1; accepted9.48 stays preserved.
+
+Display boundary check: Python Overhead previously rounded100.25h to100.2h,
+while Labor/JS showed100.3h. Use shared half-up one-decimal display for Labor
+and Overhead, including saved/reopened rows; allocation retains exact100.25h
+and all costs are unchanged. Tests cover100.25,140.75,1.15 and28.3h.

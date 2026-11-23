@@ -1155,7 +1155,9 @@ Keep leaf editors and their values accessible. Show total hours beside money in
 the compact Labor root, using the same exact source total as Overhead. Correct
 nested horizontal axes and actual text vertical centers at desktop/narrow widths.
 Owner withdrew the arithmetic mismatch report after counting Preparation twice:
-6.9 +14.9 +6.5 =28.3h; children2.5 +4.0 are already in6.5. Preserve allocation,
+6.9 +14.9 +6.5 =28.3h; children2.5 +4.0 are already in6.5. A boundary display
+check found half-even Overhead vs half-up Labor at100.25h; unify only rounding
+of displayed hours, retain exact allocation. Preserve allocation,
 payroll, persistence, all four stages and published2.10 behavior. No paid calls.
 Labor2.11 tag absent locally/remotely, main remains20e34aa1 before this change.
 Acceptance: hide/restore disclosure without rerun, root hours/current Overhead

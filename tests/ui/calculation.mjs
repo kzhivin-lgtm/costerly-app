@@ -355,7 +355,9 @@ try{
    assert.ok(Math.abs(Number(await laborRoot.getAttribute('data-labor-total-hours'))-expected)<1e-9);
    assert.ok(Math.abs(Number(await overhead.getAttribute('data-overhead-labor-hours'))-expected)<1e-9);
    await overhead.locator('details').first().evaluate(node=>{node.open=true;});
-   assert.ok((await overhead.locator('.object-detail-table-row').first().innerText()).includes(expected.toFixed(1).replace(/[.]0$/,'')+'h /'));
+   await overhead.locator('.object-detail-group').first().evaluate(node=>{node.open=true;});
+   const allocation=await overhead.locator('.object-detail-table-row[data-line-id]').first().locator(':scope > div').nth(2).innerText();
+   assert.ok(allocation.includes(expected.toFixed(1).replace(/[.]0$/,'')+'h /'),JSON.stringify({expected,allocation}));
   };
   await assertSharedHours(140.75);
   await laborRoot.locator(':scope > summary').click();

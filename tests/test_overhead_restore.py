@@ -383,3 +383,17 @@ def test_screenshot_preparation_children_are_counted_once_in_header_and_overhead
                               material_cost=1000, overrides=overrides)
     assert 'data-overhead-labor-hours="28.3"' in overhead
     assert '28.3h / 2016h' in overhead
+
+
+@pytest.mark.parametrize('hours,display', [('100.25','100.3'), ('140.75','140.8'), ('1.15','1.2'), ('28.3','28.3')])
+def test_labor_and_overhead_round_only_display_half_up(hours, display):
+    from screens.estimation_labor_v1 import _cost_band
+    from use_cases.estimation_labor_v1 import labor_pay_metrics
+    from use_cases.overhead_engine import format_labor_hours
+    exact = Decimal(hours)
+    result = estimate(labor_hours=exact)
+    assert format_labor_hours(exact) == display
+    assert f'>{display} h<' in _cost_band('Labor', '', labor_pay_metrics(exact), key='labor')
+    assert f'{display}h / 2016h' in result['lines'][0]['allocation_basis']
+    assert result['lines'][0]['raw_agent_json']['labor_hours_total'] == float(exact)
+    assert result['lines'][0]['cost'] == round(20160*float(exact)/2016, 2)
