@@ -537,6 +537,19 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+ACTIVE, P1, OWNER-APPROVED9.45,23November2026, work3.17.4.6.
+Owner accepts9.44 Save/card calculations. Fix configured unit SC dividing by
+commercial copy quantity; preserve costed recipe and manual sale price, copies
+multiply sale totals only. Actual witness routeBy-hwoNjEaG9:
+run_30444c511c734fef9111e650d9b5e6a0, quantity3, oldunit5431.96,
+existing card net16295.89. Guarded saved-data replay gives16295.89 for1/3/5 copies,
+0 writes/models. Modern costs migrate through the existing deterministic basis.
+Rename front options MDF Raw/MDF Veneered, keys unchanged. Match Objects and File
+Review fixed-Privacy gap to26px, preserve remaining geometry and all prior flows.
+Wide/narrow probes26.406/26.125px File Review,26.25/25.688px Objects. Full gates,
+publish and owner-requested full checkpoint remain required. No new block.
+[Release and preservation plan](ESTIMATION_V9_45_UNIT_COST_2026_11_23.md).
+
 PUBLISHED9.44, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING,23November2026.
 Quantity persistence is owner-confirmed. Repaired Object Detail totals mixing batch
 section totals with per-item final cost, failed Save, and any Save navigation.

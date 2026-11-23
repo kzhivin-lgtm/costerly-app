@@ -197,14 +197,14 @@ def test_full_self_cost_is_per_item_and_unknown_work_remains_an_explicit_subtota
         object(), estimate_id="estimate", obj=obj, lines=overrides, material_batch=2000, context=context,
     )
     assert Decimal(result["labor"]["hours"]) == 20
-    assert result["self_cost_ex_vat"] == 1897.5
+    assert result["self_cost_ex_vat"] == 3795
     assert result["overhead"]["cost"] == 545
     state = {"status": "unavailable"}
     result, _ = estimation._full_cost_summary(
         object(), estimate_id="estimate", obj=obj, lines=pd.DataFrame(), material_batch=2000, context=context,
     )
     assert result["partial"] is True and result["labor"] is None
-    assert result["overhead"]["cost"] is None and result["self_cost_ex_vat"] == 1000
+    assert result["overhead"]["cost"] is None and result["self_cost_ex_vat"] == 2000
 
 
 def test_unchanged_cost_basis_can_check_parts_without_downloading_payload(monkeypatch):
@@ -222,3 +222,24 @@ def test_unchanged_cost_basis_can_check_parts_without_downloading_payload(monkey
     result = runtime.load_parts_check(client=Query(), company_id="company", run_id="run",
                                      estimate_id="estimate", include_payload=False)
     assert result == {"status": "ready", "report_sha256": "digest", "part_rows": 2, "input_ids": ["saved-input"]}
+
+
+def test_copy_quantity_never_discounts_the_priced_configuration(monkeypatch):
+    import pandas as pd
+    from use_cases import estimation
+    state = labor_state()
+    monkeypatch.setattr(estimation, 'load_object_labor', lambda *a, **k: state)
+    plan = {'parts_check_source': {'run_id': 'run'}, 'object_quantities': {'object': 1}, 'lines': []}
+    context = {'plan': plan, 'settings': settings(), 'monthly': {'rent_facilities_cost': 20160},
+               'machinery': {}, 'parts': {'status': 'ready', 'payload': 'saved'}}
+    prices = []
+    for copies in (1, 3, 5):
+        result, _ = estimation._full_cost_summary(None, estimate_id='estimate',
+            obj={'object_id': 'object', 'run_id': 'run', 'company_id': 'company', 'quantity': copies},
+            lines=pd.DataFrame([
+                {'source': 'labor_hours_override', 'raw_agent_json': {'block': 'assembly', 'hours_per_item': '7'}},
+                {'source': 'labor_hours_override', 'raw_agent_json': {'block': 'sheet-processing', 'hours_per_item': '3'}},
+            ]), material_batch=1000, context=context, persist=False)
+        prices.append(result['self_cost_ex_vat'])
+        assert result['quantity_basis'] == 'per_priced_configuration'
+    assert prices == [1897.5, 1897.5, 1897.5]

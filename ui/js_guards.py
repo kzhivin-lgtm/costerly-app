@@ -2708,8 +2708,8 @@ def install_object_detail_input_guard(
                     const perItem = result.labor_hours_overrides?.[input.dataset.lineId];
                     const computed = result.labor_block_hours?.[input.dataset.lineId];
                     input.dataset.originalValue = String(computed != null ? computed : perItem != null
-                        ? Number(perItem) * Number(result.quantity)
-                        : Number(input.dataset.originalValue) * Number(result.quantity) / previousQuantity);
+                        ? Number(perItem) * Number(result.cost_quantity ?? result.quantity)
+                        : Number(input.dataset.originalValue) * Number(result.cost_quantity ?? result.quantity) / previousQuantity);
                 }
                 const quantity = objectQuantityInput();
                 if (quantity && result.quantity != null) {

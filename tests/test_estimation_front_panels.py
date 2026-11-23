@@ -139,7 +139,7 @@ def test_selector_has_four_mvp_material_types_for_an_existing_ldsp_group():
     rendered = front_panels_html(controls)
     assert rendered.count('<option ') == 4
     assert 'aria-label="Front panels"' in rendered
-    assert all(label in rendered for label in ("LDSP", "Veneered MDF", "MDF", "Plywood"))
+    assert all(label in rendered for label in ("LDSP", "MDF Veneered", "MDF Raw", "Plywood"))
 
 
 def test_explicit_metal_keeps_original_and_all_four_replacement_options():

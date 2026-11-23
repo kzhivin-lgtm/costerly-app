@@ -1,4 +1,4 @@
-import { statePath, reportPath, fixturePath, chromeOptions } from './support.mjs';
+import { statePath, reportPath, fixturePath, chromeOptions, checkClosingGap } from './support.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,rmSync,existsSync} from 'node:fs';
 import {createServer} from 'node:http';
@@ -83,7 +83,8 @@ try{
  assert.equal(geometry.tableHead.y-geometry.stages.y-geometry.stages.height,50);
  const topSpace=geometry.summaryTitle.y-geometry.summary.y;
  const bottomSpace=geometry.buttons[0].y-Math.max(...geometry.summaryValues.map(box=>box.y+box.height));
- assert(Math.abs(topSpace-bottomSpace)<=4,JSON.stringify({topSpace,bottomSpace}));
+ assert(bottomSpace>=topSpace-4,JSON.stringify({topSpace,bottomSpace}));
+ report.footer=await checkClosingGap(frame,'.st-key-objects_actions');
  assert(geometry.stageColors.every(color=>color===geometry.stageColors[0]),JSON.stringify(geometry.stageColors));
  assert(!/subtotal/i.test(await core.locator('body').innerText()));
  assert(!(await core.locator('[title]').evaluateAll(nodes=>nodes.map(node=>node.title).join(' '))).match(/subtotal/i));
@@ -128,9 +129,11 @@ try{
    return{preserved,lines,end,action,docs,heading,documents,back};
   },Object.keys(baseline.viewports[width]));
   for(const [selector,expected] of Object.entries(baseline.viewports[width]))for(const [axis,recorded] of Object.entries(expected)){
+   if(selector==='.st-key-objects_actions'&&axis==='y')continue; //9.45 pins the terminal gap, all other axes remain strict.
    const value=axis==='width'&&selector in intrinsicWidths?intrinsicWidths[selector]:recorded+(axis==='y'&&selector!=='h1.workflow-title'?-26:0);
    assert(Math.abs(actual.preserved[selector][axis]-value)<.1,JSON.stringify({width,selector,axis,expected:value,actual:actual.preserved[selector][axis]}));
   }
+  await checkClosingGap(frame,'.st-key-objects_actions');
   assert(Math.abs(actual.lines[0]-actual.lines[1])<1);
   assert(Math.abs(actual.end-actual.action)<1);
   assert(Math.abs(actual.docs.y-actual.heading.y)<.1);
@@ -212,6 +215,7 @@ try{
  await editPrice(1750);
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
  await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
  for(const [key,value] of [['delivery',123],['installation',321],['object-001',1750]]){
   const field=core.locator('.objects-pricing-row[data-object-key="'+key+'"] .objects-pricing-price-input');
   assert.equal((await field.innerText()).replace(/[^0-9]/g,''),String(value),key+' blur save survives Review/Back without Set Prices');
@@ -235,6 +239,7 @@ try{
  await service('delivery').fill('222');
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
  await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
  await waitPrice('delivery',222);
  assert.equal((await service('delivery').innerText()).replace(/[^0-9]/g,''),'222');
  priceDelay=0;priceFailure=true;
@@ -244,6 +249,7 @@ try{
  assert.equal(JSON.parse(readFileSync(prices)).find(row=>row.object_key==='installation').value,321);
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
  await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
  assert.equal((await service('installation').innerText()).replace(/[^0-9]/g,''),'444');
  priceFailure=false;
  await service('installation').click();await service('installation').press('Tab');await waitPrice('installation',444);
@@ -261,6 +267,7 @@ try{
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
  assert.equal(await core.locator('.object-detail-quantity-input').innerText(),'2','Object Detail must show the saved quantity, including a warm cached card');
  await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
  assert.equal(await quantity.innerText(),'2','Quantity blur save survives Review/Back');
  quantityDelay=500;
  await quantity.fill('3');await quantity.press('Tab');
@@ -269,6 +276,7 @@ try{
  assert.equal(await core.locator('.object-detail-quantity-input').innerText(),'3','Keyboard Review waits for its pending quantity write');
  quantityDelay=0;
  await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
  await quantity.fill('4');await quantity.press('Tab');
  await quantity.fill('5');await quantity.press('Tab');
  await core.locator('.objects-quantity-saving-overlay.is-visible').waitFor({state:'hidden'});
@@ -286,6 +294,7 @@ try{
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
  assert.equal(await core.locator('.object-detail-quantity-input').innerText(),'6','Retry publishes the accepted canonical quantity');
  await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
  await quantity.fill('1');await quantity.press('Tab');
  await core.locator('.objects-quantity-saving-overlay.is-visible').waitFor({state:'hidden'});
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');

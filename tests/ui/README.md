@@ -68,6 +68,11 @@ The fixed footer remains and the closing action gap is26px. Python also covers
 committed-receipt cache merge without a second read; the existing Object Detail
 cache, material runtime and norm suites are now explicitly included in the full
 gate. Existing numeric/labor, queued preview, timeout and all nine suites remain.
+Estimation9.45 adds configured-unit SC invariance for1/3/5 commercial copies,
+MDF Raw/MDF Veneered labels, and26px fixed-Privacy closing checks on Objects and
+File Review at desktop/narrow widths. Only terminal actions' previous y-coordinate
+and the formerly equal summary/action gap are superseded by the owner's closing
+placement; all other geometry axes, dimensions, inputs and prior scenarios stay.
 The version-refresh suite uses the real wrapper and workflow controller with
 synthetic screens. V2.9 covers a single Core build event, old-tab migration,
 one reload, deferred active work, failure recovery and zero version-file reads.

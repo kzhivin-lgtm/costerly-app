@@ -1169,7 +1169,8 @@ def render_file_review_screen(
         source=data.get("source"),
     ) if saved_estimate_checked else None
 
-    col_back, col_next = st.columns(2, gap="small")
+    with st.container(key="file_review_actions"):
+        col_back, col_next = st.columns(2, gap="small")
 
     col_back.button(
         "BACK TO UPLOAD",

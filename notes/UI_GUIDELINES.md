@@ -223,6 +223,29 @@ the viewport end. On long cards, the same gap applies at the scroll end. Remove
 the invisible material bridge's layout gap without unmounting its iframe. Other
 screen geometry, shared header/menu, source previews and all prior checks remain.
 
+## Estimation9.45 configured unit price and terminal spacing,23November2026
+
+Owner accepted9.44 Save and card totals, then explicitly corrected unit semantics:
+commercial copy quantity must not divide the cost of the priced item. Supersede
+V3.1's division and9.44's unit/batch distinction only for modern configured-item
+cost. Sum the existing priced Materials + Labor + Overhead into the unit SC;
+Objects quantity multiplies sale totals. Preserve the accepted card amounts,
+material/Parts recipe and manual sale prices. Saved plan quantities retain the
+physical pricing basis; merely changing commercial copies must not change Labor
+or overwrite that basis during front/numeric material Save. Explicit physical
+quantity edits retain their existing recalculation path. The basis fingerprint
+changes once so saved modern estimates refresh without models or schema changes.
+
+Front selector keys/matching/defaults are unchanged. Display labels are MDF Raw
+and MDF Veneered. Keep LDSP, Plywood and explicit source alternatives.
+
+Objects and completed File Review use the same26px closing gap before fixed
+Privacy as Object Detail, at desktop/narrow widths and scroll end. Only terminal
+actions' vertical position is superseded: keep all other frozen body coordinates,
+footer x/width/height, field hit boundaries, confirmation, Save and navigation.
+On short pages unused space goes above closing actions. Zero-height iframe and
+screen-marker rows after actions remain mounted without consuming layout gaps.
+
 ## V2.9 one deployment event and retained login, approved 19 November 2026
 
 Owner explicitly requires a page refresh with the user still signed in and

@@ -5,8 +5,8 @@ FRONT_PART_ROLES = frozenset({
 })
 FRONT_MATERIALS = {
     "ldsp": ("LDSP", "melamine_faced_particleboard", {}),
-    "veneered_mdf": ("Veneered MDF", "mdf_hdf", {"board_type": "mdf", "surface": "veneer_two_sided"}),
-    "mdf": ("MDF", "mdf_hdf", {"board_type": "mdf", "surface": "raw"}),
+    "veneered_mdf": ("MDF Veneered", "mdf_hdf", {"board_type": "mdf", "surface": "veneer_two_sided"}),
+    "mdf": ("MDF Raw", "mdf_hdf", {"board_type": "mdf", "surface": "raw"}),
     "plywood": ("Plywood", "plywood", {}),
 }
 

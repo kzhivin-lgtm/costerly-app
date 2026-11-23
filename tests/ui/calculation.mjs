@@ -1,4 +1,4 @@
-import { statePath, reportPath, chromeOptions } from './support.mjs';
+import { statePath, reportPath, chromeOptions, checkClosingGap } from './support.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync, rmSync, existsSync} from 'node:fs';
 import {createServer} from 'node:http';
@@ -44,6 +44,7 @@ async function frontPanelChecks(){
   assert.ok(placement.arrow.includes('12px'),JSON.stringify(placement));
   assert.equal(await picker.inputValue(),'ldsp');
   assert.equal(await picker.locator('option').count(),4);
+  assert.deepEqual(await picker.locator('option').allTextContents(),['LDSP','MDF Veneered','MDF Raw','Plywood']);
   const initialPrice=await core.locator('.object-detail-unit-price').first().innerText();
   const initialCost=await core.locator('.object-detail-final [data-final="excl_vat"]').innerText();
   const originalDocument=await frame.evaluate(()=>{
@@ -154,7 +155,9 @@ async function detailSaveChecks(){
   for(const name of ['front-choice','object-quantities.json','object-totals.json','labor-hours.json','object-approvals.json'])rmSync(statePath(name),{force:true});
   const {page,core,frame}=await boot({front_panels:true,labor_ready:true},width,933);
   await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
+  report['fileReviewFooter'+width]=await checkClosingGap(frame,'.st-key-file_review_actions');
   await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
+  report['objectsFooter'+width]=await checkClosingGap(frame,'.st-key-objects_actions');
   // The Objects suite covers the real quantity RPC. This case begins with its
   // persisted quantity, then exercises the production detail editor end to end.
   writeFileSync(statePath('object-quantities.json'),JSON.stringify({'estimate-ui-saved:object-001':3}));

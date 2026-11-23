@@ -71,7 +71,10 @@ def _full_cost_context(client, obj, plan, settings=None, *, preserve_labor=False
 
 def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, context, persist=True):
     """Use the same saved inputs and Labor math as Object Detail, once per basis."""
-    quantity = _number(obj.get("quantity"), 1) or 1
+    # The saved plan is the priced configuration. List quantity is the number
+    # of copies to sell, not a divisor or a new physical costing instruction.
+    quantity = _number((context["plan"].get("object_quantities") or {}).get(
+        str(obj["object_id"]), obj.get("quantity")), 1) or 1
     overrides = overrides_from_lines(lines)
     plan = context["plan"]
     # The purchase table is authoritative, including shared-stock allocation,
@@ -99,7 +102,7 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
             "source": plan.get("parts_check_source"),
             "sheets": (plan["front_material_source_sheet_basis"] if "front_material_source_sheet_basis" in plan else sheet_layout_basis(plan)), "parts": context["parts"],
         }, sort_keys=True, default=str).encode()).hexdigest()
-    basis = hashlib.sha256(json.dumps({"labor_basis": labor_basis, "materials": material_batch,
+    basis = hashlib.sha256(json.dumps({"cost_basis": "priced_configuration_v1", "labor_basis": labor_basis, "materials": material_batch,
         "materials_partial": material_partial, "settings": context["settings"], "monthly": context["monthly"]
     }, sort_keys=True, default=str).encode()).hexdigest()
     if isinstance(saved, dict) and saved.get("basis_sha256") == basis:
@@ -123,12 +126,13 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
     )
     labor_batch = float(labor["total"]) if labor else 0
     overhead_batch = overhead["cost"] if overhead["cost"] is not None else 0
-    net = round((material_batch + labor_batch + overhead_batch) / quantity, 2)
+    net = round(material_batch + labor_batch + overhead_batch, 2)
     vat = round(net * _number(context["settings"].get("vat_percent"), 18) / 100, 2)
     partial = material_partial or not labor or labor["partial"] or overhead["status"] != "ready"
     summary = {"version": _FULL_COST_SOURCE, "build": LABOR_BUILD_VERSION,
                "basis_sha256": basis, "labor_basis_sha256": labor_basis, "quantity": quantity,
                "materials_batch": material_batch, "labor": labor, "overhead": overhead,
+               "quantity_basis": "per_priced_configuration",
                "partial": bool(partial), "self_cost_ex_vat": net, "vat_amount": vat,
                "self_cost_total": round(net + vat, 2),
                "labor_blocks": {"sheet_processing": sheet_labor, "assembly": assembly_labor},
@@ -722,6 +726,7 @@ def load_object_detail_data(
         "estimate_id": estimate_id,
         "name": object_row.get("object_name"),
         "quantity": canonical_quantity,
+        "cost_quantity": _number((material_plan.get("object_quantities") or {}).get(object_id), canonical_quantity),
         "approved": bool(object_row.get("approved")),
         "material_plan_ready": plan_status == "planned",
         "material_plan_status": plan_status,
@@ -778,6 +783,7 @@ def _project_detail_receipt(obj, lines, plan, cost_snapshot=None):
         "sections": [{"key": "material", "rows": _object_detail_material_rows(plan, lines, object_id),
                       "front_panels": front_panel_controls(plan, lines.to_dict("records"), object_id)}],
         "quantity": _number(obj.get("quantity"), 1),
+        "cost_quantity": _number((plan.get("object_quantities") or {}).get(object_id), _number(obj.get("quantity"), 1)),
         "labor_hours_overrides": overrides_from_lines(lines),
         "labor_block_hours": {key: value["hours"] for key, value in cost_snapshot.get("labor_blocks", {}).items() if value},
         "cost_policy": _FULL_COST_SOURCE if cost_snapshot.get("version") == _FULL_COST_SOURCE else None,
@@ -1644,7 +1650,9 @@ def save_object_detail_material_edits(
         if object_quantity is None and abs(amount - total) < 1e-8:
             continue
         auto_purchase.update(affected_keys)
-        per_item = amount / current_quantity
+        pricing_quantity = object_quantity if object_quantity is not None else _number(
+            (plan.get("object_quantities") or {}).get(object_id), current_quantity)
+        per_item = amount / pricing_quantity
         ordered = sorted(requirements.items(), key=lambda item: item[1][1])
         shares = [(key, unit, round(per_item * quantity / total, 4))
                   for key, (unit, quantity) in ordered[:-1]]
@@ -1657,6 +1665,8 @@ def save_object_detail_material_edits(
                 "material_requirement_id": requirement_id, "company_id": company_id,
                 "quantity_per_item": quantity, "unit": unit, "source_line_id": None}
 
+    labor_quantity = object_quantity if object_quantity is not None else _number(
+        (plan.get("object_quantities") or {}).get(object_id), current_quantity)
     if preview:
         if not front_choices or norm_rows or purchases or object_quantity is not None or labor_hours:
             raise ValueError("Only front panel material choices can be previewed.")
@@ -1669,7 +1679,7 @@ def save_object_detail_material_edits(
     if not norm_rows and not purchases and object_quantity is None and not front_choices:
         upsert_rfq_estimate_lines(client, lines=override_lines(
             labor_hours, estimate_id=estimate_id, object_id=object_id,
-            company_id=company_id, quantity=current_quantity,
+            company_id=company_id, quantity=labor_quantity,
         ))
         if labor_hours:
             _recalculate_object_estimate_totals(client, estimate_id=estimate_id, object_id=object_id,
@@ -1683,7 +1693,7 @@ def save_object_detail_material_edits(
         assert_run_owned(client, str(obj["run_id"]), company_id)
     upsert_rfq_estimate_lines(client, lines=override_lines(
         labor_hours, estimate_id=estimate_id, object_id=object_id,
-        company_id=company_id, quantity=current_quantity,
+        company_id=company_id, quantity=labor_quantity,
     ))
     from use_cases.estimation_runtime import queue_material_plan_recalculation
 
@@ -1719,6 +1729,7 @@ def front_material_preview_receipt(*, estimate_id, object_id, plan):
         "sections": [{"key": "material", "rows": rows,
                       "front_panels": front_panel_controls(plan, lines.to_dict("records"), object_id)}],
         "quantity": _number(obj.get("quantity"), 1), "cost_policy": _FULL_COST_SOURCE,
+        "cost_quantity": _number((plan.get("object_quantities") or {}).get(object_id), _number(obj.get("quantity"), 1)),
         "self_cost": {"excl_vat": summary["self_cost_ex_vat"], "vat": summary["vat_amount"],
                       "batch_excl_vat": _detail_batch_net(summary),
                       "total": summary["self_cost_total"], "partial": summary["partial"]},

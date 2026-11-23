@@ -464,6 +464,22 @@ def apply_base_css() -> None:
             background: var(--color-bg) !important;
         }
 
+        /* Terminal actions share Object Detail's fixed-Privacy reserve.
+           Zero-height bridge frames stay mounted but occupy no layout rows. */
+        .stApp:is(:has(.st-key-objects_actions), :has(.st-key-file_review_actions))
+        [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {
+            min-height: calc(100dvh - var(--post-upload-screen-top) - var(--post-upload-bottom));
+        }
+        [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] >
+        [data-testid="stLayoutWrapper"]:is(:has(.st-key-objects_actions), :has(.st-key-file_review_actions)) {
+            margin-top: auto;
+        }
+        [data-testid="stLayoutWrapper"]:is(:has(.st-key-objects_actions), :has(.st-key-file_review_actions)) ~
+        [data-testid="stElementContainer"]:is(:has(iframe), :has([data-costerly-screen])) {
+            position: absolute;
+            pointer-events: none;
+        }
+
         .post-upload-shell {
             width: 100%;
             margin: 0;

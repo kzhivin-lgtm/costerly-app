@@ -248,7 +248,8 @@ def _recalculate_edited_material_lines(
         raise ValueError("The saved material plan is not available yet. Try again when it is ready.")
 
     object_contexts = {str(row["object_id"]): row for row in objects.to_dict("records")}
-    quantities = {oid: row["quantity"] for oid, row in object_contexts.items()}
+    quantities = {oid: (saved.get("object_quantities") or {}).get(oid, row["quantity"])
+                  for oid, row in object_contexts.items()}
     prior_quantities = saved.get("object_quantities") or quantities
     ratios = {oid: Decimal(str(value)) / Decimal(str(prior_quantities[oid]))
               for oid, value in quantity_edits.items() if value != prior_quantities[oid]}
@@ -452,7 +453,8 @@ def _recalculate_front_panel_materials(client, *, estimate_id, run_id, company_i
     reusable = isinstance(front_preview, dict) and front_preview.get('_front_preview_base') == revision
     snapshot = deepcopy(front_preview) if reusable else previous
     objects = fetch_rfq_object_estimates(client, estimate_id)
-    quantities = {str(row["object_id"]): quantity_edits.get(str(row["object_id"]), row["quantity"])
+    quantities = {str(row["object_id"]): quantity_edits.get(str(row["object_id"]),
+                  (previous.get("object_quantities") or {}).get(str(row["object_id"]), row["quantity"]))
                   for _, row in objects.iterrows()}
     contexts = {}
     publications = snapshot.pop('_front_preview_publications', []) if reusable else []
