@@ -3102,7 +3102,9 @@ def install_object_detail_input_guard(
             function seedInputBaselines() {
                 for (const input of parentDoc.querySelectorAll(".object-detail-cell-input[data-field]")) {
                     if (input.dataset.originalValue === undefined) {
-                        input.dataset.originalValue = normalizeInputValue(input);
+                        const value = normalizeInputValue(input);
+                        if (input.dataset.field === 'labor_hours' && value === '') continue;
+                        input.dataset.originalValue = value;
                     }
                 }
                 const quantity = objectQuantityInput();
@@ -3300,7 +3302,9 @@ def install_object_detail_input_guard(
 
             function markCurrentValuesSaved() {
                 for (const input of parentDoc.querySelectorAll(".object-detail-cell-input[data-field]")) {
-                    input.dataset.originalValue = normalizeInputValue(input);
+                    const value = normalizeInputValue(input);
+                    if (input.dataset.field === 'labor_hours' && value === '') continue;
+                    input.dataset.originalValue = value;
                 }
                 const quantity = objectQuantityInput();
                 if (quantity) quantity.dataset.originalValue = cleanNumber(quantity.textContent) || "1";

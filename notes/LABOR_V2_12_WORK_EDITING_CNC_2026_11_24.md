@@ -70,3 +70,22 @@ edit restores unknown, not0. No extra read/request/writer/callback is added.
 Real partial receipt testing exposed section columns being lost in the detail
 cache on Save/reopen. Merge new rows into the existing section metadata instead
 of replacing its schema. Preserve geometry, source facts and all previous state.
+
+The general input baseline initializer previously turned an unknown hour field
+into an empty-string baseline, which JavaScript treats as0. Skip unknown Labor
+baselines in both initial seeding and legacy mark-saved handling. The isolated
+unknown-hour scenario now passes untouched focus, explicit0, clearing, first
+manual Save/Overhead completion and subsequent Save with retained disclosures.
+Measured mobile title widths explained two wrapped49.21875px rows; title-only
+spacing changes retain the font/material axes and yield42px for all12 rows.
+
+A legacy manually edited total with an all-zero calculated CNC split is retained
+as manual Operator hours, not invented Edge Banding demand. Technical evidence
+under a work row is not another paid-work node; only paid child work makes a
+summary computed. Each charge is still included once.
+
+Rollback limitation: after users save new2.12-only hour keys,2.11 cannot interpret
+those new keys. A later rollback must preserve the2.12 paid-hour overrides and
+cost snapshots before repricing, rather than silently discarding their financial
+meaning. The full2.11 checkpoint has no live database snapshot; this release
+introduces additive metadata, not a destructive migration.
