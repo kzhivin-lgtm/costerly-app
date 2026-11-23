@@ -537,7 +537,7 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-ACTIVE, P1, OWNER-APPROVED9.45,23November2026, work3.17.4.6.
+PUBLISHED9.45, P1, OWNER REAL-PROJECT ACCEPTANCE PENDING,23November2026, work3.17.4.6.
 Owner accepts9.44 Save/card calculations. Fix configured unit SC dividing by
 commercial copy quantity; preserve costed recipe and manual sale price, copies
 multiply sale totals only. Actual witness routeBy-hwoNjEaG9:
@@ -546,8 +546,11 @@ existing card net16295.89. Guarded saved-data replay gives16295.89 for1/3/5 copi
 0 writes/models. Modern costs migrate through the existing deterministic basis.
 Rename front options MDF Raw/MDF Veneered, keys unchanged. Match Objects and File
 Review fixed-Privacy gap to26px, preserve remaining geometry and all prior flows.
-Wide/narrow probes26.406/26.125px File Review,26.25/25.688px Objects. Full gates,
-publish and owner-requested full checkpoint remain required. No new block.
+Wide/narrow probes26.406/26.125px File Review,26.25/25.688px Objects. Full gates pass:606/nine344.036s local,349.026s GitHub45170507325. Runtime source1f872f01
+published; Core/wrapper/meta/version match9.45. Full checkpoint preservation receipt
+is outputs/estimation-v9.45/full-checkpoint.json. Owner next: reopen existing run,
+check unit SC then change copies, confirm unchanged unit price/sale total factor,
+footer and labels. No new block.
 [Release and preservation plan](ESTIMATION_V9_45_UNIT_COST_2026_11_23.md).
 
 PUBLISHED9.44, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING,23November2026.

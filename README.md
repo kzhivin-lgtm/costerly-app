@@ -23,17 +23,17 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
-Current Estimation release: **9.44**,23November2026, runtime`fa67572a`.
-Save handles changed material inputs and dependent totals, reuses saved Labor
-and the scoped card cache, stays on the card and turns green Saved. No second
-receipt read after an acknowledged modern material Save. Card totals display the
-selected quantity's batch consistently; persisted SC and Objects stay per-item.
-Fixed Privacy remains with the shared bottom reserve. Clean local605/nine278.354s
-and exact-SHA GitHub605/nine354.227s pass. Actual Core/wrapper/meta/version match
-11:26:46UTC. Owner authenticated acceptance remains pending. No paid run or
-production-project write. [Release and evidence](notes/ESTIMATION_V9_44_DETAIL_SAVE_2026_11_23.md).
-Preserve9.43 runtime`d41eb127`/records`4f0b7912`,9.41 full checkpoint and earlier
-accepted interactions. No broader cache/parallelisation change was published.
+Current Estimation release: **9.45**,23November2026, verified source`1f872f01`.
+Configured unit SC equals the card's cost; commercial copy quantity multiplies
+sale totals and does not divide unit cost. Saved pricing recipe and manual prices
+stay. Front options are MDF Raw/MDF Veneered. Objects/File Review retain fixed
+Privacy with the same26px closing gap as Object Detail. Clean local606/nine344.036s
+and exact-SHA GitHub606/nine349.026s pass. Actual Core/wrapper/meta/version match
+9.45. Full checkpoint source/records tags, archive, inventory, Git bundle and
+standalone restore receipts are retained. Owner real-project acceptance is pending.
+[Release, checkpoint and evidence](notes/ESTIMATION_V9_45_UNIT_COST_2026_11_23.md).
+Preserve9.44 runtime`fa67572a`/records`23bd6103`,9.41 full checkpoint and earlier
+accepted interactions. No new model cycle or schema migration.
 
 Preserved diagnostic release: **Estimation V3.3**,22November2026,
 rollback commit`a6158588`, application/tests byte-identical to published`bcf9fdb4`.

@@ -1,3 +1,28 @@
+**[verified] Current release: Estimation9.45.**
+Estimation9.45,23November2026, work3.17.4.6. Verified runtime source1f872f01.
+Owner accepted9.44 Save/card and requested corrected unit SC, compact fixed-Privacy
+spacing on Objects/File Review, MDF Raw/MDF Veneered labels and full checkpoint.
+The priced configuration now supplies unit cost without dividing by commercial
+copies; saved physical pricing quantities are preserved across front/numeric edits.
+Card totals, source recipe, prices/rates and manual sale overrides are preserved.
+Real saved witness net16295.89 is constant at1/3/5 copies; oldunit5431.96 was /3.
+Source/default/canonical selector keys unchanged. Fixed Privacy remains; Objects/
+File Review gap26px at desktop/narrow, all other body geometry/field boundaries
+retained. Save/green Saved/new edit, Back/APPROVE, quantity ordering/failure/retry,
+materials/Parts/Labor, auth/session/proposal/protection scenarios all remain.
+Clean local606/nine344.036s and exact-SHA GitHub606/nine349.026s pass,
+run45170507325/job137678480887/artifact14817031437. Initial60bebcaf was blocked
+by synthetic state leakage; corrected fixtures retain the original assertions
+and additionally assert initial LDSP1000. Failed CI45169956882 is preserved.
+Publisher verified active no-bypass27499066. Initial Core7998304405 succeeded;
+actual Core/wrapper/meta/version all match9.45 (live-builds.json). The owner noted
+the corrective commit's missing version label; final records are explicitly titled
+Estimation9.45 and also published through the protected docs gate, so the visible
+Railway deployment includes9.45. No source/test change in that follow-up.
+Owner real-project acceptance of9.45 is pending, separate from preservation.
+No paid run or production-project diagnostic mutation.9.44 release/records tags,
+9.41 full checkpoint and earlier rollbacks remain. [Checkpoint and procedure](ESTIMATION_V9_45_UNIT_COST_2026_11_23.md).
+
 **[verified] Current whole-cycle release: Estimation9.44.**
 Estimation9.44 published23November2026, work3.17.4.6, runtime fa67572a,
 release tagestimation-v9.44-2026-11-23. Owner confirmed9.43 quantity persistence.
