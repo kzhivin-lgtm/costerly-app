@@ -1,5 +1,10 @@
 # Estimation 9 Parts Check from Upload
 
+Current preserved cycle: **Estimation9.46**, full owner-requested checkpoint
+23November2026. Source Parts/Geometry and frozen material controls remain intact;
+this checkpoint adds no recognition run or catalog change.
+[Exact runtime, records, controls and restore](ESTIMATION_V9_46_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
 ## Labor V1.3.4 shared presentation preview
 
 Owner approved one saved Detection crop inherited by Calculation, after a full

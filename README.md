@@ -1,9 +1,13 @@
 # Costerly
 
-Latest full checkpoint: **Estimation 9.41**, owner-requested22November2026,
-runtime`077264c0`. Source, exact release evidence, four frozen material controls
-and independent restoration are preserved before the next UI-only corrections.
-[Identities, archive, known issues and restoration](notes/ESTIMATION_V9_41_PRODUCTION_CHECKPOINT_2026_11_22.md).
+Latest full checkpoint: **Estimation 9.46**, owner-requested23November2026,
+runtime`c731f2ac`. Exact source, Git bundle, runtime/records tags, full UI evidence,
+four frozen material controls and independent821-file restoration are preserved.
+607 restored Python checks and network-blocked purchase replays passed.
+[Identities, evidence, limits and restoration](notes/ESTIMATION_V9_46_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
+Previous Estimation full checkpoint: **9.41**, runtime`077264c0`, remains intact.
+[9.41 restoration](notes/ESTIMATION_V9_41_PRODUCTION_CHECKPOINT_2026_11_22.md).
 
 Previous full checkpoint: **Objects V2.6**, owner-requested21November2026.
 [Exact identities, archive, evidence, limits and restoration](notes/OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md).
@@ -29,9 +33,12 @@ restores them on the acknowledged result. No queued approval from clicks during
 Save. Green Saved, failure/retry, direct Approve and preview behavior are retained.
 Updating app and recovery use the shared loader typography. Clean local607/nine
 349.486s and exact-SHA GitHub607/nine338.972s pass. Actual executable Core, wrapper,
-meta and version.json match9.46, HTTP200. Owner authenticated acceptance is pending.
+meta and version.json match9.46, HTTP200. Owner requested the full checkpoint;
+synthetic UI evidence and anonymous live identity remain separate from a new
+agent-observed authenticated owner run.
 [Release, failed candidates and evidence](notes/ESTIMATION_V9_46_SAVE_LOCK_2026_11_23.md).
-Checkpoint creation remains on owner-requested hold: no9.46 tags/archive/bundle.
+The earlier checkpoint hold is superseded by the owner-requested full9.46
+checkpoint. Runtime remains unchanged; records/tags are preserved separately.
 Preserve9.45 runtime`1f872f01`,9.44 runtime`fa67572a` and the9.41 full checkpoint.
 No new model cycle, calculation/Detection change or schema migration.
 

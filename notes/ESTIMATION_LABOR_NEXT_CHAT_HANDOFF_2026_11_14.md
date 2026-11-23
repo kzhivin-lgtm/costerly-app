@@ -1,4 +1,20 @@
-**[verified] Current release: Estimation 9.46, deployed, owner acceptance pending.**
+**[verified] Latest full checkpoint: Estimation9.46, owner-requested23November2026.**
+Estimation 9.46 full owner-requested checkpoint, 23 November 2026, work3.17.4.6.
+Owner lifted the earlier checkpoint hold. Preserve published runtimec731f2ac with
+separate immutable runtime/records tags and no redeploy. Source821files/4,704,283B,
+helper limit retained, exact runtime ZIP SHA b11b35010bccd9ea8a02930c32fc26f186af130fa9fc696702acf4574df8f40f.
+New-directory restore matched all821 source bytes and607 checks passed14.021s.
+Network-blocked frozen material controls pass Lev1(29), Lev2(112), Adda(24/133),
+and Lev2V3.3(110), with exact purchase signatures and no source mutation.
+Runtime clean full gates607/nine349.486s local,338.972s GitHub45176459497;
+actual Core/wrapper/meta/version rechecked13:05:32UTC match9.46, HTTP200.
+Private archive includes source, Git bundle, records, controls, UI screens/failure
+logs, timing evidence and hashes. No credentials/environment/DB snapshot or new
+paid/model run. Existing New Estimate, Workers Builds and Lev1 uncertainty
+follow-ups remain. Final refs/records gate/integrity are pinned in checkpoint.json.
+[Checkpoint, verification limits and independent restoration](ESTIMATION_V9_46_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
+**[verified] Preserved release: Estimation 9.46, deployed; full checkpoint requested.**
 Estimation 9.46, 23 November 2026, existing work 3.17.4.6. Runtime c731f2ac.
 Explicit Object Detail Save immediately greys and disables all footer Back/APPROVE
 links, excludes them from Tab order and ignores click/Enter without queuing later
@@ -20,7 +36,8 @@ New Estimate remains a local reset with native authenticated render, no model.
 Production reconnect witness 3.7761s is not a warm-session benchmark; eight local
 synthetic transitions were 228-350ms. A warm/cold production breakdown remains
 P2 diagnostic follow-up, no alternate uploader/auth bypass was introduced.
-Checkpoint creation is still on owner hold: no tags, archive or bundle were made.
+At9.46 publication checkpoint creation was on hold; the owner subsequently
+requested the full9.46 checkpoint. See the current checkpoint entry above.
 9.45 runtime1f872f01 and earlier independently verified checkpoints remain.
 Evidence: outputs/estimation-v9.46/{local-release,github-release,live-builds.json}
 in the handoff workspace. [Scope and evidence](ESTIMATION_V9_46_SAVE_LOCK_2026_11_23.md).

@@ -1,8 +1,9 @@
 # Estimation9.46 explicit Save lock and shared update loading
 
 Status: deployed23November2026, existing work3.17.4.6, runtimec731f2ac.
-Owner authenticated acceptance pending. No checkpoint creation authorised.
-Checkpoint remains on hold. Preserve9.45 runtime1f872f01, its pending records and
+Owner requested full preservation23November2026, superseding the earlier hold.
+[Full checkpoint and restoration](ESTIMATION_V9_46_PRODUCTION_CHECKPOINT_2026_11_23.md).
+Preserve9.45 runtime1f872f01, its records and
 all earlier accepted source/behavior. No Parts/material/cost/Detection change.
 
 [verified] Object Detail prepareApproveSnapshot sets activeSave.approveAfterSave
@@ -44,7 +45,8 @@ nine suites. No paid provider or production project mutation. Authenticated owne
 acceptance remains distinct from these tests and anonymous live build identity.
 Every corrective commit/deploy must include Estimation9.46 in its title. Failed
 candidates must remain blocked; preserve exact-SHA gate/artifacts and source
-comparison. No checkpoint tags/archive/bundle are authorised this iteration.
+comparison. At initial publication tags/archive/bundle were on hold. The later explicit
+full-checkpoint request authorises preservation only, no new runtime change.
 
 Initial candidatec47aacff was blocked in the new immediate-grey UI assertion.
 Logical disabling worked, but existing140ms color/background transitions retained
@@ -81,7 +83,8 @@ New Estimate remains a local reset with native authenticated render, no model.
 Production reconnect witness 3.7761s is not a warm-session benchmark; eight local
 synthetic transitions were 228-350ms. A warm/cold production breakdown remains
 P2 diagnostic follow-up, no alternate uploader/auth bypass was introduced.
-Checkpoint creation is still on owner hold: no tags, archive or bundle were made.
+At publication the checkpoint was on hold. The owner subsequently requested
+the full9.46 checkpoint linked above.
 9.45 runtime1f872f01 and earlier independently verified checkpoints remain.
 Evidence: outputs/estimation-v9.46/{local-release,github-release,live-builds.json}
 in the handoff workspace. [Scope and evidence](ESTIMATION_V9_46_SAVE_LOCK_2026_11_23.md).
@@ -95,3 +98,7 @@ passed. Do not claim all external checks passed. Its intended role/removal remai
 the existing deferred P2 backlog proposal, no infrastructure change authorised.
 Evidence: outputs/estimation-v9.46/external-checks.json. Records738cef6a and this
 follow-up stay on the feature branch, not a second runtime deployment.
+
+Owner full-checkpoint request supersedes the earlier no-checkpoint statements.
+Runtime and release behavior stay unchanged; final archive/refs/restore receipts
+are tracked in the checkpoint record, not a new release number.

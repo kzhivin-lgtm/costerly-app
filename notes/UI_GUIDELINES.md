@@ -590,3 +590,7 @@ are rewritten. Modern behavior restoration still requires removing the legacy
 manifest and running the full modern suite. Fresh Ada and authenticated UI
 acceptance remain pending, and failed fresh controls are not erased. Immediate
 code rollback reference is the published V1.2.23 `447b4892`.
+
+Owner-requested full9.46 checkpoint23November2026 preserves this contract and
+all earlier accepted behavior. See[checkpoint](ESTIMATION_V9_46_PRODUCTION_CHECKPOINT_2026_11_23.md). No new runtime behavior
+is introduced by preservation.

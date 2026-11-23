@@ -264,3 +264,7 @@ Every pending frame must remain covered until the correlated Core-ready emit
 time; Profile tabs retain their accepted regional cover/header. Admin-entry
 latency optimization remains deferred. A nonempty sampled interval is required,
 so a missing ready timestamp cannot vacuously pass. No input mechanics change.
+
+Owner-requested full Estimation9.46 preservation23November2026 freezes the
+existing accepted behavior and verification contract. No test or threshold is
+weakened. See[checkpoint](../../notes/ESTIMATION_V9_46_PRODUCTION_CHECKPOINT_2026_11_23.md).

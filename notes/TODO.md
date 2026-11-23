@@ -541,7 +541,7 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-DEPLOYED9.46, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING,23November2026, existing work3.17.4.6.
+COMPLETED, P1, OWNER-REQUESTED FULL CHECKPOINT9.46,23November2026, existing work3.17.4.6.
 Owner returned from checking9.45 and authorised the deploy. During explicit Object
 Detail Save, all footer Back/Approve links must immediately turn grey and be
 inert to mouse/keyboard until the acknowledged result. Clicking Approve during
@@ -552,12 +552,15 @@ Back to Objects and APPROVE; the footer-wide lock covers any return-link variant
 Updating app status uses the same shared typography as other loaders. One
 ui/workflow_status.css source is embedded in Core and wrapper, parity required.
 Every deployment/commit title must explicitly include Estimation9.46.
-Checkpoint creation remains on owner-requested hold. Runtimec731f2ac is published
+Owner explicitly superseded the checkpoint hold. Runtimec731f2ac is published
 after clean local607/nine349.486s and exact-SHA GitHub607/nine338.972s gates
 (run45176459497). Actual Core/wrapper/meta/version match9.46 at12:49:26UTC.
 Save mouse/keyboard immediate-grey, success/failure/retry and shared status pass.
-Owner next: Save, immediately attempt Back/APPROVE, confirm no navigation until
-receipt and green Saved.9.45/9.44/9.41 preserved. No checkpoint archive.
+Full9.46 checkpoint:821 exact runtime source files, independent restore607 checks,
+four network-blocked frozen purchase controls, private archive, bundle and separate
+runtime/records tags. No runtime redeploy or paid call.9.45/9.44/9.41 preserved.
+Fresh recognition and owner-authenticated observation are not inferred from this
+preservation. See[checkpoint and restore](ESTIMATION_V9_46_PRODUCTION_CHECKPOINT_2026_11_23.md).
 [Scope, mechanisms and evidence](ESTIMATION_V9_46_SAVE_LOCK_2026_11_23.md).
 
 DIAGNOSIS COMPLETE, P2, NEW ESTIMATE LATENCY, USER QUESTION23November2026.
