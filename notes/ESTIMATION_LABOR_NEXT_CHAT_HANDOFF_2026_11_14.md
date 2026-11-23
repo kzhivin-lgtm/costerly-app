@@ -1,3 +1,19 @@
+**[verified] Current release: Labor 2.10 published, owner production acceptance pending.**
+Labor 2.10 published 23 November 2026, work 3.17.4.6, runtime 20e34aa1.
+Preparation and Packing now includes trial mating/checking/separation at30 planned
+man-minutes per sourced interface and S/M/L/XL packing at10/15/20/25. Owner approved
+both sizes and rates and explicitly confirmed the Labor2.10 release name.
+Known work enters Labor/payroll/Overhead/Self Cost once; old manual keys, material
+replacement preservation and commercial-copy rules stay. New Parts runs retain
+native/structural interface evidence without extra model requests. Legacy reports
+without a graph keep checking unknown; unresolved packing units remain listed.
+Offline Ada replays leave Parts and full Material Plan identical, with no network
+or paid call. Full local991/ten436.242s followed by994 full-unit checks; exact-SHA
+GitHub994/ten362.833s passed. Protected main rule27499066 active/no bypass.
+Core/wrapper/meta/version.json all match Labor2.10 at2026-11-23T19:08:50.531617+00:00.
+Owner production acceptance pending. Accepted9.48 full checkpoint is preserved;
+this publication is not a new accepted checkpoint. [Release and evidence](LABOR_V2_10_PREPARATION_PACKING_2026_11_23.md).
+
 **[verified] Latest full checkpoint: Estimation 9.48, owner accepted 23 November 2026.**
 Estimation 9.48 full owner-accepted checkpoint, 23 November 2026, work 3.17.4.6.
 Preserve runtime 862e28f0 and separate immutable runtime/records tags, no redeploy.
@@ -11,7 +27,7 @@ Owner acceptance supersedes the prior pending status. Future Labor 2.x naming is
 recorded without reusing historical 2.8/2.9 tags or changing the deployed identity.
 [Checkpoint and restoration](ESTIMATION_V9_48_PRODUCTION_CHECKPOINT_2026_11_23.md).
 
-**[verified] Current release: Estimation 9.48, subsequently owner accepted as the checkpoint above.**
+**[verified] Previous release: Estimation 9.48, owner accepted as the preserved checkpoint above.**
 Runtime862e28f0a848d387f2cf540c34f5769c6a16a3fe, existing work3.17.4.6.
 Prices now shows closed groups promptly and prepares selected/open contents using
 the existing asynchronous readers, without waiting for unrelated source/review/jobs.

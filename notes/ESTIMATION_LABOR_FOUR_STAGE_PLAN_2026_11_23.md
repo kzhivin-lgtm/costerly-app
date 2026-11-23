@@ -282,3 +282,20 @@ quantity invariance. Verify single inclusion of the new stage in Labor, payroll,
 Overhead and Self Cost. Preserve all accepted UI checks and add only the agreed
 stage behavior to the exact-SHA release gate. No new UI warnings or controls are
 authorized by this planning note. No new runtime version is assigned here.
+
+## Published Labor 2.10 implementation
+
+Labor 2.10 published 23 November 2026, work 3.17.4.6, runtime 20e34aa1.
+Preparation and Packing now includes trial mating/checking/separation at30 planned
+man-minutes per sourced interface and S/M/L/XL packing at10/15/20/25. Owner approved
+both sizes and rates and explicitly confirmed the Labor2.10 release name.
+Known work enters Labor/payroll/Overhead/Self Cost once; old manual keys, material
+replacement preservation and commercial-copy rules stay. New Parts runs retain
+native/structural interface evidence without extra model requests. Legacy reports
+without a graph keep checking unknown; unresolved packing units remain listed.
+Offline Ada replays leave Parts and full Material Plan identical, with no network
+or paid call. Full local991/ten436.242s followed by994 full-unit checks; exact-SHA
+GitHub994/ten362.833s passed. Protected main rule27499066 active/no bypass.
+Core/wrapper/meta/version.json all match Labor2.10 at2026-11-23T19:08:50.531617+00:00.
+Owner production acceptance pending. Accepted9.48 full checkpoint is preserved;
+this publication is not a new accepted checkpoint. [Release and evidence](LABOR_V2_10_PREPARATION_PACKING_2026_11_23.md).

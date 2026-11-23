@@ -4,7 +4,7 @@ Owner-approved feature, 23 November 2026. Base: accepted Estimation 9.48,
 runtime `862e28f0`, existing formal work reference 3.17.4.6. The owner requested
 Labor 2.x. Historical 2.8/2.9 tags are occupied; 2.10 is the next available minor,
 checked on GitHub. Old versions and checkpoints are not renamed or reused.
-Candidate status: local verification, not yet published or owner accepted.
+Status: published and verified; owner production acceptance pending.
 
 ## Approved behavior
 
@@ -97,3 +97,24 @@ The complete Python list then passed994 checks in16.946s. Normal-input browser
 paths were unchanged by that guard; exact-SHA remote CI will repeat all ten suites
 against the final candidate. Initial failures and unit/browser logs remain under
 the same private evidence root. Desktop/mobile Labor screenshots were inspected.
+
+## Publication receipt
+
+- Runtime: `20e34aa1c208f0c97b22a87afe80a9f272078992`. Build: `labor-v2.10-b20261123184340-prep-pack-detection-v8.4.29`.
+- Exact-SHA clean remote [UI release gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/45243888030/job/137935456073) passed 994 Python checks
+  and all ten browser suites in 362.833s, artifact 14853916450.
+- Protected publisher verified active no-bypass main ruleset27499066 and promoted
+  that exact commit. Remote enforcement is separate from the local checks.
+- Actual Core, executable wrapper, meta and version.json match at
+  2026-11-23T19:08:50.531617+00:00; static version endpoint returned HTTP200.
+  This is a read-only build probe, not an authenticated owner workflow.
+- Candidate source backup:834 files/4,764,460 bytes, existing helper exclusions
+  and5MiB cap preserved, all archived source bytes compared.
+- CI artifact, logs, source backup receipt, promotion, deployment and actual served
+  identities remain under the private evidence root. Initial failures are retained.
+- No paid call, production-project test write or accepted-checkpoint replacement.
+
+Owner should validate a fresh Estimate on app.costerly.ai. New Parts reports retain
+physical interface evidence; historical reports lacking it cannot supply that
+new checking field. Existing saved dimensions can already feed packing. Unknown
+packing geometry remains visible and unpriced rather than invented or omitted.

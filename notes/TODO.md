@@ -1101,7 +1101,7 @@ This records a future naming decision, not authorization to start numerical work
 
 ### Preparation and Packing: checking interfaces and size-based packing
 
-ACTIVE, P1, OWNER REQUEST, 23 November 2026, existing Labor work reference
+ACTIVE, PUBLISHED LABOR2.10, OWNER PRODUCTION ACCEPTANCE PENDING, P1, existing Labor work reference
 3.17.4.6 retained. Owner selected this stage ahead of Coating. Outcome: calculate
 trial mating, checking and subsequent separation per physical block interface,
 and packing labor per S/M/L/XL block or transport unit. Establish categories from
@@ -1132,7 +1132,7 @@ OWNER APPROVED TIME NORMS, 23 November 2026: packing S=10, M=15, L=20, XL=25
 planned man-minutes, and 30 planned man-minutes per complete mating/checking/
 separation cycle. XL's25 is total labor effort, consistent with the question's
 explicit man-minute basis (two workers take12.5 elapsed minutes). No repeated
-crew, pace or working-share multiplier. Implementation is ACTIVE on accepted
+crew, pace or working-share multiplier. Implementation is published as Labor2.10 from accepted
 runtime862e28f0. Reuse existing native shared-boundary/structural attachment
 evidence, keep all repeated source refs, and add the resulting audit to Parts
 without changing existing recognition, Parts or Materials. Old saved reports
@@ -1144,9 +1144,26 @@ object-level parts remain identified bundles. New calculated child rows are
 read-only and feed one existing Labor/payroll/Overhead/Self Cost path. Preserve
 all earlier manual hour keys and material-change preservation. Labor2.10 is
 selected as the next free minor under the owner's explicit Labor2.x preference;
-occupied2.8/2.9 tags remain untouched. The optional naming question can still be
-steered by the owner; it does not introduce a new product/work-number block.
+occupied2.8/2.9 tags remain untouched. The owner explicitly confirmed Labor2.10. No new product/work-number block is
+introduced.
 Detailed rules and acceptance: existing four-stage plan, latest section below.
+
+[verified] Labor 2.10 published 23 November 2026, work 3.17.4.6, runtime 20e34aa1.
+Preparation and Packing now includes trial mating/checking/separation at30 planned
+man-minutes per sourced interface and S/M/L/XL packing at10/15/20/25. Owner approved
+both sizes and rates and explicitly confirmed the Labor2.10 release name.
+Known work enters Labor/payroll/Overhead/Self Cost once; old manual keys, material
+replacement preservation and commercial-copy rules stay. New Parts runs retain
+native/structural interface evidence without extra model requests. Legacy reports
+without a graph keep checking unknown; unresolved packing units remain listed.
+Offline Ada replays leave Parts and full Material Plan identical, with no network
+or paid call. Full local991/ten436.242s followed by994 full-unit checks; exact-SHA
+GitHub994/ten362.833s passed. Protected main rule27499066 active/no bypass.
+Core/wrapper/meta/version.json all match Labor2.10 at2026-11-23T19:08:50.531617+00:00.
+Owner production acceptance pending. Accepted9.48 full checkpoint is preserved;
+this publication is not a new accepted checkpoint. [Release and evidence](LABOR_V2_10_PREPARATION_PACKING_2026_11_23.md).
+
+
 
 
 
