@@ -36,7 +36,9 @@ try{
   const journal=readFileSync(statePath('browser-journal'),'utf8');
   if(width===1280)assert(!journal.includes('prices finished sources'),'Selected group must not wait for unrelated source-library read');
   await metal.locator('summary').click();
-  await core.locator('.st-key-price_catalog_row_price-row-0').waitFor({state:'detached'});
+  await core.locator('.st-key-price_catalog_row_price-row-0').waitFor({state:'hidden'});
+  await metal.locator('details:not([open])').waitFor({state:'attached'});
+  assert.equal(await metal.locator('details').first().evaluate(node=>node.open),false,'Closed group hides its cached content');
   await metal.locator('summary').click();
   await core.locator('.st-key-price_catalog_row_price-row-0').waitFor();
   assert.equal(readFileSync(statePath('browser-journal'),'utf8').split('prices started catalog').length-1,1,'Reopening reuses the prepared snapshot');
@@ -44,7 +46,9 @@ try{
   await page.screenshot({path:reportPath('prices-lazy-'+width+'.png')});
   results.push({width,rows:10,closedRows:290,independentRead:true});
   await metal.locator('summary').click();
-  await core.locator('.st-key-price_catalog_row_price-row-0').waitFor({state:'detached'});
+  await core.locator('.st-key-price_catalog_row_price-row-0').waitFor({state:'hidden'});
+  await metal.locator('details:not([open])').waitFor({state:'attached'});
+  assert.equal(await metal.locator('details').first().evaluate(node=>node.open),false,'Closed group hides its cached content');
   await core.getByRole('tab',{name:'Contacts',exact:true}).click();
   await core.getByRole('button',{name:'Save Contacts',exact:true}).waitFor();
  }

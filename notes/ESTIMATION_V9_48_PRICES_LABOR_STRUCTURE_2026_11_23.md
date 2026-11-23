@@ -58,3 +58,18 @@ Full local and exact-SHA remote gate evidence, source backup and actual served
 build identities are retained under outputs/estimation-v9.48/. Owner production
 acceptance is required after publication; this candidate is not a new accepted
 checkpoint. No paid OCR/model calls or production database writes for testing.
+
+## First remote gate result
+
+Exact-SHA a82c7764 remote gate passed964 unit checks and all nine retained browser
+suites. The additional Prices suite reached closed cached content, but its new
+assertion incorrectly required DOM detachment. CI evidence shows the rows were
+already hidden. The corrected test checks native closed state plus hidden content
+and retained reopen/snapshot reuse. Initial closed-group zero-row assertions,
+selected-group priority and all original tests/timeouts remain unchanged.
+Application code is unchanged by this test correction. Failed artifact retained
+under outputs/estimation-v9.48/ci-failed-artifact.zip.
+An instrumented closure timeline also confirmed that native details.open settles
+after rows disappear during the rerender (about600ms locally). The test awaits
+both observable conditions within its existing timeout, then verifies reopening.
+No additional sleep, increased timeout or application change was introduced.
