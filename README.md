@@ -1,10 +1,10 @@
 # Costerly
 
-Current release: **Labor 2.11**, published 23 November 2026, runtime `63db313d`.
-Expanded aggregate stages hide their metrics; collapsed Labor shows total hours.
-Nested axes/text are aligned. Labor/Overhead use the same unchanged source hours.
-Exact-SHA GitHub 999 checks/ten browser suites and served identities passed.
-Owner production acceptance pending. [Release and evidence](notes/LABOR_V2_11_DISCLOSURE_HOURS_2026_11_23.md).
+Current release: **Labor 2.12**, published 24 November 2026, runtime `46e01b5d`.
+Terminal work hours are editable; departments/root totals stay computed. CNC
+shows work hours and Elements, Taxes & Social +25%, equal rows and one Overhead
+header. Exact-SHA GitHub 1015 checks/ten browser suites and served builds passed.
+Owner production acceptance pending. [Release and evidence](notes/LABOR_V2_12_WORK_EDITING_CNC_2026_11_24.md).
 
 Latest full preservation checkpoint: **Labor 2.11**, owner requested24November2026,
 runtime`63db313d`. Exact835-file source, independent restore, frozen material

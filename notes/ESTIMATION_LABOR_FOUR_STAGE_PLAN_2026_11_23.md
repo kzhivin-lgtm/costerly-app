@@ -314,3 +314,21 @@ Full local999/ten473.687s and exact-SHA GitHub999/ten
 wrapper executable/meta and version.json match; receipt recorded at2026-11-23T21:50:55.013839+00:00.
 Owner production acceptance pending; accepted9.48 checkpoint stays immutable.
 [Release and evidence](LABOR_V2_11_DISCLOSURE_HOURS_2026_11_23.md).
+
+## Labor 2.12 terminal work and CNC
+
+[verified] Labor 2.12 published 24 November 2026, work 3.17.4.6,
+runtime `46e01b5d`. Only terminal paid work is editable, including explicit
+unknown-hour overrides; departments and root totals remain computed. CNC now
+shows Elements and Operator/File Preparation/Edge Banding in its time breakdown,
+without duplicate material/in-house/subcontractor/rate panels. Taxes & Social
+states +25%. All 12 work summaries are 42px at desktop/mobile; nested boundaries
+have no extra padding gaps. Overhead has one shared header and aligned Cost axis.
+Same-source hours feed Labor/Overhead/Self Cost/Objects once; all new edits survive
+Save/retry/reopen. Real partial receipts retain section columns. Unknown fields
+never become zero unless explicitly entered; first Save can complete Overhead
+without replacing healthy groups or any hour input. Full local 1015/ten in
+405.642s and exact-SHA GitHub 1015/ten in 375.79s passed.
+Main rule27499066 active/no bypass; actual Core/wrapper/meta/version match.
+Owner production acceptance pending. Full2.11 checkpoint63db313d/records099f9180
+remains immutable. [Release and evidence](LABOR_V2_12_WORK_EDITING_CNC_2026_11_24.md).

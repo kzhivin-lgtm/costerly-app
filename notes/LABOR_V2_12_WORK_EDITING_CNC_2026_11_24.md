@@ -3,7 +3,7 @@
 Owner authorized24November2026, existing work3.17.4.6. Base is the completed
 full Labor2.11 preservation checkpoint: runtime63db313d, records099f9180,
 835 byte-matched source files and four network-blocked material controls.
-Candidate: publication and owner production acceptance pending.
+Published and served builds verified. Owner production acceptance pending.
 
 ## Approved behavior and decisions
 
@@ -89,3 +89,27 @@ those new keys. A later rollback must preserve the2.12 paid-hour overrides and
 cost snapshots before repricing, rather than silently discarding their financial
 meaning. The full2.11 checkpoint has no live database snapshot; this release
 introduces additive metadata, not a destructive migration.
+
+## Publication evidence
+
+- Runtime `46e01b5d90e4343c3724afe682f20a4b72a629a2`, build `labor-v2.12-b20261123225823-leaf-hours-cnc-detection-v8.4.29`.
+- Full local 1015 Python checks/ten browser suites passed in 405.642s.
+- Exact-SHA [GitHub UI release gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/45284915978/job/138078636238) passed 1015/ten in 375.79s,
+  artifact 14870953615. The established publisher separately
+  verified active/no-bypass main rule27499066 and promoted this exact source.
+- Core, executable wrapper, metadata and HTTP200 version.json match; read-only
+  DOM receipt recorded at 2026-11-23T23:12:43.481293+00:00. This is separate from owner
+  production UI acceptance, which remains pending.
+- Actual geometry measures12 work rows at42px on both1280/390, with existing1px
+  numeric-axis and2px actual-text tolerances unchanged. Both screenshots reviewed.
+- Original monetary assertions remain, including legacy Front panels1118.13 and
+  the old paid-hour flow. New six-field batch Save/reopen verifies105.8h,
+  Labor6612.50, Overhead1058 and configured-item Self Cost8670.50.
+- Real unknown-hour control passes untouched focus, explicit0, undo, first1h Save
+  completing Overhead and later2h Save keeping healthy disclosures. Source evidence
+  stays unknown where no manual override was entered.
+- Full2.11 checkpoint source835 files and separate records/source tags are
+  independently restorable. New release source838 files is retained separately
+  with helper-validated backup receipt, CI artifact, logs and build proofs.
+- No paid request, new Detection/Parts/material algorithm or production-project
+  test write. Initial failed tests, geometry probes and their fixes are retained.
