@@ -85,3 +85,13 @@ Checkpoint creation is still on owner hold: no tags, archive or bundle were made
 9.45 runtime1f872f01 and earlier independently verified checkpoints remain.
 Evidence: outputs/estimation-v9.46/{local-release,github-release,live-builds.json}
 in the handoff workspace. [Scope and evidence](ESTIMATION_V9_46_SAVE_LOCK_2026_11_23.md).
+
+## Separate external check
+
+The existing Workers Builds integration failed again (build668b5650, GitHub
+check137704875670). It also fails on9.45/1f872f01 and earlier recorded baselines.
+Target Cloudflare Pages, protected UI gate, Railway and executable live identity
+passed. Do not claim all external checks passed. Its intended role/removal remains
+the existing deferred P2 backlog proposal, no infrastructure change authorised.
+Evidence: outputs/estimation-v9.46/external-checks.json. Records738cef6a and this
+follow-up stay on the feature branch, not a second runtime deployment.

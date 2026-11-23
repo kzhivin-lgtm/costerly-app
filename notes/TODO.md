@@ -315,7 +315,11 @@ retire the separate Workers Builds integration after owner scope approval.
 It fails on both V2.6 fce5ffae and V2.7 1ca24099 while Cloudflare Pages succeeds.
 Do not conflate it with the target Pages app or describe all external checks as
 passing. Its intended role remains unknown; no integration was removed or
-changed for V2.7. This follow-up does not authorize infrastructure changes.
+changed for V2.7. Reconfirmed23November on9.45/1f872f01 and9.46/c731f2ac:
+Workers Builds failed, target Cloudflare Pages and exact live Core/wrapper/version
+passed.9.46 Workers build668b5650, check137704875670; evidence in
+outputs/estimation-v9.46/external-checks.json. Status stays deferred, not reactivated.
+This follow-up does not authorize infrastructure changes.
 
 PENDING, P0, DIAGNOSTIC FOLLOW-UP, 2026-11-19. Bind upload completion to the
 current upload/server result rather than a leftover File Review. The isolated
