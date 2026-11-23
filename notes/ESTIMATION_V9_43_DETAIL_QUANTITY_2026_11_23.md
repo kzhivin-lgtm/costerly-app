@@ -1,6 +1,6 @@
 # Estimation 9.43 Quantity handoff and opaque material status
 
-Status: candidate under full release verification,23November2026.
+Status: published23November2026, owner authenticated production acceptance pending.
 Existing work3.17.4.6 and Objects workflow. No new work block.
 
 ## Owner report and preserved baseline
@@ -77,3 +77,26 @@ Passing final report: focused-objects-retry. Full local/CI gates remain required
 No paid model run or production-project write for verification. Headless live
 build verification is distinct from owner authenticated production acceptance.
 Build: estimation-v9.43-b20261123085100-ui-objects-v2.7-detection-v8.4.29.
+
+## Verified publication
+
+Runtime d41eb1275c400788e374b20fc26a9e9571d2ca17, release tag
+estimation-v9.43-2026-11-23. Clean exact-SHA local572 checks/nine suites passed
+311.441s. Exact-SHA GitHub572/nine passed291.807s: run45143227565,
+job137586097801, artifact14803087675, fully retained inci-d41eb127.
+
+Protected publisher verified the exact trusted check and active no-bypass
+ruleset27499066, then advanced main from185e3c02 without force. Core deployment
+7994630091 succeeded09:10:31UTC. Actual executable Core/wrapper/meta/version
+all match9.43 at09:13:40UTC, health/wrapperHTTP200. Live browser was headless
+and anonymous Login; it proves build identity, not owner-project acceptance.
+
+Source archive817 files/4,680,899bytes, every byte/CRC verified, SHA256
+f17966d5e64601d697a08ae4da58b075fb07127eee827243fbafb2e66d1b339b.
+Private receipt: quantity-cover-candidate-backup.json underoutputs/estimation-v9.43.
+No failed candidate was published; all diagnostic failures remain retained.
+No paid model run or production-project write for verification. Keep9.42,
+full9.41 checkpoint and V3.3 rollback. Owner next: edit quantity, blur, Review,
+check card quantity, Back and repeat with another value; inspect the opaque
+Changing material status on the same saved calculation. This is a verified
+release, not an owner-accepted full checkpoint or recognition-stability claim.

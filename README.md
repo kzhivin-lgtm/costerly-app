@@ -23,19 +23,16 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
-Estimation **9.43 candidate** repairs the owner-reported quantity mismatch in
-warm Object Detail cards and the pending-write Review race. Changing material
-uses a fully opaque shared loading screen. Full publication checks pending.
-[Scope and evidence](notes/ESTIMATION_V9_43_DETAIL_QUANTITY_2026_11_23.md).
-
-Current Estimation release: **9.42**,23November2026 Israel (22NovemberUTC),
-runtime`185e3c02`. Objects Delivery/Installation/Sale Price/quantity save on blur
-without Set Prices and survive Review/Back. Commercial-only refresh, no cost or
-material rebuild. Shared Changing material status/no card and integral VAT label.
-Local567/nine308.639s, exact-SHA GitHub567/nine287.013s passed; actual Core/wrapper/
-meta/version matched21:59:55UTC22November. Owner authenticated acceptance pending.
-[Release and verification](notes/ESTIMATION_V9_42_UI_PERSISTENCE_2026_11_22.md).
-Preserved9.41 runtime077264c0 and its full checkpoint remain available above.
+Current Estimation release: **9.43**,23November2026, runtime`d41eb127`.
+Review waits for its target quantity write and validates warm detail/prefetch
+quantity against canonical storage. Unchanged cards stay cached; no recheck on
+editing or model/full-cycle restart. Changing material is fully opaque in the
+shared loading style. Local572/nine311.441s and exact-SHA GitHub572/nine291.807s
+passed; actual Core/wrapper/meta/version matched09:13:40UTC. Owner authenticated
+production acceptance pending. [Release, causes and evidence](notes/ESTIMATION_V9_43_DETAIL_QUANTITY_2026_11_23.md).
+Preserved9.42 runtime185e3c02 has partial owner acceptance: commercial edits/VAT
+work; card quantity and cover readability are repaired in9.43. The9.41 full
+checkpoint above remains unchanged.
 
 Preserved diagnostic release: **Estimation V3.3**,22November2026,
 rollback commit`a6158588`, application/tests byte-identical to published`bcf9fdb4`.

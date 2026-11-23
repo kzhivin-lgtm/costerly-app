@@ -1,5 +1,23 @@
 # Done Log
 
+Estimation9.43 published23November2026, work3.17.4.6, runtime d41eb127,
+tag estimation-v9.43-2026-11-23. Owner-reported9.42 partial acceptance preserved.
+Negative controls reproduce stale warm card1 vs saved2 and keyboard Review before
+pending RPC2 vs requested3. Repaired using one scoped canonical quantity check
+on warm Review, targeted snapshot replacement and ordered acknowledged quantity
+writes. Unchanged cards stay cached, edit rerenders do not repeat reads; failed
+saves retain value/retry and cannot navigate as saved. Actual read-only projection
+0.804s/1 read/0 writes. Opaque shared Changing material background removes text
+bleed, desktop/mobile lifecycle checks pass.57 prior Estimation definitions and
+609 other non-Markdown source files unchanged. Clean local572/nine311.441s,
+GitHub572/nine291.807s(run45143227565/job137586097801/artifact14803087675) pass.
+Publisher verified active no-bypass27499066; Core7994630091 success09:10:31UTC,
+actual Core/wrapper/meta/version match09:13:40UTC, HTTP200. Source817 files,
+4,680,899bytes, SHA256f17966d5e64601d697a08ae4da58b075fb07127eee827243fbafb2e66d1b339b,
+byte/CRC verified. No paid call/project write. Live probe is anonymous; owner
+real-project acceptance remains pending.9.42 source/tag, full9.41 checkpoint and
+V3.3 rollback preserved. [Release and diagnostic history](ESTIMATION_V9_43_DETAIL_QUANTITY_2026_11_23.md).
+
 Estimation9.42 published23November2026 Israel(22NovemberUTC), work3.17.4.6.
 Runtime185e3c02, release tagestimation-v9.42-2026-11-23. Objects Delivery/
 Installation/Sale Price/quantity save on blur without Set Prices and survive

@@ -1,3 +1,21 @@
+**[verified] Current whole-cycle release: Estimation9.43,23November2026,
+runtime d41eb127.** Review validates warm card/prefetch quantity through one
+scoped canonical read and waits only for its target quantity write. Earlier
+quantity/cache and pending-RPC failures are reproduced, no manual source patch
+or model-cycle restart. Unchanged cards stay cached; no read per edit. Ordered
+quantity updates, retained failed values/retry and actual card contents pass.
+Changing material now uses an opaque shared-style screen; no text bleed.
+Local572/nine311.441s and exact-SHA CI572/nine291.807s(run45143227565) pass.
+Protected publisher verified active no-bypass27499066; Core7994630091 success
+09:10:31UTC, actual Core/wrapper/meta/version match09:13:40UTC, HTTP200. Owner
+production acceptance pending; live verifier observed anonymous Login. No paid
+call or production-project write.57 prior Estimation definitions/609 other
+non-Markdown files unchanged9.42. Preserve9.42 source/tag,9.41 full checkpoint
+and V3.3 rollback. Earlier9.42 full-pass tests missed card-internal quantity;
+owner partial acceptance and all failures remain recorded. Authoritative release:
+notes/ESTIMATION_V9_43_DETAIL_QUANTITY_2026_11_23.md; backlog only notes/TODO.md.
+Do not begin coating or new work blocks without their agreed rules/scope.
+
 **[verified] Current whole-cycle release: Estimation9.42,23November2026 Israel
 (22NovemberUTC), runtime185e3c02.** Objects Delivery/Installation/Sale Price/
 quantity persist on blur without Set Prices, survive ordinary Review/Back and
