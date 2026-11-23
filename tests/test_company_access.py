@@ -2660,7 +2660,10 @@ def test_owner_can_confirm_member_access_removal_from_users_tab(monkeypatch):
 
     assert removed == ["user-2"]
     assert app.session_state["company_profile_tab"] == "Users"
-    assert "User access removed" in " ".join(item.value for item in app.success)
+    markup = "".join(item.value for item in app.markdown)
+    assert 'data-profile-save-action="users_remove"' in markup
+    assert 'data-profile-save-ok="true"' in markup
+    assert not app.success
 
 
 def test_company_metrics_reuses_object_detail_table_contract():
