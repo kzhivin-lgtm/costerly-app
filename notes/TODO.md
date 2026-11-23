@@ -1148,7 +1148,7 @@ occupied2.8/2.9 tags remain untouched. The owner explicitly confirmed Labor2.10.
 introduced.
 Detailed rules and acceptance: existing four-stage plan, latest section below.
 
-ACTIVE, P1, USER REQUEST, Labor2.11,23November2026, existing work3.17.4.6.
+PUBLISHED, OWNER PRODUCTION ACCEPTANCE PENDING, P1, USER REQUEST, Labor2.11,23November2026, existing work3.17.4.6.
 Hide all four own-summary metrics of expanded aggregate Labor stages (Part
 Production, Assembly, Preparation and Packing), restore them when collapsed.
 Keep leaf editors and their values accessible. Show total hours beside money in
@@ -1159,11 +1159,24 @@ Owner withdrew the arithmetic mismatch report after counting Preparation twice:
 check found half-even Overhead vs half-up Labor at100.25h; unify only rounding
 of displayed hours, retain exact allocation. Preserve allocation,
 payroll, persistence, all four stages and published2.10 behavior. No paid calls.
-Labor2.11 tag absent locally/remotely, main remains20e34aa1 before this change.
+Labor2.11 was free locally/remotely before assignment; base main20e34aa1.
 Acceptance: hide/restore disclosure without rerun, root hours/current Overhead
 basis stay equal during edits and after Save/reopen, real DOM axes/text centers,
 complete mandatory UI gate and verified Core/wrapper publication. Owner final
 production acceptance remains required. Accepted9.48 checkpoint stays immutable.
+
+[verified] Labor2.11 published23November2026, existing work3.17.4.6,
+runtime63db313d. Expanded Part Production, Assembly and Preparation and Packing
+hide own hours/pay/taxes/total and restore them on native collapse. Root Labor
+shows shared total hours, including collapsed. Nested numeric axes and text
+centers are aligned without shrinking their grids. Exact source hours stay equal
+to Overhead during edits and after Save/reopen. The screenshot28.3h is correct;
+shared half-up display rounding, no allocation/payroll change, paid call or Detection/Parts/Materials algorithm change.
+Full local999/ten473.687s and exact-SHA GitHub999/ten
+346.847s passed. Protected main rule27499066 active/no bypass. Actual Core,
+wrapper executable/meta and version.json match; receipt recorded at2026-11-23T21:50:55.013839+00:00.
+Owner production acceptance pending; accepted9.48 checkpoint stays immutable.
+[Release and evidence](LABOR_V2_11_DISCLOSURE_HOURS_2026_11_23.md).
 
 [verified] Labor 2.10 published 23 November 2026, work 3.17.4.6, runtime 20e34aa1.
 Preparation and Packing now includes trial mating/checking/separation at30 planned

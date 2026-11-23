@@ -299,3 +299,18 @@ GitHub994/ten362.833s passed. Protected main rule27499066 active/no bypass.
 Core/wrapper/meta/version.json all match Labor2.10 at2026-11-23T19:08:50.531617+00:00.
 Owner production acceptance pending. Accepted9.48 full checkpoint is preserved;
 this publication is not a new accepted checkpoint. [Release and evidence](LABOR_V2_10_PREPARATION_PACKING_2026_11_23.md).
+
+## Labor2.11 disclosure and hours
+
+[verified] Labor2.11 published23November2026, existing work3.17.4.6,
+runtime63db313d. Expanded Part Production, Assembly and Preparation and Packing
+hide own hours/pay/taxes/total and restore them on native collapse. Root Labor
+shows shared total hours, including collapsed. Nested numeric axes and text
+centers are aligned without shrinking their grids. Exact source hours stay equal
+to Overhead during edits and after Save/reopen. The screenshot28.3h is correct;
+shared half-up display rounding, no allocation/payroll change, paid call or Detection/Parts/Materials algorithm change.
+Full local999/ten473.687s and exact-SHA GitHub999/ten
+346.847s passed. Protected main rule27499066 active/no bypass. Actual Core,
+wrapper executable/meta and version.json match; receipt recorded at2026-11-23T21:50:55.013839+00:00.
+Owner production acceptance pending; accepted9.48 checkpoint stays immutable.
+[Release and evidence](LABOR_V2_11_DISCLOSURE_HOURS_2026_11_23.md).

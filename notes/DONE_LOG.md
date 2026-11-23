@@ -1,5 +1,18 @@
 # Done Log
 
+[verified] Labor2.11 published23November2026, existing work3.17.4.6,
+runtime63db313d. Expanded Part Production, Assembly and Preparation and Packing
+hide own hours/pay/taxes/total and restore them on native collapse. Root Labor
+shows shared total hours, including collapsed. Nested numeric axes and text
+centers are aligned without shrinking their grids. Exact source hours stay equal
+to Overhead during edits and after Save/reopen. The screenshot28.3h is correct;
+shared half-up display rounding, no allocation/payroll change, paid call or Detection/Parts/Materials algorithm change.
+Full local999/ten473.687s and exact-SHA GitHub999/ten
+346.847s passed. Protected main rule27499066 active/no bypass. Actual Core,
+wrapper executable/meta and version.json match; receipt recorded at2026-11-23T21:50:55.013839+00:00.
+Owner production acceptance pending; accepted9.48 checkpoint stays immutable.
+[Release and evidence](LABOR_V2_11_DISCLOSURE_HOURS_2026_11_23.md).
+
 Labor 2.10 published 23 November 2026, work 3.17.4.6, runtime 20e34aa1.
 Preparation and Packing now includes trial mating/checking/separation at30 planned
 man-minutes per sourced interface and S/M/L/XL packing at10/15/20/25. Owner approved

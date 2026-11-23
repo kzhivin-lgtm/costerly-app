@@ -1,10 +1,10 @@
 # Costerly
 
-Current release: **Labor 2.10**, published 23 November 2026, runtime `20e34aa1`.
-Trial checking/separation and S/M/L/XL packing feed Labor, Overhead and Self Cost.
-Exact-SHA GitHub gate passed 994 checks and ten browser suites; served Core
-and wrapper identities match. Owner production acceptance remains pending.
-[Release, source evidence and limits](notes/LABOR_V2_10_PREPARATION_PACKING_2026_11_23.md).
+Current release: **Labor 2.11**, published 23 November 2026, runtime `63db313d`.
+Expanded aggregate stages hide their metrics; collapsed Labor shows total hours.
+Nested axes/text are aligned. Labor/Overhead use the same unchanged source hours.
+Exact-SHA GitHub 999 checks/ten browser suites and served identities passed.
+Owner production acceptance pending. [Release and evidence](notes/LABOR_V2_11_DISCLOSURE_HOURS_2026_11_23.md).
 
 Latest full checkpoint: **Estimation 9.48**, owner accepted 23 November 2026,
 runtime `862e28f0`. Prices lazy loading and four Labor stages are accepted.

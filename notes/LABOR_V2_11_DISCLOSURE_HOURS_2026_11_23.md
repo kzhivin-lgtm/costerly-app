@@ -2,7 +2,7 @@
 
 23November2026, work3.17.4.6. Base: published2.10/runtime20e34aa1, records
 ca113847. Accepted full checkpoint9.48/runtime862e28f0 remains immutable.
-Candidate, publication and owner acceptance pending.
+Published and build identities verified. Owner production acceptance pending.
 
 Owner corrected the original arithmetic report:6.9+14.9+6.5=28.3h. The preparation
 children2.5+4.0 are already included in6.5. No allocation/payroll change is needed.
@@ -36,3 +36,27 @@ Display boundary check: Python Overhead previously rounded100.25h to100.2h,
 while Labor/JS showed100.3h. Use shared half-up one-decimal display for Labor
 and Overhead, including saved/reopened rows; allocation retains exact100.25h
 and all costs are unchanged. Tests cover100.25,140.75,1.15 and28.3h.
+
+## Publication evidence
+
+- Runtime `63db313d8dbb1e6b8ecec5a05135fe4f2c6d7afc`, build `labor-v2.11-b20261123213531-disclosure-hours-detection-v8.4.29`.
+- Full local 999 Python checks and ten browser suites passed in473.687s.
+- CI provisioned Chromium in268s (job step21:37:08-21:41:36UTC); this setup
+  delay is separate from the contract runtime below.
+- Exact-SHA [GitHub UI release gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/45271419885/job/138031904780) passed999/ten in346.847s,
+  artifact14865333744. Protected publisher verified active/no-bypass
+  main rule27499066 separately before promoting this exact runtime.
+- Actual Core, wrapper executable/meta and HTTP200 version.json match. Receipt recorded at
+  2026-11-23T21:50:55.013839+00:00. This build probe is not owner-project UI acceptance.
+- Nested text geometry: all four desktop/mobile/wrapper/document cases satisfy
+  the existing1px numeric axes and2px text-center tolerance. Screenshot reviewed.
+- Controlled saved-hour flow checks140.75h displayed140.8h and100.25h displayed
+  100.3h, unchanged costs and matching exact Overhead basis, including saved reopen.
+- Helper-validated runtime source ZIP retained in runtime-backup.json, all bytes compared; existing
+  exclusions and5MiB cap preserved. Receipts/logs/artifacts retained under outputs.
+- Initial focused run caught compact-header CSS precedence; corrected. A focused
+  calculation loaded earlier uppercase H CSS before the final stylesheet change.
+  The next run exposed a test reading a still-collapsed Overhead group, then a
+  boundary rounding inconsistency. The group now opens explicitly and one-decimal
+  hours use half-up display in Python/JS. Both fresh final local and remote gates passed.
+- No paid call, production-project data write or accepted-checkpoint replacement.
