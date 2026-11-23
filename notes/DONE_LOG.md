@@ -1,5 +1,28 @@
 # Done Log
 
+Estimation9.44 published23November2026, work3.17.4.6, runtime fa67572a,
+release tagestimation-v9.44-2026-11-23. Owner confirmed9.43 quantity persistence.
+Save processes only edited requirements/baskets and dependent totals, reuses saved
+Labor unless quantity changes, and returns a receipt after persistence into the
+existing scoped cache. No second detail read for modern material Save, Parts
+Check/model restart, or new runtime poll/observer. Source preview and Parts stay.
+Save stays/green Saved/new edit reset; Back Stay/Leave and APPROVE return pass.
+A failure keeps the draft with Retry save on the same button. Historical exception
+remains unknown; controlled post-write read failure is reproduced and removed.
+Card sections and final totals now consistently show batch cost for selected
+quantity; Objects and stored SC retain unit prices. Exact existing batch audit
+and configured VAT reused, costing formulas unchanged. Fixed Privacy remains;
+shared72px reserve and26px detail action gap pass desktop/narrow.
+Clean local605/nine278.354s and exact-SHA GitHub605/nine354.227s pass,
+run45163779296/job137655438915/artifact14814676984 (407s job incl setup).
+Publisher verified active no-bypass27499066; Core7997364902 success11:25:05UTC.
+Actual executable Core/wrapper/meta/version match11:26:46UTC, HTTP200. Live
+identity check observes anonymous Login, not owner authenticated acceptance.
+Actual saved-data replay passes purchase/required/front/labor with mutations
+captured in memory and strict finite JSON. No paid call or production-project
+write.9.43 source/records,9.41 full checkpoint and V3.3 rollback preserved.
+[Release and evidence](ESTIMATION_V9_44_DETAIL_SAVE_2026_11_23.md).
+
 Estimation9.43 published23November2026, work3.17.4.6, runtime d41eb127,
 tag estimation-v9.43-2026-11-23. Owner-reported9.42 partial acceptance preserved.
 Negative controls reproduce stale warm card1 vs saved2 and keyboard Review before

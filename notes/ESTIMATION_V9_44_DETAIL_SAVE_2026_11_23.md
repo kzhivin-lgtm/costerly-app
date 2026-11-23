@@ -1,6 +1,6 @@
 # Estimation9.44 Detail delta Save, totals and footer
 
-Status: candidate,23November2026. Existing work3.17.4.6, same Objects workflow.
+Status: published23November2026, owner authenticated acceptance pending. Existing work3.17.4.6, same Objects workflow.
 Protected baseline: runtime d41eb1275c400788e374b20fc26a9e9571d2ca17,
 records4f0b7912206d167db95bcaeac06f2c917f9c936d and
 estimation-v9.43-2026-11-23. Full9.41 checkpoint and earlier rollbacks remain.
@@ -60,7 +60,7 @@ Other screen geometry and all accepted9.43 behavior remain protected.
 
 ## Verification and release
 
-Pending full local/exact-SHA GitHub gate and protected publication. Private
+Full local/exact-SHA GitHub gates and protected publication pass. Private
 evidence is underoutputs/estimation-v9.44 in the handoff workspace. Retain real
 route/events/schema/read-profile, strict in-memory write replays, baseline and
 corrected detail probes. Synthetic fixture checks are not owner production
@@ -83,3 +83,18 @@ receipts identical to an independent projection, including exact row values and
 batch net; JSON rejects nonfinite values. Front scenario2.301s, purchase0.809s,
 required1.050s include real guarded reads, captured writes and comparison reads.
 No inference/model or production mutation was run.
+
+Final clean local605 checks/nine suites278.354s; exact-SHA GitHub605/nine354.227s,
+run45163779296/job137655438915/artifact14814676984. GitHub job407s includes setup.
+Published runtimefa67572a2d74db121c303667e9a68bac4b35b33f through the required
+publisher and active no-bypass ruleset27499066. Core deployment7997364902 reports
+success11:25:05UTC. Actual live Core/wrapper/meta/version all match9.44 at
+11:26:46UTC, health/wrapperHTTP200. Release tagestimation-v9.44-2026-11-23;
+records tagestimation-v9.44-records-2026-11-23. No runtime change after that gate.
+
+Owner real-project acceptance remains pending. Do not claim live Save speed from
+the0.43s synthetic writer. Existing actual cold/warm Review8.382/3.487s separates
+server and browser wait; further no-op-write/read/cache options are a proposal.
+A narrow390px screenshot also shows the pre-existing Object header/menu overlap;
+shared header source is unchanged. Compare against9.43 before any separate repair,
+not part of this Save objective or an accepted regression claim.

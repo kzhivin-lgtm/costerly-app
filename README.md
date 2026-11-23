@@ -23,16 +23,17 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
-Current Estimation release: **9.43**,23November2026, runtime`d41eb127`.
-Review waits for its target quantity write and validates warm detail/prefetch
-quantity against canonical storage. Unchanged cards stay cached; no recheck on
-editing or model/full-cycle restart. Changing material is fully opaque in the
-shared loading style. Local572/nine311.441s and exact-SHA GitHub572/nine291.807s
-passed; actual Core/wrapper/meta/version matched09:13:40UTC. Owner authenticated
-production acceptance pending. [Release, causes and evidence](notes/ESTIMATION_V9_43_DETAIL_QUANTITY_2026_11_23.md).
-Preserved9.42 runtime185e3c02 has partial owner acceptance: commercial edits/VAT
-work; card quantity and cover readability are repaired in9.43. The9.41 full
-checkpoint above remains unchanged.
+Current Estimation release: **9.44**,23November2026, runtime`fa67572a`.
+Save handles changed material inputs and dependent totals, reuses saved Labor
+and the scoped card cache, stays on the card and turns green Saved. No second
+receipt read after an acknowledged modern material Save. Card totals display the
+selected quantity's batch consistently; persisted SC and Objects stay per-item.
+Fixed Privacy remains with the shared bottom reserve. Clean local605/nine278.354s
+and exact-SHA GitHub605/nine354.227s pass. Actual Core/wrapper/meta/version match
+11:26:46UTC. Owner authenticated acceptance remains pending. No paid run or
+production-project write. [Release and evidence](notes/ESTIMATION_V9_44_DETAIL_SAVE_2026_11_23.md).
+Preserve9.43 runtime`d41eb127`/records`4f0b7912`,9.41 full checkpoint and earlier
+accepted interactions. No broader cache/parallelisation change was published.
 
 Preserved diagnostic release: **Estimation V3.3**,22November2026,
 rollback commit`a6158588`, application/tests byte-identical to published`bcf9fdb4`.

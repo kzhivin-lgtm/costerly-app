@@ -537,8 +537,8 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-ACTIVE, P1, USER-REPORTED9.43 PARTIAL ACCEPTANCE, release9.44,23November2026.
-Quantity now persists. Investigate and repair Object Detail totals mixing batch
+PUBLISHED9.44, P1, OWNER AUTHENTICATED ACCEPTANCE PENDING,23November2026.
+Quantity persistence is owner-confirmed. Repaired Object Detail totals mixing batch
 section totals with per-item final cost, failed Save, and any Save navigation.
 Save must remain on the card and turn green until another edit; Back confirms
 unsaved changes, APPROVE saves/approves then returns. Keep unit prices on Objects.
@@ -553,6 +553,12 @@ receipt into the existing scoped cache, avoiding a second read after persistence
 Owner confirmed the failed edit was front material. Exact historical backend
 exception remains UNKNOWN; a post-write receipt-read failure is reproduced as a
 supported failure mode, not asserted as the original transport error.
+Runtimefa67572a, clean local605/nine278.354s and GitHub605/nine354.227s pass
+(run45163779296). Core7997364902 success11:25:05UTC; actual executable Core/
+wrapper/meta/version match11:26:46UTC. UI Save failure/retry/stay/green/new edit,
+Back Stay/Leave and APPROVE at quantity3 pass1758/390. No paid run/project write.
+Owner next: front material → Save → verify green Saved on same card, then APPROVE.
+[Causes, limits and release](ESTIMATION_V9_44_DETAIL_SAVE_2026_11_23.md).
 Route witness run_186f97810a4b4506a8fe356c0d5abf9b, object-001, quantity3:
 4979.21 unit net/5875.47 incl VAT. Actual transitions8.382s cold Review,
 3.487s warm Review,7.252s APPROVE return; stage breakdown retained privately.
@@ -579,6 +585,11 @@ or production-project write. Existing work3.17.4.6 and all protected checkpoints
 preserved. Owner next: quantity edit → blur → Review → card quantity → Back,
 repeat with a different quantity, then inspect material-changing cover.
 [Causes, retained failures and verification](ESTIMATION_V9_43_DETAIL_QUANTITY_2026_11_23.md).
+
+PENDING AGENT PROPOSAL, P3, NARROW OBJECT HEADER,23November2026.
+The390px saved-card screenshot shows Object label/native menu overlap. Shared
+header source is unchanged by9.44. Compare with9.43 before classifying a regression
+or implementing a separate layout fix. No owner approval to begin this work.
 
 PRESERVED9.42, P1, PARTIAL OWNER ACCEPTANCE23November2026, release9.42,
 23November2026 Israel (22NovemberUTC), runtime185e3c02. Objects Delivery/
