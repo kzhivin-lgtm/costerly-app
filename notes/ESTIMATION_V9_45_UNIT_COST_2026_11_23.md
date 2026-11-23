@@ -44,3 +44,11 @@ UI gates, protected publication, live build identity, full source/records/archiv
 checkpoint and final remote refs are pending. Owner real-project acceptance is
 separate from synthetic/headless checks. Preserve all failed evidence and the
 9.44 release; rollback only9.45's attributable changes.
+
+The initial full candidate60bebcaf was blocked locally in Calculation: the new
+quantity3 scenario left its synthetic MDF cost snapshot in files whose cleanup
+used an incorrect name. The next independent LDSP selector case inherited1100
+and could not show a price difference on MDF. Its source choice/price scenario
+isolation was invalid. Correct fixture cleanup now removes full-cost-totals.json
+and full-cost-lines.json and additionally asserts the initial LDSP price1000;
+the original price-change assertion is retained. No production change or bypass.

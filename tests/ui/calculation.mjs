@@ -26,7 +26,7 @@ async function boot(value={},width=1280,height=1000){
 
 async function frontPanelChecks(){
  for(const width of [1280,390]){
-  rmSync(statePath('front-choice'),{force:true});
+  for(const name of ['front-choice','full-cost-totals.json','full-cost-lines.json'])rmSync(statePath(name),{force:true});
   const {page,core,frame}=await boot({front_panels:true,front_delay:0.6},width);
   await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
   await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
@@ -47,6 +47,7 @@ async function frontPanelChecks(){
   assert.deepEqual(await picker.locator('option').allTextContents(),['LDSP','MDF Veneered','MDF Raw','Plywood']);
   const initialPrice=await core.locator('.object-detail-unit-price').first().innerText();
   const initialCost=await core.locator('.object-detail-final [data-final="excl_vat"]').innerText();
+  assert.equal(initialCost,'₪1\u202f000','Each replacement scenario starts from its saved LDSP source');
   const originalDocument=await frame.evaluate(()=>{
    window.frontPanelDocumentWitness=crypto.randomUUID();return window.frontPanelDocumentWitness;
   });
@@ -152,7 +153,7 @@ async function frontPanelChecks(){
 
 async function detailSaveChecks(){
  for(const width of [1758,390]){
-  for(const name of ['front-choice','object-quantities.json','object-totals.json','labor-hours.json','object-approvals.json'])rmSync(statePath(name),{force:true});
+  for(const name of ['front-choice','object-quantities.json','full-cost-totals.json','full-cost-lines.json','labor-hours.json','object-approvals.json'])rmSync(statePath(name),{force:true});
   const {page,core,frame}=await boot({front_panels:true,labor_ready:true},width,933);
   await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
   report['fileReviewFooter'+width]=await checkClosingGap(frame,'.st-key-file_review_actions');
@@ -212,7 +213,7 @@ async function detailSaveChecks(){
   assert.equal(JSON.parse(readFileSync(statePath('object-approvals.json')))['object-001'],true);
   await page.close();
  }
- for(const name of ['front-choice','object-quantities.json','object-totals.json','labor-hours.json','object-approvals.json'])rmSync(statePath(name),{force:true});
+ for(const name of ['front-choice','object-quantities.json','full-cost-totals.json','full-cost-lines.json','labor-hours.json','object-approvals.json'])rmSync(statePath(name),{force:true});
 }
 await detailSaveChecks();
 await frontPanelChecks();
