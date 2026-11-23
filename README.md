@@ -27,20 +27,19 @@ is pending. [Release, retained CI evidence and verification limits](notes/OBJECT
 [accepted V2.4 checkpoint](notes/OBJECTS_V2_4_PRODUCTION_CHECKPOINT_2026_11_21.md),
 [contract](notes/UI_GUIDELINES.md), [backlog](notes/TODO.md#objects-estimation-workflow-and-proposal-revisions).
 
-Current Estimation release: **9.46**, 23 November 2026, verified runtime `c731f2ac`.
-Object Detail Save immediately greys/disables footer Back and APPROVE, then
-restores them on the acknowledged result. No queued approval from clicks during
-Save. Green Saved, failure/retry, direct Approve and preview behavior are retained.
-Updating app and recovery use the shared loader typography. Clean local607/nine
-349.486s and exact-SHA GitHub607/nine338.972s pass. Actual executable Core, wrapper,
-meta and version.json match9.46, HTTP200. Owner requested the full checkpoint;
-synthetic UI evidence and anonymous live identity remain separate from a new
-agent-observed authenticated owner run.
-[Release, failed candidates and evidence](notes/ESTIMATION_V9_46_SAVE_LOCK_2026_11_23.md).
-The earlier checkpoint hold is superseded by the owner-requested full9.46
-checkpoint. Runtime remains unchanged; records/tags are preserved separately.
-Preserve9.45 runtime`1f872f01`,9.44 runtime`fa67572a` and the9.41 full checkpoint.
-No new model cycle, calculation/Detection change or schema migration.
+Current Estimation release: **9.47**, 23 November 2026, runtime `6764b9a7`.
+Contacts with a saved logo now opens without the fragment/sidebar layout error.
+Profile Save feedback appears on the same button after an acknowledged write.
+All-collapsed cost sections no longer push Self Cost down the viewport. Fixed
+Privacy and expanded spacing remain. Overhead uses current Production monthly
+hours from Labor Costs, with scoped invalidation and explicit audited fallback.
+Clean local/exact-SHA GitHub gates pass 613 checks/nine browser suites. Actual
+Core/wrapper/meta/version.json match 9.47 at14:32:26UTC, HTTP200. Owner real-session
+acceptance remains pending. Current UI-contract amendments are published; final
+whole-interface consolidation is separately queued. The full9.46 checkpoint
+and all prior protected releases remain intact. No paid run or Detection/Parts/
+material/catalog/schema change.
+[Release, cause and evidence](notes/ESTIMATION_V9_47_PROFILE_OVERHEAD_2026_11_23.md).
 
 Preserved diagnostic release: **Estimation V3.3**,22November2026,
 rollback commit`a6158588`, application/tests byte-identical to published`bcf9fdb4`.

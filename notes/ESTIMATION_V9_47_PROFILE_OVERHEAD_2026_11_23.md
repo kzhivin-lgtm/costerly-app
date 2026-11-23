@@ -1,6 +1,7 @@
 # Estimation 9.47 Profile reliability and Production overhead capacity
 
-Status: candidate, 23 November 2026, existing work3.17.4.6. Owner authorised
+Status: published, owner authenticated acceptance pending, 23 November 2026,
+existing work3.17.4.6. Runtime6764b9a738983bcc2ef29773ca4736bbcb3b04ea. Owner authorised
 continuing the cycle from the full9.46 checkpoint (runtimec731f2ac,
 records6606568f). No Detection/Parts/material/catalog/provider/schema change.
 
@@ -80,8 +81,15 @@ The zero-height bridge and logo guard create no visible layout slots.
 - An early repeated Profile fixture run was invalid because it reused already
   modified machinery data; it did not justify a product change. Isolated runs
   and the final full contract use separate state/processes.
-- Full clean local/exact-SHA GitHub gates and actual deployed identities remain
-  required. Synthetic acceptance is distinct from owner authenticated acceptance.
+- Full clean local613/nine passed370.034s; exact-SHA GitHub613/nine passed354.795s,
+  run45193303477/job137757028445/artifact14827725194. Initial1b6810ee failed an old
+  unit assertion requiring the retired green Users alert. Corrected assertion
+  retains persisted removal and verifies fresh successful receipt/no success alert.
+- Protected publisher verified active no-bypass27499066. Railway deployment
+  f03ca09d-ebd2-47e6-9e7e-427c3055fad2 and Cloudflare Pages succeeded. Actual
+  executable Core/wrapper/meta/version match the full9.47 build at14:32:26UTC,
+  HTTP200. Synthetic acceptance/live anonymous Login identity remain distinct
+  from owner authenticated acceptance.
 
 Evidence: outputs/estimation-v9.47 in the handoff workspace. The existing separate
 Workers Builds failure remains deferred. Full UI-contract consolidation after

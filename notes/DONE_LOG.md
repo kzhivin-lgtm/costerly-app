@@ -1,5 +1,37 @@
 # Done Log
 
+Estimation 9.47, 23 November 2026, existing work 3.17.4.6. Runtime 6764b9a7.
+Contacts' stored-logo branch previously raised StreamlitInvalidLayoutContextError:
+a fragment entered a sidebar slot not created in the full render. The existing
+logo guard now uses a hidden fragment-owned container. Repeated tabs, Reload,
+native picker and narrow width pass. No ready/auth/recovery check was weakened.
+Profile Save uses the existing write's fresh receipt for Saving… → Saved → normal,
+with reset after 2s/new input and cancellation on tab/teardown. Green bottom
+success alerts are removed. Failed writes keep errors/drafts. No added write,
+price cycle or rerun. All-collapsed cost bands use natural flow before Self Cost;
+expanded footer clearance and fixed Privacy remain. Overhead capacity comes
+from active Production employees' reported monthly hours, company-scoped with
+truncation protection and audit. Empty capacity retains explicit legacy fallback;
+read failure does not silently use fallback. Worker changes invalidate that
+company's overhead context while preserving Labor. Owner settings are preserved.
+Read-only real company witness: six Production workers, 1200h rather than 2016h;
+identical 21.8459166667h Labor yields overhead 1133.69 instead of 1009.14ILS with
+current reserves. This is not comparable to old 173ILS without changed reserves.
+Four frozen material purchase controls match with network disabled.
+Clean local 613 checks/nine browser suites pass in 370.034s. Exact-SHA GitHub
+45193303477/job137757028445/artifact14827725194 passes 613/nine in 354.795s.
+Initial 1b6810ee was blocked by a unit assertion for the intentionally retired
+success alert; the corrected assertion retains persisted user removal evidence.
+Protected publisher verified active no-bypass ruleset 27499066 before main.
+Railway f03ca09d-ebd2-47e6-9e7e-427c3055fad2 and Cloudflare Pages succeeded.
+Actual executable Core/wrapper/meta/version.json match 9.47 at 14:32:26UTC,
+HTTP200. This identity probe is anonymous Login, not authenticated owner UI
+acceptance. Full 9.46 checkpoint, earlier release protection and frozen inputs
+remain. Current contract amendments are on GitHub; final whole-UI consolidation
+remains pending the owner's end-of-interface-phase instruction. No new checkpoint,
+Detection/Parts/material/provider/schema change or paid run.
+[Scope, diagnosis and retained evidence](ESTIMATION_V9_47_PROFILE_OVERHEAD_2026_11_23.md).
+
 Estimation 9.46 full owner-requested checkpoint, 23 November 2026, work3.17.4.6.
 Owner lifted the earlier checkpoint hold. Preserve published runtimec731f2ac with
 separate immutable runtime/records tags and no redeploy. Source821files/4,704,283B,

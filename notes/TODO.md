@@ -542,7 +542,7 @@ Naming or calculation evidence to hide this source-layout limitation.
 ## Objects Estimation workflow and proposal revisions
 
 
-ACTIVE, P0/P1, OWNER-APPROVED Estimation9.47,23November2026, existing work3.17.4.6.
+PUBLISHED, P0/P1, OWNER AUTHENTICATED ACCEPTANCE PENDING, Estimation9.47,23November2026, existing work3.17.4.6.
 Protected baseline is the full9.46 checkpoint/runtimec731f2ac, records6606568f.
 Sequence: (P0) diagnose/fix Contacts becoming permanently covered after a Profile
 switch and Reload, preserve correlated ready, auth/role and all other tabs;
@@ -561,8 +561,10 @@ Overhead denominator equals current Production capacity and updates after worker
 changes without rerunning Parts/materials; Pricing→Contacts with/without stored
 logo, cold/warm/reload, success/failure and subsequent tab navigation; Save pending,
 acknowledged Saved/default reset, failure/retry/new edit, same-tab/reopen and
-company/user isolation in each existing Profile Save path. Current captures show
-company+logo reads completed but no Contacts ready, cause not yet established.
+company/user isolation in each existing Profile Save path. Cause verified: the
+stored-logo guard entered a sidebar from the tab fragment, outside its layout.
+Local/exact-SHA GitHub613/nine gates pass; Core/wrapper/meta/version match9.47
+at14:32:26UTC. Runtime6764b9a7. Scope and retained evidence below.
 The owner asks to update the GitHub UI contract after the verified changes,
 retaining all earlier accepted behavior except the named spacing/save-feedback
 amendments. No new notices/controls, no speculative infrastructure replacement.
