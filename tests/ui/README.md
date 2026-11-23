@@ -300,3 +300,12 @@ and Block Assembly input label updated. New parents/zero stages have no editors.
 The Python gate adds existing sheet-route and Price Sources coverage plus lazy
 3,000-row-group and asynchronous-projection checks. Explicit in-house CNC skips
 the unselected panel-saw estimate; source ownership and other routes are retained.
+
+Labor2.11 extends navigation at desktop/narrow, old wrapper and restored Core:
+assert compact root hours, hidden expanded aggregate metrics/restored collapsed
+metrics and unchanged leaf editors. Measure every visible nested numeric value
+against header axes (1px) and actual text against row content centers (2px font
+metrics tolerance), after normalizing independent table scroll positions. Native
+toggle remains local, no render-id change. Calculation compares exact root and
+Overhead hours during edits, retains packing once, and tests Save/retry/reopen.
+The28.3h screenshot regression is covered by a Python source/allocation check.

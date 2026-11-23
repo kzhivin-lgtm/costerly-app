@@ -688,3 +688,23 @@ Owner accepted the achieved Estimation9.47 interface23November2026 and requested
 full preservation. Existing9.47 amendments and all earlier protected scenarios
 remain. This records acceptance, changes no test or threshold.
 [Full checkpoint and restoration](ESTIMATION_V9_47_PRODUCTION_CHECKPOINT_2026_11_23.md).
+
+## Labor2.11 disclosure and hours, owner approved23November2026
+
+Expanded aggregate stages (Part Production, Assembly, Preparation and Packing)
+keep only their name/toggle in their own summary. Hide hours/pay/taxes/total with
+CSS visibility, preserving the DOM and calculation source. Collapsing restores
+all four values. Leaf rows keep their editors/metrics while their evidence is
+open. Root Labor shows total hours beside its amount, including when collapsed.
+Exact total hours remain the existing once-only source for Overhead allocation;
+round the display only. The screenshot's28.3h is correct, nested preparation is
+already included. No allocation or payroll change.
+
+Nested numeric axes follow the existing Materials Hours/Total reference and
+uniformly spaced Labor Pay/Taxes axes. Center actual text in full-height cells;
+indent only the nested title, never shrink the nested numeric grid. Reuse the
+existing coalesced render/resize alignment guard on native Labor toggle events,
+with listener cleanup. No new observer, polling, request, write or app rerun.
+Verify desktop/mobile/old wrapper/restored document, disclosure restore, leaf
+editing, Save failure/retry/reopen and shared exact hours with Overhead.
+Rollback is the published2.10 runtime20e34aa1; accepted9.48 stays preserved.

@@ -1148,6 +1148,21 @@ occupied2.8/2.9 tags remain untouched. The owner explicitly confirmed Labor2.10.
 introduced.
 Detailed rules and acceptance: existing four-stage plan, latest section below.
 
+ACTIVE, P1, USER REQUEST, Labor2.11,23November2026, existing work3.17.4.6.
+Hide all four own-summary metrics of expanded aggregate Labor stages (Part
+Production, Assembly, Preparation and Packing), restore them when collapsed.
+Keep leaf editors and their values accessible. Show total hours beside money in
+the compact Labor root, using the same exact source total as Overhead. Correct
+nested horizontal axes and actual text vertical centers at desktop/narrow widths.
+Owner withdrew the arithmetic mismatch report after counting Preparation twice:
+6.9 +14.9 +6.5 =28.3h; children2.5 +4.0 are already in6.5. Preserve allocation,
+payroll, persistence, all four stages and published2.10 behavior. No paid calls.
+Labor2.11 tag absent locally/remotely, main remains20e34aa1 before this change.
+Acceptance: hide/restore disclosure without rerun, root hours/current Overhead
+basis stay equal during edits and after Save/reopen, real DOM axes/text centers,
+complete mandatory UI gate and verified Core/wrapper publication. Owner final
+production acceptance remains required. Accepted9.48 checkpoint stays immutable.
+
 [verified] Labor 2.10 published 23 November 2026, work 3.17.4.6, runtime 20e34aa1.
 Preparation and Packing now includes trial mating/checking/separation at30 planned
 man-minutes per sourced interface and S/M/L/XL packing at10/15/20/25. Owner approved

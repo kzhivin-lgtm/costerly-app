@@ -126,6 +126,10 @@ def install_workflow_header_alignment_guard(
                 actions.dataset.workflowHeaderAligned = "true";
             }
 
+            function scheduleLaborAlign(event) {
+                if (event.target.matches?.('.object-detail-labor-table, .object-detail-work-row')) scheduleAlign();
+            }
+
             function scheduleAlign() {
                 if (frameId !== null) parentWindow.cancelAnimationFrame(frameId);
                 frameId = parentWindow.requestAnimationFrame(align);
@@ -160,6 +164,7 @@ def install_workflow_header_alignment_guard(
 
             observeTargets();
             parentWindow.addEventListener("resize", scheduleAlign, { passive: true });
+            if (evenLaborColumns) parentDoc.addEventListener("toggle", scheduleLaborAlign, true);
             parentWindow.setTimeout(scheduleAlign, 100);
             parentWindow.setTimeout(scheduleAlign, 350);
 
@@ -169,6 +174,7 @@ def install_workflow_header_alignment_guard(
                 actionsObserver?.disconnect();
                 mutationObserver?.disconnect();
                 parentWindow.removeEventListener("resize", scheduleAlign);
+                parentDoc.removeEventListener("toggle", scheduleLaborAlign, true);
                 parentWindow[CLEANUP_KEY] = null;
             };
         })();
@@ -2590,6 +2596,12 @@ def install_object_detail_input_guard(
                 const cell = parentDoc.querySelector('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value');
                 if (!knownRows) return;
                 if (cell) cell.textContent = formatMoney(total);
+                const labor = parentDoc.querySelector('[data-cost-band="labor"]');
+                if (labor) {
+                    labor.dataset.laborTotalHours = String(totalHours);
+                    const hours = labor.querySelector(':scope > summary .object-detail-labor-hours-value');
+                    if (hours) hours.textContent = `${totalHours.toFixed(1)} h`;
+                }
                 previewOverhead(totalHours, total);
             }
 
@@ -2606,6 +2618,7 @@ def install_object_detail_input_guard(
                 if (!host || !Number.isFinite(hours)) return;
                 const capacity = Number(host.dataset.overheadCapacity);
                 if (!(capacity > 0)) return;
+                host.dataset.overheadLaborHours = String(hours);
                 const round = value => Math.round(value * 100) / 100;
                 const rows = [...host.querySelectorAll('.object-detail-table-row[data-line-id]')];
                 const setCost = (row, cost) => {

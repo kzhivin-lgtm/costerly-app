@@ -85,7 +85,7 @@ _pay_metrics = labor_pay_metrics
 _sheet_pay_metrics = sheet_pay_metrics
 
 
-def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False):
+def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False, aggregate=False):
     is_row = key != 'labor'
 
     def metric(label, value, column, *, total=False):
@@ -120,9 +120,14 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
             f'<details class="{classes}" data-cost-band="{key}"'
             f' data-cost-unknown="{str(metrics is None).lower()}"'
             f' data-cost-partial="{str(bool(value.get("partial"))).lower()}"'
+            f' data-labor-total-hours="{value.get("hours", "")}"'
             + (' open' if open_by_default else '') + '>'
             '<summary class="object-detail-table-head-row object-detail-cost-summary object-detail-band-summary">'
             f'<div class="{cell} object-detail-cost-title">{escape(title)}</div>'
+            '<div class="object-detail-table-head object-detail-cost-hours" data-labor-column="hours">'
+            '<span class="object-detail-labor-hours-value">'
+            + (f'{value["hours"].quantize(Decimal(".1"), rounding=ROUND_HALF_UP)} h' if metrics else '—')
+            + '</span></div>'
             '<div class="object-detail-table-head object-detail-cost-total" data-labor-column="total">'
             f'<span class="object-detail-cost-value">{_money(value.get("total"))}</span></div></summary>'
             f'<div class="{body_class}">'
@@ -131,6 +136,7 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
         )
     return (
         f'<details class="{classes}" data-cost-band="{key}"'
+        + (' data-labor-aggregate="true"' if aggregate else '')
         + (f' data-labor-fixed-hours="{value["hours"]}"' if fixed_leaf and metrics else '')
         + f' data-cost-unknown="{str(metrics is None).lower()}"'
         f' data-cost-partial="{str(bool(value.get("partial"))).lower()}"'
@@ -373,7 +379,7 @@ def _preparation_html(state, *, quantity=1):
     body = _cost_band('Trial Fit and Separation', checking_body, checking, key='trial-fit',
                       editable=False, fixed_leaf=True)
     body += _cost_band('Packing', packing_body, packing, key='packing', editable=False, fixed_leaf=True)
-    return _cost_band('Preparation and Packing', body, total, key='preparation-packing', editable=False)
+    return _cost_band('Preparation and Packing', body, total, key='preparation-packing', editable=False, aggregate=True)
 
 
 def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, quantity=1, overrides=None):
@@ -402,10 +408,10 @@ def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, 
     block_assembly = _cost_band('Block Assembly', assembly_body, assembly_metrics, key='assembly')
     additional = _cost_band('Additional Assembly', '', zero, key='additional-assembly', editable=False)
     body = (
-        _cost_band('Part Production', sheet, sheet_metrics, key='part-production', editable=False)
+        _cost_band('Part Production', sheet, sheet_metrics, key='part-production', editable=False, aggregate=True)
         + _cost_band('Part Coating', '', zero, key='part-coating', editable=False)
         + _cost_band('Assembly', block_assembly + additional, assembly_metrics,
-                     key='assembly-stage', editable=False)
+                     key='assembly-stage', editable=False, aggregate=True)
         + _preparation_html(state, quantity=quantity)
     )
     return '<div class="object-detail-labor-band">' + _cost_band('Labor', body, total, key='labor') + '</div>'

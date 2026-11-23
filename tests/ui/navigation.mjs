@@ -184,6 +184,7 @@ try {
    assert.equal(await band.evaluate(node=>node.open),false,'Object Details starts compact');
    assert.equal(await band.locator(':scope > summary .object-detail-cost-value').isVisible(),true);
   }
+  assert.equal(await labor.locator(':scope > summary .object-detail-labor-hours-value').isVisible(),true);
   const bandAxes=await frame.evaluate(()=>[...document.querySelectorAll('.object-detail-band-summary .object-detail-cost-value')].map(n=>{const b=n.getBoundingClientRect();return b.x+b.width/2;}));
   assert.equal(bandAxes.length,3);assert.ok(bandAxes.every(x=>Math.abs(x-bandAxes[0])<1),JSON.stringify(bandAxes));
   assert.equal(await materials.locator('details').count(),0,'Material rows do not disclose another level');
@@ -249,6 +250,42 @@ try {
   assert.ok(Math.abs(alignment.pay-alignment.start-step)<1 && Math.abs(alignment.taxes-alignment.pay-step)<1,JSON.stringify(alignment));
   assert.equal(alignment.header,alignment.originalColor);
   assert.equal(alignment.cell,'rgba(0, 0, 0, 0)');
+  const preparation=labor.locator('[data-cost-band="preparation-packing"]');
+  await preparation.locator(':scope > summary').click();
+  const metricsVisibility=async(parent,visible)=>{
+   assert.equal(await parent.locator(':scope > summary .object-detail-cost-title').isVisible(),true);
+   for(const column of ['hours','pay','taxes','total'])
+    assert.equal(await parent.locator(`:scope > summary [data-labor-column="${column}"] > .object-detail-cost-value`).isVisible(),visible,`${column} disclosure`);
+  };
+  for(const parent of [production,assemblyStage,preparation]){
+   await metricsVisibility(parent,false);
+   await parent.locator(':scope > summary').click();
+   await metricsVisibility(parent,true);
+   await parent.locator(':scope > summary').click();
+   await metricsVisibility(parent,false);
+  }
+  // Opening nested native details must retain the header's numeric axes and
+  // center actual text within each row, including the first money-pair child.
+  await frame.evaluate(()=>{document.querySelector('[data-cost-band="labor"]').scrollLeft=0;});
+  await frame.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const rowGeometry=await frame.evaluate(()=>{
+   const head=document.querySelector('[data-cost-band="labor"] .object-detail-cost-column-headings');
+   const cx=n=>{const b=n.getBoundingClientRect();return b.x+b.width/2;};
+   const axes=Object.fromEntries(['hours','pay','taxes','total'].map(c=>[c,cx(head.querySelector(`[data-labor-column="${c}"] > span`))]));
+   return [...document.querySelectorAll('.object-detail-work-row > summary')].flatMap(row=>{
+    const box=row.getBoundingClientRect();if(!box.height)return [];
+    return [...row.querySelectorAll('[data-labor-column]')].filter(n=>getComputedStyle(n.firstElementChild).visibility==='visible').map(cell=>{
+     const value=cell.querySelector('[contenteditable],.object-detail-cost-value');
+     const range=document.createRange();range.selectNodeContents(value);const text=range.getBoundingClientRect();
+     return {band:row.parentElement.dataset.costBand,column:cell.dataset.laborColumn,
+       x:Math.abs(cx(value)-axes[cell.dataset.laborColumn]),y:Math.abs(text.y+text.height/2-(box.y+(box.height-1)/2))};
+    });
+   });
+  });
+  assert.ok(rowGeometry.length>=20,JSON.stringify(rowGeometry));
+  assert.ok(rowGeometry.every(r=>r.x<1 && r.y<2),JSON.stringify(rowGeometry));
+  console.log(cfg.name,'Labor nested text geometry',JSON.stringify(rowGeometry));
+
   assert.equal(await labor.locator('.object-detail-cost-column-headings .object-detail-cost-label').last().innerText(),'TOTAL');
   assert.equal(await labor.locator('.object-detail-labor-body > .object-detail-cnc-caption:not(.object-detail-labor-review)').count(),0);
   const cardRender=await core.locator('[data-costerly-render-id]').last().getAttribute('data-costerly-render-id');

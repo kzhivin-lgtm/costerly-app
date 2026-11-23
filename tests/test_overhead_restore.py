@@ -365,3 +365,21 @@ def test_new_fractional_labor_costs_update_previously_integral_objects_columns(m
     assert frame.iloc[0]['self_cost_ex_vat']==1018.13
     assert frame.iloc[0]['self_cost_total']==1201.39
     assert not frame.iloc[0]['approved']
+
+
+def test_screenshot_preparation_children_are_counted_once_in_header_and_overhead():
+    from screens.estimation_labor_v1 import _cost_band, _labor_html, _overhead_html, _labor_pay_metrics
+    state = labor_state()
+    state['preparation'] = {'checking_minutes':150, 'packing_minutes':240,
+        'checking_known':True, 'packing_partial':False, 'interfaces':[], 'packing_units':[], 'issues':[]}
+    overrides = {'sheet-processing':'6.9', 'assembly':'14.9'}
+    _, _, metrics = _labor_pay_metrics(state, overrides=overrides)
+    assert metrics['hours'] == Decimal('28.3')
+    html = _cost_band('Labor', '', metrics, key='labor')
+    assert 'data-labor-total-hours="28.3"' in html
+    assert '>28.3 h<' in html
+    assert _labor_html({'status':'waiting_for_materials'}).count('data-labor-aggregate="true"') == 3
+    overhead = _overhead_html(state, identity=('company','run','estimate','object'),
+                              material_cost=1000, overrides=overrides)
+    assert 'data-overhead-labor-hours="28.3"' in overhead
+    assert '28.3h / 2016h' in overhead

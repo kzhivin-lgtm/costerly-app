@@ -1308,3 +1308,12 @@ Snapshot default dataclass values из действующего кода. Эти
 - `notes/LABOR_ENGINE_CONTRACT_V0.md`, `notes/LABOR_FOUNDATION_3_15_7_CHECKPOINT_2026_09_30.md`, старые Manufacturing/CNC документы: legacy-опора, а не текущая архитектура целиком.
 
 **Граница этой передачи:** документация и фиксация предпочтения названий деплоя. Новый runtime, новый прайс, новые нормативы, новая платная оценка и изменение GitHub-защиты в рамках составления конспекта не выполняются.
+
+## Labor2.11 continuation,23November2026
+
+Owner withdrew the hours arithmetic report: screenshot28.3h already includes
+preparation6.5h. Approved current UI correction hides aggregate stage metrics
+while expanded/restores collapsed, adds hours beside root money, and aligns
+nested numeric axes/text. Allocation and source math stay. Existing work3.17.4.6,
+base published2.10/runtime20e34aa1, accepted9.48 checkpoint preserved.
+See [current candidate and verification](LABOR_V2_11_DISCLOSURE_HOURS_2026_11_23.md).

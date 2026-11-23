@@ -546,6 +546,16 @@ def apply_object_detail_css() -> None:
         .object-detail-cost-column-headings .object-detail-table-head { min-height: 46px; }
         .object-detail-band-summary .object-detail-section-metric .object-detail-section-value { color: var(--color-text-strong); }
         .object-detail-labor-money-pair { grid-column: 3 / 6; display: grid; grid-template-columns: 1fr 1fr; align-self: stretch; }
+        .object-detail-labor-table > .object-detail-band-summary {
+            grid-template-columns: minmax(0, 1fr) 100px 132px;
+        }
+        .object-detail-labor-table > .object-detail-band-summary [data-labor-column="total"] { grid-column: 3; }
+        .object-detail-labor-table.object-detail-cost-band[data-cost-band="labor"]:not([open]) > .object-detail-cost-summary > [data-labor-column="hours"] { display: flex; visibility: visible; }
+        .object-detail-labor-hours-value { font: 700 16px/1.2 var(--font-mono); white-space: nowrap; text-transform: none; }
+        .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body { padding: 12px 0; }
+        .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 20px; }
+        .object-detail-work-row[data-labor-aggregate="true"][open] > summary [data-labor-column] > * { visibility: hidden; }
+        .object-detail-labor-table [data-labor-column] { justify-content: center; align-self: stretch; }
         .object-detail-labor-money-pair [data-labor-column] > span { transform: translateX(var(--labor-column-offset, 0px)); }
         .object-detail-labor-table .object-detail-cost-summary:not(.object-detail-band-summary) [data-labor-column="total"] { grid-column: 6; }
         .object-detail-labor-table .object-detail-table-head,
@@ -1074,7 +1084,13 @@ def apply_object_detail_css() -> None:
                 min-width: 0;
             }
             .object-detail-cost-band:not([open]) > .object-detail-cost-summary > :not(:first-child):not(:last-child) { display: none; }
-            .object-detail-labor-table:not([open]) > summary [data-labor-column="total"] { grid-column: auto; }
+            .object-detail-labor-table > .object-detail-band-summary,
+            .object-detail-labor-table:not([open]) > .object-detail-band-summary {
+                grid-template-columns: minmax(0, 1fr) 70px 70px;
+                min-width: 0;
+            }
+            .object-detail-labor-table:not([open]) > summary [data-labor-column="hours"] { display: flex; }
+            .object-detail-labor-table > .object-detail-band-summary [data-labor-column="total"] { grid-column: 3; }
 
             .object-detail-elements-table .object-detail-table-head-row,
             .object-detail-elements-table .object-detail-table-row {

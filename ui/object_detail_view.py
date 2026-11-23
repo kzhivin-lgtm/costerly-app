@@ -533,6 +533,7 @@ def overhead_section_html(result: dict[str, object]) -> str:
         f' data-overhead-estimate-id="{_escape(result.get("estimate_id", ""))}"'
         f' data-overhead-run-id="{_escape(result.get("run_id", ""))}"'
         f' data-overhead-capacity="{_escape(result.get("capacity_hours", ""))}"'
+        f' data-overhead-labor-hours="{_escape(result.get("labor_hours", ""))}"'
         f' data-overhead-material-cost="{_escape(result.get("material_cost", ""))}"'
         f' data-overhead-vat="{_escape(result.get("vat_percent", 18))}">'
         + _section_html(section)

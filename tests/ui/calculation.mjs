@@ -333,7 +333,7 @@ try{
   assert.equal(await hours.innerText(),'40.5');
   assert.equal(await assembly.evaluate(node=>node.open),inputOpen);
   assert.equal(await total.innerText(),'₪2\u202f531');
-  assert.equal(await core.locator('[data-cost-band="assembly-stage"] > summary [data-labor-column="total"]').innerText(),'₪2\u202f531');
+  assert.equal(await core.locator('[data-cost-band="assembly-stage"] > summary [data-labor-column="total"]').textContent(),'₪2\u202f531');
   assert.notEqual(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪1\u202f000');
   if(width===1280){
    settings({labor_ready:true,hours_write_failure:true});
@@ -348,7 +348,19 @@ try{
   await sheetHours.fill('100.0');await sheetHours.press('Enter');
   assert.equal(await core.locator('[data-cost-band="sheet-processing"] > summary [data-labor-column="total"]').innerText(),'₪6\u202f250');
   assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪8\u202f797');
-  assert.equal(await preparation.locator(':scope > summary [data-labor-column="total"]').innerText(),'₪16');
+  assert.equal(await preparation.locator(':scope > summary [data-labor-column="total"]').textContent(),'₪16');
+  const laborRoot=core.locator('[data-cost-band="labor"]');
+  const assertSharedHours=async(expected)=>{
+   assert.equal(await laborRoot.locator(':scope > summary .object-detail-labor-hours-value').innerText(),expected.toFixed(1)+' h');
+   assert.ok(Math.abs(Number(await laborRoot.getAttribute('data-labor-total-hours'))-expected)<1e-9);
+   assert.ok(Math.abs(Number(await overhead.getAttribute('data-overhead-labor-hours'))-expected)<1e-9);
+   await overhead.locator('details').first().evaluate(node=>{node.open=true;});
+   assert.ok((await overhead.locator('.object-detail-table-row').first().innerText()).includes(expected.toFixed(1).replace(/[.]0$/,'')+'h /'));
+  };
+  await assertSharedHours(140.75);
+  await laborRoot.locator(':scope > summary').click();
+  assert.equal(await laborRoot.locator(':scope > summary .object-detail-labor-hours-value').isVisible(),true);
+  await laborRoot.locator(':scope > summary').click();
   assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f408',
    JSON.stringify(await overhead.evaluate(node=>({host:{...node.dataset},rows:[...node.querySelectorAll('[data-line-id]')].map(row=>({...row.dataset})),context:window.__costerlyObjectDetailDraft?.context}))));
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
@@ -360,6 +372,7 @@ try{
   assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪6\u202f266');
   assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f003');
   assert.equal(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪8\u202f268');
+  await assertSharedHours(100.25);
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
   await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
   await core.getByText('₪8\u202f268',{exact:true}).first().waitFor();
@@ -368,6 +381,8 @@ try{
   for(const key of ['part-production','assembly-stage'])await core.locator(`[data-cost-band="${key}"] > summary`).click();
   await hours.waitFor();assert.equal(await hours.innerText(),'0.0');
   assert.equal(await sheetHours.innerText(),'100.0');
+  await overhead.waitFor();
+  await assertSharedHours(100.25);
   const body=await core.locator('body').innerText();
   assert.ok(!/Some work needs review|outside this estimate/.test(body));
   assert.equal(await core.locator('[data-testid="stException"]').count(),0);
