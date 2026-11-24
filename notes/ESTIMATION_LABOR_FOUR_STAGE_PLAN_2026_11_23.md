@@ -332,3 +332,23 @@ without replacing healthy groups or any hour input. Full local 1015/ten in
 Main rule27499066 active/no bypass; actual Core/wrapper/meta/version match.
 Owner production acceptance pending. Full2.11 checkpoint63db313d/records099f9180
 remains immutable. [Release and evidence](LABOR_V2_12_WORK_EDITING_CNC_2026_11_24.md).
+
+## Labor2.13 shared presentation and Project
+
+[verified] Labor2.13 published24November2026, existing work3.17.4.6,
+runtime `c5364813`. CNC, Elements and block disclosures share compact42px
+rows, fonts, chevrons and expanded backgrounds. Keep Operator/File Preparation/
+Edge Banding separate and terminal work editable. Project replaces Objects
+Estimation in the summary and Continue/Back copy; internal route identities and
+separate Projects navigation remain. Project logo artwork aligns with body.
+The owner-approved offline artwork shows the purple mark before Something went
+wrong., with Are you connected to the internet? below, without a wordmark.
+Existing wrapper cover/offline/online events provide it, with no polling,
+auth mutation, iframe unload on loss or separate reconnect path. Processing
+survives offline/online without reload; idle reconnect retains existing behavior.
+Server-only disconnect while browser stays online retains native Streamlit UI.
+Full local 1015/ten in 431.247s and exact-SHA GitHub 1015/ten
+in 417.065s passed. Main rule27499066 active/no bypass, actual served
+Core/executable wrapper/meta/version agree. Owner accepted sketch; production
+acceptance pending. Full2.11 checkpoint remains immutable;2.12 runtime46e01b5d
+is the rollback baseline. [Release/evidence](LABOR_V2_13_PROJECT_CNC_OFFLINE_2026_11_24.md).

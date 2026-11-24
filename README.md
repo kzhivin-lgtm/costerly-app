@@ -1,15 +1,16 @@
 # Costerly
 
-Current release: **Labor 2.12**, published 24 November 2026, runtime `46e01b5d`.
-Terminal work hours are editable; departments/root totals stay computed. CNC
-shows work hours and Elements, Taxes & Social +25%, equal rows and one Overhead
-header. Exact-SHA GitHub 1015 checks/ten browser suites and served builds passed.
-Owner production acceptance pending. [Release and evidence](notes/LABOR_V2_12_WORK_EDITING_CNC_2026_11_24.md).
+Current release: **Labor2.13**, published24November2026, runtime `c5364813`.
+Unified CNC/Elements disclosures, Project summary and aligned logo, approved
+branded offline artwork. Existing financial/edit/save/auth behavior retained.
+Full local and exact-SHA GitHub 1015 checks/ten browser suites passed; actual
+served builds agree. Owner production acceptance pending.
+[Release and evidence](notes/LABOR_V2_13_PROJECT_CNC_OFFLINE_2026_11_24.md).
 
 Latest full preservation checkpoint: **Labor 2.11**, owner requested24November2026,
 runtime`63db313d`. Exact835-file source, independent restore, frozen material
-controls,999/ten evidence and known UI limitations are retained. Labor2.12 follows
-this checkpoint. [Preservation and restore](notes/LABOR_V2_11_PRODUCTION_CHECKPOINT_2026_11_24.md).
+controls,999/ten evidence and known UI limitations are retained. Later Labor
+releases preserve this checkpoint. [Preservation and restore](notes/LABOR_V2_11_PRODUCTION_CHECKPOINT_2026_11_24.md).
 
 Previous full checkpoint: **Estimation 9.48**, owner accepted 23 November 2026,
 runtime `862e28f0`. Prices lazy loading and four Labor stages are accepted.

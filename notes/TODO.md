@@ -1148,7 +1148,7 @@ occupied2.8/2.9 tags remain untouched. The owner explicitly confirmed Labor2.10.
 introduced.
 Detailed rules and acceptance: existing four-stage plan, latest section below.
 
-ACTIVE, P1, USER APPROVED, Labor2.13,24November2026, existing work3.17.4.6.
+PUBLISHED, OWNER PRODUCTION ACCEPTANCE PENDING, P1, USER APPROVED, Labor2.13,24November2026, existing work3.17.4.6.
 Match CNC, Elements and block disclosures to compact Labor work rows. Keep
 Part Production > Sheet Processing > CNC > separate Operator/File Preparation/
 Edge Banding. Elements remains the parts/block list. Rename summary to Project,
@@ -1161,11 +1161,29 @@ logout/storage clearing or new reconnect path. Native Chrome failure content
 itself is not editable; this view covers the existing iframe during browser
 reported offline state. Server-only disconnect while browser stays online is
 outside this presentation scope and retains Streamlit's native handling.
-Draft implementation and verification active; publication pending. Labor2.13 is
+Implementation and full verification complete; published. Labor2.13 is
 next free tag after remote check, within existing Labor2.x/work3.17.4.6.
 Protected: shared hours/Overhead/SC, leaf-only editors, Save/error/retry/reopen,
 commercial quantity invariance, current auth/session and active-work recovery.
 Rollback baseline: published2.12 runtime46e01b5d; full2.11 checkpoint immutable.
+
+[verified] Labor2.13 published24November2026, existing work3.17.4.6,
+runtime `c5364813`. CNC, Elements and block disclosures share compact42px
+rows, fonts, chevrons and expanded backgrounds. Keep Operator/File Preparation/
+Edge Banding separate and terminal work editable. Project replaces Objects
+Estimation in the summary and Continue/Back copy; internal route identities and
+separate Projects navigation remain. Project logo artwork aligns with body.
+The owner-approved offline artwork shows the purple mark before Something went
+wrong., with Are you connected to the internet? below, without a wordmark.
+Existing wrapper cover/offline/online events provide it, with no polling,
+auth mutation, iframe unload on loss or separate reconnect path. Processing
+survives offline/online without reload; idle reconnect retains existing behavior.
+Server-only disconnect while browser stays online retains native Streamlit UI.
+Full local 1015/ten in 431.247s and exact-SHA GitHub 1015/ten
+in 417.065s passed. Main rule27499066 active/no bypass, actual served
+Core/executable wrapper/meta/version agree. Owner accepted sketch; production
+acceptance pending. Full2.11 checkpoint remains immutable;2.12 runtime46e01b5d
+is the rollback baseline. [Release/evidence](LABOR_V2_13_PROJECT_CNC_OFFLINE_2026_11_24.md).
 
 PUBLISHED, OWNER PRODUCTION ACCEPTANCE PENDING, P1, USER REQUEST, Labor2.12,24November2026, existing work3.17.4.6.
 After complete2.11 preservation: editable hours throughout Labor, including
