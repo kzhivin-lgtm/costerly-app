@@ -93,7 +93,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         file_review: "File Review",
         objects: "Project",
         object_detail: "Object Detail",
-        projects: "Projects",
+        projects: "All Projects",
         account: "Profile",
         admin: "Admin",
         login: "Login",

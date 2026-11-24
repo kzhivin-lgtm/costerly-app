@@ -765,3 +765,29 @@ releases only this view and reuses existing reconnect guards, including busy
 work. This does not replace Streamlit handling of a server-only disconnect while
 the browser remains online. Earlier recovery, active-work and session guarantees
 remain required. Chrome's native failed-document page itself is not restyled.
+
+## Labor2.14 nested rollups, owner approved24November2026
+
+CNC sits before reference Elements and is now a read-only rollup of Operator,
+File Preparation and Edge Banding, not a new terminal operation or stored key.
+Unlike the presentation-only2.13 CNC disclosure, its closed summary shows the
+same existing Sheet Processing budget. Nested closed work aggregates show sums,
+open ones hide their own metrics while showing child rollups/leaf editors. Keep
+the original once-only payroll rounding and full financial source. Elements and
+reference details follow work in Sheet Processing (including non-CNC/pending
+routes); no duplicate reference list is added to unrelated groups.
+
+Use Overhead's purple filled triangle, mono uppercase title and spacing for
+nested Labor/CNC/Elements/block details. Keep42px rows, full-height text centers,
+shared numeric axes and title-only nesting. Native keyboard disclosures remain.
+Owner confirmed Trial Installation, label only, and All Projects for list-entry
+buttons. Project remains the current summary; route IDs, storage and page
+identities remain. Do not rename source keys or invalidate saved estimates.
+
+Closed Overhead group summaries show summed monthly currency, their shared
+current labor-hours/capacity allocation and allocated Cost. Reserve percentages
+are not monthly currency: show — and Formula in those first two summary cells.
+Expanded groups hide all summary metrics, preserving grid and leaf rows. Manual
+hour preview/save/reopen must keep group allocation and Cost current, once.
+No new writer, callback, observer, polling, model call or reconnect behavior.
+Retain2.13 approved offline design and all financial/auth/persistence contracts.

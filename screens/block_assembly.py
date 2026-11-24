@@ -50,7 +50,8 @@ def _details(block, *, quantity=1):
         return ""
     return (
         '<details class="object-detail-table object-detail-cnc-breakdown">'
-        f'<summary>{escape(block["block_id"])} · Assembly details</summary>'
+        '<summary class="object-detail-disclosure-summary">'
+        f'<span class="object-detail-disclosure-title">{escape(block["block_id"])} · Assembly details</span></summary>'
         f'<ul>{"".join(lines)}</ul></details>'
     )
 

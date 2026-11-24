@@ -343,3 +343,12 @@ zero offline reloads, one existing reconnect and tab-storage retention to Screen
 Recovery. Version Refresh also retains a processing-document canary across
 offline/online with zero reloads. All prior amounts, axes, Save/retry/reopen,
 auth and ten suites stay.
+
+Labor2.14 checks CNC read-only closed rollup before last reference Elements,
+hidden expanded aggregate metrics, unchanged totals and Save/reopen, and closed
+Overhead Monthly/Allocation/Cost with live hours and expanded hide/restore.
+Python covers11500 monthly versus reserves' Formula, and existing source math.
+Browser checks13 work rows at42px and exact shared Overhead title/triangle style
+at1280/390, including nesting axes. All Projects navigation retains prior route,
+recovery/access and geometry tests; Trial Installation keeps its stored key.
+All ten suites and every earlier amount/unknown/zero/auth check remain required.

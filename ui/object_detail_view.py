@@ -254,6 +254,14 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
 
 
 def _group_summary_value(column: str, group_rows: list[dict[str, object]]) -> str:
+    reserves = bool(group_rows) and all(row.get("reserve_percent") not in (None, "") for row in group_rows)
+    if column == "Allocation":
+        if reserves:
+            return "Formula"
+        values = list(dict.fromkeys(str(row.get("allocation") or "") for row in group_rows))
+        return _escape(values[0]) if len(values) == 1 else "—"
+    if column == "Monthly cost" and reserves:
+        return "—"
     if column in {"Qty", "Hours"}:
         key = "qty" if column == "Qty" else "hours"
         values = []
@@ -388,7 +396,8 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
         summary_cells = ['<span class="object-detail-group-title">' + _escape(group) + "</span>"]
         for column in columns[1:]:
             value = _group_summary_value(column, group_rows)
-            summary_cells.append(f'<span class="object-detail-group-total">{value}</span>')
+            group_column = {'Monthly cost': 'monthly', 'Allocation': 'allocation', 'Cost': 'cost'}.get(column, '')
+            summary_cells.append(f'<span class="object-detail-group-total" data-overhead-group-column="{group_column}">{value}</span>')
 
         body_parts.append(
             '<details class="object-detail-group">'

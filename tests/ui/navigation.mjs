@@ -151,14 +151,14 @@ try {
   assert.ok(!new URL(frame.url()).searchParams.has('obs_trace'));
   const browserTrace=await frame.evaluate(()=>window.__costerlyWorkflowTransition.traceId);
   writeFileSync(config,JSON.stringify({...scenarioSettings,restart_once:true}));
-  await move('Open Projects after server restart',button('Projects'),'projects');
+  await move('Open Projects after server restart',button('All Projects'),'projects');
   assert.equal(await frame.evaluate(()=>window.__costerlyWorkflowTransition.traceId),browserTrace);
   await move('Open prepared Profile',button('Profile'),'account');
   for(const name of ['Machinery','Pricing Cost','Labor Costs','Contacts','Bank Details','Users','Overhead Expenses','Price Lists']){
    await move('Profile tab '+name,core.getByRole('tab',{name,exact:true}),'account');
   }
   await move('Profile to Admin',button('Admin'),'admin');
-  await move('Admin to Projects',button('Projects'),'projects');
+  await move('Admin to Projects',button('All Projects'),'projects');
   await move('Projects to Last Estimate',button('Last Estimate'),'file_review');
   const savedCrop=await core.locator('.file-review-preview-box img').getAttribute('src');
   assert.ok(savedCrop?.startsWith('data:image/svg+xml;base64,'));
@@ -345,14 +345,14 @@ try {
    async function enter(target){
     if(await screen()===target)return;
     if(target==='upload')return move('Matrix restore Upload',button('New Estimate'),'upload');
-    if(target==='projects')return move('Matrix restore Projects',button('Projects'),'projects');
+    if(target==='projects')return move('Matrix restore Projects',button('All Projects'),'projects');
     if(target==='account')return move('Matrix restore Profile',button('Profile'),'account');
     if(target==='file_review'){await enter('upload');return move('Matrix restore File Review',button('Last Estimate'),'file_review');}
     if(target==='objects'){await enter('file_review');return move('Matrix restore Objects',cont(),'objects');}
     await enter('objects');return move('Matrix restore Object Detail',openObject(),'object_detail');
    }
    const sources=['upload','file_review','objects','object_detail','projects','account'];
-   for(const source of sources)for(const [target,label] of [['upload','New Estimate'],['projects','Projects'],['account','Profile']]){
+   for(const source of sources)for(const [target,label] of [['upload','New Estimate'],['projects','All Projects'],['account','Profile']]){
     if(source===target)continue;
     await enter(source);await move(`Header ${source} to ${target}`,button(label),target);
    }

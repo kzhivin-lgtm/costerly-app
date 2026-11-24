@@ -565,13 +565,13 @@ def apply_object_detail_css() -> None:
         .object-detail-work-row[open] > .object-detail-cost-summary { background: rgba(128, 73, 198, 0.075); }
         .object-detail-work-row > .object-detail-cost-summary .object-detail-cost-title,
         .object-detail-disclosure-title {
-            font: 400 13px/1.24 var(--font-sans);
-            letter-spacing: normal;
-            text-transform: none;
+            font: 700 13px/1.24 var(--font-mono);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: rgba(42, 31, 44, 0.68);
         }
-        .object-detail-work-row .object-detail-cost-title::before,
-        .object-detail-disclosure-title::before { width: 6px; height: 6px; border-width: 1px; }
-        .object-detail-work-row > summary .object-detail-cost-value { font: 400 13px/1.24 var(--font-sans); }
+        .object-detail-work-row > summary .object-detail-cost-title { padding-left: 20px; padding-block: 3px; }
+        .object-detail-work-row > summary .object-detail-cost-value { font: 700 13px/1.24 var(--font-mono); }
         .object-detail-work-row > summary [data-labor-column="hours"] { padding-block: 3px; }
         .object-detail-labor-review { padding: 8px 12px; margin: 0; }
         .object-detail-work-body { padding: 12px; }
@@ -579,7 +579,7 @@ def apply_object_detail_css() -> None:
             display: flex;
             align-items: center;
             min-height: 42px;
-            padding: 0 32px;
+            padding: 0 44px;
             border-bottom: 1px solid rgba(42, 31, 44, 0.12);
             list-style: none;
             cursor: pointer;
@@ -587,16 +587,21 @@ def apply_object_detail_css() -> None:
         .object-detail-disclosure-summary::-webkit-details-marker { display: none; }
         .object-detail-disclosure-summary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -3px; }
         details[open] > .object-detail-disclosure-summary { background: rgba(128, 73, 198, 0.075); }
-        .object-detail-disclosure-title { display: flex; align-items: center; gap: 10px; }
+        .object-detail-work-row[open] > summary .object-detail-cost-title::before,
+        details[open] > .object-detail-disclosure-summary .object-detail-disclosure-title::before { transform: none; }
+        .object-detail-disclosure-title { display: flex; align-items: center; }
         .object-detail-cnc-elements { padding: 0; }
         .object-detail-cnc-elements .object-detail-elements-section { margin: 0; }
         .object-detail-cnc-elements .object-detail-elements > summary { margin: 0; }
         .object-detail-cnc-elements .object-detail-element-groups { margin-top: 0; }
         .object-detail-cnc-elements .object-detail-element-group { border-top: 0; }
-        .object-detail-cnc-elements .object-detail-element-group > summary { padding: 0 44px; }
+        .object-detail-cnc-elements .object-detail-element-group > summary { padding: 0 56px; }
         .object-detail-cnc-elements .object-detail-overlay-actions { top: 5px; right: 12px; }
         .object-detail-cnc-elements .object-detail-elements-section:has(.object-detail-overlay-actions) .object-detail-elements > summary { min-height: 42px; }
-        .object-detail-cnc-work .object-detail-work-row > summary > .object-detail-cost-title { padding-left: 44px; }
+        .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 32px; }
+        .object-detail-work-row[data-cost-band="sheet-processing"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 44px; }
+        .object-detail-work-row[data-labor-detail="cnc"] > .object-detail-work-body > .object-detail-work-row > summary > .object-detail-cost-title { padding-left: 56px; }
+        .object-detail-cnc-breakdown > .object-detail-disclosure-summary { padding: 0 44px; }
         [data-field="labor_hours"]:empty::before { content: attr(data-placeholder); font-weight: 400; }
 
         .object-detail-work-body > .object-detail-elements-section { margin-bottom: 12px; }
@@ -643,7 +648,8 @@ def apply_object_detail_css() -> None:
             font-size: 13px;
             font-weight: 700;
             letter-spacing: 0.04em;
-            min-height: 40px;
+            line-height: 1.24;
+            min-height: 42px;
             padding: 0 12px;
             text-transform: uppercase;
             user-select: none;
@@ -660,29 +666,39 @@ def apply_object_detail_css() -> None:
             grid-template-columns: var(--detail-grid);
             padding: 0;
         }
-        .object-detail-overhead-band .object-detail-group-title { grid-column: 1 / 4; padding-left: 20px; }
+        .object-detail-overhead-band .object-detail-group-title { grid-column: 1; padding-left: 20px; }
         .object-detail-overhead-band .object-detail-group-total:last-child { grid-column: 4; }
-        .object-detail-overhead-band .object-detail-group-summary > :not(:first-child):not(:last-child) { display: none; }
         .object-detail-overhead-band .object-detail-group > .object-detail-table-row > :first-child { padding-left: 44px; }
 
-        .object-detail-group-title {
+        .object-detail-group-title,
+        .object-detail-work-row > summary .object-detail-cost-title,
+        .object-detail-disclosure-title {
             display: flex;
             align-items: center;
+            gap: 0;
         }
 
-        .object-detail-group-title::before {
+        .object-detail-group-title::before,
+        .object-detail-work-row > summary .object-detail-cost-title::before,
+        .object-detail-disclosure-title::before {
             content: "▾";
             display: inline-flex;
             align-items: center;
             justify-content: center;
             width: 22px;
+            height: 22px;
+            flex: 0 0 22px;
             margin-right: 8px;
+            border: 0;
+            transform: none;
             font-size: 22px;
             line-height: 1;
             color: var(--color-accent);
         }
 
-        .object-detail-group:not([open]) .object-detail-group-title::before {
+        .object-detail-group:not([open]) > summary .object-detail-group-title::before,
+        .object-detail-work-row:not([open]) > summary .object-detail-cost-title::before,
+        details:not([open]) > summary .object-detail-disclosure-title::before {
             content: "▸";
         }
 
@@ -696,6 +712,8 @@ def apply_object_detail_css() -> None:
             font-weight: 700;
             line-height: 1;
             visibility: hidden;
+            text-transform: none;
+            letter-spacing: normal;
         }
 
         .object-detail-group:not([open]) .object-detail-group-total {
@@ -1109,7 +1127,9 @@ def apply_object_detail_css() -> None:
             }
             .object-detail-work-row > .object-detail-cost-summary .object-detail-cost-title { gap: 2px; padding-inline: 6px; }
             .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 12px; }
-            .object-detail-cnc-work .object-detail-work-row > summary > .object-detail-cost-title { padding-left: 28px; }
+            .object-detail-work-row[data-cost-band="sheet-processing"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 20px; }
+            .object-detail-work-row[data-labor-detail="cnc"] > .object-detail-work-body > .object-detail-work-row > summary > .object-detail-cost-title { padding-left: 28px; }
+            .object-detail-cnc-breakdown > .object-detail-disclosure-summary { padding-left: 32px; }
             .object-detail-disclosure-summary { padding-left: 20px; }
             .object-detail-cnc-elements .object-detail-element-group > summary { padding-left: 28px; }
             .object-detail-overhead-band .object-detail-group-summary { min-width: 760px; }

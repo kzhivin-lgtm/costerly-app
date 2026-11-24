@@ -65,7 +65,7 @@ def test_unavailable_work_stays_unknown_until_explicit_override_including_zero()
     work=labor_work_metrics(state,overrides={'trial-fit':'0'})
     assert work['trial-fit']['hours']==0 and work['packing'] is None
     assert work['labor']['hours']==0 and work['labor']['partial'] is True
-    assert all(key not in BLOCKS for key in ('labor','part-production','assembly-stage','preparation-packing'))
+    assert all(key not in BLOCKS for key in ('labor','part-production','cnc','assembly-stage','preparation-packing'))
 
 
 class WorkEditors(HTMLParser):
@@ -82,7 +82,7 @@ def test_actual_cnc_view_has_only_elements_and_work_breakdown_and_terminal_edito
     parsed=WorkEditors();parsed.feed(html)
     assert set(parsed.editors)=={'cnc-operator','file-preparation','edge-banding',
         'part-coating','assembly','additional-assembly','trial-fit','packing'}
-    assert '>CNC</span></summary>' in html and 'Elements' in html
+    assert '>CNC</div>' in html and 'Elements' in html
     assert 'In-house' not in html and 'Subcontractor' not in html and 'Materials + labor' not in html
     assert 'Social +25%' in html
 
@@ -128,3 +128,17 @@ def test_manual_sheet_hours_are_rendered_even_when_calculated_source_is_unavaila
     html=_labor_html({'status':'preparing'},overrides={'sheet-processing':'2'})
     assert 'data-field="labor_hours" data-line-id="sheet-processing" data-original-value="2"' in html
     assert 'Preparing Sheet Processing' in html
+
+
+def test_cnc_is_readonly_rollup_before_reference_elements_and_keeps_source_cost():
+    import re
+    state=labor_state();original=deepcopy(state)
+    html=_labor_html(state,object_id='o',elements=[{'label':'B01','rows':[]}], overrides={'file-preparation':'2'})
+    summary=re.search(r'data-cost-band="cnc"(.*?)</summary>',html,re.S).group(1)
+    assert 'data-labor-aggregate="true"' in summary
+    assert 'data-labor-detail="cnc"' in summary
+    assert 'contenteditable' not in summary
+    assert '>7.0<' in summary and '>₪350<' in summary and '>₪438<' in summary
+    assert html.index('data-cost-band="cnc"') < html.index('class="object-detail-cnc-elements"')
+    assert labor_work_metrics(state,overrides={'file-preparation':'2'})['labor']['hours']==Decimal('9.75')
+    assert state==original

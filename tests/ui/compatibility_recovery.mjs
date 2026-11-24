@@ -63,7 +63,7 @@ try{
   await core.getByRole('button',{name:'Keep working',exact:true}).click();
   await recovery(core,core.getByRole('button',{name:'Last Estimate',exact:true}));
   await core.getByRole('button',{name:'Keep working',exact:true}).click();
-  await recovery(core,core.getByRole('button',{name:'Projects',exact:true}));
+  await recovery(core,core.getByRole('button',{name:'All Projects',exact:true}));
   await frame.evaluate(()=>sessionStorage.setItem('costerly.supabase.session.v1',JSON.stringify({access_token:'synthetic-retained'})));
   await Promise.all([
    page.waitForEvent('framenavigated',{predicate:f=>f===page.mainFrame()}),
@@ -106,7 +106,7 @@ try{
  // Existing edits remain live when the owner declines an explicit reload.
  const field=core.locator('.company-metrics-monthly-input').first();
  await field.fill('999');
- await recovery(core,core.getByRole('button',{name:'Projects',exact:true}));
+ await recovery(core,core.getByRole('button',{name:'All Projects',exact:true}));
  page.once('dialog',dialog=>dialog.dismiss());
  await core.getByRole('link',{name:'Update app',exact:true}).click();
  assert.equal(loads,1);

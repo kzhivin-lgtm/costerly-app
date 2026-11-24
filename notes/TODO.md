@@ -1148,6 +1148,29 @@ occupied2.8/2.9 tags remain untouched. The owner explicitly confirmed Labor2.10.
 introduced.
 Detailed rules and acceptance: existing four-stage plan, latest section below.
 
+ACTIVE, P1, USER APPROVED, Labor2.14,24November2026, existing work3.17.4.6.
+Owner says2.13 presentation looks okay and requests the next consistent rollup
+iteration. Put CNC above Elements; reference Elements stays last in Sheet
+Processing on every route/pending state and below work where reference content
+exists. Preserve work-first/reference-last as additional work is added later.
+CNC becomes a read-only UI aggregate of its three existing operations. Closed
+CNC/Sheet Processing/stages show their own sums; open aggregates hide their own
+metrics and expose child sums/terminal editors. No new charge/override key.
+Shared nested title/triangle/indent style comes from existing Overhead. Preserve
+42px rows, numeric axes, native keyboard toggles and no double count. Owner
+confirmed Trial Installation (label only, stored trial-fit key and minutes stay)
+and All Projects for the list button; current summary stays Project and routes
+and the list page identity stay projects. Closed Overhead groups show summed
+Monthly Cost, one current Allocation and Cost. Project Reserves monthly is —,
+Allocation Formula, never add reserve percentages as monthly currency. Opening
+hides group metrics; leaf values stay. Live hour edits update group allocation
+and Cost through the current preview/Save pipeline, without extra requests.
+Preserve manual unknown/zero/quantity, legacy source math, saved overrides,
+Overhead/SC, Save/error/retry/reopen, all auth/navigation and approved offline
+artwork/recovery. No paid model call or Detection/Parts/Materials algorithm
+change. Base runtimec5364813/records803bb662; full2.11 checkpoint immutable.
+Validation active, publication pending;2.14 is next free remote Labor2.x tag.
+
 PUBLISHED, OWNER PRODUCTION ACCEPTANCE PENDING, P1, USER APPROVED, Labor2.13,24November2026, existing work3.17.4.6.
 Match CNC, Elements and block disclosures to compact Labor work rows. Keep
 Part Production > Sheet Processing > CNC > separate Operator/File Preparation/

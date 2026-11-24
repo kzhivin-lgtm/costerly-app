@@ -70,7 +70,7 @@ try{
   await ctx.page.close();
  }
  for(const screen of ['projects','account','admin']){
-  const label={projects:'Projects',account:'Profile',admin:'Admin'}[screen];
+  const label={projects:'All Projects',account:'Profile',admin:'Admin'}[screen];
   let ctx=await boot();
   settings({fail:screen});
   await move(ctx,label,screen);
@@ -97,7 +97,7 @@ try{
   await ctx.page.close();
  }
  let ctx=await boot({empty_projects:true});
- await move(ctx,'Projects','projects');
+ await move(ctx,'All Projects','projects');
  await ctx.core.locator('.projects-empty').waitFor();
  await move(ctx,'Profile','account');
  results.push('Empty Projects remains navigable');
@@ -106,7 +106,7 @@ try{
  assert.equal(await ctx.core.getByRole('button',{name:'Admin',exact:true}).count(),0);
  await move(ctx,'Profile','account');
  assert.equal(await ctx.core.getByRole('button',{name:'Admin',exact:true}).count(),0);
- await move(ctx,'Projects','projects');
+ await move(ctx,'All Projects','projects');
  results.push('Company member sees allowed Projects and Profile actions');
  await ctx.page.close();
  ctx=await boot({admin:false,role:'member'},'?screen=admin');
@@ -124,7 +124,7 @@ try{
  await ctx.page.close();
  ctx=await boot();
  settings({delay:{projects:18}});
- await ctx.core.getByRole('button',{name:'Projects',exact:true}).dblclick();
+ await ctx.core.getByRole('button',{name:'All Projects',exact:true}).dblclick();
  const retry=ctx.core.getByRole('button',{name:'Reload page',exact:true});
  await retry.waitFor({timeout:21000});
  assert.equal(await ctx.page.evaluate(()=>navMessages.filter(x=>x.covered).length),1);

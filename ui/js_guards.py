@@ -2602,7 +2602,7 @@ def install_object_detail_input_guard(
                         if (!known.length) { clearUnknown(row); return null; }
                         value = add(known);
                         if (!value.qualified && row.dataset.costUnknown === 'true') { clearUnknown(row); return null; }
-                        if (row.dataset.costBand === 'sheet-processing') value = {...paid(value.hours),qualified:value.qualified};
+                        if (['sheet-processing', 'cnc'].includes(row.dataset.costBand)) value = {...paid(value.hours),qualified:value.qualified};
                     } else {
                         const input = row.querySelector(':scope > summary [data-field="labor_hours"]');
                         if (!input) return null;
@@ -2688,6 +2688,13 @@ def install_object_detail_input_guard(
                     const sum = [...group.querySelectorAll('[data-overhead-cost]')]
                         .reduce((sum, row) => sum + Number(row.dataset.overheadCost), 0);
                     if (cell) cell.textContent = formatMoney(sum);
+                    const allocation = group.querySelector('summary [data-overhead-group-column="allocation"]');
+                    if (allocation) {
+                        const lines = [...group.querySelectorAll('.object-detail-table-row[data-line-id]')];
+                        const reserves = lines.length && lines.every(row => row.dataset.overheadPercent !== "");
+                        const values = [...new Set(lines.map(row => row.children[2].textContent))];
+                        allocation.textContent = reserves ? 'Formula' : values.length === 1 ? values[0] : '—';
+                    }
                 }
             }
 

@@ -397,3 +397,25 @@ def test_labor_and_overhead_round_only_display_half_up(hours, display):
     assert f'{display}h / 2016h' in result['lines'][0]['allocation_basis']
     assert result['lines'][0]['raw_agent_json']['labor_hours_total'] == float(exact)
     assert result['lines'][0]['cost'] == round(20160*float(exact)/2016, 2)
+
+
+def test_closed_overhead_group_sums_monthly_cost_and_uses_one_current_allocation():
+    from ui.object_detail_view import _group_summary_value
+    rows=[{'monthly_cost':v,'allocation':'28.3h / 1200h','cost':v*28.3/1200,'reserve_percent':''}
+          for v in (10000,1000,500)]
+    assert _group_summary_value('Monthly cost',rows)=='₪11\u202f500'
+    assert _group_summary_value('Allocation',rows)=='28.3h / 1200h'
+    assert _group_summary_value('Cost',rows)=='₪271'
+
+
+def test_reserve_group_is_formula_and_never_adds_percentages_as_monthly_money():
+    from ui.object_detail_view import _group_summary_value,overhead_section_html
+    rows=[{'monthly_cost':5,'reserve_percent':5,'allocation':'5% of self-cost','cost':50},
+          {'monthly_cost':7,'reserve_percent':7,'allocation':'7% of self-cost','cost':70}]
+    assert _group_summary_value('Monthly cost',rows)=='—'
+    assert _group_summary_value('Allocation',rows)=='Formula'
+    assert _group_summary_value('Cost',rows)=='₪120'
+    result=estimate()
+    html=overhead_section_html(result)
+    assert 'data-overhead-group-column="monthly"' in html
+    assert 'data-overhead-group-column="allocation">Formula<' in html
