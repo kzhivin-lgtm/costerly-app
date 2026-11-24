@@ -8,10 +8,15 @@ Full local and exact-SHA GitHub 1018 checks/ten browser suites passed; actual
 served builds agree. Owner production acceptance pending.
 [Release and evidence](notes/LABOR_V2_14_NESTED_ROLLUPS_2026_11_24.md).
 
-Latest full preservation checkpoint: **Labor 2.11**, owner requested24November2026,
-runtime`63db313d`. Exact835-file source, independent restore, frozen material
-controls,999/ten evidence and known UI limitations are retained. Later Labor
-releases preserve this checkpoint. [Preservation and restore](notes/LABOR_V2_11_PRODUCTION_CHECKPOINT_2026_11_24.md).
+Latest full preservation checkpoint: **Labor2.14**, owner requested24November2026,
+runtime`fc3e5827`. Exact840-file source, Git bundle, full1018/ten gate evidence,
+2.12/2.13/2.14 records and four network-blocked material controls are preserved.
+Fresh restore matched all source bytes. No redeploy or paid run.
+[Preservation and restore](notes/LABOR_V2_14_PRODUCTION_CHECKPOINT_2026_11_24.md).
+
+Previous full preservation checkpoint: **Labor2.11**, runtime63db313d; its source,
+records and complete archive remain unchanged.
+[Preservation and restore](notes/LABOR_V2_11_PRODUCTION_CHECKPOINT_2026_11_24.md).
 
 Previous full checkpoint: **Estimation 9.48**, owner accepted 23 November 2026,
 runtime `862e28f0`. Prices lazy loading and four Labor stages are accepted.

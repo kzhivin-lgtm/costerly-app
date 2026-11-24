@@ -1,5 +1,22 @@
 # Done Log
 
+[verified] Full Labor2.14 preservation checkpoint requested24November2026,
+existing work3.17.4.6. Runtimefc3e5827 is independent of checkpoint records.
+Preserved840 exact source files, helper-validated4,802,790-byte ZIP (SHA256
+29512b6a204a22013f0e6342f8dccdd2ac393ab1fefd919cf290539cd5f8669c),
+self-contained Git bundle, separate source/records tags, source inventory and
+full SHA256 manifest. Fresh empty-path restore matched every source byte.
+Four frozen material controls passed with network blocked, including Adda24/133
+parts, without OCR/model calls. Reused successful exact-runtime1018/ten full
+local and GitHub evidence, preserved2.12/2.13/2.14 records/probes/screenshots,
+publication and served-build receipts. Main/runtime unchanged; no redeploy,
+new paid run, credentials, installed dependencies or live database snapshot.
+The owner's12.02 original screenshot is unavailable at its declared path;
+verified post-change UI screenshots and the approved offline sketch are retained.
+Preservation is separate from a newly observed authenticated owner calculation.
+Previous2.11/9.48 and all older checkpoints remain immutable.
+[Checkpoint, evidence and restore](LABOR_V2_14_PRODUCTION_CHECKPOINT_2026_11_24.md).
+
 [verified] Labor2.14 published24November2026, existing work3.17.4.6,
 runtime `fc3e5827`. CNC precedes reference Elements and has its own read-only
 closed rollup of Operator/File Preparation/Edge Banding. All nested work sums
