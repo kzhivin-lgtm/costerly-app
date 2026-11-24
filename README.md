@@ -1,11 +1,12 @@
 # Costerly
 
-Current release: **Labor2.13**, published24November2026, runtime `c5364813`.
-Unified CNC/Elements disclosures, Project summary and aligned logo, approved
-branded offline artwork. Existing financial/edit/save/auth behavior retained.
-Full local and exact-SHA GitHub 1015 checks/ten browser suites passed; actual
+Current release: **Labor2.14**, published24November2026, runtime `fc3e5827`.
+Nested CNC/work rollups, reference Elements last, shared Overhead style and
+closed Monthly Cost/Allocation/Cost sums. Trial Installation and All Projects
+labels confirmed. No financial/source/auth/recovery change.
+Full local and exact-SHA GitHub 1018 checks/ten browser suites passed; actual
 served builds agree. Owner production acceptance pending.
-[Release and evidence](notes/LABOR_V2_13_PROJECT_CNC_OFFLINE_2026_11_24.md).
+[Release and evidence](notes/LABOR_V2_14_NESTED_ROLLUPS_2026_11_24.md).
 
 Latest full preservation checkpoint: **Labor 2.11**, owner requested24November2026,
 runtime`63db313d`. Exact835-file source, independent restore, frozen material

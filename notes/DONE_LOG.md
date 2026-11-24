@@ -1,5 +1,24 @@
 # Done Log
 
+[verified] Labor2.14 published24November2026, existing work3.17.4.6,
+runtime `fc3e5827`. CNC precedes reference Elements and has its own read-only
+closed rollup of Operator/File Preparation/Edge Banding. All nested work sums
+are shown closed and hidden when expanded; terminal editors remain. No new
+charge/key/source norm. Shared Overhead triangle/mono style and explicit nested
+indentation measure13 work rows at42px on1280/390. Elements remains last on all
+Sheet Processing routes. Closed Overhead groups show Monthly Cost sum/current
+Allocation/Cost; expanded ones hide all summary metrics. Reserves show — and
+Formula, not percentages as monthly money. Live edits/save/reopen keep group
+allocations and costs current, preserving original amounts and once-only hours.
+Owner-confirmed Trial Installation and All Projects change labels only. Current
+summary remains Project; stored trial-fit/projects identities stay. Previous
+2.13 offline/auth/recovery and all persistence behavior remain protected.
+Full local 1018/ten in409.363s and exact-SHA GitHub 1018/ten
+in385.316s passed. Main rule27499066 active/no bypass; actual served
+Core/executable wrapper/meta/version agree. Owner production acceptance pending.
+Full2.11 checkpoint unchanged; rollback baseline2.13c5364813. No paid calls.
+[Release/evidence](LABOR_V2_14_NESTED_ROLLUPS_2026_11_24.md).
+
 [verified] Labor2.13 published24November2026, existing work3.17.4.6,
 runtime `c5364813`. CNC, Elements and block disclosures share compact42px
 rows, fonts, chevrons and expanded backgrounds. Keep Operator/File Preparation/

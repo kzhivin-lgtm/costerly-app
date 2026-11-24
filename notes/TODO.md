@@ -1148,7 +1148,7 @@ occupied2.8/2.9 tags remain untouched. The owner explicitly confirmed Labor2.10.
 introduced.
 Detailed rules and acceptance: existing four-stage plan, latest section below.
 
-ACTIVE, P1, USER APPROVED, Labor2.14,24November2026, existing work3.17.4.6.
+PUBLISHED, OWNER PRODUCTION ACCEPTANCE PENDING, P1, USER APPROVED, Labor2.14,24November2026, existing work3.17.4.6.
 Owner says2.13 presentation looks okay and requests the next consistent rollup
 iteration. Put CNC above Elements; reference Elements stays last in Sheet
 Processing on every route/pending state and below work where reference content
@@ -1169,7 +1169,26 @@ Preserve manual unknown/zero/quantity, legacy source math, saved overrides,
 Overhead/SC, Save/error/retry/reopen, all auth/navigation and approved offline
 artwork/recovery. No paid model call or Detection/Parts/Materials algorithm
 change. Base runtimec5364813/records803bb662; full2.11 checkpoint immutable.
-Validation active, publication pending;2.14 is next free remote Labor2.x tag.
+Implementation and full verification complete;2.14 published through the protected gate.
+
+[verified] Labor2.14 published24November2026, existing work3.17.4.6,
+runtime `fc3e5827`. CNC precedes reference Elements and has its own read-only
+closed rollup of Operator/File Preparation/Edge Banding. All nested work sums
+are shown closed and hidden when expanded; terminal editors remain. No new
+charge/key/source norm. Shared Overhead triangle/mono style and explicit nested
+indentation measure13 work rows at42px on1280/390. Elements remains last on all
+Sheet Processing routes. Closed Overhead groups show Monthly Cost sum/current
+Allocation/Cost; expanded ones hide all summary metrics. Reserves show — and
+Formula, not percentages as monthly money. Live edits/save/reopen keep group
+allocations and costs current, preserving original amounts and once-only hours.
+Owner-confirmed Trial Installation and All Projects change labels only. Current
+summary remains Project; stored trial-fit/projects identities stay. Previous
+2.13 offline/auth/recovery and all persistence behavior remain protected.
+Full local 1018/ten in409.363s and exact-SHA GitHub 1018/ten
+in385.316s passed. Main rule27499066 active/no bypass; actual served
+Core/executable wrapper/meta/version agree. Owner production acceptance pending.
+Full2.11 checkpoint unchanged; rollback baseline2.13c5364813. No paid calls.
+[Release/evidence](LABOR_V2_14_NESTED_ROLLUPS_2026_11_24.md).
 
 PUBLISHED, OWNER PRODUCTION ACCEPTANCE PENDING, P1, USER APPROVED, Labor2.13,24November2026, existing work3.17.4.6.
 Match CNC, Elements and block disclosures to compact Labor work rows. Keep
