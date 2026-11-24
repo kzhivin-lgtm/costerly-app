@@ -91,7 +91,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
     const names = {
         upload: "New Estimate",
         file_review: "File Review",
-        objects: "Objects Estimation",
+        objects: "Project",
         object_detail: "Object Detail",
         projects: "Projects",
         account: "Profile",
@@ -308,7 +308,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         }
         if (message.screen !== "file_review") return true;
         const button = Array.from(doc.querySelectorAll("button")).find(node =>
-            node.textContent.trim().toLowerCase() === "continue to objects estimation" &&
+            node.textContent.trim().toLowerCase() === "continue to project" &&
             !node.closest('[data-stale="true"]')
         );
         return Boolean(button && (!button.disabled || find("[data-costerly-file-review-blocked]")));

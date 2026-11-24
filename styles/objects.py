@@ -8,6 +8,12 @@ def apply_objects_css() -> None:
     st.markdown(
         """
         <style>
+        .objects-estimation-header .workflow-title-mark {
+            justify-content: flex-start;
+        }
+        .objects-estimation-header .workflow-title-mark img {
+            width: auto;
+        }
         .objects-estimation-header .post-upload-subtitle {
             color: rgba(42, 31, 44, 0.58) !important;
             font-family: var(--font-mono) !important;

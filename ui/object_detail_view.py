@@ -587,7 +587,8 @@ def _elements_html(groups: object, *, revision: object = None, object_id: object
         if label:
             sections.append(
                 '<details class="object-detail-element-group">'
-                f'<summary>{_escape(label)}</summary>{table}</details>'
+                '<summary class="object-detail-disclosure-summary">'
+                f'<span class="object-detail-disclosure-title">{_escape(label)}</span></summary>{table}</details>'
             )
         else:
             sections.append(table)
@@ -603,7 +604,8 @@ def _elements_html(groups: object, *, revision: object = None, object_id: object
     return (
         '<div class="object-detail-elements-section">'
         '<details class="object-detail-elements">'
-        '<summary class="object-detail-section-title">Elements</summary>'
+        '<summary class="object-detail-section-title object-detail-disclosure-summary">'
+        '<span class="object-detail-disclosure-title">Elements</span></summary>'
         f'<div class="object-detail-element-groups">{"".join(sections)}{assembly_details}</div>'
         f'</details>{controls}</div>'
     )
@@ -629,7 +631,7 @@ def _footer_html(
         f'<a class="object-detail-footer-button object-detail-footer-button--secondary" '
         'data-streamlit-bridge-key="object_detail_back_bridge" '
         f'href="?{back_params}" target="_self">'
-        'Back to Objects'
+        'Back to Project'
         '</a>'
         '<button type="button" class="object-detail-footer-button object-detail-footer-button--secondary '
         'object-detail-material-save" disabled>Save changes</button>'

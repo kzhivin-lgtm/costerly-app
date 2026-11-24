@@ -1180,7 +1180,7 @@ def render_file_review_screen(
     )
 
     col_next.button(
-        "CONTINUE TO OBJECTS ESTIMATION",
+        "CONTINUE TO PROJECT",
         type="primary",
         use_container_width=True,
         on_click=_continue_to_objects_estimation,
@@ -1200,7 +1200,7 @@ def render_file_review_screen(
         st.caption(
             str(readiness_error or source_error)
             if readiness_error or source_error
-            else "Objects Estimation is restoring its source file. Please wait a moment."
+            else "Project is restoring its source file. Please wait a moment."
         )
 
     # This fragment can issue a full rerun when deferred work becomes terminal.
@@ -1317,7 +1317,7 @@ def _prepare_objects_estimation_seed(
     object_edits: dict[str, dict[str, object]],
     ignored_object_ids: set[str],
 ) -> None:
-    """Store immediate Objects Estimation rows used before Supabase catches up."""
+    """Store immediate Project rows used before Supabase catches up."""
     st.session_state.file_review_ignored_object_ids = ignored_object_ids
     st.session_state.objects_estimation_seed_rows = _objects_estimation_seed_rows(
         objects,
@@ -1479,7 +1479,7 @@ def _prepare_objects_launch_plan(
         if screen_state is None:
             st.session_state.objects_estimation_launch_plan = None
             st.session_state[f"objects_estimation_readiness_error.{run_id}"] = (
-                "Objects Estimation is refreshing its saved result. Please wait a moment."
+                "Project is refreshing its saved result. Please wait a moment."
             )
             return None
         file_name = None
@@ -1567,7 +1567,7 @@ def _continue_to_objects_estimation(
         or not isinstance(plan.get("screen_state"), dict)
     ):
         st.session_state.last_estimation_error = (
-            "Objects Estimation is still preparing its reviewed source. Please wait a moment."
+            "Project is still preparing its reviewed source. Please wait a moment."
         )
         action_status = "error"
         action_error_code = "launch_plan_unavailable"
@@ -1580,7 +1580,7 @@ def _continue_to_objects_estimation(
     reuse_existing_estimate = bool(plan.get("reuse_existing_estimate"))
     estimate_id = str(plan.get("estimate_id") or "")
     if not estimate_id:
-        st.session_state.last_estimation_error = "Objects Estimation has no prepared estimate ID."
+        st.session_state.last_estimation_error = "Project has no prepared estimate ID."
         action_status = "error"
         action_error_code = "prepared_estimate_id_missing"
         record_action()

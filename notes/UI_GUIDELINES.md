@@ -743,3 +743,25 @@ edit restores unknown, not0. No extra read/request/writer/callback is added.
 Real partial receipt testing exposed section columns being lost in the detail
 cache on Save/reopen. Merge new rows into the existing section metadata instead
 of replacing its schema. Preserve geometry, source facts and all previous state.
+
+## Labor 2.13 and Project presentation, owner approved24November2026
+
+Keep Part Production (singular attributive Part), Sheet Processing, CNC and the
+separate Operator/File Preparation/Edge Banding work. CNC, Elements and block
+lists share compact42px disclosures, fonts, chevrons and open backgrounds.
+Presentation-only disclosures are not paid-work nodes or hour inputs. Preserve
+part tables, PDF links, native keyboard toggles, hour editors and financial tree.
+The project-wide summary is Project, with Continue to Project/Back to Project;
+internal objects routes, saved identity and the separate Projects page stay.
+Align its logo's visible artwork to the content axis without moving other axes.
+
+Approved offline design: the purple mark before Something went wrong., with
+Are you connected to the internet? beneath, existing background/24px loading
+font and fixed Privacy. Reuse the existing wrapper cover and browser offline/
+online events; keep assets embedded for offline availability. No new polling,
+observer, writer, auth request/logout/storage clear or reconnect path. Offline
+blocks interactions with the disconnected iframe, does not unload it. Online
+releases only this view and reuses existing reconnect guards, including busy
+work. This does not replace Streamlit handling of a server-only disconnect while
+the browser remains online. Earlier recovery, active-work and session guarantees
+remain required. Chrome's native failed-document page itself is not restyled.

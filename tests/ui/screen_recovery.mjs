@@ -42,6 +42,33 @@ async function move(ctx,label,target){
  assert.equal(await ctx.core.locator('[data-testid="stException"]').count(),0);
 }
 try{
+ for(const width of [1280,390]){
+  const ctx=await boot();await ctx.page.setViewportSize({width,height:900});
+  await ctx.page.evaluate(()=>sessionStorage.setItem('offline-auth-canary','retained'));
+  let reloads=0;ctx.page.on('framenavigated',frame=>{if(frame===ctx.page.mainFrame())reloads++;});
+  await ctx.page.context().setOffline(true);
+  const cover=ctx.page.locator('#app-loading-mask.is-offline');await cover.waitFor({state:'visible'});
+  assert.equal(await cover.innerText(),'Something went wrong.\nAre you connected to the internet?');
+  assert.equal(await cover.locator('img').count(),1);
+  assert.equal(await ctx.page.locator('#costerly-app-frame').evaluate(n=>n.inert),true);
+  assert(await ctx.page.locator('.embed-footer-mask a').isVisible());
+  const layout=await cover.evaluate(n=>{
+   const heading=n.querySelector('.connection-heading').getBoundingClientRect();
+   return {center:heading.x+heading.width/2,target:innerWidth/2,font:getComputedStyle(n.querySelector('.connection-message')).fontSize};
+  });
+  assert(Math.abs(layout.center-layout.target)<1,JSON.stringify(layout));
+  assert.equal(layout.font,width===1280?'24px':'23.4px');
+  assert.equal(reloads,0,'Going offline must not reload the app');
+  await ctx.page.screenshot({path:reportPath(`connection-error-${width}.png`)});
+  await ctx.page.context().setOffline(false);
+  await ctx.page.locator('#app-loading-mask.is-offline').waitFor({state:'detached'});
+  await ctx.page.locator('iframe.is-ready').waitFor();
+  assert.equal(await ctx.page.evaluate(()=>sessionStorage.getItem('offline-auth-canary')),'retained');
+  assert.equal(reloads,1,'Reuse the existing single reconnect navigation');
+  await ctx.core.getByRole('button',{name:'Last Estimate',exact:true}).waitFor();
+  results.push(`Approved offline artwork and existing reconnect/auth retention at${width}`);
+  await ctx.page.close();
+ }
  for(const screen of ['projects','account','admin']){
   const label={projects:'Projects',account:'Profile',admin:'Admin'}[screen];
   let ctx=await boot();

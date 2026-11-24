@@ -11,19 +11,24 @@ import streamlit as st
 from styles.post_upload import apply_post_upload_css
 
 
-@lru_cache(maxsize=1)
-def _workflow_mark_src() -> str:
+@lru_cache(maxsize=2)
+def _workflow_mark_src(*, align_left: bool = False) -> str:
     """Return the brand mark without adding a network request to a header."""
     mark = Path("assets/brand/costelry_mark_indigo.svg").read_bytes()
+    if align_left:
+        # The source artwork occupies x=19.4823..105 in its 120px artboard.
+        # Crop only horizontal whitespace, retaining its vertical scale.
+        mark = mark.replace(b'width="120"', b'width="85.5177"', 1).replace(
+            b'viewBox="0 0 120 120"', b'viewBox="19.4823 0 85.5177 120"', 1)
     return "data:image/svg+xml;base64," + base64.b64encode(mark).decode("ascii")
 
 
-def _workflow_title_html(title: str) -> str:
+def _workflow_title_html(title: str, *, align_mark_left: bool = False) -> str:
     """Place the workflow mark before the full, established title text."""
     return (
         '<span class="workflow-title-primary">'
         '<span class="workflow-title-mark" aria-hidden="true">'
-        f'<img src="{_workflow_mark_src()}" alt="">'
+        f'<img src="{_workflow_mark_src(align_left=align_mark_left)}" alt="">'
         '</span>'
         f'<span class="workflow-title-text">{html.escape(title)}</span>'
         '</span>'
@@ -49,6 +54,7 @@ def post_upload_title_html(
     *,
     class_name: str | None = None,
     marker_id: str | None = None,
+    align_mark_left: bool = False,
 ) -> str:
     """Return the title-only half of a server-rendered workflow header."""
     marker_html = ""
@@ -61,7 +67,7 @@ def post_upload_title_html(
         f'<div class="{shell_class}">'
         f'{marker_html}'
         '<h1 class="post-upload-title workflow-title">'
-        f'{_workflow_title_html(title)}'
+        f'{_workflow_title_html(title, align_mark_left=align_mark_left)}'
         '</h1>'
         '</div>'
     )

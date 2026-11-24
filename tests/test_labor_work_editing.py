@@ -82,7 +82,7 @@ def test_actual_cnc_view_has_only_elements_and_work_breakdown_and_terminal_edito
     parsed=WorkEditors();parsed.feed(html)
     assert set(parsed.editors)=={'cnc-operator','file-preparation','edge-banding',
         'part-coating','assembly','additional-assembly','trial-fit','packing'}
-    assert 'CNC time breakdown' in html and 'Elements' in html
+    assert '>CNC</span></summary>' in html and 'Elements' in html
     assert 'In-house' not in html and 'Subcontractor' not in html and 'Materials + labor' not in html
     assert 'Social +25%' in html
 

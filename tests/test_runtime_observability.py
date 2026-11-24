@@ -535,7 +535,7 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "if (bridgeButton) bridgeButton.click();" in observer_source
     assert 'String(control.dataset.streamlitBridgeKey || "")' in observer_source
     assert 'transition === "object_detail_to_objects"' in observer_source
-    assert '=== "Back to Objects"' in observer_source
+    assert '=== "Back to Project"' in observer_source
     assert "const resetScrollOnReady = __RESET_SCROLL__;" in ready_signal
     assert 'parentWindow.setTimeout(reset, 250);' in ready_signal
     object_detail_guard = ready_signal.split(

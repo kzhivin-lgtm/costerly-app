@@ -50,7 +50,7 @@ try{
   await core.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
  }
  await move(core.getByRole('button',{name:'Last Estimate',exact:true}),'file_review');
- await move(core.getByRole('button',{name:/^continue to objects estimation$/i}),'objects');
+ await move(core.getByRole('button',{name:/^continue to project$/i}),'objects');
  await core.locator('.objects-pricing-table').waitFor();
  await page.locator('iframe.is-ready').waitFor();
  const set=()=>core.getByRole('button',{name:'Set Prices',exact:true});
@@ -58,6 +58,17 @@ try{
  assert(await set().isDisabled());assert(await generate().isDisabled());
  assert.equal(await core.getByRole('button',{name:'Parts Check',exact:true}).count(),0);
  await frame.evaluate(()=>document.fonts.ready);
+ assert.equal(await core.locator('h1 .workflow-title-text').innerText(),'Project');
+ const logoAxis=await frame.evaluate(async()=>{
+  const img=document.querySelector('.objects-estimation-header .workflow-title-mark img');await img.decode();
+  const r=img.getBoundingClientRect(),canvas=document.createElement('canvas');
+  canvas.width=Math.ceil(r.width*4);canvas.height=Math.ceil(r.height*4);
+  const context=canvas.getContext('2d');context.drawImage(img,0,0,canvas.width,canvas.height);
+  const pixels=context.getImageData(0,0,canvas.width,canvas.height).data;let first=canvas.width;
+  for(let y=0;y<canvas.height;y++)for(let x=0;x<first;x++)if(pixels[(y*canvas.width+x)*4+3]>20)first=x;
+  return {artwork:r.x+first/4,body:document.querySelector('.objects-pricing-header').getBoundingClientRect().x};
+ });
+ assert(Math.abs(logoAxis.artwork-logoAxis.body)<=1,JSON.stringify(logoAxis));report.logoAxis=logoAxis;
  report.geometry=await frame.evaluate(()=>{
   const box=node=>{const b=node.getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,height:b.height};};
   const controls=document.querySelector('[class*="st-key-costerly_header_controls"]');
@@ -214,7 +225,7 @@ try{
  const unconfirmedColor=await set().evaluate(n=>getComputedStyle(n).backgroundColor);
  await editPrice(1750);
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
- await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ await move(core.getByRole('link',{name:'Back to Project',exact:true}),'objects');
  assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
  for(const [key,value] of [['delivery',123],['installation',321],['object-001',1750]]){
   const field=core.locator('.objects-pricing-row[data-object-key="'+key+'"] .objects-pricing-price-input');
@@ -238,7 +249,7 @@ try{
  priceDelay=500;
  await service('delivery').fill('222');
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
- await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ await move(core.getByRole('link',{name:'Back to Project',exact:true}),'objects');
  assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
  await waitPrice('delivery',222);
  assert.equal((await service('delivery').innerText()).replace(/[^0-9]/g,''),'222');
@@ -248,7 +259,7 @@ try{
  assert.equal((await service('installation').innerText()).replace(/[^0-9]/g,''),'444');
  assert.equal(JSON.parse(readFileSync(prices)).find(row=>row.object_key==='installation').value,321);
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
- await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ await move(core.getByRole('link',{name:'Back to Project',exact:true}),'objects');
  assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
  assert.equal((await service('installation').innerText()).replace(/[^0-9]/g,''),'444');
  priceFailure=false;
@@ -266,7 +277,7 @@ try{
  await core.locator('.objects-quantity-saving-overlay.is-visible').waitFor({state:'hidden'});
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
  assert.equal(await core.locator('.object-detail-quantity-input').innerText(),'2','Object Detail must show the saved quantity, including a warm cached card');
- await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ await move(core.getByRole('link',{name:'Back to Project',exact:true}),'objects');
  assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
  assert.equal(await quantity.innerText(),'2','Quantity blur save survives Review/Back');
  quantityDelay=500;
@@ -275,7 +286,7 @@ try{
  await core.locator('.object-detail-quantity-input').waitFor();
  assert.equal(await core.locator('.object-detail-quantity-input').innerText(),'3','Keyboard Review waits for its pending quantity write');
  quantityDelay=0;
- await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ await move(core.getByRole('link',{name:'Back to Project',exact:true}),'objects');
  assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
  await quantity.fill('4');await quantity.press('Tab');
  await quantity.fill('5');await quantity.press('Tab');
@@ -293,7 +304,7 @@ try{
  await core.locator('.objects-quantity-saving-overlay.is-visible').waitFor({state:'hidden'});
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
  assert.equal(await core.locator('.object-detail-quantity-input').innerText(),'6','Retry publishes the accepted canonical quantity');
- await move(core.getByRole('link',{name:'Back to Objects',exact:true}),'objects');
+ await move(core.getByRole('link',{name:'Back to Project',exact:true}),'objects');
  assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
  await quantity.fill('1');await quantity.press('Tab');
  await core.locator('.objects-quantity-saving-overlay.is-visible').waitFor({state:'hidden'});
@@ -304,7 +315,7 @@ try{
  await reopened.goto('http://127.0.0.1:8798/');await reopened.locator('iframe.is-ready').waitFor();
  const reopenedCore=reopened.frameLocator('#costerly-app-frame');
  await reopenedCore.getByRole('button',{name:'Last Estimate',exact:true}).click();
- await reopenedCore.getByRole('button',{name:/^continue to objects estimation$/i}).click();
+ await reopenedCore.getByRole('button',{name:/^continue to project$/i}).click();
  await reopenedCore.locator('.objects-pricing-table').waitFor();
  for(const [key,value] of [['delivery',123],['installation',321],['object-001',1750]]){
   assert.equal((await reopenedCore.locator('.objects-pricing-row[data-object-key="'+key+'"] .objects-pricing-price-input').innerText()).replace(/[^0-9]/g,''),String(value),'New browser context reads saved '+key);
@@ -367,8 +378,8 @@ try{
  const member=await browser.newPage({viewport:{width:1440,height:1000}}),memberCore=member.frameLocator('#costerly-app-frame');
  await member.goto('http://127.0.0.1:8798/');await member.locator('iframe.is-ready').waitFor();
  await memberCore.getByRole('button',{name:'Last Estimate',exact:true}).click();
- await memberCore.getByRole('button',{name:/continue to objects estimation/i}).waitFor();await memberCore.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
- await memberCore.getByRole('button',{name:/continue to objects estimation/i}).click();await memberCore.locator('.objects-pricing-table').waitFor();await memberCore.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
+ await memberCore.getByRole('button',{name:/continue to project/i}).waitFor();await memberCore.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
+ await memberCore.getByRole('button',{name:/continue to project/i}).click();await memberCore.locator('.objects-pricing-table').waitFor();await memberCore.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
  assert.equal(await memberCore.locator('.objects-cycle-metrics,.objects-metrics-toggle').count(),0,'Technical metrics reuse existing platform-admin visibility');
  await member.close();report.nonAdminMetricsHidden=true;
  writeFileSync(reportPath('objects-v2.json'),JSON.stringify(report,null,2));

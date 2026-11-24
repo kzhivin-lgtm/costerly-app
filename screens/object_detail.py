@@ -95,7 +95,7 @@ def _back_to_objects_button() -> None:
     from state.session import set_screen
 
     st.button(
-        "BACK TO OBJECTS",
+        "BACK TO PROJECT",
         type="secondary",
         on_click=set_screen,
         args=("objects",),
@@ -224,7 +224,7 @@ def _render_object_detail(
         st.error(st.session_state.pop("object_detail_approval_error"))
     with st.container(key="object_detail_navigation_bridges"):
         st.button(
-            "Back to Objects",
+            "Back to Project",
             key="object_detail_back_bridge",
             on_click=_return_to_objects,
         )

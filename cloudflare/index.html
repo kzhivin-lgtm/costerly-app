@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="labor-v2.12-b20261123225823-leaf-hours-cnc-detection-v8.4.29" />
+    <meta name="costerly-wrapper-version" content="labor-v2.13-b20261124093119-project-cnc-offline-detection-v8.4.29" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -78,6 +78,24 @@
         opacity: 0;
       }
 
+      .app-loading-mask.is-offline {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 20px 46px;
+        opacity: 1;
+        pointer-events: auto;
+        transition: none;
+      }
+      .connection-message { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+      .connection-heading { display: flex; align-items: center; justify-content: center; gap: 12px; }
+      .connection-mark { width: 32px; height: 32px; object-fit: contain; flex: none; }
+      .is-offline ~ .embed-footer-mask { z-index: 11; }
+      @media (max-width: 760px) {
+        .connection-heading { gap: 8px; }
+        .connection-mark { width: 28px; height: 28px; }
+      }
+
       .embed-footer-mask {
         position: fixed;
         left: 0;
@@ -107,6 +125,15 @@
 
   <body>
     <div class="app-loading-mask" id="app-loading-mask" aria-hidden="true"></div>
+    <template id="connection-error-view">
+      <div class="connection-message costerly-workflow-status">
+        <div class="connection-heading">
+          <img class="connection-mark" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODUuNTE3NyIgaGVpZ2h0PSI4MSIgdmlld0JveD0iMTkuNDgyMyAxOS41IDg1LjUxNzcgODEiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0xOS40ODIzIDYwQzE5LjQ4MjMgNTEuNTYzOSAyMi4xMTY2IDQzLjMzODIgMjcuMDE3NSAzNi40NzE3QzMxLjkxODUgMjkuNjA1MiAzOC44NDE4IDI0LjQ0IDQ2LjgyMDIgMjEuNjk4M0M1NC43OTg0IDE4Ljk1NjYgNjMuNDMzOSAxOC43NzU0IDcxLjUyMDQgMjEuMTc4N0M3OS42MDY4IDIzLjU4MjIgODYuNzQwOSAyOC40NTA0IDkxLjkyNjYgMzUuMTA0NUw4MS42NzI3IDQzLjA5NTdDNzguMTUxNiAzOC41Nzc2IDczLjMwNzMgMzUuMjcxNiA2Ny44MTYzIDMzLjYzOTdDNjIuMzI1NSAzMi4wMDc5IDU2LjQ2MiAzMi4xMzE1IDUxLjA0NDggMzMuOTkzMkM0NS42Mjc1IDM1Ljg1NDggNDAuOTI2NCAzOS4zNjExIDM3LjU5ODUgNDQuMDIzNUMzNC4yNzA3IDQ4LjY4NTkgMzIuNDgyMyA1NC4yNzE3IDMyLjQ4MjMgNjBDMzIuNDgyMyA2NS43MjggMzQuMjcwMiA3MS4zMTM0IDM3LjU5NzUgNzUuOTc1NkM0MC45MjU0IDgwLjYzODEgNDUuNjI3NSA4NC4xNDUyIDUxLjA0NDggODYuMDA2OUM1Ni40NjIgODcuODY4NSA2Mi4zMjU1IDg3Ljk5MjEgNjcuODE2MyA4Ni4zNjA0QzczLjMwNzMgODQuNzI4NCA3OC4xNTE2IDgxLjQyMjUgODEuNjcyNyA3Ni45MDQzTDkxLjkyNjYgODQuODk1NUM4Ni43NDA5IDkxLjU0OTYgNzkuNjA2OCA5Ni40MTc5IDcxLjUyMDQgOTguODIxM0M2My40MzM5IDEwMS4yMjUgNTQuNzk4NCAxMDEuMDQzIDQ2LjgyMDIgOTguMzAxOEMzOC44NDE4IDk1LjU2IDMxLjkxODUgOTAuMzk0OCAyNy4wMTc1IDgzLjUyODNDMjIuMTE2NiA3Ni42NjE4IDE5LjQ4MjMgNjguNDM2MiAxOS40ODIzIDYwWiIgZmlsbD0iIzdFNDdDNCIvPgo8cGF0aCBkPSJNMTAzLjM2NCAzM0g4Mi42MzY0QzgxLjczMjYgMzMgODEgMzMuNjcxNiA4MSAzNC41VjQ0LjVDODEgNDUuMzI4NCA4MS43MzI2IDQ2IDgyLjYzNjQgNDZIMTAzLjM2NEMxMDQuMjY3IDQ2IDEwNSA0NS4zMjg0IDEwNSA0NC41VjM0LjVDMTA1IDMzLjY3MTYgMTA0LjI2NyAzMyAxMDMuMzY0IDMzWiIgZmlsbD0iIzdFNDdDNCIvPgo8cGF0aCBkPSJNMTAzLjM2NCA3NEg4Mi42MzY0QzgxLjczMjYgNzQgODEgNzQuNjcxNiA4MSA3NS41Vjg1LjVDODEgODYuMzI4NCA4MS43MzI2IDg3IDgyLjYzNjQgODdIMTAzLjM2NEMxMDQuMjY3IDg3IDEwNSA4Ni4zMjg0IDEwNSA4NS41Vjc1LjVDMTA1IDc0LjY3MTYgMTA0LjI2NyA3NCAxMDMuMzY0IDc0WiIgZmlsbD0iIzdFNDdDNCIvPgo8cGF0aCBkPSJNNjcuMjIyMiA1M0g1Mi43Nzc4QzUxLjI0MzcgNTMgNTAgNTQuMzQzMSA1MCA1NkM1MCA1Ny42NTY5IDUxLjI0MzcgNTkgNTIuNzc3OCA1OUg2Ny4yMjIyQzY4Ljc1NjMgNTkgNzAgNTcuNjU2OSA3MCA1NkM3MCA1NC4zNDMxIDY4Ljc1NjMgNTMgNjcuMjIyMiA1M1oiIGZpbGw9IiM3RTQ3QzQiLz4KPHBhdGggZD0iTTY3LjIyMjIgNjNINTIuNzc3OEM1MS4yNDM3IDYzIDUwIDY0LjM0MzEgNTAgNjZDNTAgNjcuNjU2OSA1MS4yNDM3IDY5IDUyLjc3NzggNjlINjcuMjIyMkM2OC43NTYzIDY5IDcwIDY3LjY1NjkgNzAgNjZDNzAgNjQuMzQzMSA2OC43NTYzIDYzIDY3LjIyMjIgNjNaIiBmaWxsPSIjN0U0N0M0Ii8+Cjwvc3ZnPgo=" alt="" />
+          <span>Something went wrong.</span>
+        </div>
+        <span>Are you connected to the internet?</span>
+      </div>
+    </template>
     <iframe
       id="costerly-app-frame"
       data-src="https://core.costerly.ai/?embed=true"
@@ -118,7 +145,7 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "labor-v2.12-b20261123225823-leaf-hours-cnc-detection-v8.4.29";
+        const BUILD_VERSION = "labor-v2.13-b20261124093119-project-cnc-offline-detection-v8.4.29";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -174,6 +201,7 @@
         let iframeLoadAtMs = null;
         let ready = false;
         let resumePending = !navigator.onLine;
+        let offlineCover = null;
         let uploadSelectionPending = false;
         let deployRefreshBlocked = false;
         const deployRefreshKey = "costerly.deploy-refresh.v1";
@@ -326,9 +354,47 @@
           window.location.reload();
         }
 
-        window.addEventListener("offline", () => { resumePending = true; });
+        function showConnectionError() {
+          if (offlineCover) return;
+          // Use the existing wrapper cover and cached brand asset. No request,
+          // polling, iframe reload or authentication mutation is needed offline.
+          offlineCover = {
+            children: Array.from(mask.childNodes),
+            style: mask.getAttribute("style"),
+            role: mask.getAttribute("role"),
+            ariaHidden: mask.getAttribute("aria-hidden"),
+            hidden: mask.classList.contains("is-hidden"),
+            inert: frame.inert,
+          };
+          mask.replaceChildren(document.getElementById("connection-error-view").content.cloneNode(true));
+          mask.removeAttribute("style");
+          mask.classList.remove("is-hidden");
+          mask.classList.add("is-offline");
+          mask.setAttribute("role", "status");
+          mask.removeAttribute("aria-hidden");
+          frame.inert = true;
+        }
+
+        function releaseConnectionError() {
+          if (!offlineCover) return;
+          const previous = offlineCover;
+          offlineCover = null;
+          mask.replaceChildren(...previous.children);
+          mask.classList.remove("is-offline");
+          for (const [name, value] of [["style", previous.style], ["role", previous.role], ["aria-hidden", previous.ariaHidden]]) {
+            if (value === null) mask.removeAttribute(name); else mask.setAttribute(name, value);
+          }
+          mask.classList.toggle("is-hidden", previous.hidden || (ready && !deployRefreshBlocked));
+          frame.inert = previous.inert || deployRefreshBlocked;
+        }
+
+        window.addEventListener("offline", () => {
+          resumePending = true;
+          showConnectionError();
+        });
         window.addEventListener("online", () => {
           resumePending = true;
+          releaseConnectionError();
           revalidateConnection();
         });
         document.addEventListener("visibilitychange", revalidateConnection);
@@ -420,7 +486,7 @@
             metadata: {source, ...navigationMetadata()},
           });
           if (frame) frame.classList.add("is-ready");
-          if (mask) {
+          if (mask && !offlineCover) {
             mask.classList.add("is-hidden");
           }
           persistTimeline();
@@ -429,6 +495,10 @@
         function releaseDeployCover() {
           if (!deployRefreshBlocked) return;
           deployRefreshBlocked = false;
+          if (offlineCover) {
+            Object.assign(offlineCover, {children: [], style: null, role: null, ariaHidden: "true", hidden: true, inert: false});
+            return;
+          }
           frame.inert = false;
           frame.classList.add("is-ready");
           mask.style.cssText = "";
@@ -474,13 +544,14 @@
         }
 
         function maybeRefreshServerBuild() {
-          if (!pendingServerBuild || pendingServerBuild === BUILD_VERSION ||
+          if (!navigator.onLine || !pendingServerBuild || pendingServerBuild === BUILD_VERSION ||
               uploadSelectionPending || uploadInteractionBusy || coveredTransitionId ||
               pendingTransitions.length || !["upload", "login"].includes(lastReadyScreen)) return;
           forceDeployRefresh(pendingServerBuild);
         }
 
         mark("browser.wrapper_start", {metadata: navigationMetadata()});
+        if (!navigator.onLine) showConnectionError();
         if (frame) {
           frame.addEventListener("load", () => {
             iframeLoadAtMs = performance.now();

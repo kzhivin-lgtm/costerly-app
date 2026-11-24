@@ -335,3 +335,11 @@ completing pending Overhead and later2h Save retaining open ready groups. Hour
 saves use the real partial receipt projection; reopening must retain columns
 and the full section schema. Old unknown costs remain unknown until explicit
 manual input. No additional model request or automatic zero is permitted.
+
+Labor2.13 adds real CNC/Elements/block summary style/height and native keyboard
+checks at1280/390 to Calculation, Project copy and logo artwork/body axis to
+Objects, and approved browser-offline view/embedded mark/copy/24px type/Privacy,
+zero offline reloads, one existing reconnect and tab-storage retention to Screen
+Recovery. Version Refresh also retains a processing-document canary across
+offline/online with zero reloads. All prior amounts, axes, Save/retry/reopen,
+auth and ten suites stay.

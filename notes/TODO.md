@@ -1148,6 +1148,25 @@ occupied2.8/2.9 tags remain untouched. The owner explicitly confirmed Labor2.10.
 introduced.
 Detailed rules and acceptance: existing four-stage plan, latest section below.
 
+ACTIVE, P1, USER APPROVED, Labor2.13,24November2026, existing work3.17.4.6.
+Match CNC, Elements and block disclosures to compact Labor work rows. Keep
+Part Production > Sheet Processing > CNC > separate Operator/File Preparation/
+Edge Banding. Elements remains the parts/block list. Rename summary to Project,
+including Continue/Back copy; keep route IDs and separate Projects navigation.
+Align Project logo artwork to body axis by removing its SVG artboard whitespace.
+Owner approved the offline sketch: purple mark immediately before "Something
+went wrong.", second line "Are you connected to the internet?", no wordmark.
+Use the existing wrapper cover and offline/online events. No polling, model call,
+logout/storage clearing or new reconnect path. Native Chrome failure content
+itself is not editable; this view covers the existing iframe during browser
+reported offline state. Server-only disconnect while browser stays online is
+outside this presentation scope and retains Streamlit's native handling.
+Draft implementation and verification active; publication pending. Labor2.13 is
+next free tag after remote check, within existing Labor2.x/work3.17.4.6.
+Protected: shared hours/Overhead/SC, leaf-only editors, Save/error/retry/reopen,
+commercial quantity invariance, current auth/session and active-work recovery.
+Rollback baseline: published2.12 runtime46e01b5d; full2.11 checkpoint immutable.
+
 PUBLISHED, OWNER PRODUCTION ACCEPTANCE PENDING, P1, USER REQUEST, Labor2.12,24November2026, existing work3.17.4.6.
 After complete2.11 preservation: editable hours throughout Labor, including
 coating/additional assembly/checking/packing and CNC operator/file preparation/

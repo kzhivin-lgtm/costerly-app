@@ -503,7 +503,7 @@ def apply_object_detail_css() -> None:
             font: 700 18px/1.2 var(--font-mono);
             text-transform: uppercase;
         }
-        .object-detail-cost-title::before {
+        .object-detail-cost-title::before, .object-detail-disclosure-title::before {
             content: '';
             width: 8px;
             height: 8px;
@@ -512,7 +512,8 @@ def apply_object_detail_css() -> None:
             transform: rotate(-45deg);
             flex: 0 0 auto;
         }
-        details[open] > .object-detail-cost-summary .object-detail-cost-title::before {
+        details[open] > .object-detail-cost-summary .object-detail-cost-title::before,
+        details[open] > .object-detail-disclosure-summary .object-detail-disclosure-title::before {
             transform: rotate(45deg);
         }
         .object-detail-cost-total, .object-detail-cost-metric {
@@ -562,19 +563,40 @@ def apply_object_detail_css() -> None:
         .object-detail-work-row > summary .object-detail-table-cell { padding-inline: 7px; }
         .object-detail-work-row > .object-detail-cost-summary { background: none; }
         .object-detail-work-row[open] > .object-detail-cost-summary { background: rgba(128, 73, 198, 0.075); }
-        .object-detail-work-row > .object-detail-cost-summary .object-detail-cost-title {
+        .object-detail-work-row > .object-detail-cost-summary .object-detail-cost-title,
+        .object-detail-disclosure-title {
             font: 400 13px/1.24 var(--font-sans);
             letter-spacing: normal;
             text-transform: none;
         }
-        .object-detail-work-row .object-detail-cost-title::before { width: 6px; height: 6px; border-width: 1px; }
+        .object-detail-work-row .object-detail-cost-title::before,
+        .object-detail-disclosure-title::before { width: 6px; height: 6px; border-width: 1px; }
         .object-detail-work-row > summary .object-detail-cost-value { font: 400 13px/1.24 var(--font-sans); }
         .object-detail-work-row > summary [data-labor-column="hours"] { padding-block: 3px; }
         .object-detail-labor-review { padding: 8px 12px; margin: 0; }
         .object-detail-work-body { padding: 12px; }
-        .object-detail-cnc-elements { padding: 12px; }
-        .object-detail-cnc-work > summary { padding: 12px; font: 400 14px/1.24 var(--font-sans); cursor: pointer; }
-        .object-detail-cnc-work .object-detail-work-row > summary > .object-detail-cost-title { padding-left: 32px; }
+        .object-detail-disclosure-summary {
+            display: flex;
+            align-items: center;
+            min-height: 42px;
+            padding: 0 32px;
+            border-bottom: 1px solid rgba(42, 31, 44, 0.12);
+            list-style: none;
+            cursor: pointer;
+        }
+        .object-detail-disclosure-summary::-webkit-details-marker { display: none; }
+        .object-detail-disclosure-summary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -3px; }
+        details[open] > .object-detail-disclosure-summary { background: rgba(128, 73, 198, 0.075); }
+        .object-detail-disclosure-title { display: flex; align-items: center; gap: 10px; }
+        .object-detail-cnc-elements { padding: 0; }
+        .object-detail-cnc-elements .object-detail-elements-section { margin: 0; }
+        .object-detail-cnc-elements .object-detail-elements > summary { margin: 0; }
+        .object-detail-cnc-elements .object-detail-element-groups { margin-top: 0; }
+        .object-detail-cnc-elements .object-detail-element-group { border-top: 0; }
+        .object-detail-cnc-elements .object-detail-element-group > summary { padding: 0 44px; }
+        .object-detail-cnc-elements .object-detail-overlay-actions { top: 5px; right: 12px; }
+        .object-detail-cnc-elements .object-detail-elements-section:has(.object-detail-overlay-actions) .object-detail-elements > summary { min-height: 42px; }
+        .object-detail-cnc-work .object-detail-work-row > summary > .object-detail-cost-title { padding-left: 44px; }
         [data-field="labor_hours"]:empty::before { content: attr(data-placeholder); font-weight: 400; }
 
         .object-detail-work-body > .object-detail-elements-section { margin-bottom: 12px; }
@@ -1087,7 +1109,9 @@ def apply_object_detail_css() -> None:
             }
             .object-detail-work-row > .object-detail-cost-summary .object-detail-cost-title { gap: 2px; padding-inline: 6px; }
             .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 12px; }
-            .object-detail-cnc-work .object-detail-work-row > summary > .object-detail-cost-title { padding-left: 20px; }
+            .object-detail-cnc-work .object-detail-work-row > summary > .object-detail-cost-title { padding-left: 28px; }
+            .object-detail-disclosure-summary { padding-left: 20px; }
+            .object-detail-cnc-elements .object-detail-element-group > summary { padding-left: 28px; }
             .object-detail-overhead-band .object-detail-group-summary { min-width: 760px; }
             .object-detail-labor-table > summary, .object-detail-cost-column-headings, .object-detail-work-row > summary { min-width: 609px; }
             .object-detail-cost-band:not([open]) > .object-detail-cost-summary {

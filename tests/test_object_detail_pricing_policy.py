@@ -236,12 +236,15 @@ def test_material_save_receipt_matches_detail_without_loading_preview_or_setting
     assert checks == ["estimate-1", "estimate-1"]
     assert receipt["sections"][0]["rows"] == detail["sections"][0]["rows"]
     assert receipt["quantity"] == detail["quantity"] == 2
-    assert receipt["self_cost"] == {key: detail["self_cost"][key] for key in ("excl_vat", "vat", "total")}
+    assert receipt["self_cost"] == {
+        **{key: detail["self_cost"][key] for key in ("excl_vat", "vat", "total")},
+        "batch_excl_vat": None,
+    }
 
 
 def test_object_detail_footer_has_approve_and_a_disabled_save_between_actions():
     footer = _footer_html("run-1", "estimate-1", "object-1")
-    assert footer.index("Back to Objects") < footer.index("Save changes") < footer.index(">APPROVE<")
+    assert footer.index("Back to Project") < footer.index("Save changes") < footer.index(">APPROVE<")
     assert 'object-detail-material-save" disabled' in footer
     assert 'data-streamlit-bridge-key="object_detail_approve_bridge"' in footer
 

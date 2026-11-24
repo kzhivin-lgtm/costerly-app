@@ -263,7 +263,8 @@ def _cnc_sheet_html(result, *, elements_html, work):
     )
     body = '<div class="object-detail-cnc-elements">' + elements_html + '</div>'
     body += ('<details class="object-detail-cnc-work" data-labor-detail="cnc">'
-             '<summary>CNC time breakdown</summary><div class="object-detail-cnc-work-body">'
+             '<summary class="object-detail-disclosure-summary"><span class="object-detail-disclosure-title">CNC</span></summary>'
+             '<div class="object-detail-cnc-work-body">'
              + operations + '</div></details>')
     return _cost_band('Sheet Processing', body, work['sheet-processing'], key='sheet-processing',
                       editable=False, aggregate=True)

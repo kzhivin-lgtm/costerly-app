@@ -162,7 +162,7 @@ try {
   await move('Projects to Last Estimate',button('Last Estimate'),'file_review');
   const savedCrop=await core.locator('.file-review-preview-box img').getAttribute('src');
   assert.ok(savedCrop?.startsWith('data:image/svg+xml;base64,'));
-  const cont=()=>core.getByRole('button',{name:/^continue to objects estimation$/i});
+  const cont=()=>core.getByRole('button',{name:/^continue to project$/i});
   await move('Continue saved estimate',cont(),'objects');
   await move('Review saved card',openObject(),'object_detail');
   assert.equal(await core.locator('.object-detail-preview-image').getAttribute('src'),savedCrop);
@@ -360,7 +360,7 @@ try {
     await enter(source);await move(`Last Estimate from ${source}`,button('Last Estimate'),'file_review');
    }
    await enter('object_detail');await move('Scrolled Approve to Objects',core.locator('.object-detail-footer-button--primary'),'objects');
-   await enter('object_detail');await move('Scrolled Back to Objects',core.locator('.object-detail-footer-button--secondary').filter({hasText:'Back to Objects'}),'objects');
+   await enter('object_detail');await move('Scrolled Back to Project',core.locator('.object-detail-footer-button--secondary').filter({hasText:'Back to Project'}),'objects');
    await move('Objects Back to File Review',button('Back to File Review'),'file_review');
    await move('File Review Back to Upload',button(/^back to upload$/i),'upload');
    for(const source of sources){

@@ -29,7 +29,7 @@ async function frontPanelChecks(){
   for(const name of ['front-choice','full-cost-totals.json','full-cost-lines.json'])rmSync(statePath(name),{force:true});
   const {page,core,frame}=await boot({front_panels:true,front_delay:0.6},width);
   await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
-  await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
+  await core.getByRole('button',{name:/^continue to project$/i}).click();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('.object-detail-materials-band > summary').click();
   const picker=core.getByRole('combobox',{name:'Front panels',exact:true});
@@ -108,7 +108,7 @@ async function frontPanelChecks(){
   }
   await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
   assert.equal(readFileSync(statePath('front-choice'),'utf8'),'mdf');
-  await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
+  await core.getByRole('link',{name:'Back to Project',exact:true}).click();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('.object-detail-materials-band > summary').click();
   assert.equal(await core.getByRole('combobox',{name:'Front panels',exact:true}).inputValue(),'mdf');
@@ -126,7 +126,7 @@ async function frontPanelChecks(){
  rmSync(statePath('front-choice'),{force:true});
  const {page,core,frame}=await boot({front_panels:true,front_delay:1});
  await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
- await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
+ await core.getByRole('button',{name:/^continue to project$/i}).click();
  await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
  await core.locator('.object-detail-materials-band > summary').click();
  await frame.evaluate(()=>{
@@ -157,7 +157,7 @@ async function detailSaveChecks(){
   const {page,core,frame}=await boot({front_panels:true,labor_ready:true},width,933);
   await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
   report['fileReviewFooter'+width]=await checkClosingGap(frame,'.st-key-file_review_actions');
-  await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
+  await core.getByRole('button',{name:/^continue to project$/i}).click();
   report['objectsFooter'+width]=await checkClosingGap(frame,'.st-key-objects_actions');
   // The Objects suite covers the real quantity RPC. This case begins with its
   // persisted quantity, then exercises the production detail editor end to end.
@@ -250,10 +250,10 @@ async function detailSaveChecks(){
   await picker.selectOption('plywood');
   await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
   assert.equal(await save.evaluate(n=>n.classList.contains('object-detail-material-save--saved')),false);
-  await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
+  await core.getByRole('link',{name:'Back to Project',exact:true}).click();
   await core.getByRole('button',{name:'Stay',exact:true}).click();
   assert.equal(await picker.inputValue(),'plywood');
-  await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
+  await core.getByRole('link',{name:'Back to Project',exact:true}).click();
   await core.getByRole('button',{name:'Leave without saving',exact:true}).click();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('.object-detail-materials-band > summary').click();
@@ -300,7 +300,7 @@ try{
   rmSync(statePath('labor-hours.json'),{force:true});
   const {page,core,frame}=await boot({labor_ready:true,overhead_delay:1.5},width);
   await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
-  await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
+  await core.getByRole('button',{name:/^continue to project$/i}).click();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('[data-cost-band="labor"] > summary').click();
   const stages=core.locator('[data-cost-band="labor"] > .object-detail-labor-body > details');
@@ -325,6 +325,25 @@ try{
    if(!await cnc.evaluate(n=>n.open))await cnc.locator(':scope > summary').click();
   };
   await openCnc();
+  const disclosures=core.locator('[data-cost-band="sheet-processing"] .object-detail-disclosure-summary');
+  const elements=core.locator('[data-cost-band="sheet-processing"] .object-detail-elements');
+  await elements.locator(':scope > summary').click();
+  const group=elements.locator('.object-detail-element-group').first();
+  if(await group.count()){
+   await group.locator(':scope > summary').focus();await group.locator(':scope > summary').press('Enter');
+   assert.equal(await group.evaluate(n=>n.open),true);
+  }
+  const disclosureGeometry=await disclosures.evaluateAll(nodes=>nodes.filter(n=>n.getClientRects().length).map(n=>{
+   const title=n.querySelector('.object-detail-disclosure-title'),style=getComputedStyle(title),box=n.getBoundingClientRect();
+   return {text:title.textContent,height:box.height,font:style.font,background:getComputedStyle(n).backgroundColor,
+    marker:getComputedStyle(n).listStyleType,chevron:getComputedStyle(title,'::before').borderRightWidth};
+  }));
+  assert(disclosureGeometry.some(n=>n.text==='CNC'));
+  assert(disclosureGeometry.some(n=>n.text==='Elements'));
+  const reference=await core.locator('[data-cost-band="sheet-processing"] > summary .object-detail-cost-title').evaluate(n=>getComputedStyle(n).font);
+  for(const row of disclosureGeometry){assert.equal(row.height,42,JSON.stringify(row));assert.equal(row.font,reference);assert.equal(row.marker,'none');assert.equal(row.chevron,'1px');}
+  assert.equal(await core.locator('[data-labor-detail="cnc"] > summary').innerText(),'CNC');
+  await elements.locator(':scope > summary').click();
   assert.equal(await core.getByRole('textbox',{name:'Sheet Processing hours',exact:true}).count(),0);
   for(const title of ['Labor','Part Production','Assembly','Preparation and Packing'])
    assert.equal(await core.getByRole('textbox',{name:title+' hours',exact:true}).count(),0);
@@ -394,7 +413,7 @@ try{
   assert.equal(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪8\u202f268');
   await assertSharedHours(100.25);
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
-  await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
+  await core.getByRole('link',{name:'Back to Project',exact:true}).click();
   await core.getByText('₪8\u202f268',{exact:true}).first().waitFor();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('[data-cost-band="labor"] > summary').click();
@@ -417,7 +436,7 @@ try{
   assert.equal(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪8\u202f671');
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
   await assertSharedHours(105.8);
-  await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
+  await core.getByRole('link',{name:'Back to Project',exact:true}).click();
   await core.getByText('₪8\u202f671',{exact:true}).first().waitFor();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('[data-cost-band="labor"] > summary').click();
@@ -454,7 +473,7 @@ try{
  for(const name of ['labor-hours.json','full-cost-totals.json','full-cost-lines.json'])rmSync(statePath(name),{force:true});
  const unknown=await boot({labor_ready:true,labor_unknown:true},1280);
  await unknown.core.getByRole('button',{name:'Last Estimate',exact:true}).click();
- await unknown.core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
+ await unknown.core.getByRole('button',{name:/^continue to project$/i}).click();
  await unknown.core.getByRole('link',{name:/^(Done|Review)$/i}).click();
  await unknown.core.locator('[data-cost-band="labor"] > summary').click();
  await unknown.core.locator('[data-cost-band="preparation-packing"] > summary').click();

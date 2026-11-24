@@ -930,7 +930,7 @@ def signal_app_ready_to_embed(
                     .toLowerCase();
                 if (label === "sign in") return "sign_in";
                 if (label === "back to upload") return "back_to_upload";
-                if (label === "continue to objects estimation") return "file_review_to_objects";
+                if (label === "continue to project") return "file_review_to_objects";
                 if (label === "back to file review") return "objects_to_file_review";
                 if (label === "admin") {
                     return window.parent.document.querySelector(".company-profile-active")
@@ -1309,7 +1309,7 @@ def signal_app_ready_to_embed(
                             bridgeButton = Array.from(parentDocument.querySelectorAll(
                                 ".st-key-object_detail_navigation_bridges button"
                             )).find((button) => String(button.textContent || "").trim()
-                                === "Back to Objects") || null;
+                                === "Back to Project") || null;
                         }
                         if (currentWorkflow()?.busy()) {
                             event.preventDefault();

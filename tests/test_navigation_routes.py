@@ -366,7 +366,7 @@ def test_file_review_terminal_actions_precede_deferred_poll_fragment():
         "def _object_edits_snapshot", 1
     )[0]
 
-    assert review_screen.index('"CONTINUE TO OBJECTS ESTIMATION"') < review_screen.index(
+    assert review_screen.index('"CONTINUE TO PROJECT"') < review_screen.index(
         "_poll_file_review_deferred_work(run_id)"
     )
 
@@ -405,7 +405,7 @@ def test_objects_emits_its_target_header_before_starting_the_background_worker()
         "def _render_objects_table_content", 1
     )[0]
 
-    assert render_source.index('"Objects Estimation"') < render_source.index(
+    assert render_source.index('"Project"') < render_source.index(
         "_start_prepared_estimation_launch()"
     )
 
@@ -1165,7 +1165,7 @@ def test_file_review_refreshes_only_object_cards_for_deferred_artifacts():
     source = (Path(__file__).parents[1] / "screens/file_review.py").read_text()
 
     dynamic = source.index("def _render_file_review_dynamic_content")
-    navigation = source.index('"CONTINUE TO OBJECTS ESTIMATION"')
+    navigation = source.index('"CONTINUE TO PROJECT"')
 
     poll = source.index("def _poll_file_review_deferred_work")
     rerun = source.index('st.rerun(scope="app")', poll)

@@ -36,7 +36,7 @@ from state.session import invalidate_object_detail_cache
 
 @dataclass(frozen=True)
 class ObjectsScreenState:
-    """Loaded Objects Estimation data plus non-fatal render messages."""
+    """Loaded Project data plus non-fatal render messages."""
     data: dict[str, object]
     data_error: str | None = None
     cache_warning: str | None = None
@@ -267,7 +267,7 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
         if cached is not None:
             return (
                 cached,
-                f"Could not refresh Objects Estimation from Supabase. Showing last available data. ({exc})",
+                f"Could not refresh Project from Supabase. Showing last available data. ({exc})",
             )
         raise
 
@@ -396,7 +396,7 @@ def _mark_objects_cache_dirty_when_estimation_runs(estimate_id: str | None) -> N
 
 
 def _current_objects_state(estimate_id: str | None) -> ObjectsScreenState:
-    """Return Objects Estimation data plus user-visible error/warning strings."""
+    """Return Project data plus user-visible error/warning strings."""
     if not estimate_id:
         return ObjectsScreenState(data=_empty_objects_data())
 
@@ -415,7 +415,7 @@ def _current_objects_state(estimate_id: str | None) -> ObjectsScreenState:
         report_runtime_failure("objects.load", exc, rfq_run_id=st.session_state.get("current_run_id"), estimate_id=estimate_id)
         return ObjectsScreenState(
             data=_empty_objects_data(),
-            data_error=f"Could not load Objects Estimation: {exc}",
+            data_error=f"Could not load Project: {exc}",
         )
 
 
@@ -445,7 +445,7 @@ def _persisted_objects_state(estimate_id: str | None) -> ObjectsScreenState:
         report_runtime_failure("objects.refresh", exc, rfq_run_id=st.session_state.get("current_run_id"), estimate_id=estimate_id)
         return ObjectsScreenState(
             data=_empty_objects_data(),
-            data_error=f"Could not load Objects Estimation: {exc}",
+            data_error=f"Could not load Project: {exc}",
         )
 
 
@@ -455,9 +455,9 @@ def _render_objects_messages(
     data_error: str | None,
     cache_warning: str | None,
 ) -> None:
-    """Render non-table Objects Estimation messages."""
+    """Render non-table Project messages."""
     if not estimate_id:
-        st.warning("No active estimate. Return to File Review and start Objects Estimation.")
+        st.warning("No active estimate. Return to File Review and start Project.")
     if data_error:
         st.error(data_error)
     if cache_warning:
@@ -490,7 +490,7 @@ def _render_pricing_table(
     company_id: str | None = None,
     header_slots: objects_workflow.ObjectsHeaderSlots | None = None,
 ) -> None:
-    """Render the Objects Estimation pricing table."""
+    """Render the Project pricing table."""
     rows = _rows_with_approved_overlay(data["rows"])
     cycle = _estimation_cycle(estimate_id)
     elapsed = None
@@ -758,7 +758,7 @@ def _render_objects_actions(
     estimate_id: str | None,
     data: dict[str, object],
 ) -> None:
-    """Render bottom navigation actions for Objects Estimation."""
+    """Render bottom navigation actions for Project."""
     proposal_ready = bool(
         st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id))
     )
@@ -965,7 +965,7 @@ def render_objects_screen(
     # prior elements stale while a rerun is in flight, so submitting work first
     # could leave File Review visibly beneath a new Objects heading.
     header_slots = objects_workflow.render_objects_header(
-        "Objects Estimation", render_header_controls,
+        "Project", render_header_controls,
         show_metrics=st.session_state.get("_platform_access") is not None,
     )
     # The File Review callback already populated visible seed rows. Queue

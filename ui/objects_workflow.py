@@ -50,7 +50,7 @@ def render_objects_header(title: str, render_header_controls: Callable[[], None]
     # The exact existing title markup and primary container remain unchanged.
     with st.container(key="costerly_screen_header"):
         with st.container(key="costerly_screen_header_primary"):
-            st.markdown(post_upload_title_html(title, class_name="objects-estimation-header", marker_id=OBJECTS_MARKER_ID), unsafe_allow_html=True)
+            st.markdown(post_upload_title_html(title, class_name="objects-estimation-header", marker_id=OBJECTS_MARKER_ID, align_mark_left=True), unsafe_allow_html=True)
         with st.container(key="objects_header_toolbar", horizontal=True, vertical_alignment="center", gap=24):
             if render_header_controls is not None:
                 with st.container(key="objects_header_controls", width="content"):

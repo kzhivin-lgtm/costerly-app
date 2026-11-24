@@ -107,6 +107,18 @@ try{
  await frame.evaluate(()=>{window.coreLegacy=false;render('upload');});
  await ready(page);assert.equal(deliveries,1);
  passed('Current published wrapper does not reload or gate Upload on an older Core build');await page.close();
+ // Offline presentation must keep the current calculation document alive and
+ // reuse the busy-work guard when the network returns.
+ page=await boot();await matched(page);frame=await coreFrame(page);
+ await frame.evaluate(build=>{window.calculationCanary='running';render('processing',build);},serverBuild);
+ await ready(page);
+ await page.context().setOffline(true);
+ await page.locator('#app-loading-mask.is-offline').waitFor({state:'visible'});
+ await page.context().setOffline(false);
+ await page.locator('#app-loading-mask.is-offline').waitFor({state:'detached'});
+ assert.equal(deliveries,1);assert.equal(await frame.evaluate(()=>window.calculationCanary),'running');
+ assert.equal(await page.locator('#costerly-app-frame').evaluate(n=>n.inert),false);
+ passed('Offline/online artwork retained the active calculation without reload');await page.close();
  for(const state of ['processing','object_detail']){
   page=await boot('matching',state);await matched(page);frame=await coreFrame(page);
   if(state==='object_detail')await core(page).locator('#draft').fill('unsaved 42');
