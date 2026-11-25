@@ -559,6 +559,18 @@ unchanged. Draft artifact, no new runtime version, costing/Detection change or
 Canva edit. Visual review and PDF/PNG dimensions verified; owner design
 acceptance is not inferred.
 
+Owner revision, 25 November 2026: prepare a 350x450 presentation slot that
+resembles a desktop PDF screenshot, rather than a mobile layout. Completed
+local draft: a regular portrait technical sheet with the original corner
+isometric view, the source front elevation/dimensions and English material
+notes, shown inside a thin desktop PDF toolbar and page viewport. Both source
+drawings retain native geometry; the viewport naturally crops the page below.
+Exact 350x450 and 1050x1350 PNGs, underlying vector sheet/view and source-hash
+receipt are in this workspace's output/pdf/adda-file-screenshot-* and
+adda-english-technical-sheet.pdf. Reproducible helper:
+tmp/pdfs/adda-slide/build_portrait.py. Both sizes visually reviewed; source
+Adda.pdf remains unchanged. No application/Canva edit or new runtime release.
+
 COMPLETED, P1, USER REQUEST, OWNER-ACCEPTED TEMPORARY LAYOUT, 25 November 2026,
 urgent presentation asset. Owner accepted this version as satisfactory temporary
 layout before returning to Ada diagnostics.
