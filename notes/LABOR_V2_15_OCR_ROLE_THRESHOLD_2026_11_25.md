@@ -42,3 +42,30 @@ Before publication, require the complete local UI contract and exact-commit
 GitHub UI release gate, active/no-bypass remote main protection and matching
 served Core/wrapper builds. These checks do not claim a fresh paid OCR run.
 Owner production acceptance follows his new Ada run after publication.
+
+## Publication result
+
+Published runtime `bae0e8998a7554bf2da53b04dedb4ca2ae67e803` on25November2026.
+The full local gate passed1019 Python checks and all10 browser suites in384.128s
+on the clean exact commit. The same trusted
+[GitHub UI release gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/45616734770/job/139213955859)
+passed the full contract in433.484s; artifact15023097056. No test, timeout,
+layout assertion, protection rule or monetary tolerance was weakened.
+
+The existing publisher separately verified the actual active/no-bypass main
+ruleset27499066 and promoted only this SHA. A fresh public browser confirmed
+Core, executable wrapper, metadata and version.json all serve the2.15 build.
+These observations establish build identity, not fresh authenticated Ada
+acceptance. The owner's next new Upload is still required.
+
+Saved replay used today's unchanged OCR and ten frozen provider responses with
+network blocked. All Parts match the independently verified one-word diagnostic:
+24/133 rows,20/89 rows with length and width. All64 latest object-input revisions
+across30 same-file historical runs preserve their former stock interpretation,
+except the intended recovery of today's16mm carcass note. No new paid call,
+production estimate update or saved OCR mutation was made. Prior offline cost
+for the matching recovered Parts is15051.32 ILS net; a fresh run may differ.
+
+Full2.14 runtime/records tags and private archive remain unchanged. This release
+is not a new owner-accepted full preservation checkpoint. Publication records
+are committed separately on the release branch without another runtime deploy.

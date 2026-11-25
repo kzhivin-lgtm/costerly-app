@@ -572,7 +572,7 @@ presence, service-row columns, purple total, production terms and no cents verif
 No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation remains a proposal, outside this artifact request.
 
-DIAGNOSIS VERIFIED, OWNER-APPROVED REPAIR IN PROGRESS, LABOR2.15, P1, USER REQUEST,
+PUBLISHED, OWNER FRESH ADA ACCEPTANCE PENDING, LABOR2.15, P1, USER REQUEST,
 25 November 2026, latest Ada estimate and one-word OCR counterfactual.
 Latest run c09d9a0f5b96420e8c0fca5b61249ec2, created 11:49 UTC, actual Labor2.14
 build. Net 8111.53 ILS (Materials5712.60 + Labor1599.65 + Overhead799.28).
@@ -611,6 +611,17 @@ Initial test covers the previously accepted Kapnychbui spelling and conflicts;
 no calibration or boundary test explaining exactly0.78 is present there.
 Evidence:threshold-history-summary.json, ocr-history-analysis.json and
 threshold-git-blame.txt in the same private diagnosis directory.
+Owner-approved0.75 repair published as Labor2.15, runtimebae0e899,25November2026.
+Clean exact-commit local1019/ten passed384.128s; trusted GitHub45616734770 /
+139213955859 passed433.484s. Publisher separately verified active/no-bypass
+main rule27499066. Fresh public browser confirmed Core/executable wrapper/meta/
+version.json all matchlabor-v2.15-b20261125123857-ocr-role-075-detection-v8.4.29.
+Unchanged saved OCR at0.75 reproduces the prior one-word-corrected Parts exactly;
+64 historical object inputs across30 runs preserve the former stock result,
+apart from today's intended16mm recovery.0 new paid calls or production data
+writes. Await owner's fresh Ada via New Estimate; do not claim full OCR
+robustness or production acceptance from frozen replay.2.14 checkpoint preserved.
+[Release/evidence](LABOR_V2_15_OCR_ROLE_THRESHOLD_2026_11_25.md).
 
 
 
