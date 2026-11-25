@@ -564,7 +564,11 @@ resembles a desktop PDF screenshot, rather than a mobile layout. Completed
 local draft: a regular portrait technical sheet with the original corner
 isometric view, the source front elevation/dimensions and English material
 notes, shown inside a thin desktop PDF toolbar and page viewport. Both source
-drawings retain native geometry; the viewport naturally crops the page below.
+drawings retain native geometry. Owner's next revision adds a technical frame
+with perimeter zones, revision strip and a fully visible architectural title
+block: project ADA, fictional FORMA / Architecture & Interiors studio, drawing
+ADA-01, discipline, scale, revision, units, format and sheet number. The complete
+sheet now fits the viewport so the requested lower stamp is visible at350x450.
 Exact 350x450 and 1050x1350 PNGs, underlying vector sheet/view and source-hash
 receipt are in this workspace's output/pdf/adda-file-screenshot-* and
 adda-english-technical-sheet.pdf. Reproducible helper:
