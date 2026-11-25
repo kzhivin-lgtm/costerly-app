@@ -131,25 +131,25 @@ def test_catalog_type_selector_rejects_other_groups_and_materials():
     assert front_panels_html([]) == ""
 
 
-def test_selector_has_four_mvp_material_types_for_an_existing_ldsp_group():
+def test_selector_has_six_approved_material_and_finish_types_for_an_existing_ldsp_group():
     from use_cases.estimation_front_panels import front_panel_controls
 
     group = facts()["front_panel_groups"][0]
     controls = front_panel_controls({"front_panel_groups": {"one": [group]}}, [], "one")
     rendered = front_panels_html(controls)
-    assert rendered.count('<option ') == 4
+    assert rendered.count('<option ') == 6
     assert 'aria-label="Front panels"' in rendered
     assert all(label in rendered for label in ("LDSP", "MDF Veneered", "MDF Raw", "Plywood"))
 
 
-def test_explicit_metal_keeps_original_and_all_four_replacement_options():
+def test_explicit_metal_keeps_original_and_all_six_replacement_options():
     from use_cases.estimation_front_panels import front_panel_controls
 
     group = {**facts()["front_panel_groups"][0], "source_name": "Steel sheet 2 mm",
              "source_choice": None, "family": "sheet_steel", "thickness_mm": 2}
     controls = front_panel_controls({"front_panel_groups": {"one": [group]}}, [], "one")
     rendered = front_panels_html(controls)
-    assert rendered.count('<option ') == 5
+    assert rendered.count('<option ') == 7
     assert '<option value="source" selected>Steel sheet 2 mm</option>' in rendered
 
 
@@ -161,7 +161,7 @@ def test_plywood_is_selected_for_existing_special_plywood_without_replacing_its_
     group, = front_material_groups([material])
     assert validate_front_choices([group], {group["id"]: "plywood"}) == {}
     controls = front_panel_controls({"front_panel_groups": {"one": [group]}}, [], "one")
-    assert '<option value="plywood" selected>Plywood</option>' in front_panels_html(controls)
+    assert '<option value="plywood" selected>Plywood · Lacquer</option>' in front_panels_html(controls)
 
 
 def _stub_scoped_runtime(monkeypatch, snapshot):
@@ -300,6 +300,26 @@ def test_scoped_replacement_preserves_unrelated_baskets_parts_and_restores_origi
         choices={group['id']: 'ldsp'}, contexts={'melamine_faced_particleboard': context})
     signature = lambda p: sorted((r['selection_key'], r['purchase_quantity'], r['price_per_purchase_unit'], r['total_cost']) for r in p['lines'])
     assert signature(restored) == signature(previous)
+
+
+@pytest.mark.parametrize('choice,family', [('veneered_mdf','mdf_hdf'),('plywood','plywood')])
+def test_finish_only_switch_preserves_exact_saved_offer_without_catalog_or_stock_replanning(monkeypatch, choice, family):
+    from use_cases import estimation_front_material_patch as patch
+    previous, lines, context = _patch_witness()
+    group=previous['front_panel_groups']['one'][0]
+    lacquer, materials, _=patch.patch_front_material_plan(previous,object_id='one',source_lines=lines,
+        choices={group['id']:choice},contexts={family:context})
+    def forbidden(*a,**kw):raise AssertionError('Finish-only selection replanned stock')
+    monkeypatch.setattr(patch,'build_material_plan',forbidden)
+    monkeypatch.setattr(patch,'_replan_line',forbidden)
+    frozen=deepcopy(lacquer)
+    oil, changed, owners=patch.patch_front_material_plan(lacquer,object_id='one',source_lines=lines,
+        choices={group['id']:choice+'_oil'},contexts={})
+    assert oil['lines']==frozen['lines'] and changed=={} and owners
+    assert oil['parts_check']==frozen['parts_check'] and lacquer==frozen
+    restored,_,_=patch.patch_front_material_plan(oil,object_id='one',source_lines=lines,
+        choices={group['id']:choice},contexts={})
+    assert restored['lines']==frozen['lines']
 
 
 def test_front_receipt_reuses_saved_labor_without_running_its_calculation(monkeypatch):

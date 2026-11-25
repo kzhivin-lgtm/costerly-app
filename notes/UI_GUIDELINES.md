@@ -791,3 +791,29 @@ Expanded groups hide all summary metrics, preserving grid and leaf rows. Manual
 hour preview/save/reopen must keep group allocation and Cost current, once.
 No new writer, callback, observer, polling, model call or reconnect behavior.
 Retain2.13 approved offline design and all financial/auth/persistence contracts.
+
+## Labor2.16 Part Coating, owner approved25November2026
+
+Extend the existing Front panels selector to six choices, keeping the four old
+stored IDs and adding only veneer-MDF oil and plywood oil. Labels specify the
+finish. No second selector or extra gloss control. Same-substrate lacquer/oil
+changes preserve the exact board offer and geometry. Only dependent coating
+refreshes, all other Labor and manual overrides stay accepted/saved.
+
+Coated physical area includes both faces and edges, without laminate layers or
+stock waste. LKM22ILS/m² lacquer/oil,16 MDF enamel; separate coating consumables
+10ILS/m². No additional old Paint consumables percent on new LKM. Existing
+general consumables/packaging policies retain their bases. Initial norms are
+40/45/35 person-min/m², spray batch30m² with4h setup inside the full norm,
+oil strictly linear. Company in-house booth gates automatic spray hours.
+Coating alone uses100ILS/h plus25% once, other Labor stays50. Thus the accepted
+mixed105.8h manual control becomes6687.50 Labor/1058 Overhead/8745.50 SC.
+Hour editors, zero/unknown behavior, disclosures, explicit Save, errors/retry,
+navigation, commercial quantity invariance and saved reopen remain protected.
+
+Use the existing full-cost audit for recipe/area/materials/hours/route evidence.
+No schema migration, paid Parts call, worker, timer or new persistence path.
+Synthetic browser scenarios cover1280/390 and the full old matrix. Longer
+business tables use the shared existing page-bottom geometry probe, retaining
+the exact26px fixed-Privacy gap and2px tolerance. Native scrollIntoView alone
+does not establish that the viewport reached the actual bottom.

@@ -158,7 +158,7 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
             basis = "coating materials" if row.get("policy_basis") == "coatings" else "primary materials"
             return [
                 _escape(row.get("item")),
-                _escape(f"{percent}% of {basis}" if percent else "Formula"),
+                _escape(row.get('policy_description') or (f"{percent}% of {basis}" if percent else "Formula")),
                 _escape("Formula"),
                 _escape("—"),
                 _escape("—"),
@@ -292,7 +292,7 @@ def _material_preview(row: dict[str, object]) -> dict[str, object]:
         "purchase_is_manual", "prior_required", "prior_purchase_quantity", "purchase_unit_cost", "stock_coverage",
         "stock_cuts", "stock_kerf_mm",
         "unit_price_display", "pieces_per_set",
-        "is_coating", "locked", "policy_percent", "policy_basis", "item",
+        "is_coating", "locked", "policy_percent", "policy_basis", "policy_description", "coating_recipe", "policy_rate", "item",
     ) if key in row}
 
 

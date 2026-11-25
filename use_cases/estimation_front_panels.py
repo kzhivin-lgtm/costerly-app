@@ -8,7 +8,25 @@ FRONT_MATERIALS = {
     "veneered_mdf": ("MDF Veneered", "mdf_hdf", {"board_type": "mdf", "surface": "veneer_two_sided"}),
     "mdf": ("MDF Raw", "mdf_hdf", {"board_type": "mdf", "surface": "raw"}),
     "plywood": ("Plywood", "plywood", {}),
+    "veneered_mdf_oil": ("MDF Veneered", "mdf_hdf", {"board_type": "mdf", "surface": "veneer_two_sided"}),
+    "plywood_oil": ("Plywood", "plywood", {}),
 }
+FRONT_LABELS = {
+    "ldsp": "LDSP", "veneered_mdf": "MDF Veneered · Lacquer",
+    "veneered_mdf_oil": "MDF Veneered · Oil", "mdf": "MDF Raw · Enamel/Lacquer",
+    "plywood": "Plywood · Lacquer", "plywood_oil": "Plywood · Oil",
+}
+
+
+def front_material_base(choice):
+    """Finish selection shares the same existing board identity and geometry."""
+    return {"veneered_mdf_oil": "veneered_mdf", "plywood_oil": "plywood"}.get(choice, choice)
+
+
+def front_material_finish(choice):
+    if choice in {"veneered_mdf_oil", "plywood_oil"}:
+        return "oil"
+    return {"mdf": "enamel", "veneered_mdf": "lacquer", "plywood": "lacquer", "ldsp": None}.get(choice)
 
 
 def front_plan_revision(plan):
@@ -41,6 +59,7 @@ def front_material_groups(materials):
             "id": material["requirement_id"], "source_name": material["source_name"],
             "family": material["family"], "specification": dict(spec),
             "part_ids": [source["part_id"] for source in sources],
+            "part_sources": sources,
             "mixed": len(sources) != len(material.get("part_sources", ())),
             "thickness_mm": spec.get("thickness_mm"),
             "source_choice": source_choice,
@@ -125,7 +144,7 @@ def front_panel_controls(plan, lines, object_id):
     choices = (plan.get("front_panel_choices") or {}).get(object_id, {})
     return [{**group, "choice": (choices.get(group["id"], "source") if choices.get(group["id"], "source") != "source"
                                 else group.get("source_choice") or "source"),
-             "options": [{"value": key, "label": value[0]} for key, value in FRONT_MATERIALS.items()]}
+             "options": [{"value": key, "label": label} for key, label in FRONT_LABELS.items()]}
             for group in groups]
 
 

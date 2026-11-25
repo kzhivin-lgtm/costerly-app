@@ -3,7 +3,7 @@ from collections import defaultdict
 from copy import deepcopy
 from decimal import Decimal
 
-from use_cases.estimation_front_panels import FRONT_MATERIALS, front_panel_controls, validate_front_choices
+from use_cases.estimation_front_panels import FRONT_MATERIALS, front_panel_controls, validate_front_choices, front_material_base
 from use_cases.material_engine import MaterialSupplyCandidate, plan_material_purchases
 from use_cases.material_engine_adapter import (
     MaterialEngineResult, _snapshot_material_demands, _snapshot_allocation_weight, _split_purchase_cost,
@@ -54,7 +54,7 @@ def _replan_line(line, snapshot):
 def front_group_material(group, choice, *, object_quantity):
     """Change only a selected group's stock identity, using its saved physical fronts."""
     sources = deepcopy(group['part_sources'])
-    restoring = choice in {'source', group.get('source_choice')}
+    restoring = choice == 'source' or front_material_base(choice) == group.get('source_choice')
     if restoring:
         name, family, spec = group['source_name'], group['family'], dict(group['specification'])
     else:
@@ -91,6 +91,7 @@ def patch_front_material_plan(previous, *, object_id, source_lines, choices, con
                     if isinstance(row.get('raw_agent_json'), dict)]
     facts_by_id = {row.get('requirement_id'): row for row in source_facts if row.get('requirement_id')}
     updated_materials, changed_keys, changed_owners = {}, set(), set()
+    finish_changed = False
     new_lines = []
     stored_groups = []
     quantity = previous.get('object_quantities', {}).get(object_id, 1)
@@ -106,6 +107,16 @@ def patch_front_material_plan(previous, *, object_id, source_lines, choices, con
         choice = choices.get(group['id'])
         if choice is None or choice == group.get('choice'):
             stored_groups.append(group)
+            continue
+        current = group.get('choice') or group.get('source_choice')
+        effective = group.get('source_choice') if choice == 'source' else choice
+        if front_material_base(effective) == front_material_base(current):
+            # A finish is not a new board offer. Preserve the exact saved basket.
+            group['choice'] = effective
+            stored_groups.append(group)
+            finish_changed = True
+            changed_owners.update((object_id, requirement) for requirement in
+                                 (group.get('requirement_ids') or [group.get('front_requirement_id') or group['id']]))
             continue
         material, parts = front_group_material(group, choice, object_quantity=quantity)
         for part in parts:
@@ -178,7 +189,7 @@ def patch_front_material_plan(previous, *, object_id, source_lines, choices, con
             if not (row['object_id'] == object_id and row['material_requirement_id'] in exclusive)
         ] + patch['applied_material_defaults']
         stored_groups.append(group)
-    if not updated_materials:
+    if not updated_materials and not finish_changed:
         return previous, {}, set()
     # Merge new fronts with an already purchased stock only when its full key
     # agrees. Its saved offer/price remains authoritative for that basket.

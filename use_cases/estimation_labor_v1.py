@@ -461,11 +461,11 @@ DISPLAY_HOURLY_RATE = Decimal("50")
 DISPLAY_PAYROLL_SHARE = Decimal("0.25")
 _LOG = logging.getLogger(__name__)
 
-def labor_pay_metrics(hours, *, partial=False):
+def labor_pay_metrics(hours, *, partial=False, hourly_rate=DISPLAY_HOURLY_RATE):
     if hours is None:
         return None
     hours = Decimal(str(hours))
-    pay = (hours * DISPLAY_HOURLY_RATE).quantize(Decimal('.01'), rounding=ROUND_HALF_UP)
+    pay = (hours * hourly_rate).quantize(Decimal('.01'), rounding=ROUND_HALF_UP)
     taxes = (pay * DISPLAY_PAYROLL_SHARE).quantize(Decimal('.01'), rounding=ROUND_HALF_UP)
     return {'hours': hours, 'pay': pay, 'taxes': taxes, 'total': pay + taxes, 'partial': partial}
 
@@ -546,7 +546,7 @@ def labor_work_metrics(state, *, quantity=1, overrides=None):
         partial = bool(assembly['common_roles_for_review'] or any(block['issues'] for block in assembly['blocks']))
         assembled = labor_pay_metrics(assembly['planned_minutes'] * count / 60, partial=partial)
     work['assembly'] = manual('assembly', assembled)
-    work['part-coating'] = manual('part-coating', labor_pay_metrics(0))
+    work['part-coating'] = coating_pay_metrics(state.get('coating'), quantity=quantity, overrides=overrides)
     work['additional-assembly'] = manual('additional-assembly', labor_pay_metrics(0))
     checking, packing, _ = preparation_pay_metrics(state, quantity=quantity, overrides=overrides)
     work['trial-fit'], work['packing'] = checking, packing
@@ -556,7 +556,26 @@ def labor_work_metrics(state, *, quantity=1, overrides=None):
     work['preparation-packing'] = _sum_labor_metrics([checking, packing])
     work['labor'] = (_sum_labor_metrics([sheet, work['part-coating'], work['assembly-stage'], work['preparation-packing']])
                      if any(work[key] is not None for key in ('sheet-processing', 'assembly-stage', 'preparation-packing'))
-                     or 'part-coating' in overrides else None)
+                     or 'part-coating' in overrides or (state.get('coating') or {}).get('batches') else None)
+    return work
+
+
+def coating_pay_metrics(audit, *, quantity=1, overrides=None):
+    from use_cases.part_coating import HOURLY_RATE
+    if 'part-coating' in (overrides or {}):
+        return labor_pay_metrics(Decimal(str(overrides['part-coating'])) * Decimal(str(quantity)), hourly_rate=HOURLY_RATE)
+    if audit is None:
+        return labor_pay_metrics(0, hourly_rate=HOURLY_RATE)
+    return labor_pay_metrics(audit['hours'], partial=audit['partial'], hourly_rate=HOURLY_RATE)
+
+
+def with_coating_work(work, audit, *, quantity=1, overrides=None):
+    """Refresh coating only. Saved production/assembly/preparation stay intact."""
+    work = {key: ({**value, **{field: Decimal(str(value[field])) for field in ('hours', 'pay', 'taxes', 'total')}}
+                  if value is not None else None) for key, value in work.items()}
+    work['part-coating'] = coating_pay_metrics(audit, quantity=quantity, overrides=overrides)
+    work['labor'] = _sum_labor_metrics([work[key] for key in (
+        'sheet-processing', 'part-coating', 'assembly-stage', 'preparation-packing')])
     return work
 
 
@@ -655,4 +674,6 @@ def _load_object_sheet(client, report, *, company_id, estimate_id, object_id, pl
         machinery={**machinery, 'cnc_operator_wage': float(DISPLAY_HOURLY_RATE)},
     )
     result["issues"] = describe_layout_issues(result["issues"], layout, report)
-    return {"status": "ready", "result": result}
+    from use_cases.part_coating import calculate_part_coating
+    return {"status": "ready", "result": result,
+            "coating": calculate_part_coating(plan, object_id=object_id, report=report, machinery=machinery)}

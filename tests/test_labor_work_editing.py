@@ -98,9 +98,9 @@ def test_new_leaf_hours_feed_saved_self_cost_and_overhead_once(monkeypatch):
         lines=lines,material_batch=1000,context={'plan':{'lines':[]},'parts':{'status':'ready','payload':'saved'},
         'machinery':{},'settings':{'production_workers':1,'workdays_per_month':20,'hours_per_day':8,'vat_percent':18},
         'monthly':{'rent_facilities_cost':1600}},persist=False)
-    assert Decimal(summary['labor']['hours'])==8 and Decimal(summary['labor']['total'])==500
+    assert Decimal(summary['labor']['hours'])==8 and Decimal(summary['labor']['total'])==Decimal('562.5')
     assert Decimal(summary['overhead']['labor_hours'])==8 and summary['overhead']['cost']==80
-    assert summary['self_cost_ex_vat']==1580
+    assert summary['self_cost_ex_vat']==1642.5
     assert set(summary['labor_work'])>=set(hours)
     assert state==original
 

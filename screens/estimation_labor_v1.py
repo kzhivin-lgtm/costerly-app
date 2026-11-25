@@ -85,7 +85,7 @@ _pay_metrics = labor_pay_metrics
 _sheet_pay_metrics = sheet_pay_metrics
 
 
-def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False, aggregate=False, cost_quantity=1, explicit_keys=(), detail_key=None):
+def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False, aggregate=False, cost_quantity=1, explicit_keys=(), detail_key=None, coating=None):
     is_row = key != 'labor'
 
     def metric(label, value, column, *, total=False):
@@ -140,6 +140,8 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
         )
     return (
         f'<details class="{classes}" data-cost-band="{key}"'
+        + (f' data-coating-batches="{escape(json.dumps(coating.get("batches", [])), quote=True)}"' if coating else '')
+        + f' data-labor-hourly-rate="{100 if key == "part-coating" else 50}"'
         + (f' data-labor-detail="{detail_key}"' if detail_key else '')
         + (' data-labor-aggregate="true"' if aggregate else '')
         + (f' data-labor-fixed-hours="{value["hours"]}"' if fixed_leaf and metrics else '')
@@ -437,12 +439,20 @@ def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, 
     additional = _cost_band('Additional Assembly', '', work['additional-assembly'], key='additional-assembly')
     body = (
         _cost_band('Part Production', sheet, sheet_metrics, key='part-production', editable=False, aggregate=True)
-        + _cost_band('Part Coating', '', work['part-coating'], key='part-coating')
+        + _cost_band('Part Coating', _coating_html(state.get('coating')), work['part-coating'], key='part-coating', coating=state.get('coating'))
         + _cost_band('Assembly', block_assembly + additional, work['assembly-stage'],
                      key='assembly-stage', editable=False, aggregate=True)
         + _preparation_html(state, quantity=quantity, overrides=overrides)
     )
     return '<div class="object-detail-labor-band">' + _cost_band('Labor', body, total, key='labor', cost_quantity=quantity, explicit_keys=(overrides or {}).keys()) + '</div>'
+
+
+def _coating_html(audit):
+    if not audit:
+        return ''
+    return '<ul>' + ''.join('<li>' + escape(batch['label']) + ' · ' + _sheets(batch['area_m2'])
+                           + ' m² · ' + str(batch['minutes_per_m2']) + ' person-min/m² · ₪100/h</li>'
+                           for batch in audit['batches']) + '</ul>'
 
 
 def _overhead_html(state, *, identity, material_cost, material_partial=False, quantity=1, overrides=None):
@@ -471,7 +481,7 @@ def _load_overhead_context(client, company_id):
 
 @st.fragment(parallel=True)
 def render_labor_v1(*, company_id, run_id, estimate_id, object_id, elements=None, overlay_revision=None,
-                    quantity=1, overrides=None, material_cost=0, material_partial=False):
+                    quantity=1, overrides=None, material_cost=0, material_partial=False, coating=None):
     identity = company_id, run_id, estimate_id, object_id
     cache = st.session_state.setdefault("labor_v1_comparisons", {})
     view = st.empty()
@@ -491,6 +501,8 @@ def render_labor_v1(*, company_id, run_id, estimate_id, object_id, elements=None
             state = {"status": "read_failed"}
         if state["status"] == "ready":
             cache[identity] = state
+    if coating is not None:
+        state = {**state, 'coating': coating}
     # Labor is visible before the separate company read. Loading Overhead must
     # not replace its input nodes or wait in the Materials/navigation path.
     view.markdown(_labor_html(state, elements=elements, overlay_revision=overlay_revision,

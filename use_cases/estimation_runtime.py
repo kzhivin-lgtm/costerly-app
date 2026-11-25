@@ -442,7 +442,7 @@ def _recalculate_front_panel_materials(client, *, estimate_id, run_id, company_i
     if plans.empty:
         raise ValueError("The saved material plan is not available yet.")
     from copy import deepcopy
-    from use_cases.estimation_front_panels import front_panel_controls, front_plan_revision, FRONT_MATERIALS
+    from use_cases.estimation_front_panels import front_panel_controls, front_plan_revision, FRONT_MATERIALS, front_material_base
     from use_cases.estimation_front_material_patch import patch_front_material_plan, front_group_material
     from use_cases.estimation_material_context import build_front_material_context
     from db.repositories import fetch_rfq_estimate_lines_for_object
@@ -467,6 +467,9 @@ def _recalculate_front_panel_materials(client, *, estimate_id, run_id, company_i
         for group_id, choice in selected.items():
             group = grouped[group_id]
             if choice == group.get("choice"):
+                continue
+            effective = group.get('source_choice') if choice == 'source' else choice
+            if front_material_base(effective) == front_material_base(group.get('choice') or group.get('source_choice')):
                 continue
             family = group["family"] if choice in {"source", group.get("source_choice")} else FRONT_MATERIALS[choice][1]
             if not group.get("part_sources"):

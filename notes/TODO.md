@@ -1193,7 +1193,7 @@ Acceptance supersedes the prior pending state. [Release evidence](ESTIMATION_V9_
 
 ## Estimation Labor: four production stages
 
-ACTIVE IMPLEMENTATION REQUEST, RESEARCH EXPANDED, CALIBRATION PENDING,
+ACTIVE IMPLEMENTATION AND VERIFICATION, CALIBRATION APPROVED,
 P1, USER REQUEST, 25 November 2026. Focus only Part Coating. Owner fixed LKM
 ₪22/m² veneer matte and ₪16/m² MDF matte, gloss ×2, veneer patina ×2, profiled facade
 +10%; coated area is both faces plus edges, consumables separate ₪10/m².
@@ -1236,8 +1236,17 @@ No new remote version assigned to production: verified main remains Labor 2.15
 at bae0e899. Next candidate proposed Labor 2.16, same work 3.17.4.6.
 All sources, cases, sensitivity and scope boundaries:
 [Coating rates and batch research](LABOR_COATING_RATES_AND_BATCH_RESEARCH_2026_11_25.md).
-No runtime/UI/business-data changes yet; automatic small-batch hours await the
-parameter decision. No average comparable B2B price established. Existing
+The historical pending calibration above is superseded by the owner's explicit
+25November approval: lacquer40, MDF enamel45, oil35 person-min/m². Spray batch
+30m² includes4 person-hours setup inside its full norm; residual includes setup
+again. Oil is strictly proportional, with no small-batch surcharge. Owner fixed
+oil LKM at₪22/m², replacing the pending Osmo price decision; separate coating
+consumables remain₪10/m². This is an approved estimating allowance, not a measured
+market norm. Labor2.16 implementation retains the existing work number and
+publication gate. Combined gloss/patina/profile effects still need a decision;
+individual evidenced modifiers are supported without another selector.
+[Current release and scenario evidence](LABOR_V2_16_PART_COATING_2026_11_25.md).
+No average comparable B2B price established. Existing
 reference 3.17.4.6 retained, no new work block.
 
 COMPLETED SOURCE ANALYSIS, P1, USER REQUEST, 25 November 2026. Extract the owner's

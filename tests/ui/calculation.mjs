@@ -43,8 +43,8 @@ async function frontPanelChecks(){
   assert.equal(placement.appearance,'none');
   assert.ok(placement.arrow.includes('12px'),JSON.stringify(placement));
   assert.equal(await picker.inputValue(),'ldsp');
-  assert.equal(await picker.locator('option').count(),4);
-  assert.deepEqual(await picker.locator('option').allTextContents(),['LDSP','MDF Veneered','MDF Raw','Plywood']);
+  assert.equal(await picker.locator('option').count(),6);
+  assert.deepEqual(await picker.locator('option').allTextContents(),['LDSP','MDF Veneered · Lacquer','MDF Veneered · Oil','MDF Raw · Enamel/Lacquer','Plywood · Lacquer','Plywood · Oil']);
   const initialPrice=await core.locator('.object-detail-unit-price').first().innerText();
   const initialCost=await core.locator('.object-detail-final [data-final="excl_vat"]').innerText();
   assert.equal(initialCost,'₪1\u202f000','Each replacement scenario starts from its saved LDSP source');
@@ -151,6 +151,58 @@ async function frontPanelChecks(){
   immediateChangingCover:true,timeoutRetainsDraft:true};
 }
 
+async function coatingChecks(){
+ for(const width of [1280,390]){
+  for(const name of ['front-choice','full-cost-totals.json','full-cost-lines.json','labor-hours.json','object-approvals.json'])rmSync(statePath(name),{force:true});
+  const {page,core,frame}=await boot({front_panels:true,labor_ready:true,coating:true},width);
+  await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
+  await core.getByRole('button',{name:/^continue to project$/i}).click();
+  await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+  await core.locator('.object-detail-materials-band > summary').click();
+  await core.locator('[data-cost-band="labor"] > summary').click();
+  const picker=core.getByRole('combobox',{name:'Front panels',exact:true});
+  const hours=core.getByRole('textbox',{name:'Part Coating hours',exact:true});
+  const save=core.locator('.object-detail-material-save');
+  const root=core.locator('[data-cost-band="labor"]');
+  const other=await core.locator('[data-field="labor_hours"]:not([data-line-id="part-coating"])').evaluateAll(nodes=>nodes.map(n=>[n.dataset.lineId,n.dataset.originalValue]));
+  await picker.selectOption('veneered_mdf');
+  await core.getByRole('button',{name:'Save changes',exact:true}).waitFor();
+  await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
+  assert.equal(await hours.innerText(),'5.1');
+  await core.getByText('Wood lacquer',{exact:true}).waitFor();
+  const boardPrice=await core.locator('.object-detail-unit-price').first().innerText();
+  await picker.selectOption('veneered_mdf_oil');
+  await core.getByRole('button',{name:'Save changes',exact:true}).waitFor();
+  await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
+  assert.equal(await hours.innerText(),'1.2');
+  assert.equal(await core.locator('.object-detail-unit-price').first().innerText(),boardPrice);
+  await core.getByText('Wood oil',{exact:true}).waitFor();
+  assert.equal(await core.getByText('Coating consumables',{exact:true}).count(),1);
+  assert.equal(await core.getByText('Paint consumables',{exact:true}).count(),0);
+  assert.deepEqual(await core.locator('[data-field="labor_hours"]:not([data-line-id="part-coating"])').evaluateAll(nodes=>nodes.map(n=>[n.dataset.lineId,n.dataset.originalValue])),other);
+  await hours.fill('2.0');await hours.press('Tab');
+  assert.equal(await core.locator('[data-cost-band="part-coating"] > summary [data-labor-column="pay"]').innerText(),'₪200');
+  assert.equal(await core.locator('[data-cost-band="part-coating"] > summary [data-labor-column="total"]').innerText(),'₪250');
+  const exactHours=Number(await root.getAttribute('data-labor-total-hours'));
+  await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+  const persisted=JSON.parse(readFileSync(statePath('full-cost-lines.json'),'utf8')).find(row=>row.source==='object_costs_v3_1').raw_agent_json;
+  assert.equal(Number(persisted.labor.hours),exactHours);
+  assert.equal(Number(persisted.overhead.labor_hours),exactHours);
+  assert.equal(Number(persisted.labor_work['part-coating'].total),250);
+  await core.getByRole('link',{name:'Back to Project',exact:true}).click();
+  await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+  await core.locator('.object-detail-materials-band > summary').click();
+  await core.locator('[data-cost-band="labor"] > summary').click();
+  assert.equal(await picker.inputValue(),'veneered_mdf_oil');
+  assert.equal(await hours.innerText(),'2.0');
+  assert.equal(Number(await root.getAttribute('data-labor-total-hours')),exactHours);
+  assert.equal(await core.locator('[data-testid="stException"]').count(),0);
+  await page.screenshot({path:reportPath('coating-'+width+'.png'),fullPage:true});
+  await page.close();
+ }
+ report.coating={viewports:[1280,390],finishOnlyPricePreserved:true,manualRate:100,payrollOnce:true,savedReopen:true};
+}
+
 async function detailSaveChecks(){
  for(const width of [1758,390]){
   for(const name of ['front-choice','object-quantities.json','full-cost-totals.json','full-cost-lines.json','labor-hours.json','object-approvals.json'])rmSync(statePath(name),{force:true});
@@ -245,7 +297,9 @@ async function detailSaveChecks(){
   report['detailSave'+width]={seconds:(Date.now()-started)/1000,footerGap:gap,quantity:3,net:preview};
   await core.locator('.object-detail-materials-band > summary').click();
   await save.scrollIntoViewIfNeeded();
-  const expandedGap=await frame.evaluate(()=>innerHeight-46-document.querySelector('.object-detail-footer-actions').getBoundingClientRect().bottom);
+  // New business rows can make this card scroll. Check the same closing edge
+  // at the actual page bottom, using the shared existing geometry probe.
+  const expandedGap=(await checkClosingGap(frame,'.object-detail-footer-actions')).gap;
   assert.ok(Math.abs(expandedGap-26)<2,JSON.stringify({width,expandedGap}));
   await picker.selectOption('plywood');
   await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
@@ -267,6 +321,7 @@ async function detailSaveChecks(){
 }
 await detailSaveChecks();
 await frontPanelChecks();
+await coatingChecks();
 try{
  for(const name of ['fresh-active','fresh-done','fresh-shell-ready','labor-hours.json','full-cost-totals.json','full-cost-lines.json','auth-expired'])rmSync(statePath(name),{force:true});
  const fresh=await boot({fresh_calculation:true,objects_refresh_delay:1.2});
@@ -464,13 +519,13 @@ try{
   }
   await assertSharedHours(105.8);
   await assertCncRollup();
-  assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪6\u202f613');
+  assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪6\u202f688');
   assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f058');
-  assert.equal(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪8\u202f671');
+  assert.equal(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪8\u202f746');
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
   await assertSharedHours(105.8);
   await core.getByRole('link',{name:'Back to Project',exact:true}).click();
-  await core.getByText('₪8\u202f671',{exact:true}).first().waitFor();
+  await core.getByText('₪8\u202f746',{exact:true}).first().waitFor();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('[data-cost-band="labor"] > summary').click();
   for(const key of ['part-production','assembly-stage','preparation-packing'])await core.locator(`[data-cost-band="${key}"] > summary`).click();

@@ -14,6 +14,7 @@ from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 UNIT_TESTS = [
+    "tests/test_part_coating.py",
     "tests/test_preparation_packing.py", "tests/test_labor_work_editing.py",
     "tests/test_company_profile_preload.py", "tests/test_company_access.py",
     "tests/test_prices_lazy_groups.py", "tests/test_price_sources.py",

@@ -1,5 +1,18 @@
 # Done Log
 
+[verified] Labor2.16 Part Coating implementation,25November2026, existing
+work3.17.4.6. Owner approved lacquer40/MDF enamel45/oil35 person-min per m²,
+spray30m² with4h setup inside its full norm, linear oil,22/16/22ILS/m² LKM,
+separate10ILS/m² coating consumables and100ILS/h coating labor. Six existing
+front-selector choices preserve old IDs. Same-board lacquer/oil keeps exact
+stock offer, other saved Labor and manual overrides stay intact. Full cost
+persists the recipe audit and shares exact hours with Overhead, once.
+New coating browser scenarios passed1280/390, including combined front+manual
+coating Save and reopened selection/hours. The complete calculation suite also
+passed old save/retry/layout/unknown-hour cases. Full local/remote release gates
+and publication remain pending, separate from owner production acceptance.
+[Release and verification](LABOR_V2_16_PART_COATING_2026_11_25.md).
+
 [verified] Full Labor2.14 preservation checkpoint requested24November2026,
 existing work3.17.4.6. Runtimefc3e5827 is independent of checkpoint records.
 Preserved840 exact source files, helper-validated4,802,790-byte ZIP (SHA256

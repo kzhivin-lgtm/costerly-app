@@ -12,6 +12,7 @@ from use_cases.estimation_cb_geometry_parts import (
 from use_cases.estimation_edge_banding import EDGE_FAMILY, EDGE_TAPE_NAMES, EDGE_TAPE_THICKNESS_MM, sheet_edge_run
 from use_cases.estimation_front_panels import (
     FRONT_MATERIALS, FRONT_PART_ROLES, classify_front_materials, front_choices_by_part, front_material_groups, preserve_front_norms,
+    front_material_base,
 )
 from use_cases.estimation_glass_parts import GLASS_SET_NAME, GLASS_SET_REQUIREMENT, finished_glass_part, finished_glass_set
 from use_cases.estimation_mirror_parts import (
@@ -518,7 +519,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 # Family and finish identify the choice. A UI label is not a
                 # catalog name constraint (Veneered MDF may be named MDF veneer).
                 identity_hint = None
-                visible_veneer = choice == "veneered_mdf"
+                visible_veneer = front_material_base(choice) == "veneered_mdf"
                 basis = "user_selection"
                 fallback_reason = None
             if default_backing:

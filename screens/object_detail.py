@@ -209,6 +209,7 @@ def _render_object_detail(
     render_labor_v1(company_id=company_id, run_id=context.run_id, estimate_id=context.estimate_id,
                     object_id=context.object_id, elements=data.get("elements"), overlay_revision=data.get("overlay_revision"),
                     quantity=data.get('cost_quantity', data.get('quantity', 1)), overrides=data.get('labor_hours_overrides'),
+                    coating=data.get('part_coating'),
                     material_cost=sum(float(value) for value in amounts if value is not None),
                     material_partial=any(value is None for value in amounts))
     st.markdown(
@@ -359,6 +360,7 @@ def _material_editor(context: ObjectDetailContext) -> None:
             quantity=data["quantity"],
             labor_hours_overrides=data.get("labor_hours_overrides", {}),
             labor_block_hours=data.get("labor_block_hours", {}),
+            part_coating=data.get('part_coating'),
             labor=data.get("labor"),
             cost_policy=data.get("cost_policy"),
         )

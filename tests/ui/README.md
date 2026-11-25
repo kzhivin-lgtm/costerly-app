@@ -352,3 +352,15 @@ Browser checks13 work rows at42px and exact shared Overhead title/triangle style
 at1280/390, including nesting axes. All Projects navigation retains prior route,
 recovery/access and geometry tests; Trial Installation keeps its stored key.
 All ten suites and every earlier amount/unknown/zero/auth check remain required.
+
+Labor2.16 adds coating scenarios at1280/390: six front choices, lacquer/oil
+without repricing the same board, dependent-only hours, flat consumables without
+the old paint percentage,100ILS/h manual coating plus25% once, exact shared
+Labor/Overhead hours, explicit Save and reopened selection/hours. Python covers
+area/count/layup, batch boundaries and linear oil, company booth routing,
+source modifiers and missing data, same-offer patching and idempotent full cost.
+The old105.8h mixed manual control intentionally changes by75ILS for coating's
+new rate,6612.50 to6687.50 Labor and8670.50 to8745.50 SC. Hours and all other rates
+remain unchanged. The expanded footer assertion uses the existing checkClosingGap
+helper to reach actual page bottom for the extra business rows, still26±2px.
+No earlier scenario or required suite is removed.

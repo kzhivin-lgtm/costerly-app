@@ -102,14 +102,21 @@ def read_plans(_client, estimate_id):
 
 def front_plan(plan, choice):
  plan=deepcopy(plan)
+ if scenario().get('labor_ready'):
+  plan['parts_check_source']={key:sample['parts'].get(key) for key in ('run_id','estimate_id','input_ids','source_audit_sha256','overlay_revision')}
  plan['front_panel_groups']={'object-001':[{'id':'fixture-front','source_name':'LDSP 17 mm',
   'source_choice':'ldsp','thickness_mm':17,'part_ids':['B01:door_front:001']} ]}
  plan['front_panel_choices']={'object-001':{'fixture-front':choice}}
+ if scenario().get('coating'):
+  plan['front_panel_groups']['object-001'][0].update(family='melamine_faced_particleboard',specification={},
+   part_sources=[{'part_id':'B01:door_front:001','role':'door_front','quantity':2,'source_quantity':2,
+    'scope_quantity':1,'measurements':{axis:{'mm':value} for axis,value in [('length',1000),('width',500),('thickness',20)]}}])
+ base_choice={'veneered_mdf_oil':'veneered_mdf','plywood_oil':'plywood'}.get(choice,choice)
  labels={'ldsp':'LDSP','mdf':'MDF','veneered_mdf':'Veneered MDF','plywood':'Plywood'}
  for line in plan['lines']:
   if line.get('purchase_kind')=='sheet':
-   line['display_name']=labels[choice]+' 17 mm'
-   line['selection_key']='front-fixture-'+choice
+   line['display_name']=labels[base_choice]+' 17 mm'
+   line['selection_key']='front-fixture-'+base_choice
    if choice!='ldsp':
     line['price_per_purchase_unit']+=100
     delta=100*line['purchase_quantity']
@@ -221,7 +228,7 @@ object_detail._overlay_links = lambda *a, **kw: None
 labor.get_supabase_client = Client
 labor.load_parts_check = lambda **_: {'status':'ready', 'payload':parts}
 labor.fetch_rfq_estimate_material_plan = read_plans
-labor.load_sheet_processing_machinery = lambda *_: {}
+labor.load_sheet_processing_machinery = lambda *_: {'availability':{'finish_wet_spray_booth':'in_house'}} if scenario().get('coating') else {}
 _original_labor_loader = labor.load_object_labor
 def fixture_labor_loader(*args, **kwargs):
  if scenario().get('labor_unknown'):return {'status':'preparing'}
@@ -239,16 +246,19 @@ def read_overhead(_client, scoped_company, *, delay=True):
 labor._load_overhead_context=read_overhead
 def full_cost_context(client,obj,plan,settings=None,**kwargs):
  inputs=read_overhead(client,obj['company_id'],delay=False)
- return {**inputs,'plan':plan,'parts':{'status':'ready','payload':parts},'machinery':{},**kwargs}
+ return {**inputs,'plan':plan,'parts':{'status':'ready','payload':parts},
+  'machinery':{'availability':{'finish_wet_spray_booth':'in_house'}} if scenario().get('coating') else {},**kwargs}
 estimation._full_cost_context=full_cost_context
 
 def save_materials(**kwargs):
  assert kwargs['estimate_id']==estimate_id and kwargs['object_id']=='object-001'
  if kwargs['edits'] and all(edit['field']=='labor_hours' for edit in kwargs['edits']):
   return estimation.save_object_detail_material_edits(**kwargs)
- assert len(kwargs['edits'])==1
- if kwargs['edits'][0]['field']=='front_material':
-  choice=kwargs['edits'][0]['value']
+ front_edits=[edit for edit in kwargs['edits'] if edit['field']=='front_material']
+ assert len(kwargs['edits'])==1 or (scenario().get('coating') and len(front_edits)==1
+  and all(edit['field'] in {'front_material','labor_hours'} for edit in kwargs['edits']))
+ if front_edits:
+  choice=front_edits[0]['value']
   preview=kwargs.get('preview',False)
   record('front preview' if preview else 'front save')
   sleep(float(scenario().get('front_delay',0.15)))
@@ -259,8 +269,18 @@ def save_materials(**kwargs):
   if scenario().get('front_failure'):
    result.set_exception(ValueError('Controlled front material failure.'))
    return result
-  if not preview:(STATE/'front-choice').write_text(choice)
-  result.set_result(front_plan(sample['plans'][0]['plan_payload'],choice))
+  plan=front_plan(sample['plans'][0]['plan_payload'],choice)
+  if not preview:
+   (STATE/'front-choice').write_text(choice)
+   if scenario().get('coating'):
+    hours={edit['lineId']:estimation.validate_hours(edit['value']) for edit in kwargs['edits'] if edit['field']=='labor_hours'}
+    if hours:save_hours(Client(),lines=estimation.override_lines(hours,estimate_id=estimate_id,
+      object_id='object-001',company_id=company_id,quantity=1))
+    estimation._recalculate_object_estimate_totals(Client(),estimate_id=estimate_id,object_id='object-001',
+      object_row={**sample['objects'][0],'estimate_id':estimate_id},settings=read_overhead(Client(),company_id,delay=False)['settings'],
+      lines_df=read_lines(Client(),estimate_id=estimate_id,object_id='object-001'),
+      plan_snapshot=plan,cost_context=full_cost_context(Client(),{'company_id':company_id},plan,preserve_labor=True))
+  result.set_result(plan)
   return result
  if kwargs['edits'][0]['field']=='labor_hours':
   return estimation.save_object_detail_material_edits(**kwargs)

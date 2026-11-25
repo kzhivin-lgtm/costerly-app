@@ -52,6 +52,7 @@ from use_cases.estimation_parts_check_runtime import load_parts_check
 from use_cases.machinery import load_sheet_processing_machinery
 from use_cases.overhead_engine import estimate_object_overhead, with_production_capacity
 from observability.runtime import LABOR_BUILD_VERSION
+from use_cases.part_coating import calculate_part_coating, coating_material_rows
 
 
 _FULL_COST_SOURCE = "object_costs_v3_1"
@@ -90,6 +91,12 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
     material_partial |= bool(checked.get("unpriced_requirements") or checked.get("has_unresolved_demands"))
     saved = next((row.get("raw_agent_json") for row in lines.to_dict("records")
                   if row.get("source") == _FULL_COST_SOURCE), None)
+    coating_machinery = context['machinery']
+    if context.get('preserve_labor') and isinstance(saved, dict):
+        coating_machinery = {'availability': {'finish_wet_spray_booth':
+                            (saved.get('part_coating') or {}).get('booth_availability')}}
+    coating = calculate_part_coating(plan, object_id=str(obj['object_id']),
+                                    source_lines=lines.to_dict('records'), machinery=coating_machinery)
     if context.get("preserve_labor"):
         if not isinstance(saved, dict) or not saved.get("labor_blocks"):
             raise ValueError("The saved labor totals are not available yet.")
@@ -102,7 +109,8 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
             "source": plan.get("parts_check_source"),
             "sheets": (plan["front_material_source_sheet_basis"] if "front_material_source_sheet_basis" in plan else sheet_layout_basis(plan)), "parts": context["parts"],
         }, sort_keys=True, default=str).encode()).hexdigest()
-    basis = hashlib.sha256(json.dumps({"cost_basis": "priced_configuration_v1", "labor_basis": labor_basis, "materials": material_batch,
+    basis = hashlib.sha256(json.dumps({"cost_basis": "priced_configuration_v1", "labor_basis": labor_basis,
+        "coating_basis": coating['basis_sha256'], "materials": material_batch,
         "materials_partial": material_partial, "settings": context["settings"], "monthly": context["monthly"]
     }, sort_keys=True, default=str).encode()).hexdigest()
     if isinstance(saved, dict) and saved.get("basis_sha256") == basis:
@@ -114,13 +122,17 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
         preparation_labor = saved["labor_blocks"].get("preparation_packing")
         preparation_audit = saved.get("preparation_packing")
         labor_work = saved.get("labor_work")
+        if labor_work is not None:
+            from use_cases.estimation_labor_v1 import with_coating_work
+            labor_work = with_coating_work(labor_work, coating, quantity=quantity, overrides=overrides)
+            labor = labor_work['labor']
     else:
         state = load_object_labor(
             client, identity=(str(obj["company_id"]), str(obj["run_id"]), estimate_id, str(obj["object_id"])),
             plan=plan, parts_result=context["parts"] if "payload" in context["parts"] else None,
             machinery_loader=lambda *_: context["machinery"],
         )
-        labor_work = labor_work_metrics(state, quantity=quantity, overrides=overrides)
+        labor_work = labor_work_metrics({**state, 'coating': coating}, quantity=quantity, overrides=overrides)
         sheet_labor, assembly_labor, labor = (labor_work[key] for key in ('sheet-processing', 'assembly-stage', 'labor'))
         preparation_labor = labor_work['preparation-packing']
         preparation_audit = state.get("preparation")
@@ -143,7 +155,9 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
                "self_cost_total": round(net + vat, 2),
                "labor_blocks": {"sheet_processing": sheet_labor, "assembly": assembly_labor,
                                 **({"preparation_packing": preparation_labor} if preparation_audit is not None or preparation_labor is not None else {}),
-                                **({"part_coating": labor_work['part-coating']} if labor_work and 'part-coating' in overrides else {})},
+                                **({"part_coating": labor_work['part-coating']} if labor_work and (
+                                    'part-coating' in overrides or coating['batches'] or coating['issues']) else {})},
+               "part_coating": coating,
                "preparation_packing": preparation_audit,
                **({"labor_work": labor_work} if labor_work is not None else {}),
                "parts_check_source": plan.get("parts_check_source"),
@@ -760,6 +774,7 @@ def load_object_detail_data(
             },
         ],
         "labor_hours_overrides": overrides_from_lines(lines_df),
+        "part_coating": object_row.get('part_coating'),
         "self_cost": {
             "title": f"{object_row.get('object_name') or 'Object'} self cost (SC)",
             "vat_percent": vat_percent,
@@ -799,6 +814,7 @@ def _project_detail_receipt(obj, lines, plan, cost_snapshot=None):
         "quantity": _number(obj.get("quantity"), 1),
         "cost_quantity": _number((plan.get("object_quantities") or {}).get(object_id), _number(obj.get("quantity"), 1)),
         "labor": cost_snapshot.get("labor"), "overhead": cost_snapshot.get("overhead"),
+        "part_coating": cost_snapshot.get('part_coating'),
         "labor_hours_overrides": overrides_from_lines(lines),
         "labor_block_hours": {**{key: value["hours"] for key, value in cost_snapshot.get("labor_blocks", {}).items() if value},
                               **{key: value["hours"] for key, value in cost_snapshot.get("labor_work", {}).items() if value}},
@@ -853,6 +869,21 @@ def _object_detail_material_rows(plan: dict[str, Any], lines: Any, object_id: st
                 "material_plan_allocation": raw.get("material_plan_allocation"),
                 "locked": item.get("source") == "pricing_policy", "policy_percent": raw.get("percent"),
             })
+    coating = calculate_part_coating(plan, object_id=object_id, source_lines=lines.to_dict('records'))
+    recipe_rows = coating_material_rows(coating)
+    if recipe_rows:
+        # Existing percent policies still cover existing materials. Coating's
+        # flat abrasives allowance is separate from its LKM material charge.
+        rows.extend(recipe_rows)
+        primary = sum(_number(row.get('total'), 0) for row in rows if not row.get('locked'))
+        legacy_coatings = sum(_number(row.get('total'), 0) for row in rows
+                              if row.get('is_coating') and not row.get('coating_recipe'))
+        rows = [row for row in rows if not (row.get('locked') and row.get('policy_basis') == 'coatings'
+                                          and not legacy_coatings)]
+        for row in rows:
+            if row.get('locked') and row.get('policy_basis') in {'materials', 'coatings'}:
+                base = legacy_coatings if row['policy_basis'] == 'coatings' else primary
+                row['total'] = round(base * _number(row.get('policy_percent'), 0) / 100, 2)
     return sorted(rows, key=_material_display_order)
 
 
@@ -1732,9 +1763,9 @@ def front_material_preview_receipt(*, estimate_id, object_id, plan):
     lines = fetch_rfq_estimate_lines_for_object(client, estimate_id=estimate_id, object_id=object_id).copy()
     rows = _object_detail_material_rows(plan, lines, object_id)
     primary = sum(_number(row.get("total"), 0) for row in rows if not row.get("locked"))
-    coatings = sum(_number(row.get("total"), 0) for row in rows if row.get("is_coating"))
+    coatings = sum(_number(row.get("total"), 0) for row in rows if row.get("is_coating") and not row.get('coating_recipe'))
     for row in rows:
-        if row.get("locked"):
+        if row.get("locked") and row.get('policy_basis') != 'coating_area':
             row["total"] = round((coatings if row.get("policy_basis") == "coatings" else primary)
                                  * _number(row.get("policy_percent"), 0) / 100, 2)
             lines.loc[(lines["source"] == "pricing_policy") & (lines["item_name"] == row["item"]), "cost"] = row["total"]
@@ -1750,6 +1781,7 @@ def front_material_preview_receipt(*, estimate_id, object_id, plan):
                       "batch_excl_vat": _detail_batch_net(summary),
                       "total": summary["self_cost_total"], "partial": summary["partial"]},
         "labor": summary.get("labor"), "overhead": summary.get("overhead"),
+        "part_coating": summary.get('part_coating'),
         "labor_hours_overrides": overrides_from_lines(lines),
         "labor_block_hours": {**{key: value["hours"] for key, value in summary["labor_blocks"].items() if value},
                               **{key: value["hours"] for key, value in summary.get("labor_work", {}).items() if value}},

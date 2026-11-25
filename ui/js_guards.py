@@ -2404,6 +2404,9 @@ def install_object_detail_input_guard(
                 const nextCount = quantityEdit ? Number(quantityEdit.value) : count;
                 const projected = materialRows().map(row => {
                     const base = rowPreview(row);
+                    if (base.coating_recipe) {
+                        return {row, base, cost: Number(base.total || 0) * (quantityEdit ? nextCount / count : 1)};
+                    }
                     if (base.unit_price_display === "Variable") {
                         const sets = quantityEdit ? Math.ceil(nextCount) : base.purchase_quantity_value;
                         const setLabel = row.querySelector('[data-finished-quantity="sets"]');
@@ -2471,8 +2474,9 @@ def install_object_detail_input_guard(
                 let formulaDelta = 0;
                 for (const {row, base} of projected) {
                     if (!base.locked) continue;
-                    const delta = (base.policy_basis === "coatings" ? coatingDelta : materialDelta)
-                        * Number(base.policy_percent || 0) / 100;
+                    const delta = base.policy_basis === 'coating_area'
+                        ? Number(base.total || 0) * (quantityEdit ? nextCount / count - 1 : 0)
+                        : (base.policy_basis === "coatings" ? coatingDelta : materialDelta) * Number(base.policy_percent || 0) / 100;
                     setRowCost(row, Number(base.total || 0) + delta);
                     formulaDelta += delta;
                 }
@@ -2480,8 +2484,9 @@ def install_object_detail_input_guard(
                 if (materialHeader) {
                     const known = projected.filter(({base}) => base.total != null);
                     const sum = known.reduce((total, {base, cost}) => total + (base.locked
-                        ? Number(base.total) + (base.policy_basis === "coatings" ? coatingDelta : materialDelta)
-                            * Number(base.policy_percent || 0) / 100
+                        ? Number(base.total) + (base.policy_basis === 'coating_area'
+                            ? Number(base.total || 0) * (quantityEdit ? nextCount / count - 1 : 0)
+                            : (base.policy_basis === "coatings" ? coatingDelta : materialDelta) * Number(base.policy_percent || 0) / 100)
                         : cost), 0);
                     materialHeader.textContent = known.length || !projected.length ? formatMoney(sum) : "—";
                     materialHeader.dataset.overheadMaterialCost = String(sum);
@@ -2572,7 +2577,7 @@ def install_object_detail_input_guard(
                 const nextCount = Number(draft.get(editKey({field: "object_quantity", lineId: "__object__"}))?.value ?? count);
                 const explicit = new Set(JSON.parse(labor.dataset.laborExplicitKeys || '[]'));
                 const round = value => Math.round(value * 100) / 100;
-                const paid = hours => { const pay = round(hours * 50), taxes = round(pay * 0.25); return {hours, pay, taxes, total: pay + taxes}; };
+                const paid = (hours, rate=50) => { const pay = round(hours * rate), taxes = round(pay * 0.25); return {hours, pay, taxes, total: pay + taxes}; };
                 const add = rows => rows.reduce((sum, row) => {
                     for (const key of ['hours','pay','taxes','total']) sum[key] += row[key];
                     sum.qualified ||= row.qualified;
@@ -2611,9 +2616,22 @@ def install_object_detail_input_guard(
                             if (input !== parentDoc.activeElement) setEditableValue(input, '—');
                             clearUnknown(row); return null;
                         }
-                        const hours = pending ? Number(pending.value) : Number(input.dataset.originalValue) * nextCount / count;
+                        let hours = pending ? Number(pending.value) : Number(input.dataset.originalValue) * nextCount / count;
+                        if (row.dataset.costBand === 'part-coating' && !pending && !explicit.has('part-coating')
+                            && row.dataset.coatingBatches) {
+                            const batches = JSON.parse(row.dataset.coatingBatches);
+                            if (batches.some(batch => batch.hours == null)) { clearUnknown(row); return null; }
+                            hours = batches.reduce((sum, batch) => {
+                                const area = batch.area_m2 * nextCount / count, perM2 = batch.minutes_per_m2 / 60;
+                                if (!batch.batch_m2) return sum + area * perM2;
+                                const full = Math.floor((area + 1e-10) / batch.batch_m2);
+                                const residual = Math.max(0, area - full * batch.batch_m2);
+                                return sum + full * batch.batch_m2 * perM2 + (residual > 1e-10
+                                    ? batch.setup_hours + residual * (perM2 - batch.setup_hours / batch.batch_m2) : 0);
+                            }, 0);
+                        }
                         if (!Number.isFinite(hours)) return null;
-                        value = {...paid(hours),qualified: !['part-coating','additional-assembly'].includes(row.dataset.costBand)
+                        value = {...paid(hours, Number(row.dataset.laborHourlyRate || 50)),qualified: !['part-coating','additional-assembly'].includes(row.dataset.costBand)
                             || hours > 0 || !!pending || explicit.has(row.dataset.costBand)};
                     }
                     update(row, value);
@@ -2820,9 +2838,29 @@ def install_object_detail_input_guard(
                 // Original hour values belong to the priced configuration, not commercial copies.
                 const previousCostQuantity = Number(laborRoot?.dataset.laborCostQuantity || previousQuantity);
                 const nextCostQuantity = Number(result.cost_quantity ?? result.quantity);
+                const coatingRow = parentDoc.querySelector('[data-cost-band="part-coating"]');
+                if (coatingRow && result.part_coating) {
+                    coatingRow.dataset.coatingBatches = JSON.stringify(result.part_coating.batches || []);
+                    coatingRow.dataset.costUnknown = String(result.part_coating.hours == null && result.labor_hours_overrides?.['part-coating'] == null);
+                    const body = coatingRow.querySelector(':scope > .object-detail-work-body');
+                    if (body) {
+                        const list = parentDoc.createElement('ul');
+                        for (const batch of result.part_coating.batches || []) {
+                            const item = parentDoc.createElement('li');
+                            item.textContent = `${batch.label} · ${batch.area_m2.toFixed(2)} m² · ${batch.minutes_per_m2} person-min/m² · ₪100/h`;
+                            list.append(item);
+                        }
+                        body.replaceChildren(list);
+                    }
+                }
                 for (const input of parentDoc.querySelectorAll('[data-field="labor_hours"]')) {
                     const perItem = result.labor_hours_overrides?.[input.dataset.lineId];
                     const computed = result.labor_block_hours?.[input.dataset.lineId];
+                    if (input.dataset.lineId === 'part-coating' && result.part_coating && computed == null && perItem == null) {
+                        delete input.dataset.originalValue;
+                        setEditableValue(input, '—');
+                        continue;
+                    }
                     if (computed == null && perItem == null && !input.hasAttribute('data-original-value')) continue;
                     input.dataset.originalValue = String(computed != null ? computed : perItem != null
                         ? Number(perItem) * Number(result.cost_quantity ?? result.quantity)

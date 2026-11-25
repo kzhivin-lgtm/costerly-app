@@ -357,7 +357,7 @@ def load_sheet_processing_machinery(client, company_id: str) -> dict:
         .select("machine_code,availability_status,pricing_method,pricing")
         .eq("company_id", company_id)
         .eq("active", True)
-        .in_("machine_code", SHEET_PROCESSING_MACHINE_CODES)
+        .in_("machine_code", (*SHEET_PROCESSING_MACHINE_CODES, "finish_wet_spray_booth"))
         .execute()
     ).data or []
     machines = {row["machine_code"]: row for row in rows}
