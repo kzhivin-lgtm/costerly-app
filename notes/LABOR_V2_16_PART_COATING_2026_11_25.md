@@ -3,7 +3,8 @@
 Owner-authorized implementation25November2026, existing work3.17.4.6.
 Base productionbae0e899 (Labor2.15), complete2.14 checkpoint unchanged.
 Candidate build: `labor-v2.16-b20261125154845-part-coating-detection-v8.4.29`.
-Implementation verification and publication pending. No paid model call needed.
+Published runtime `8e7a26b344a0761c5722941f6dd606959a927c68`.
+Owner production acceptance pending. No paid model call needed.
 
 ## Approved calculation
 
@@ -77,8 +78,36 @@ existing full-cost audit. No schema migration or new writer/timer/worker.
 | Manual100/hour, payroll, shared Overhead and reopened cost | Calculation suite1280/390 |
 | All prior auth/navigation/save/Prices/layout scenarios | Complete UI contract and exact-SHA remote gate |
 
-Local evidence resides in `/private/tmp/coating-ui-complete/`; final receipts
-will identify the actual successful candidate and served versions. Public
+Final evidence is retained in `output/labor-v2.16-20261125/`. Public
 production acceptance follows the owner's fresh run, separate from synthetic
 checks. Rollback uses the trusted exact-SHA gate/publisher tobae0e899, preserving
 all saved input/evidence and prior checkpoints.
+
+## Published verification
+
+The exact runtime passed1053 Python checks and all10 browser suites locally in
+444.928s, then the trusted [GitHub gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/45650850928/job/139334617146)
+passed1053 checks plus6 subtests and10 browser suites in403.929s. CI artifact
+15041251312, SHA256 `14033ac74d9fdab1492a40b1b52a5c19048ff424c3f960d6edd67e5d966cdd01`.
+Tracked source was clean at the tested commit, only existing private output/tmp
+artifacts made the generic working_tree_dirty flag true. No test or tolerance
+was disabled. The rate-specific75ILS expectation change and the actual-bottom
+footer probe are documented above; source layout/styles were unchanged.
+
+Publisher verified actual main ruleset27499066 active with no bypass actors,
+strict trusted check requirement, no force push or deletion. This remote state
+is separately retained from local/CI evidence. Published this exact SHA via
+`tools/promote_ui_release.py`, without bypassing the rule.
+
+Railway deployment1426a947-4a3a-454e-9667-c0070708c32a succeeded. Target Cloudflare
+Pages e424356d-a6a4-4d0b-acbf-0ed336bb19df succeeded. The separate historical
+Workers Builds integration is not the target Pages app; no claim that every
+external integration passed is made.
+
+At2026-11-25T16:15:17.502Z a fresh anonymous browser observed identical Core,
+wrapper executable workflow-handshake build, wrapper metadata and version.json:
+`labor-v2.16-b20261125154845-part-coating-detection-v8.4.29`. No Streamlit exception.
+No authenticated owner estimate or live Profile was mutated by this check.
+Detection, OCR0.75 and provider prompts/model settings were not changed.
+All prior source/checkpoint records remain available; this is a release record,
+not an owner-accepted new full preservation checkpoint.

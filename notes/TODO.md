@@ -1193,7 +1193,7 @@ Acceptance supersedes the prior pending state. [Release evidence](ESTIMATION_V9_
 
 ## Estimation Labor: four production stages
 
-ACTIVE IMPLEMENTATION AND VERIFICATION, CALIBRATION APPROVED,
+PUBLISHED LABOR2.16, OWNER PRODUCTION ACCEPTANCE PENDING,
 P1, USER REQUEST, 25 November 2026. Focus only Part Coating. Owner fixed LKM
 ₪22/m² veneer matte and ₪16/m² MDF matte, gloss ×2, veneer patina ×2, profiled facade
 +10%; coated area is both faces plus edges, consumables separate ₪10/m².
@@ -1232,8 +1232,8 @@ change. New gloss controls or extra choices beyond these six are not approved.
 Use company-scoped Machinery for in-house routing, existing physical Parts and
 saved material change dependencies; preserve unrelated hours/overrides, payroll
 load once, Overhead/SC, explicit Save/retry/reopen and no new paid Parts calls.
-No new remote version assigned to production: verified main remains Labor 2.15
-at bae0e899. Next candidate proposed Labor 2.16, same work 3.17.4.6.
+Published Labor2.16 runtime8e7a26b3, same work3.17.4.6, preserving2.15bae0e899
+and the full2.14 checkpoint. Owner production acceptance follows a fresh run.
 All sources, cases, sensitivity and scope boundaries:
 [Coating rates and batch research](LABOR_COATING_RATES_AND_BATCH_RESEARCH_2026_11_25.md).
 The historical pending calibration above is superseded by the owner's explicit
@@ -1247,7 +1247,12 @@ publication gate. Combined gloss/patina/profile effects still need a decision;
 individual evidenced modifiers are supported without another selector.
 [Current release and scenario evidence](LABOR_V2_16_PART_COATING_2026_11_25.md).
 No average comparable B2B price established. Existing
-reference 3.17.4.6 retained, no new work block.
+reference 3.17.4.6 retained, no new work block. Exact runtime passed1053 Python
+checks and ten browser suites locally444.928s and GitHub403.929s. Main rule
+27499066 independently verified active/no bypass. Core/executable wrapper/meta/
+version.json match2.16 at16:15:17UTC25November2026. No paid call or live estimate
+mutation was needed for verification. Individual coating effects are supported;
+combined effects and future company-personnel rate integration remain deferred.
 
 COMPLETED SOURCE ANALYSIS, P1, USER REQUEST, 25 November 2026. Extract the owner's
 and partner's discussion of solid-wood estimating and coatings from the two

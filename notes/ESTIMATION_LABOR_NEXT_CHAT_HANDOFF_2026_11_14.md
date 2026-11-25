@@ -16,7 +16,25 @@ Preservation is separate from a newly observed authenticated owner calculation.
 Previous2.11/9.48 and all older checkpoints remain immutable.
 [Checkpoint, evidence and restore](LABOR_V2_14_PRODUCTION_CHECKPOINT_2026_11_24.md).
 
-**[verified] Current release: Labor2.14, owner production acceptance pending.**
+**[verified] Current release: Labor2.16,25November2026, owner production acceptance pending.**
+Runtime8e7a26b344a0761c5722941f6dd606959a927c68. Part Coating calculates physical
+two-sided/edge area, LKM22/16/22ILS per m² and separate10ILS/m² consumables.
+Owner-approved norms lacquer40/MDF enamel45/oil35 person-min/m², spray30m²
+with4h setup inside full norm, oil linear. Coating100ILS/h plus25% once; other
+Labor unchanged. Six Front panels choices, same-board oil/lacquer preserves
+exact offer and other saved work. Hours/materials/route audit persist through
+the existing full-cost path, with Overhead/SC/Objects once. Exact local1053/ten
+444.928s and GitHub1053/ten403.929s passed. Actual active/no-bypass main rule,
+Railway/Pages and matching executed Core/wrapper/meta/version verified at
+16:15:17UTC. No paid call. Next verification is the owner's fresh MDF/oil run.
+[Release, scope and evidence](LABOR_V2_16_PART_COATING_2026_11_25.md).
+
+Labor2.15bae0e899 remains the immediate rollback baseline. Its OCR role0.75
+repair and successful owner Ada witness are preserved in
+[Labor2.15](LABOR_V2_15_OCR_ROLE_THRESHOLD_2026_11_25.md).
+Full preservation checkpoint remains2.14 above;2.16 is not another full archive.
+
+**[verified] Previous release: Labor2.14, owner production acceptance pending.**
 [verified] Labor2.14 published24November2026, existing work3.17.4.6,
 runtime `fc3e5827`. CNC precedes reference Elements and has its own read-only
 closed rollup of Operator/File Preparation/Edge Banding. All nested work sums
