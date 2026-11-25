@@ -1193,24 +1193,26 @@ Acceptance supersedes the prior pending state. [Release evidence](ESTIMATION_V9_
 
 ## Estimation Labor: four production stages
 
-ACTIVE COATING PRESENTATION, P1, USER REQUEST,25-26November2026,
-existing work3.17.4.6. The full Labor2.16 checkpoint is preserved. Ada front-only material
-replacement and coating scope. Changing plywood fronts to MDF must retain
+PUBLISHED, OWNER VISUAL ACCEPTANCE PENDING, P1, USER REQUEST,25-26November2026,
+existing work3.17.4.6. The full Labor2.16 checkpoint is preserved. Ada front-only
+material replacement/coating scope is verified correct. Changing plywood fronts to MDF must retain
 original plywood carcasses/internal parts and their lacquer, while only front
 substrate and its dependent enamel/cost/hours change. Read the actual owner
 Corner display cabinet and replay its saved plan, preview and committed facts;
 do not change an already-correct branch merely from the small price delta.
 Coating details must share the Materials table style, and Coating consumables
 must have the same row height. Protect all earlier norms, overrides, geometry,
-saved Save/retry/reopen and exact Labor/Overhead/SC behavior. Proposed next
-release Labor2.17 now contains only the owner-authorized shared Coating template,
+saved Save/retry/reopen and exact Labor/Overhead/SC behavior. Published
+Labor2.17 contains only the owner-authorized shared Coating template,
 not the withdrawn APPROVE IO/route trial. No new paid provider call is needed.
 VERIFIED AND OWNER ACCEPTED25November: on the saved Corner display cabinet,
 MDF replaces4.992204m² of fronts;48.868232m² of plywood body/internal parts
 retain lacquer, both in preview and the approved saved result. SC19219.23
-versus18739.28 before. Do not change this correct costing branch. Remaining:
-Coating table/row heights and min/m² copy are implemented locally and undergoing
-the full gate. Material switching latency and the APPROVE cause remain separate
+versus18739.28 before. Do not change this correct costing branch.
+Coating table/row heights and min/m² copy are published in57a88923. Full local
+and exact-SHA GitHub gates passed1054 checks/ten suites; remote protection and
+actual Core/wrapper parity are verified. Owner visual acceptance remains pending.
+Material switching latency and the APPROVE cause remain separate
 diagnostics. [Scope and release](LABOR_V2_17_COATING_TABLE_2026_11_25.md).
 
 AUTHORIZED, PENDING BEHIND URGENT APPROVE LATENCY, P1, USER REQUEST,25November2026. Add read-only
@@ -7663,7 +7665,8 @@ The IO/diagnostic trial is preserved locally as2f24c839 and reverted by678eb4e5;
 it remains unaccepted and unpublished. The owner subsequently authorized only
 Coating's shared-template UI, tracked above. No new APPROVE route is approved.
 candidate gate stopped by scope change at372.593s, not a successful full gate.
-Production remains8e7a26b3/Labor2.16. [Investigation](APPROVE_LATENCY_2026_11_25.md).
+Incident source remains8e7a26b3/Labor2.16; subsequent Labor2.17 only changes the
+authorized Coating template, not this mechanism. [Investigation](APPROVE_LATENCY_2026_11_25.md).
 Current Labor2.16 owner trace05be75de-70dc-4df2-b0c0-daff0b0bcf55: click21:08:14.805UTC,
 approval persisted21:08:21.838, Project server-ready21:08:26.465, browser timeout
 15.812s with no correlated ready. Separate callback/purchase allocation, Project

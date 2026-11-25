@@ -1,5 +1,18 @@
 # Done Log
 
+[verified] Labor2.17 shared Coating template published26November2026 local time,
+existing work3.17.4.6, runtime57a88923. Initial details and edit receipts now use
+the shared Materials table rows/cells and keyed row reconciliation; separate
+Coating UL/list DOM replacement is removed. Visible norms use min/m² and
+Coating consumables matches the existing material row height. Cost formulas,
+terminal hour editors, Save/reopen and navigation remain protected. Full local
+1054/ten gate433.777s and exact-SHA GitHub1054/ten376.853s passed, run45712933595,
+artifact15068178280. Active strict main protection/no bypass and matching actual
+Core/executable wrapper/meta/version.json verified at22:33:26UTC25November.
+Owner visual acceptance pending. APPROVE incident remains diagnostic-only;
+Management payroll allocation remains queued. No paid call or estimate mutation.
+[Release and evidence](LABOR_V2_17_COATING_TABLE_2026_11_25.md).
+
 [verified] Owner-requested full Labor2.16 preservation25November2026, existing
 work3.17.4.6. Exact runtime8e7a26b3,847 files/4,858,173-byte helper-validated source,
 separate source/records tags, self-contained Git bundle, full saved release and

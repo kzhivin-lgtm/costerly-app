@@ -1,10 +1,32 @@
+**[verified] Current runtime: Labor2.17,26November2026 local time.**
+Runtime57a88923bdccf55d25753fe5c396b63fdde769cb. Owner requested reuse of the
+working universal Coating template. Initial/receipt rows now share Materials'
+table renderer and keyed reconciliation, min/m² copy and equal material row
+height. Financial formulas and existing workflow are unchanged. Full local
+1054/ten433.777s and exact-SHA GitHub1054/ten376.853s passed. Normal publisher,
+actual strict main protection/no bypass, Railway/Pages success and served
+Core/executable wrapper/meta/version parity verified22:33:26UTC25November.
+Owner visual acceptance pending. No new paid call or production estimate write.
+[Release/evidence](LABOR_V2_17_COATING_TABLE_2026_11_25.md).
+
+Ada MDF-front4.992204m²/retained plywood48.868232m² coating scope was verified
+correct in the owner's approved result, SC19219.23. Do not repair that math.
+Management & Administration remains authorized/queued behind urgent APPROVE
+investigation. The owner requires diagnostic-only APPROVE work: no new async
+route. Earlier unpublished IO trial is preserved locally in2f24c839 and reverted
+by678eb4e5; neither is in this runtime. The exact2.16 controller also existed
+in2.14. Current incident has a persisted approval and server-ready Project, but
+no admitted browser-ready before15.812s timeout. Outer-frame console results
+cannot establish inner Core DOM failure. Coating2.17 is not an APPROVE fix.
+[Investigation](APPROVE_LATENCY_2026_11_25.md).
+
 **[verified] Latest full preservation checkpoint: Labor2.16,25November2026.**
 Exact runtime8e7a26b3 and separate records/tags,847 source files byte-matched
 after fresh bundle restore. Full1053/ten release gates reused; four frozen
 material controls and62 coating/front tests pass offline. Both owner screenshots
-are packaged. Preserve the base with explicit known limits: coating detail/table
-height and newly reported Ada front-only MDF/retained plywood lacquer scenario.
-Repair that scenario before requested Management/Office payroll allocation.
+are packaged. At checkpoint time, coating detail/table height and the newly
+reported Ada front-only scope were known limits. Subsequent scope verification
+and shared-template release are recorded above; the original archive is immutable.
 [Checkpoint identity, source and restoration](LABOR_V2_16_PRODUCTION_CHECKPOINT_2026_11_25.md).
 
 **[verified] Previous full preservation checkpoint: Labor2.14,24November2026.**
@@ -25,7 +47,7 @@ Preservation is separate from a newly observed authenticated owner calculation.
 Previous2.11/9.48 and all older checkpoints remain immutable.
 [Checkpoint, evidence and restore](LABOR_V2_14_PRODUCTION_CHECKPOINT_2026_11_24.md).
 
-**[verified] Current release: Labor2.16,25November2026, owner production acceptance pending.**
+**[verified] Previous release: Labor2.16,25November2026.**
 Runtime8e7a26b344a0761c5722941f6dd606959a927c68. Part Coating calculates physical
 two-sided/edge area, LKM22/16/22ILS per m² and separate10ILS/m² consumables.
 Owner-approved norms lacquer40/MDF enamel45/oil35 person-min/m², spray30m²
@@ -38,10 +60,10 @@ Railway/Pages and matching executed Core/wrapper/meta/version verified at
 16:15:17UTC. No paid call. Next verification is the owner's fresh MDF/oil run.
 [Release, scope and evidence](LABOR_V2_16_PART_COATING_2026_11_25.md).
 
-Labor2.15bae0e899 remains the immediate rollback baseline. Its OCR role0.75
+Labor2.16 is the rollback baseline for2.17; Labor2.15bae0e899 is the prior one. Its OCR role0.75
 repair and successful owner Ada witness are preserved in
 [Labor2.15](LABOR_V2_15_OCR_ROLE_THRESHOLD_2026_11_25.md).
-Full preservation checkpoint remains2.14 above;2.16 is not another full archive.
+Full preservation checkpoint2.16 is recorded above, separately from runtime.
 
 **[verified] Previous release: Labor2.14, owner production acceptance pending.**
 [verified] Labor2.14 published24November2026, existing work3.17.4.6,

@@ -3,7 +3,9 @@
 Owner authorized25November2026. Existing work3.17.4.6, exact base Labor2.16
 8e7a26b3 and its preserved full checkpoint. Candidate build
 labor-v2.17-b20261125215904-coating-table-detection-v8.4.29.
-Verification/publication pending. No paid calls or production data mutation.
+[verified] Published runtime57a88923bdccf55d25753fe5c396b63fdde769cb,
+26November2026 local time. Owner visual acceptance pending. No paid calls or
+production estimate/profile data mutation.
 
 ## Scope and protected behavior
 
@@ -63,3 +65,32 @@ Unaccepted APPROVE IO experiments are retained in local2f24c839 and reverted
 by678eb4e5. The final runtime difference contains no such optimization or
 workflow diagnostic changes. The earlier interrupted gate is not this release's
 verification. Existing private output/ and tmp/ are not part of the commit.
+
+## Published verification
+
+[verified] Full local gate on exact runtime57a88923:1054 Python checks and all
+ten browser suites passed in433.777s. Its dirty flag records only pre-existing
+untracked private output/ and tmp/; tracked runtime matched the committed source.
+GitHub ran the full gate, not documentation-only classification:1054 checks,
+six subtests and all ten browser suites passed in376.853s.
+[Exact SHA gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/45712933595/job/139551653538).
+Artifact15068178280,1,268,605 bytes, SHA256
+58d20b7a77e2f0e5249c158baa082fe80acb06890022d9eea0281e5a33aa947c.
+Downloaded bytes matched the provider digest. Local logs, screenshots, CI ZIP
+and gate report are preserved privately in
+output/labor-v2.17-coating-release-20261126/.
+
+[verified] Normal tools/promote_ui_release.py checked the exact trusted gate and
+actual remote ruleset27499066 before publication. An independent authenticated
+read confirmed active/strict main enforcement and an empty bypass actor list.
+Remote main is57a88923. Railway deployment75515245-5e7f-49aa-b8bc-ed7ef85cc6d0
+and Cloudflare Pages f68798c0-3b9e-4c14-9349-540b7b27f85c succeeded.
+At22:33:26.689UTC25November, a fresh anonymous browser observed the exact2.17
+build in Core's marker, executable wrapper handshake, wrapper meta and uncached
+version.json, with zero Streamlit exceptions. This verifies deployment identity,
+not the owner's authenticated visual acceptance or live APPROVE responsiveness.
+The separate legacy Workers Builds integration is not the Pages publication gate.
+
+Rollback source remains the preserved Labor2.16 runtime8e7a26b3. No full2.17
+archive/checkpoint is claimed. Management & Administration remains queued;
+APPROVE3.15.23 remains diagnostic-only under the owner's instruction.

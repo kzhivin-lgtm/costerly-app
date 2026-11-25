@@ -2,17 +2,19 @@
 
 APPROVE REMAINS DIAGNOSTIC ONLY, owner correction25November2026. The owner withdrew the proposed
 new approval route: establish the previous mechanism, the relevant version
-changes and the cause before any repair. All local2.17 source/tests/build edits
-were unaccepted experiments, unpushed/unpublished. Preserved locally as
+changes and the cause before any repair. The original local APPROVE IO and
+diagnostic edits were unaccepted experiments, unpushed/unpublished. Preserved locally as
 2f24c839, then explicitly reverted by678eb4e5 without losing their history after
 automatic review rejected destructive worktree restoration. The local candidate
-gate was stopped at372.593s by the owner scope change, not passed. Production
-remains exact Labor2.16 at8e7a26b3. Do not resume implementation/publication from
+gate was stopped at372.593s by the owner scope change, not passed. Incident
+runtime is exact Labor2.16 at8e7a26b3. Do not resume implementation/publication from
 these experiments without the diagnostic decision. Existing output/ and tmp/ are preserved.
 The owner subsequently authorized Coating's shared-template presentation only.
 That distinct UI scope does not authorize a new approval route or the IO trial.
+It was independently verified/published as Labor2.17/57a88923 on26November local
+time; the APPROVE controller, callback and costing use case are unchanged.
 
-Priority P0, owner resumed work3.15.23. Current runtime Labor2.16,
+Priority P0, owner resumed work3.15.23. Investigated incident runtime Labor2.16,
 8e7a26b344a0761c5722941f6dd606959a927c68. Preserve the full Labor2.16 checkpoint
 and the V1.3.3 correlated navigation, access, draft and write-ack contracts.
 
