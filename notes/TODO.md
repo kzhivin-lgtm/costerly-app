@@ -1208,11 +1208,20 @@ when effective front panels change (e.g. kitchen MDF), with a temporary fixed
 ₪100 per person-hour before future company-personnel integration. Prior 80/55
 wage proposals are superseded. Owner confirmed 30 m² = 16 man-hours INCLUDING
 preparation and every stage; do not charge preparation on top of those 16.
-Latest steering requests deeper technology/forum/production benchmarks first.
-Expanded source review is complete: manufacturer routes, original trade-shop
-interviews and first-hand professional forum reports support operation-based
-costing and plausible all-in throughput, not a universal comparable market
-norm or a measured F=4. Keep small-batch fixed time explicit and unapproved.
+Latest steering expanded the research to lacquer/oil and separate surface
+scenarios: veneer/plywood together, raw MDF separately, gloss as a finish variant.
+International review found explicit units in CYPE (two painter/helper roles),
+Spanish BPC12 oil treatment, French BTS2019 enterprise unit-time examples and a
+German master's published workshop estimates. Manufacturer oil systems differ
+(e.g. one-coat Rubio vs two-coat Osmo), so do not copy lacquer hours/material
+rates to oil. Forums in English/German/French supplement process evidence, not
+an averaged production norm. Sources and matching limits are in section7 of
+the existing report. Oil material price and chosen system remain pending.
+Owner then explained the30m²/16h reference was a fast crew and suggested lower
+planning throughput. Proposal40 person-min/m² (24m²/16h as a proportional
+comparison,30m²=20h),25% more labor, is not yet an approved numeric rule or a
+new physical batch size. Keep small-batch fixed time explicit and unapproved;
+the earlier F=4 question does not approve its application to a revised anchor.
 Use company-scoped Machinery for in-house routing, existing physical Parts and
 saved material change dependencies; preserve unrelated hours/overrides, payroll
 load once, Overhead/SC, explicit Save/retry/reopen and no new paid Parts calls.
