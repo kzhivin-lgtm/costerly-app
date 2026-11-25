@@ -544,6 +544,77 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+COMPLETED, P1, USER REQUEST, OWNER-ACCEPTED TEMPORARY LAYOUT, 25 November 2026,
+urgent presentation asset. Owner accepted this version as satisfactory temporary
+layout before returning to Ada diagnostics.
+Temporary client-proposal A4 office document, scaled as a whole into a 350×450px
+preview, plus 1050×1350 PNG and one-page A4 PDF. Latest client-commercial-proposal-a4
+artifacts are in outputs/proposal-mockup-20261124 and supersede earlier drafts.
+Owner-requested geometric orange furniture mark with Hebrew וואן wordmark and
+custom-furniture subtitle spanning below the compact mark/name lockup. No orange
+top stripe. The entire summary is right-aligned without a horizontal rule above
+it. Project Total retains Costerly purple #7E47C4.
+Attribution sits at right immediately below the footer horizontal rule: existing
+Costerly mark and lowercase estimated with costerly ai in one horizontal line.
+Commercial Proposal / הצעת מחיר title, Date label, no Kitchen
+subtitle, TOTAL column heading. Delivery and
+Installation show name and total only, without quantity or unit price.
+Uses app fonts plus Noto Sans Hebrew, whole ILS amounts, Kitchen quantity 1/sale
+amount and Project Price/VAT18%/Total. No Self Cost.
+Company contacts, address, registration and banking details come from the exact
+Project company Profile, read once with explicit owner authorization.
+Owner revision, 25 November 2026: production lead time is 15 working days from
+receipt of a 70% advance payment, shown above footer in English and Hebrew.
+The new company logo is a local presentation mockup, not saved to Profile. Demo integer
+total is 31779 ILS. Poppler PDF render and preview visually reviewed, including
+RTL Hebrew and footer attribution. A4 size, both PNG dimensions, Profile field
+presence, service-row columns, purple total, production terms and no cents verified.
+No runtime/PDF-generator implementation, database changes or Canva edits.
+Future client-PDF generation remains a proposal, outside this artifact request.
+
+DIAGNOSIS VERIFIED, OWNER-APPROVED REPAIR IN PROGRESS, LABOR2.15, P1, USER REQUEST,
+25 November 2026, latest Ada estimate and one-word OCR counterfactual.
+Latest run c09d9a0f5b96420e8c0fca5b61249ec2, created 11:49 UTC, actual Labor2.14
+build. Net 8111.53 ILS (Materials5712.60 + Labor1599.65 + Overhead799.28).
+Same PDF SHA256 as the prior full V3.2 run and the owner-requested E9.6 maximum.
+Confirmed cause: _stock_notes in estimation_display_parts.py rejects current
+OCR label KapnycHbI at similarity0.7777778 below0.78; prior Kapnychbui scores
+0.8421053. The 16mm number is still present. Missing carcass thickness prevents
+dependent panel dimensions; late catalog defaults do not rebuild that geometry.
+Both direct mirror labels are present, so the historical V3.2 label omission is
+not the mechanism here. Offline replay freezes all10 model replies, reproduces
+production Parts exactly, then changes only the role word in the two input copies.
+61 Parts rows regain length/width; glass rows with geometry improve8/24 to24/24.
+Owner requested full costing of this exact intervention: control reproduces both
+objects' saved Materials/Labor/Overhead/net to the cent using the same frozen
+current catalog/settings. Corrected net15051.32 ILS (Materials11985.76 +
+Labor1825.40 + Overhead1240.16), VAT2709.24, total17760.56. No unpriced material
+requirements remain; some cabinet packing dimensions still need review.
+Historical maximum E9.6 is49385.07 net, 13November00:18 Israel;44000 of its
+46589.69 base materials came from assumed price components, e.g.40 glass pieces
+at200 ILS with missing geometry. It is not an accuracy baseline. Prior V3.2
+comparison net13259.61. Evidence is in outputs/ada-latest-diagnosis-20261125,
+especially diagnosis-summary.json and ocr-word-only-cost-experiment.json.
+Diagnosis/counterfactual work was local and read-only:0 production writes,
+0 fresh paid calls. Owner subsequently approved only lowering stock-role similarity
+from0.78 to0.75, publishing it with a new Labor version, and doing his own fresh
+production run. Current saved OCR, thresholds for other fields, defaults and the
+rest of the costing algorithm remain outside this repair. Labor2.15 preserves
+the2.14 checkpoint and existing work3.17.4.6; no new work block is assigned.
+Historical follow-up:30 same-SHA Ada runs with72 saved input rows were checked.
+29 earlier inputs pass this parser (28 use Kapnychbui, one Kapnychb); only the
+25November input has the observed below-threshold role-label rejection.
+Production introduction of0.78 is commit88f261dd7,12November12:45 Israel,
+Estimation9 Parts Check from Upload. Git blame/log show the same hard-coded
+threshold retained in current2.14. It is string similarity, not OCR confidence.
+Initial test covers the previously accepted Kapnychbui spelling and conflicts;
+no calibration or boundary test explaining exactly0.78 is present there.
+Evidence:threshold-history-summary.json, ocr-history-analysis.json and
+threshold-git-blame.txt in the same private diagnosis directory.
+
+
+
+
 
 COMPLETED, P0/P1, OWNER-ACCEPTED FULL CHECKPOINT Estimation9.47,23November2026, existing work3.17.4.6.
 Protected baseline is the full9.46 checkpoint/runtimec731f2ac, records6606568f.

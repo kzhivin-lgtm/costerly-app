@@ -266,7 +266,7 @@ def _stock_notes(input_rows, source_objects):
                 first = words[0].translate(OCR_LOOKALIKES)
                 roles = [role for role, labels in STOCK_LABELS.items() if any(
                     first == name or (len(first) >= 6 and SequenceMatcher(
-                        None, first, name.translate(OCR_LOOKALIKES)).ratio() >= .78) for name in labels)]
+                        None, first, name.translate(OCR_LOOKALIKES)).ratio() >= .75) for name in labels)]
                 value = float(values[0].replace(",", ".")) if values else None
                 if len(roles) == 1 and (value > 0 if value is not None else material_rule_for_text(spec)):
                     evidence[oid][roles[0]].append((value, block["block_ref"], spec.strip()))

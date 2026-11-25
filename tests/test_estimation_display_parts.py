@@ -81,6 +81,26 @@ class TestDisplayParts(unittest.TestCase):
         self.assertNotIn("carcass", _stock_notes([row], sources)["o"])
         self.assertFalse(_stock_notes([row], {"o": {"input_id": "another"}}))
 
+    def test_stock_role_ocr_variants_at_and_around_the_accepted_boundary(self):
+        for label, accepted in (
+            ("KapnycHbI", True),  # Saved Ada OCR: the 16 mm value is present.
+            ("KapnycH", True),    # Exactly the owner-approved 0.75 boundary.
+            ("KapnycHl", False),  # Below the boundary, not a stock-role match.
+            ("Каркасный", False),
+        ):
+            with self.subTest(label=label):
+                row = {"input_id": "i", "input_payload": {
+                    "object": {"object_id": "o"},
+                    "evidence": {"ocr_blocks": [{"block_ref": "note", "text":
+                        f"1. {label} Mamepuan: Phanepe 6epe3oBa 16 MM. (Macno)\n"
+                        "2. Фасадны мамершал: Фанера 18 мм."}]}}}
+                notes = _stock_notes([row], {"o": {"input_id": "i"}})["o"]
+                self.assertEqual("carcass" in notes, accepted)
+                self.assertEqual(notes["facade"]["mm"], 18)
+                if accepted:
+                    self.assertEqual(notes["carcass"]["mm"], 16)
+                    self.assertEqual(notes["carcass"]["refs"], ["note"])
+
     def test_glass_box_above_pull_out_shelf_has_lid_and_four_walls(self):
         width, depth, height, thickness = (
             dimension(value, "test") for value in (544, 300, 123, 4)
