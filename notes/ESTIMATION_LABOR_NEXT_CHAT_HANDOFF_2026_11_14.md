@@ -1,4 +1,13 @@
-**[verified] Latest full preservation checkpoint: Labor2.14,24November2026.**
+**[verified] Latest full preservation checkpoint: Labor2.16,25November2026.**
+Exact runtime8e7a26b3 and separate records/tags,847 source files byte-matched
+after fresh bundle restore. Full1053/ten release gates reused; four frozen
+material controls and62 coating/front tests pass offline. Both owner screenshots
+are packaged. Preserve the base with explicit known limits: coating detail/table
+height and newly reported Ada front-only MDF/retained plywood lacquer scenario.
+Repair that scenario before requested Management/Office payroll allocation.
+[Checkpoint identity, source and restoration](LABOR_V2_16_PRODUCTION_CHECKPOINT_2026_11_25.md).
+
+**[verified] Previous full preservation checkpoint: Labor2.14,24November2026.**
 [verified] Full Labor2.14 preservation checkpoint requested24November2026,
 existing work3.17.4.6. Runtimefc3e5827 is independent of checkpoint records.
 Preserved840 exact source files, helper-validated4,802,790-byte ZIP (SHA256

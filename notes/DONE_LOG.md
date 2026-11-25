@@ -1,5 +1,16 @@
 # Done Log
 
+[verified] Owner-requested full Labor2.16 preservation25November2026, existing
+work3.17.4.6. Exact runtime8e7a26b3,847 files/4,858,173-byte helper-validated source,
+separate source/records tags, self-contained Git bundle, full saved release and
+CI evidence, original owner screenshots, manifest and independent byte-identical
+restore. Four material controls and62 coating/front checks passed offline.
+Owner's subsequent Ada front-only MDF/retained-plywood-coating concern and two
+layout requests are explicit limitations for the next repair, not silently
+marked accepted. Management/Office overhead remains pending behind that repair.
+No runtime redeploy, new paid call, live estimate mutation or credential copy.
+[Full checkpoint and restore](LABOR_V2_16_PRODUCTION_CHECKPOINT_2026_11_25.md).
+
 [verified] Labor2.16 Part Coating published25November2026, runtime8e7a26b3, existing
 work3.17.4.6. Owner approved lacquer40/MDF enamel45/oil35 person-min per m²,
 spray30m² with4h setup inside its full norm, linear oil,22/16/22ILS/m² LKM,

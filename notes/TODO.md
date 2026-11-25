@@ -1193,6 +1193,37 @@ Acceptance supersedes the prior pending state. [Release evidence](ESTIMATION_V9_
 
 ## Estimation Labor: four production stages
 
+ACTIVE, P1, USER REQUEST,25November2026, existing work3.17.4.6. Preserve the
+complete Labor2.16 checkpoint first, then verify/repair Ada front-only material
+replacement and coating scope. Changing plywood fronts to MDF must retain
+original plywood carcasses/internal parts and their lacquer, while only front
+substrate and its dependent enamel/cost/hours change. Read the actual owner
+Corner display cabinet and replay its saved plan, preview and committed facts;
+do not change an already-correct branch merely from the small price delta.
+Coating details must share the Materials table style, and Coating consumables
+must have the same row height. Protect all earlier norms, overrides, geometry,
+saved Save/retry/reopen and exact Labor/Overhead/SC behavior. Proposed next
+release Labor2.17, same workstream. No new paid provider call is needed.
+
+PENDING BEHIND COATING REPAIR, P1, USER REQUEST,25November2026. Add read-only
+nonproduction staff costs from Profile Labor Cost to Profile Overhead expenses
+and each object's Overhead, allocated by object labor hours / Production hours
+(owner's example1200h). Management/Office staff include director, general manager,
+accounting and office administration. Reuse full monthly employer cost, no
+second payroll load and no editable duplicate salary value. Proposed first
+category label Management & Administration, naming not separately accepted yet.
+Owner initially included this in the next work, then explicitly prioritized
+coating scope repair before proceeding to management. Retain that dependency.
+
+COMPLETED PRESERVATION, P1, OWNER REQUEST,25November2026. Exact Labor2.16 runtime
+8e7a26b3 preserved with full source, separate records, immutable tags, Git bundle,
+existing successful1053/ten gates, live build proof, two owner screenshots,
+independent byte-identical restore and four frozen material controls. Source
+847 files/4,858,173 bytes under unchanged5MiB helper limit. This preserves the
+verified base and explicitly records newly reported coating scope/layout issues,
+not acceptance of those unresolved scenarios. See
+[Full checkpoint](LABOR_V2_16_PRODUCTION_CHECKPOINT_2026_11_25.md).
+
 PUBLISHED LABOR2.16, OWNER PRODUCTION ACCEPTANCE PENDING,
 P1, USER REQUEST, 25 November 2026. Focus only Part Coating. Owner fixed LKM
 ₪22/m² veneer matte and ₪16/m² MDF matte, gloss ×2, veneer patina ×2, profiled facade
