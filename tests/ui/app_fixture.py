@@ -527,6 +527,21 @@ if scenario().get('fresh_calculation'):
    raise PermissionError('Estimate is not available to this company.')
  estimation._assert_screen_estimate_access=assert_durable
  st.button('Fixture rerender',key='fixture_calculation_rerender')
+if scenario().get('material_row_geometry'):
+ # Component geometry uses production CSS/renderer without invoking financial
+ # persistence. The full saved-estimate interaction scenarios remain separate.
+ from styles.object_detail import apply_object_detail_css
+ from ui.object_detail_view import _table_html, MATERIAL_PURCHASE_COLUMNS
+ apply_object_detail_css()
+ audit=estimation.calculate_part_coating(front_plan(sample['plans'][0]['plan_payload'],'plywood'),object_id='object-001')
+ rows=[{'item':'Consumables','locked':True,'policy_percent':5,'policy_basis':'materials','total':50},
+       {'item':'Packaging','locked':True,'policy_percent':1,'policy_basis':'materials','total':10},
+       estimation.coating_material_rows(audit)[-1],
+       {'item':'Plywood','required_material_value':2,'required_material_unit':'m²',
+        'required_material_line_id':'material:plywood','purchase_quantity_value':1,
+        'purchase_quantity_line_id':'material:plywood','purchase_unit':'sheet','purchase_unit_cost':100,'total':100}]
+ st.markdown(_table_html({'key':'material','columns':MATERIAL_PURCHASE_COLUMNS,'rows':rows}),unsafe_allow_html=True)
+ st.stop()
 if scenario().get('front_panels') and not derived_path.exists():
  # This scenario represents a completed estimate, including its saved Labor.
  # Seed that existing breakdown before opening the card, never on selection.

@@ -794,6 +794,15 @@ Retain2.13 approved offline design and all financial/auth/persistence contracts.
 
 ## Labor2.16 Part Coating, owner approved25November2026
 
+Owner authorized25-26November2026: Part Coating details use the same table
+headers/rows/cells and keyed receipt reconciliation as Materials, not a separate
+bullet list/client renderer. Show Finish, Coated area, Time norm, Hourly rate,
+with40/45/35min/m² (no person). Preserve the common Labor disclosure/terminal
+hour input, table and retained row nodes across receipt updates, Save/reopen and
+APPROVE. Material formula rows, including Coating consumables, share51px minimum
+cell height. Coating calculations, rates, scope and all earlier workflow remain
+unchanged; this presentation requirement does not approve a new approval route.
+
 Extend the existing Front panels selector to six choices, keeping the four old
 stored IDs and adding only veneer-MDF oil and plywood oil. Labels specify the
 finish. No second selector or extra gloss control. Same-substrate lacquer/oil

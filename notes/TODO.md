@@ -1193,8 +1193,8 @@ Acceptance supersedes the prior pending state. [Release evidence](ESTIMATION_V9_
 
 ## Estimation Labor: four production stages
 
-ACTIVE, P1, USER REQUEST,25November2026, existing work3.17.4.6. Preserve the
-complete Labor2.16 checkpoint first, then verify/repair Ada front-only material
+ACTIVE COATING PRESENTATION, P1, USER REQUEST,25-26November2026,
+existing work3.17.4.6. The full Labor2.16 checkpoint is preserved. Ada front-only material
 replacement and coating scope. Changing plywood fronts to MDF must retain
 original plywood carcasses/internal parts and their lacquer, while only front
 substrate and its dependent enamel/cost/hours change. Read the actual owner
@@ -1203,17 +1203,25 @@ do not change an already-correct branch merely from the small price delta.
 Coating details must share the Materials table style, and Coating consumables
 must have the same row height. Protect all earlier norms, overrides, geometry,
 saved Save/retry/reopen and exact Labor/Overhead/SC behavior. Proposed next
-release Labor2.17, same workstream. No new paid provider call is needed.
+release Labor2.17 now contains only the owner-authorized shared Coating template,
+not the withdrawn APPROVE IO/route trial. No new paid provider call is needed.
+VERIFIED AND OWNER ACCEPTED25November: on the saved Corner display cabinet,
+MDF replaces4.992204m² of fronts;48.868232m² of plywood body/internal parts
+retain lacquer, both in preview and the approved saved result. SC19219.23
+versus18739.28 before. Do not change this correct costing branch. Remaining:
+Coating table/row heights and min/m² copy are implemented locally and undergoing
+the full gate. Material switching latency and the APPROVE cause remain separate
+diagnostics. [Scope and release](LABOR_V2_17_COATING_TABLE_2026_11_25.md).
 
-PENDING BEHIND COATING REPAIR, P1, USER REQUEST,25November2026. Add read-only
+AUTHORIZED, PENDING BEHIND URGENT APPROVE LATENCY, P1, USER REQUEST,25November2026. Add read-only
 nonproduction staff costs from Profile Labor Cost to Profile Overhead expenses
 and each object's Overhead, allocated by object labor hours / Production hours
 (owner's example1200h). Management/Office staff include director, general manager,
 accounting and office administration. Reuse full monthly employer cost, no
 second payroll load and no editable duplicate salary value. Proposed first
 category label Management & Administration, naming not separately accepted yet.
-Owner initially included this in the next work, then explicitly prioritized
-coating scope repair before proceeding to management. Retain that dependency.
+Owner accepted the verified coating scope, reauthorized management plus visual/text
+fixes and material switching measurements, then prioritized the APPROVE incident.
 
 COMPLETED PRESERVATION, P1, OWNER REQUEST,25November2026. Exact Labor2.16 runtime
 8e7a26b3 preserved with full source, separate records, immutable tags, Git bundle,
@@ -7647,7 +7655,25 @@ not left the contenteditable field. Restore only current-row live Cost feedback
 (`unit_cost * quantity`, or the equivalent Labor row formula), while blur or
 Enter remains the single persistence and authoritative server-recalculation
 boundary. Do not restore browser-wide section or final-total calculation.
-DEFERRED, P2, 3.15.23 Approve transition optimization: production trace
+ACTIVE, P0, OWNER RESUMED25November2026, 3.15.23 Approve transition optimization.
+The owner prioritizes this above Labor2.17 coating presentation/Management work.
+DIAGNOSTIC ONLY after owner correction: compare the prior mechanism and deployed
+versions before repairing. Proposed asynchronous approval route is withdrawn.
+The IO/diagnostic trial is preserved locally as2f24c839 and reverted by678eb4e5;
+it remains unaccepted and unpublished. The owner subsequently authorized only
+Coating's shared-template UI, tracked above. No new APPROVE route is approved.
+candidate gate stopped by scope change at372.593s, not a successful full gate.
+Production remains8e7a26b3/Labor2.16. [Investigation](APPROVE_LATENCY_2026_11_25.md).
+Current Labor2.16 owner trace05be75de-70dc-4df2-b0c0-daff0b0bcf55: click21:08:14.805UTC,
+approval persisted21:08:21.838, Project server-ready21:08:26.465, browser timeout
+15.812s with no correlated ready. Separate callback/purchase allocation, Project
+reads/render and browser admission. Preserve atomic draft approval, purchase
+review ordering, acknowledged writes, authentication and continuous correlated
+shielding. Do not increase timeout or reveal stale/unapproved results to mask it.
+Acceptance: clean/saved/unsaved approvals and write failures at desktop/mobile,
+one acknowledged approval and current Project totals, no document replacement,
+no timeout or mixed DOM, measured stage and click-to-visible evidence.
+Earlier production trace
 `28dac1ea-5c35-40aa-9109-8246a22c2078` showed direct-link Approve creating a
 new iframe/server session while the original transition reached its 15-second
 timeout with zero Python runs. Reuse the accepted Streamlit bridge when the

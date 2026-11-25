@@ -353,6 +353,14 @@ at1280/390, including nesting axes. All Projects navigation retains prior route,
 recovery/access and geometry tests; Trial Installation keeps its stored key.
 All ten suites and every earlier amount/unknown/zero/auth check remain required.
 
+Labor2.17 extends those coating scenarios with the shared reference table's
+initial/receipt row parity,40/35/45min/m² copy, preserved table node, equal
+material formula-row height, and expanded Coating/material change/Save/APPROVE
+at1280/390. The mixed MDF-front/plywood-body unit case retains both recipes and
+an unchanged financial audit. Existing material reconciliation and all old
+Save/retry/queued-selection/manual-hours/Overhead/navigation assertions remain.
+No new APPROVE route or IO optimization is part of this release.
+
 Labor2.16 adds coating scenarios at1280/390: six front choices, lacquer/oil
 without repricing the same board, dependent-only hours, flat consumables without
 the old paint percentage,100ILS/h manual coating plus25% once, exact shared

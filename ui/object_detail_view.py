@@ -152,6 +152,8 @@ def _source_marker(value: object) -> str:
 def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]:
     """Map normalized estimate rows to visible table cells."""
     columns = section["columns"]
+    if section.get("readonly") and section.get("column_fields"):
+        return [_escape(row.get(field)) for field in section["column_fields"]]
     if tuple(columns) == MATERIAL_PURCHASE_COLUMNS:
         if row.get("locked"):
             percent = _number_text(row.get("policy_percent"))
@@ -326,12 +328,20 @@ def front_panels_html(groups) -> str:
 
 
 def material_rows_html(rows) -> str:
-    section = {"columns": MATERIAL_PURCHASE_COLUMNS}
+    return table_rows_html({"columns": MATERIAL_PURCHASE_COLUMNS, "rows": rows})
+
+
+def table_rows_html(section) -> str:
+    """Shared server-authored rows for initial tables and their edit receipts."""
+    material = tuple(section["columns"]) == MATERIAL_PURCHASE_COLUMNS
+    def attributes(row):
+        if material:
+            return 'data-section="materials" ' + f'data-material-preview="{_escape(json.dumps(_material_preview(row)))}"'
+        return f'data-section="{_escape(section["key"])}" data-row-key="{_escape(row["row_key"])}"'
     return ''.join(
-        '<div class="object-detail-table-row" data-section="materials" '
-        f'data-material-preview="{_escape(json.dumps(_material_preview(row)))}">'
+        f'<div class="object-detail-table-row" {attributes(row)}>'
         + ''.join(f'<div class="object-detail-table-cell">{value}</div>' for value in _row_values(section, row))
-        + '</div>' for row in rows
+        + '</div>' for row in section["rows"]
     )
 
 
@@ -359,15 +369,8 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
     header = "".join(header_cells)
 
     body_parts: list[str] = []
-    if material_table:
-        for row in rows:
-            values = _row_values(section, row)
-            preview = _material_preview(row)
-            body_parts.append(
-                f'<div class="object-detail-table-row" data-section="materials" data-material-preview="{_escape(json.dumps(preview))}">'
-                + "".join(f'<div class="object-detail-table-cell">{value}</div>' for value in values)
-                + "</div>"
-            )
+    if material_table or section.get("flat"):
+        body_parts.append(table_rows_html(section))
         if collapse_title:
             return (
                 f'<details class="{table_class} object-detail-cost-band object-detail-materials-band" '
@@ -380,8 +383,9 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
                 f'<div class="object-detail-table-head-row">{header}</div>'
                 f'{"".join(body_parts)}</div></details>'
             )
+        reference_attr = f' data-reference-table="{_escape(section_key)}"' if section.get("flat") else ''
         return (
-            f'<div class="{table_class}" data-section="{_escape(section_key)}">'
+            f'<div class="{table_class}" data-section="{_escape(section_key)}"{reference_attr}>'
             f'<div class="object-detail-table-head-row">{header}</div>'
             f'{"".join(body_parts)}'
             '</div>'
@@ -441,6 +445,21 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
         f'{body}'
         '</div>'
     )
+
+
+def coating_table_section(audit) -> dict:
+    return {"key": "coating", "readonly": True, "flat": True,
+            "columns": ("Finish", "Coated area", "Time norm", "Hourly rate"),
+            "column_fields": ("finish", "area", "norm", "rate"),
+            "rows": [{"row_key": batch["finish"], "finish": batch["label"],
+                      "area": f'{_number_text(round(batch["area_m2"], 2))} m²',
+                      "norm": f'{_number_text(batch["minutes_per_m2"])} min/m²',
+                      "rate": f'{_money((audit or {}).get("hourly_rate", 100))}/h'}
+                     for batch in (audit or {}).get("batches", [])]}
+
+
+def coating_details_html(audit) -> str:
+    return _table_html(coating_table_section(audit))
 
 
 def _section_html(section: dict[str, object]) -> str:

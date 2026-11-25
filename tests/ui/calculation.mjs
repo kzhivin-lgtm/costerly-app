@@ -160,6 +160,8 @@ async function coatingChecks(){
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('.object-detail-materials-band > summary').click();
   await core.locator('[data-cost-band="labor"] > summary').click();
+  await core.locator('[data-cost-band="part-coating"] > summary .object-detail-cost-title').click();
+  assert.equal(await core.locator('[data-cost-band="part-coating"]').evaluate(n=>n.open),true);
   const picker=core.getByRole('combobox',{name:'Front panels',exact:true});
   const hours=core.getByRole('textbox',{name:'Part Coating hours',exact:true});
   const save=core.locator('.object-detail-material-save');
@@ -169,14 +171,20 @@ async function coatingChecks(){
   await core.getByRole('button',{name:'Save changes',exact:true}).waitFor();
   await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
   assert.equal(await hours.innerText(),'5.1');
-  await core.getByText('Wood lacquer',{exact:true}).waitFor();
+  await core.locator('.object-detail-materials-band').getByText('Wood lacquer',{exact:true}).waitFor();
+  const coatingTable=core.locator('[data-reference-table="coating"]');
+  assert.deepEqual(await coatingTable.locator('.object-detail-table-head').allTextContents(),['Finish','Coated area','Time norm','Hourly rate']);
+  assert.deepEqual(await coatingTable.locator('[data-row-key="lacquer"] > div').allTextContents(),['Wood lacquer','2.12 m²','40 min/m²','₪100/h']);
+  await coatingTable.evaluate(n=>n.coatingTableWitness='retained');
   const boardPrice=await core.locator('.object-detail-unit-price').first().innerText();
   await picker.selectOption('veneered_mdf_oil');
   await core.getByRole('button',{name:'Save changes',exact:true}).waitFor();
   await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
   assert.equal(await hours.innerText(),'1.2');
   assert.equal(await core.locator('.object-detail-unit-price').first().innerText(),boardPrice);
-  await core.getByText('Wood oil',{exact:true}).waitFor();
+  await core.locator('.object-detail-materials-band').getByText('Wood oil',{exact:true}).waitFor();
+  assert.deepEqual(await coatingTable.locator('[data-row-key="oil"] > div').allTextContents(),['Wood oil','2.12 m²','35 min/m²','₪100/h']);
+  assert.equal(await coatingTable.evaluate(n=>n.coatingTableWitness),'retained','Update rows through the same receipt reconciler, preserving the table');
   assert.equal(await core.getByText('Coating consumables',{exact:true}).count(),1);
   assert.equal(await core.getByText('Paint consumables',{exact:true}).count(),0);
   assert.deepEqual(await core.locator('[data-field="labor_hours"]:not([data-line-id="part-coating"])').evaluateAll(nodes=>nodes.map(n=>[n.dataset.lineId,n.dataset.originalValue])),other);
@@ -198,9 +206,36 @@ async function coatingChecks(){
   assert.equal(Number(await root.getAttribute('data-labor-total-hours')),exactHours);
   assert.equal(await core.locator('[data-testid="stException"]').count(),0);
   await page.screenshot({path:reportPath('coating-'+width+'.png'),fullPage:true});
+  await core.locator('[data-cost-band="part-coating"] > summary .object-detail-cost-title').click();
+  assert.equal(await core.locator('[data-cost-band="part-coating"]').evaluate(n=>n.open),true);
+  await picker.selectOption('mdf');
+  await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
+  assert.equal(await coatingTable.locator('[data-row-key="enamel"]').count(),1);
+  assert.equal(await coatingTable.locator('[data-row-key="oil"]').count(),0);
+  await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+  await coatingTable.screenshot({path:reportPath('coating-table-expanded-'+width+'.png')});
+  await core.getByRole('link',{name:'APPROVE',exact:true}).click();
+  await core.locator('.objects-pricing-table').waitFor();
+  await core.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
+  assert.equal(await core.locator('[data-testid="stException"]').count(),0);
   await page.close();
  }
  report.coating={viewports:[1280,390],finishOnlyPricePreserved:true,manualRate:100,payrollOnce:true,savedReopen:true};
+}
+
+async function materialRowGeometry(){
+ for(const width of [1280,390]){
+  settings({material_row_geometry:true,coating:true});
+  const page=await browser.newPage({viewport:{width,height:900}});
+  await page.goto('http://127.0.0.1:8789/');
+  const rows=page.locator('[data-section="materials"]');
+  await rows.filter({hasText:'Coating consumables'}).waitFor();
+  const heights=await rows.evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().height));
+  assert.equal(heights.length,4);
+  assert(heights.every(h=>Math.abs(h-heights[0])<0.5),JSON.stringify({width,heights}));
+  await page.screenshot({path:reportPath('material-formula-rows-'+width+'.png')});
+  await page.close();
+ }
 }
 
 async function detailSaveChecks(){
@@ -322,6 +357,7 @@ async function detailSaveChecks(){
 await detailSaveChecks();
 await frontPanelChecks();
 await coatingChecks();
+await materialRowGeometry();
 try{
  for(const name of ['fresh-active','fresh-done','fresh-shell-ready','labor-hours.json','full-cost-totals.json','full-cost-lines.json','auth-expired'])rmSync(statePath(name),{force:true});
  const fresh=await boot({fresh_calculation:true,objects_refresh_delay:1.2});

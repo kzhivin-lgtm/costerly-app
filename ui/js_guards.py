@@ -2758,6 +2758,20 @@ def install_object_detail_input_guard(
                 submitDraft(false, true);
             }
 
+            function reconcileTableRows(body, rows, markup, key, update = () => {}) {
+                const old = new Map(rows.map(row => [key(row), row]));
+                const template = parentDoc.createElement('template');
+                template.innerHTML = markup;
+                const retained = new Set();
+                for (const fresh of [...template.content.children]) {
+                    const node = old.get(key(fresh)) || fresh;
+                    if (node !== fresh) update(node, fresh);
+                    retained.add(node);
+                    body.appendChild(node);
+                }
+                for (const row of old.values()) if (!retained.has(row)) row.remove();
+            }
+
             function reconcileFrontMaterialRows(result) {
                 if (!result.material_rows_html) return;
                 const body = parentDoc.querySelector('.object-detail-materials-band > .object-detail-cost-body');
@@ -2766,22 +2780,27 @@ def install_object_detail_input_guard(
                     const data = rowPreview(row);
                     return data.purchase_quantity_line_id || data.item;
                 };
-                const old = new Map(materialRows().map(row => [key(row), row]));
-                const template = parentDoc.createElement('template');
-                template.innerHTML = result.material_rows_html;
-                const retained = new Set();
-                for (const fresh of [...template.content.children]) {
-                    const node = old.get(key(fresh)) || fresh;
-                    retained.add(node);
-                    body.appendChild(node);
-                }
-                for (const row of old.values()) if (!retained.has(row)) row.remove();
+                reconcileTableRows(body, materialRows(), result.material_rows_html, key);
                 for (const group of result.front_panels || []) {
                     const input = parentDoc.querySelector(`[data-front-panels][data-line-id="${CSS.escape('__front_panels__:' + group.id)}"]`);
                     if (!input) continue;
                     if (!result.preview) input.dataset.originalValue = group.choice;
                     const edit = draft.get(editKey(contextFor(input)));
                     input.value = edit?.value || group.choice;
+                }
+            }
+
+            function reconcileReferenceTables(tables) {
+                for (const receipt of tables || []) {
+                    const table = parentDoc.querySelector(`[data-reference-table="${CSS.escape(receipt.key)}"]`);
+                    if (!table) continue;
+                    reconcileTableRows(table, [...table.querySelectorAll(':scope > .object-detail-table-row')],
+                        receipt.rows_html, row => row.dataset.rowKey, (node, fresh) => {
+                            const cells = node.querySelectorAll(':scope > .object-detail-table-cell');
+                            fresh.querySelectorAll(':scope > .object-detail-table-cell').forEach((cell, i) => {
+                                if (cells[i].textContent !== cell.textContent) cells[i].textContent = cell.textContent;
+                            });
+                        });
                 }
             }
 
@@ -2817,6 +2836,7 @@ def install_object_detail_input_guard(
                     if (draft.get(key)?.value === edit.value || Number(draft.get(key)?.value) === Number(edit.value)) draft.delete(key);
                 }
                 reconcileFrontMaterialRows(result);
+                reconcileReferenceTables(result.reference_tables);
                 // A first explicit unknown-hours override can complete Overhead.
                 // Reuse server rendering only for a previously pending host;
                 // ready groups and all hour input nodes stay mounted.
@@ -2842,16 +2862,6 @@ def install_object_detail_input_guard(
                 if (coatingRow && result.part_coating) {
                     coatingRow.dataset.coatingBatches = JSON.stringify(result.part_coating.batches || []);
                     coatingRow.dataset.costUnknown = String(result.part_coating.hours == null && result.labor_hours_overrides?.['part-coating'] == null);
-                    const body = coatingRow.querySelector(':scope > .object-detail-work-body');
-                    if (body) {
-                        const list = parentDoc.createElement('ul');
-                        for (const batch of result.part_coating.batches || []) {
-                            const item = parentDoc.createElement('li');
-                            item.textContent = `${batch.label} · ${batch.area_m2.toFixed(2)} m² · ${batch.minutes_per_m2} person-min/m² · ₪100/h`;
-                            list.append(item);
-                        }
-                        body.replaceChildren(list);
-                    }
                 }
                 for (const input of parentDoc.querySelectorAll('[data-field="labor_hours"]')) {
                     const perItem = result.labor_hours_overrides?.[input.dataset.lineId];

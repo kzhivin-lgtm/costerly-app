@@ -390,6 +390,9 @@ def apply_object_detail_css() -> None:
         .object-detail-table--cols-6[data-section="material"] :is(.object-detail-table-head, .object-detail-table-cell) {
             padding-inline: 7px;
         }
+        .object-detail-table--cols-6[data-section="material"] .object-detail-table-row > .object-detail-table-cell {
+            min-height: 51px;
+        }
 
         .object-detail-unit-price {
             white-space: nowrap;

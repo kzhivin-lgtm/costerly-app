@@ -14,7 +14,7 @@ from db.repositories import (
 from db.supabase_client import get_supabase_client
 from observability.runtime import report_runtime_failure
 from screens.block_assembly import assembly_breakdown_html
-from ui.object_detail_view import detail_elements_html, overhead_section_html, _money as display_money
+from ui.object_detail_view import coating_details_html, detail_elements_html, overhead_section_html, _money as display_money
 from use_cases.overhead_engine import estimate_object_overhead, with_production_capacity, format_labor_hours
 from use_cases.block_assembly import calculate_block_assembly
 from use_cases.estimation_labor_v1 import (
@@ -448,11 +448,7 @@ def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, 
 
 
 def _coating_html(audit):
-    if not audit:
-        return ''
-    return '<ul>' + ''.join('<li>' + escape(batch['label']) + ' · ' + _sheets(batch['area_m2'])
-                           + ' m² · ' + str(batch['minutes_per_m2']) + ' person-min/m² · ₪100/h</li>'
-                           for batch in audit['batches']) + '</ul>'
+    return coating_details_html(audit)
 
 
 def _overhead_html(state, *, identity, material_cost, material_partial=False, quantity=1, overrides=None):
