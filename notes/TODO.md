@@ -574,6 +574,12 @@ receipt are in this workspace's output/pdf/adda-file-screenshot-* and
 adda-english-technical-sheet.pdf. Reproducible helper:
 tmp/pdfs/adda-slide/build_portrait.py. Both sizes visually reviewed; source
 Adda.pdf remains unchanged. No application/Canva edit or new runtime release.
+Latest owner revision removes the entire viewer toolbar, gray canvas and page
+shadow. Delivered the white technical sheet alone, keeping its A4 proportions
+and existing frame/title block: preview350x495 and full1050x1485 PNGs,
+output/pdf/adda-technical-sheet-white*.png. Native PDF export, corners verified
+white and preview visually reviewed. Previous framed screenshot variants remain
+available; no drawing geometry was changed for this crop.
 
 COMPLETED, P1, USER REQUEST, OWNER-ACCEPTED TEMPORARY LAYOUT, 25 November 2026,
 urgent presentation asset. Owner accepted this version as satisfactory temporary
