@@ -321,7 +321,11 @@ passing. Its intended role remains unknown; no integration was removed or
 changed for V2.7. Reconfirmed23November on9.45/1f872f01 and9.46/c731f2ac:
 Workers Builds failed, target Cloudflare Pages and exact live Core/wrapper/version
 passed.9.46 Workers build668b5650, check137704875670; evidence in
-outputs/estimation-v9.46/external-checks.json. Status stays deferred, not reactivated.
+outputs/estimation-v9.46/external-checks.json. Reconfirmed 25 November on Labor
+2.14/fc3e5827 and 2.15/bae0e899: the separate Workers check fails on both,
+while target Pages, Core deployment and exact served builds pass for 2.15.
+Evidence: outputs/labor-v2.15-20261125/auxiliary-check-diagnosis.json.
+Status stays deferred, not reactivated.
 This follow-up does not authorize infrastructure changes.
 
 PENDING, P0, DIAGNOSTIC FOLLOW-UP, 2026-11-19. Bind upload completion to the
@@ -572,7 +576,7 @@ presence, service-row columns, purple total, production terms and no cents verif
 No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation remains a proposal, outside this artifact request.
 
-PUBLISHED, OWNER FRESH ADA ACCEPTANCE PENDING, LABOR2.15, P1, USER REQUEST,
+PUBLISHED, FRESH OWNER ADA RECOVERY VERIFIED, LABOR2.15, P1, USER REQUEST,
 25 November 2026, latest Ada estimate and one-word OCR counterfactual.
 Latest run c09d9a0f5b96420e8c0fca5b61249ec2, created 11:49 UTC, actual Labor2.14
 build. Net 8111.53 ILS (Materials5712.60 + Labor1599.65 + Overhead799.28).
@@ -619,8 +623,20 @@ version.json all matchlabor-v2.15-b20261125123857-ocr-role-075-detection-v8.4.29
 Unchanged saved OCR at0.75 reproduces the prior one-word-corrected Parts exactly;
 64 historical object inputs across30 runs preserve the former stock result,
 apart from today's intended16mm recovery.0 new paid calls or production data
-writes. Await owner's fresh Ada via New Estimate; do not claim full OCR
-robustness or production acceptance from frozen replay.2.14 checkpoint preserved.
+writes. Fresh owner run a75c5dd7ff4a4b0882e785d73aaa6fbe,25November14:56 Israel,
+uses the exact2.15 build and same PDF/native audit. Both Parts geometry signatures
+and each object's monetary stages match the corrected forecast to the cent.
+Net15051.32 (Materials11985.76 + Labor1825.40 + Overhead1240.16), VAT2709.24,
+total17760.56. Cabinet Materials9101.88 match prior full V3.2 exactly; neither
+object has unpriced material requirements. Differences from V3.2: vanity
+Materials+283.02, Labor+443.46 (442.72 Preparation/Packing), Overhead+1065.23
+(capacity1200 versus2016h, current3%/3% reserves and additional labor).
+The specific OCR material-loss mechanism is recovered in this production witness.
+Do not infer full OCR robustness, universal costing accuracy or a new accepted
+full checkpoint. Cabinet packing remains partial for B02/B07/closure-A05, tracked
+with Preparation and Packing below. Owner calls result more plausible, not full
+costing acceptance. Private evidence: outputs/ada-labor-v2.15-owner-run-20261125/
+comparison-summary.json.2.14 checkpoint preserved.
 [Release/evidence](LABOR_V2_15_OCR_ROLE_THRESHOLD_2026_11_25.md).
 
 
@@ -1232,6 +1248,14 @@ selected as the next free minor under the owner's explicit Labor2.x preference;
 occupied2.8/2.9 tags remain untouched. The owner explicitly confirmed Labor2.10. No new product/work-number block is
 introduced.
 Detailed rules and acceptance: existing four-stage plan, latest section below.
+
+PENDING DIAGNOSTIC FOLLOW-UP, P2,25November2026, same Preparation/Packing
+objective3.17.4.6. Fresh owner Ada on Labor2.15 restores all priced Materials but
+cabinet packing remains partial for B02, B07 and closure-A05 because envelopes
+are unresolved. Inspect source evidence and existing envelope derivation before
+proposing recovery; no new norm, fallback size or repair is approved. Evidence:
+outputs/ada-labor-v2.15-owner-run-20261125/comparison-summary.json and source
+Parts/full-cost rows. This gap is separate from the recovered OCR stock role.
 
 COMPLETED, P1, USER REQUEST, Full Labor2.14 preservation checkpoint24November2026.
 [verified] Full Labor2.14 preservation checkpoint requested24November2026,
