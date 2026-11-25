@@ -548,6 +548,17 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+COMPLETED LOCAL MOCKUP, P1, USER REQUEST, 25 November 2026, Ada presentation
+file illustration. Source is the owner's Desktop/SAMPLES/Adda/Adda.pdf, first
+page. A separate landscape crop shows only the corner display cabinet, with
+English callouts substituted in the native PDF and original cabinet vector
+geometry preserved. Deliverables: 2400x1350 PNG and scalable PDF in the previous
+workspace's output/pdf/adda-corner-display-english.*; translation/source-hash
+receipt and reproducible helper retained there and in tmp/pdfs. Original PDF
+unchanged. Draft artifact, no new runtime version, costing/Detection change or
+Canva edit. Visual review and PDF/PNG dimensions verified; owner design
+acceptance is not inferred.
+
 COMPLETED, P1, USER REQUEST, OWNER-ACCEPTED TEMPORARY LAYOUT, 25 November 2026,
 urgent presentation asset. Owner accepted this version as satisfactory temporary
 layout before returning to Ada diagnostics.
