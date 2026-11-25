@@ -1193,7 +1193,7 @@ Acceptance supersedes the prior pending state. [Release evidence](ESTIMATION_V9_
 
 ## Estimation Labor: four production stages
 
-COMPLETED RESEARCH, MATERIAL RULES OWNER APPROVED, LABOR PARAMETERS PENDING,
+ACTIVE IMPLEMENTATION REQUEST, RESEARCH EXPANDED, CALIBRATION PENDING,
 P1, USER REQUEST, 25 November 2026. Focus only Part Coating. Owner fixed LKM
 ₪22/m² veneer matte and ₪16/m² MDF matte, gloss ×2, veneer patina ×2, profiled facade
 +10%; coated area is both faces plus edges, consumables separate ₪10/m².
@@ -1202,13 +1202,27 @@ branch, never charge both. Research separates handling/sanding/application,
 drying, changeover and crew wages from a contractor's service price. Proposed
 full-batch/residual formula preserves the owner's 45=30+15 and 70=30+30+10
 examples. F=4 man-hours is an unmeasured illustration, not approved calibration;
-actual batch/reset event and the area basis of 30/40 m² per crew shift need
-confirmation. Retrieved recording rates 120/75, public employer wage posting
-and explicitly provisional 80/55 proposal. No average B2B price established.
+actual batch/reset event needs confirmation. Owner subsequently requested the
+next release with coating materials/consumables and Labor hours, recalculated
+when effective front panels change (e.g. kitchen MDF), with a temporary fixed
+₪100 per person-hour before future company-personnel integration. Prior 80/55
+wage proposals are superseded. Owner confirmed 30 m² = 16 man-hours INCLUDING
+preparation and every stage; do not charge preparation on top of those 16.
+Latest steering requests deeper technology/forum/production benchmarks first.
+Expanded source review is complete: manufacturer routes, original trade-shop
+interviews and first-hand professional forum reports support operation-based
+costing and plausible all-in throughput, not a universal comparable market
+norm or a measured F=4. Keep small-batch fixed time explicit and unapproved.
+Use company-scoped Machinery for in-house routing, existing physical Parts and
+saved material change dependencies; preserve unrelated hours/overrides, payroll
+load once, Overhead/SC, explicit Save/retry/reopen and no new paid Parts calls.
+No new remote version assigned to production: verified main remains Labor 2.15
+at bae0e899. Next candidate proposed Labor 2.16, same work 3.17.4.6.
 All sources, cases, sensitivity and scope boundaries:
 [Coating rates and batch research](LABOR_COATING_RATES_AND_BATCH_RESEARCH_2026_11_25.md).
-No runtime/UI/business-data changes; implementation awaits the parameter decisions.
-Existing reference 3.17.4.6 retained, no new version/block number.
+No runtime/UI/business-data changes yet; automatic small-batch hours await the
+parameter decision. No average comparable B2B price established. Existing
+reference 3.17.4.6 retained, no new work block.
 
 COMPLETED SOURCE ANALYSIS, P1, USER REQUEST, 25 November 2026. Extract the owner's
 and partner's discussion of solid-wood estimating and coatings from the two
