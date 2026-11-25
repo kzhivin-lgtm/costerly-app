@@ -1193,9 +1193,42 @@ Acceptance supersedes the prior pending state. [Release evidence](ESTIMATION_V9_
 
 ## Estimation Labor: four production stages
 
+COMPLETED RESEARCH, MATERIAL RULES OWNER APPROVED, LABOR PARAMETERS PENDING,
+P1, USER REQUEST, 25 November 2026. Focus only Part Coating. Owner fixed LKM
+₪22/m² veneer matte and ₪16/m² MDF matte, gloss ×2, veneer patina ×2, profiled facade
++10%; coated area is both faces plus edges, consumables separate ₪10/m².
+Replace the corresponding old Paint consumables percent in the future coating
+branch, never charge both. Research separates handling/sanding/application,
+drying, changeover and crew wages from a contractor's service price. Proposed
+full-batch/residual formula preserves the owner's 45=30+15 and 70=30+30+10
+examples. F=4 man-hours is an unmeasured illustration, not approved calibration;
+actual batch/reset event and the area basis of 30/40 m² per crew shift need
+confirmation. Retrieved recording rates 120/75, public employer wage posting
+and explicitly provisional 80/55 proposal. No average B2B price established.
+All sources, cases, sensitivity and scope boundaries:
+[Coating rates and batch research](LABOR_COATING_RATES_AND_BATCH_RESEARCH_2026_11_25.md).
+No runtime/UI/business-data changes; implementation awaits the parameter decisions.
+Existing reference 3.17.4.6 retained, no new version/block number.
+
+COMPLETED SOURCE ANALYSIS, P1, USER REQUEST, 25 November 2026. Extract the owner's
+and partner's discussion of solid-wood estimating and coatings from the two
+provided Hanina Ben Tradyon Street M4A recordings. Preserve source timestamps,
+numeric bases/units, decisions versus options and unresolved questions for the
+future calculation blocks. This authorizes discussion analysis, not activation
+of new calculation rules, UI changes or a runtime release. Extend this existing
+Labor workstream, reference 3.17.4.6; do not invent a new release/block number.
+Both recordings are fully transcribed locally, with 18 independent short
+rechecks of 6 difficult groups. Decisions, units, late corrections, estimates
+and unresolved bases are separated in
+[Source-grounded discussion notes](LABOR_SOLID_WOOD_COATING_AUDIO_2026_11_25.md).
+Future implementation remains pending an agreed calculation table; no runtime,
+pricing, business-data or paid API change. Raw audio/transcripts stay local.
+
 STEPS 1/2 COMPLETED AND OWNER ACCEPTED, P1, 23 November 2026. Preparation and
-Packing is now ACTIVE for rule definition at the owner's request below. Coating
-and Additional Assembly remain DEFERRED pending agreed boundaries and rates. Organize Labor into four
+Packing was subsequently implemented in Labor 2.10; its remaining Ada envelope
+gap is recorded below. Coating definition/research resumed 25 November with the
+owner-approved material rules above; labor calibration/implementation remain
+pending. Additional Assembly remains DEFERRED pending agreed boundaries/rates. Organize Labor into four
 stages: Part Production, Part Coating, Assembly (Block Assembly + Additional
 Assembly), and Preparation/Packing (trial fit/check/disassembly/packing). Reuse
 existing Sheet Processing/Block Assembly and shared totals. Apply company
