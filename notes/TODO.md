@@ -1222,6 +1222,13 @@ planning throughput. Proposal40 person-min/m² (24m²/16h as a proportional
 comparison,30m²=20h),25% more labor, is not yet an approved numeric rule or a
 new physical batch size. Keep small-batch fixed time explicit and unapproved;
 the earlier F=4 question does not approve its application to a revised anchor.
+Owner then approved the concrete front/coating matrix: LDSP none, veneer MDF
+and plywood lacquer or oil, raw MDF enamel/lacquer only. Use ONE existing Front
+panels selector, no second finish control. Current four options become six by
+adding veneer-MDF oil and plywood oil, with finish labels on the existing wood
+and MDF options. Preserve backward compatibility of the four stored choices,
+physical geometry and board costs; only dependent coating demand/cost/hours
+change. New gloss controls or extra choices beyond these six are not approved.
 Use company-scoped Machinery for in-house routing, existing physical Parts and
 saved material change dependencies; preserve unrelated hours/overrides, payroll
 load once, Overhead/SC, explicit Save/retry/reopen and no new paid Parts calls.
