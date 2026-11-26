@@ -81,3 +81,13 @@ Installed Streamlit1.64 TextInput/useUpdateUiValue instead enforces maxChars in
 the React change handler. The test now accepts240 characters, rejects241 and
 restores the original value before blur. Runtime validation was never changed.
 Failed candidate6ddebe32 is not approved for publication.
+
+The next new browser case exposed an invalid direct-submission fixture: it
+called submit_prepared_estimation_job but omitted objects_estimation_future_id,
+which production _start_prepared_estimation_launch always sets. A source search
+confirmed these are the only submission sites. The fixture now records the same
+owned estimate receipt; no assertion or production behavior was weakened.
+The isolated exact completion-away scenario then passed11.072s with one worker,
+saved result on the first ready return, hidden counter and240/241 boundary.
+Profile measurement passed8.223s: Metrics/Pricing closing gaps reduced61to29px,
+matching unchanged Contacts/Bank/Labor. Existing full gates remain required.

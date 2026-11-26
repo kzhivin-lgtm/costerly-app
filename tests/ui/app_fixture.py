@@ -556,6 +556,9 @@ if scenario().get('fresh_calculation'):
   st.session_state.estimation_batch_future=runtime.submit_prepared_estimation_job(
    estimate_id=estimate_id,run_id=run_id,company_id=company_id,file_name='fixture.pdf',file_bytes=b'pdf',
    object_edits={},metadata_values={},edits_changed=False,ignored_object_ids=set(),create_shell=True)
+  # Match _start_prepared_estimation_launch's ownership receipt. This fixture
+  # directly submits the real runtime worker instead of dispatching that UI plan.
+  st.session_state.objects_estimation_future_id=estimate_id
  def assert_durable(*args, **kwargs):
   if not (STATE / 'fresh-shell-ready').exists():
    record('ERROR ownership read before shell')
