@@ -743,6 +743,13 @@ presence, service-row columns, purple total, production terms and no cents verif
 No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation remains a proposal, outside this artifact request.
 
+COMPLETED LOCAL WHITE-BACKGROUND REVISION, P1, USER REQUEST26November2026.
+Ada proposal V3 has explicit opaque white paper and white HTML/viewer underlay,
+plus white350x450/1050x1350 slide PNGs. V2 text, amounts,15-working-day/70%-advance
+terms, company mark and previews unchanged. New artifacts:
+output/pdf/ada-commercial-proposal-v3-white. Original files preserved;
+no application or deployment change. Owner review pending.
+
 COMPLETED LOCAL ADA PDF MOCKUP V2, OWNER REVIEW PENDING, P1, USER REQUEST,
 26November2026. Revise the approved temporary client-commercial-proposal-a4
 layout using the owner's23.24.40 Project Adda screenshot. Same Hebrew company
