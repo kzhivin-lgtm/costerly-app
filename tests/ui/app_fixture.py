@@ -541,7 +541,13 @@ if scenario().get('fresh_calculation'):
    return {'estimate_id':estimate_id}
   def calculate(**kwargs):
    record('fresh worker started')
-   sleep(4)
+   if scenario().get('fresh_finish_away'):
+    for _ in range(300):
+     if (STATE / 'fresh-release').exists():break
+     sleep(.1)
+    else:raise AssertionError('Fixture calculation was not released')
+   else:
+    sleep(4)
    (STATE / 'fresh-done').touch()
    return {'estimate_id':estimate_id}
   runtime.save_file_review_run_metadata=lambda **_:None

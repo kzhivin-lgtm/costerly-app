@@ -1,5 +1,13 @@
 # Persistent UI release contract
 
+Labor2.21 adds completion while away from Project: the real local worker is
+held until Profile then File Review are open, completed there, then Continue
+must show saved costs and Review immediately with one worker submission. File
+Review maxlength240 remains while counters are hidden. Profile Save-card bottom
+geometry matches its normal padding in Metrics/Pricing/Contacts/Bank Details,
+with existing persisted saves, errors and ready coordination retained. Python
+covers terminal success/failure both before and after navigation preparation.
+
 Labor2.20 adds acknowledged completed-project rename/Continue coverage,
 nullable Advance payment save/clear/reopen, matching Contacts/Pricing/Machinery
 button metrics and tall CSS viewport Project/Object gap bounds. Existing normal

@@ -14,6 +14,17 @@ const server=createServer((req,res)=>{
 await new Promise(resolve=>server.listen(8796,'127.0.0.1',resolve));
 const browser=await chromium.launch(chromeOptions);
 const results=[];
+const closingGaps=[];
+async function checkSaveCard(button){
+ const geometry=await button.evaluate(node=>{
+  const card=node.closest('.st-key-company_metrics_card,.st-key-company_pricing_card,.st-key-company_labor_card,[data-testid="stForm"]');
+  const s=getComputedStyle(card);
+  return {label:node.textContent,gap:card.getBoundingClientRect().bottom-node.getBoundingClientRect().bottom,
+   expected:parseFloat(s.paddingBottom)+parseFloat(s.borderBottomWidth)};
+ });
+ assert.ok(Math.abs(geometry.gap-geometry.expected)<2,JSON.stringify(geometry));
+ closingGaps.push(geometry);
+}
 const buttonStyle=button=>button.evaluate(node=>{
  const text=node.querySelector('p')||node,s=getComputedStyle(text),b=getComputedStyle(node);
  return {height:node.getBoundingClientRect().height,font:s.fontFamily,size:s.fontSize,weight:s.fontWeight,case:s.textTransform,radius:b.borderRadius,color:b.backgroundColor};
@@ -70,6 +81,7 @@ async function waitDb(predicate){
 try{
  const ctx=await boot();
  await move(ctx,'Profile','account');
+ await checkSaveCard(ctx.core.locator('[data-company-settings-save="metrics"]'));
  const rent=ctx.core.locator('.company-metrics-monthly-input[data-field="rent_facilities_cost"]');
  const rentField=await rent.getAttribute('data-field');
  await rent.fill('321');
@@ -78,6 +90,7 @@ try{
  await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
  await waitDb(data=>data.overhead_monthly[0][rentField]===321);
  await tab(ctx,'Pricing Cost');
+ await checkSaveCard(ctx.core.locator('[data-company-settings-save="pricing"]'));
  const reserve=ctx.core.locator('.company-pricing-input[data-field="warranty_reserve_percent"]');
  const pricingButtonStyle=await buttonStyle(ctx.core.locator('[data-company-settings-save="pricing"]'));
  await reserve.fill('7');
@@ -92,6 +105,7 @@ try{
  await tab(ctx,'Overhead Expenses');
  assert.match(await ctx.core.locator('.company-metrics-monthly-input[data-field="rent_facilities_cost"]').innerText(),/321/);
  await tab(ctx,'Contacts');
+ await checkSaveCard(ctx.core.getByRole('button',{name:'Save Contacts',exact:true}));
  const email=ctx.core.getByRole('textbox',{name:'Official email',exact:true});
  await email.fill('saved@fixture.invalid');
  assert.deepEqual(await buttonStyle(ctx.core.getByRole('button',{name:'Save Contacts',exact:true})),pricingButtonStyle,'Pricing uses Contacts button geometry and typography');
@@ -100,6 +114,7 @@ try{
  await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
  await waitDb(data=>data.companies[0].public_email==='saved@fixture.invalid');
  await tab(ctx,'Bank Details');
+ await checkSaveCard(ctx.core.getByRole('button',{name:'Save Bank Details',exact:true}));
  await ctx.core.getByRole('textbox',{name:/^Company registration number/}).fill('123456789');
  await ctx.core.getByRole('textbox',{name:/^Account number$/i}).fill('003123');
  await ctx.core.getByRole('button',{name:'Save Bank Details',exact:true}).click();
@@ -190,6 +205,7 @@ try{
  assert.equal(await ctx.core.locator('[data-testid="stException"]').count(),0);
  results.push('Overhead, Pricing, Contacts, Bank Details, Machinery, worker addition and user removal persisted through tab changes and Profile reopen');
  writeFileSync(reportPath('profile-save.json'),JSON.stringify(results,null,2));
+ writeFileSync(reportPath('profile-save-closing-gaps.json'),JSON.stringify(closingGaps,null,2));
  console.log(results);
  await ctx.page.close();
  for(const width of [1280,390]) {

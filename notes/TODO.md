@@ -548,6 +548,24 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+ACTIVE, P0, USER REPORT26November2026, Labor2.21 navigation recovery (owner-selected release number),
+existing work3.17.4.6. Owner accepted previews, immediate Project name, Advance
+payment, Profile buttons and zoom gaps, but reported Project stuck45%/pending
+after Profile/File Review navigation. Exact run_b10730a250624e53a5b46a6fe0528510,
+estimate suffix20261126115535, routeEiTYFdrAYzxL. Durable object rows both
+terminal100% by11:58:00UTC; screenshot11:59UTC still shows seeds. Same browser
+session throughout. On return, a completed Future is consumed, then prepared
+seed rows overwrite the dirty result cache and the non-live fragment stops
+refreshing. Existing path since V5.8.1/7405e67, not a new Parts failure.
+Repair only matching prepared navigation state at worker completion, preserving
+worker, inputs, paid-call count, tenant ownership and existing timers. Verify
+red/green terminal success/failure, browser completion while away, all protected
+gates and exact served builds. No new paid cycle or production data write.
+Also P1, user-requested UI: hide File Review input counters without removing
+max_chars240/server validation; remove empty footer inside every Profile Save
+card using the established layout, retain errors, Saving/Saved and fixed Privacy.
+Evidence: private output/labor-v2.20-incident-20261126/saved-run.json.
+
 PUBLISHED LABOR2.20, OWNER ACCEPTANCE PENDING, P1, USER APPROVED26November2026,
 existing work3.17.4.6. Runtime deb8b8fe, exact GitHub1094/ten396.913s passed,
 run45812741297; normal publisher, actual strict/no-bypass main protection and

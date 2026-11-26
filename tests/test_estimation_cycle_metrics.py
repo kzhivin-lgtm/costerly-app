@@ -1,9 +1,47 @@
 from concurrent.futures import Future
+import pytest
 
 from streamlit.testing.v1 import AppTest
 
 from screens import objects
 from ui.objects_pricing import cycle_metrics_html
+
+
+@pytest.mark.parametrize('failed', [False, True])
+@pytest.mark.parametrize('completion', ['before_prepare', 'after_prepare'])
+def test_worker_finishing_away_discards_prepared_progress_before_return(monkeypatch, failed, completion):
+    """File Review can prepare seeds while the unconsumed Future is already done."""
+    class Session(dict):
+        __getattr__ = dict.__getitem__
+        __setattr__ = dict.__setitem__
+
+    future = Future()
+    def finish():
+        if failed:
+            future.set_exception(RuntimeError('fixture failure'))
+        else:
+            future.set_result({'estimate_id': 'estimate', 'estimation': {'status': 'completed'}})
+    if completion == 'before_prepare':
+        finish()
+    state = Session(current_estimate_id='estimate', estimation_batch_future=future,
+                    objects_estimation_future_id='estimate', objects_estimation_cycles={})
+    monkeypatch.setattr(objects.st, 'session_state', state)
+    monkeypatch.setattr(objects, 'invalidate_object_detail_cache', lambda *_: None)
+    state.objects_navigation_ready = {
+        'company_id': 'company', 'run_id': 'run', 'estimate_id': 'estimate',
+        **objects.prepare_objects_navigation_state(
+            company_id='company', run_id='run', estimate_id='estimate',
+            seed_rows=[{'object_key': 'one', 'status': 'running', 'progress_percent': 45}]),
+    }
+    if completion == 'after_prepare':
+        finish()
+    objects._consume_estimation_future()
+    assert objects._consume_prepared_objects_navigation_state(
+        company_id='company', run_id='run', estimate_id='estimate') is None
+    if not failed:
+        assert 'estimate' in state.objects_estimation_cache_dirty
+    else:
+        assert state.estimation_terminal_failures['estimate'] == 'fixture failure'
 
 
 def _mount_objects_table():

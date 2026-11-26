@@ -184,6 +184,12 @@ def _consume_estimation_future() -> None:
     finally:
         if cycle:
             cycle.worker_finished = True
+        prepared = st.session_state.get("objects_navigation_ready")
+        if isinstance(prepared, dict) and prepared.get("estimate_id") == cycle_estimate_id:
+            # File Review may have prepared seed rows while this Future was
+            # still unconsumed. Never cache those seeds after accepting its
+            # terminal result, when the live fragment will no longer poll.
+            st.session_state.pop("objects_navigation_ready", None)
         st.session_state.prepared_estimate_access = None
         clear_estimate_progress(st.session_state.get("current_estimate_id"))
         st.session_state.estimation_batch_future = None

@@ -910,3 +910,18 @@ notice or writer. At CSS viewport heights1500px and above, Project/Object
 summary/actions follow content naturally, eliminating zoom25/33% stretch.
 Normal viewport/footer axes and fixed Privacy remain protected. Required
 scenarios and reasons are in LABOR_V2_20_PROJECT_PROFILE_2026_11_26.md.
+
+## Labor2.21 calculation completion during navigation,26November2026
+
+A worker finishing while Profile or File Review is mounted must reveal its
+persisted terminal result on return to Project. Discard a matching prepared
+progress snapshot when consuming that worker's terminal result, before it can
+replace the dirty result cache. Preserve the same worker, input and estimate;
+return navigation must not start a new paid calculation. Keep existing live
+fragment refresh and tenant-scoped prepared navigation.
+
+File Review retains240-character validation but hides character-count hints,
+matching existing Profile input presentation. Profile Save cards retain their
+normal bottom padding; invisible guard/fragment bridge slots must add no blank
+footer. Actual errors, acknowledgement-driven Saving/Saved and fixed Privacy
+remain visible and functional.

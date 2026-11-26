@@ -418,6 +418,31 @@ try{
  assert.ok(!readFileSync(journal,'utf8').includes('ERROR ownership read before shell'));
  assert.equal(await fresh.core.locator('[data-testid="stException"]').count(),0);
  await fresh.page.close();
+ // Complete the same worker while File Review is mounted. Returning must
+ // discard its prepared progress snapshot and reveal the persisted result.
+ for(const name of ['fresh-active','fresh-done','fresh-shell-ready','fresh-release'])rmSync(statePath(name),{force:true});
+ const starts=(readFileSync(journal,'utf8').match(/fresh worker started/g)||[]).length;
+ const away=await boot({fresh_calculation:true,fresh_finish_away:true});
+ await away.core.locator('.objects-pricing-table').waitFor();
+ await away.core.getByRole('button',{name:'Profile',exact:true}).click();
+ await away.core.getByRole('button',{name:'Last Estimate',exact:true}).click();
+ await away.core.getByRole('button',{name:/^continue to project$/i}).waitFor();
+ await away.core.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
+ const projectName=away.core.getByRole('textbox',{name:'Project name',exact:true});
+ await projectName.focus();
+ assert.equal(await projectName.getAttribute('maxlength'),'240');
+ assert.equal(await away.core.locator('[data-testid="InputInstructions"]:visible,[data-testid="stInputInstructions"]:visible').count(),0);
+ writeFileSync(statePath('fresh-release'),'release');
+ for(let i=0;i<100&&!existsSync(statePath('fresh-done'));i++)await new Promise(r=>setTimeout(r,100));
+ assert.ok(existsSync(statePath('fresh-done')),'Worker completed while File Review remained mounted');
+ await away.core.getByRole('button',{name:/^continue to project$/i}).click();
+ await away.core.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
+ assert.match(await away.core.locator('.objects-pricing-table').innerText(),/₪1\u202f000/);
+ await away.core.getByRole('link',{name:/^(Done|Review)$/i}).waitFor();
+ assert.equal((readFileSync(journal,'utf8').match(/fresh worker started/g)||[]).length,starts+1);
+ assert.equal(await away.core.locator('[data-testid="stException"]').count(),0);
+ report.completedAway={profileThenFileReview:true,readyOnReturn:true,oneWorker:true,metadataCounterHidden:true,maxLengthPreserved:240};
+ await away.page.close();
  for(const width of [1280,390]){
   rmSync(statePath('labor-hours.json'),{force:true});
   const {page,core,frame}=await boot({labor_ready:true,overhead_delay:1.5,edge_applicable:true},width);

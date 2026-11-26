@@ -8,6 +8,12 @@ def apply_file_review_css() -> None:
     st.markdown(
         """
         <style>
+        .stApp:has(.file-review-summary-card-marker) [data-testid="InputInstructions"],
+        .stApp:has(.file-review-summary-card-marker) [data-testid="stInputInstructions"],
+        .stApp:has(.file-review-summary-card-marker) [class*="InputInstructions"] {
+            display: none !important;
+        }
+
         .file-review-timing-row {
             display: flex;
             flex-wrap: wrap;

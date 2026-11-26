@@ -144,6 +144,19 @@ def apply_company_profile_css() -> None:
             display: none !important;
         }
 
+        /* Zero-height guard/fragment bridges still create flex gaps after Save.
+           Remove their layout slots, while keeping real save errors visible. */
+        .stApp:has(.company-profile-active)
+        :is(.st-key-company_metrics_card, .st-key-company_pricing_card)
+        > [data-testid="stElementContainer"]:has(> [data-testid="stIFrame"]),
+        .stApp:has(.company-profile-active)
+        :is(.st-key-company_metrics_card, .st-key-company_pricing_card)
+        > [data-testid="stLayoutWrapper"]:has(
+            .st-key-company_metrics_bridge_host, .st-key-company_pricing_bridge_host
+        ):not(:has([data-testid="stAlert"])) {
+            display: none !important;
+        }
+
         .st-key-company_profile_tab
         [role="tabpanel"]:has(.st-key-company_metrics_card)
         > [data-testid="stVerticalBlock"] {
