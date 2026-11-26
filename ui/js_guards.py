@@ -389,7 +389,7 @@ def install_company_metrics_input_guard() -> None:
                 const pricing = pricingInput(event.target);
                 if (pricing) {
                     const cleaned = cleanNumber(pricing.textContent);
-                    pricing.textContent = Number(cleaned) === 0 ? "" : cleaned;
+                    pricing.textContent = pricing.dataset.optionalPercent ? cleaned : Number(cleaned) === 0 ? "" : cleaned;
                 }
                 moveCaretToEnd(metricsInput(event.target) || metricsTotalInput(event.target) || pricing || percent);
             }

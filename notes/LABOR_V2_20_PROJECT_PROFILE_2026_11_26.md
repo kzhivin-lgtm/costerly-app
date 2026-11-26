@@ -34,6 +34,8 @@ Existing values, RLS/grants and financial formulas unchanged. Preserve explicit0
 separately from blank. Final approval freezes the setting into the existing
 proposal snapshot. PDF includes the percentage plus100-minus-advance on
 completion only when specified. No invented70% default. Clearing survives reopen.
+Ordinary focus/blur preserves an explicit0 in this nullable field; the existing
+zero-clearing behavior of all older nonoptional percentage inputs is unchanged.
 
 Profile buttons: extend the existing Contacts/Labor primary style selectors to
 HTML Pricing/Overhead and native Machinery. Same60px height,19px sans/700 and

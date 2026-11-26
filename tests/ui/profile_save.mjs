@@ -121,6 +121,12 @@ try{
  await tab(ctx,'Pricing Cost');
  assert.match(await reserve.innerText(),/7/);
  assert.equal(await advance.innerText(),'70%');
+ await advance.fill('0');await advance.press('Tab');
+ await ctx.core.locator('[data-company-settings-save="pricing"]').click();
+ await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+ await waitDb(data=>data.overhead_settings[0].advance_payment_percent===0);
+ await advance.focus();await advance.press('Tab');
+ assert.equal(await advance.innerText(),'0%','Focusing explicit zero must not turn the optional value into blank');
  await advance.fill('');await advance.press('Tab');
  await ctx.core.locator('[data-company-settings-save="pricing"]').click();
  await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
