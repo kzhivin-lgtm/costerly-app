@@ -59,3 +59,15 @@ no-bypass main rule, normal publisher and executed Core/wrapper/meta/version
 parity remain required. Production owner acceptance is separate from fixtures.
 Rollback1aa19ed4 via the gated publisher; nullable additive SQL can remain.
 APPROVE latency and broader Profile redesign remain deferred.
+
+## Verification observations
+
+Complete local1094/ten gate passed474.656s. Candidate16ef62e2 was rejected by
+GitHub run45810441622 on the unchanged long-title mark criterion. Its screenshot
+shows the mark correctly on the Project line, while sequential bounding-box
+reads captured label y2 before layout versus mark y76 afterward. The scenario
+had not awaited the current navigation cover or loaded fonts. Keep the exact
+same geometric criterion, await correlated readiness/fonts and read all three
+boxes atomically in one browser evaluation. No runtime layout patch, new timeout
+or weaker criterion is introduced for this measurement race. Failed report/ZIP
+and screenshot remain preserved, not reported as a passed gate.

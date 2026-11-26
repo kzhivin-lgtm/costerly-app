@@ -437,10 +437,15 @@ try{
  await longPage.goto('http://127.0.0.1:8798/');await longPage.locator('iframe.is-ready').waitFor();
  await longCore.getByRole('button',{name:'Last Estimate',exact:true}).click();await longCore.getByRole('button',{name:/continue to project/i}).click();
  await longCore.locator('.objects-pricing-table').waitFor();
+ await longCore.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
  assert.equal(await longCore.locator('.project-title-name').innerText(),longName);
- const nameBox=await longCore.locator('.project-title-name').boundingBox(),labelBox=await longCore.locator('.project-title-label').boundingBox();
+ const longFrame=await(await longPage.locator('#costerly-app-frame').elementHandle()).contentFrame();
+ const {nameBox,labelBox,markBox}=await longFrame.evaluate(async()=>{
+  await document.fonts.ready;await new Promise(requestAnimationFrame);
+  const box=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};};
+  return{nameBox:box('.project-title-name'),labelBox:box('.project-title-label'),markBox:box('.workflow-title-mark')};
+ });
  assert(nameBox.y>=labelBox.y+labelBox.height-1,'Long names start below Project');
- const markBox=await longCore.locator('.workflow-title-mark').boundingBox();
  assert(markBox.y+markBox.height/2>=labelBox.y&&markBox.y+markBox.height/2<=labelBox.y+labelBox.height,
         'The mark stays on the Project line: '+JSON.stringify({markBox,labelBox,nameBox}));
  report.longTitle={markBox,labelBox,nameBox};
