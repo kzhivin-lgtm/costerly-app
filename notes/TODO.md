@@ -548,6 +548,31 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+AUTHORIZED, P1, USER REQUEST,26November2026, Project title. Render
+`Project <Project name>` using the saved File Review Project name, preserving
+the entered spelling. For an absent/blank/Unknown name render only `Project`.
+Reuse the existing metadata/cache/header path; no new read on every click or
+change to object identity, durable routes, quantities, prices or navigation.
+Implementation pending; no new work number assigned during the design step.
+
+AUTHORIZED, P1, USER REQUEST,26November2026, Production time on Project and the
+client proposal. Owner explicitly selected label `Production time`, positioned
+before Delivery, with an ordinary editable numeric input in the existing
+Delivery/Installation row design. Value is a whole number of working days from
+receipt of payment until the project items are ready for delivery. Delivery and
+installation are outside this duration. Fifteen production days means delivery
+can start on working day16; this field does not book or promise that delivery
+date. Compact copy: `Working days after payment. Delivery & installation excluded.`
+Owner's15/21-day examples are not an approved default. Persist the chosen term
+with this project, retain through Review/Back/reopen/reload, and include exactly
+that saved value in the client proposal. It is commercial metadata, not a price,
+quantity, Labor estimate or calendar-date calculator; it must not enter totals.
+Reuse existing acknowledged input persistence and navigation locks, no new
+parallel writer/polling/route. Do not reinterpret this field as a payment-
+percentage editor. Latest wording says after payment, without assuming70%.
+Interactive Project sketch prepared in the thread visualization directory as
+project-production-lead-time.html. Runtime implementation remains pending.
+
 COMPLETED LOCAL MOCKUP, P1, USER REQUEST, 25 November 2026, Ada presentation
 file illustration. Source is the owner's Desktop/SAMPLES/Adda/Adda.pdf, first
 page. A separate landscape crop shows only the corner display cabinet, with
@@ -1193,7 +1218,7 @@ Acceptance supersedes the prior pending state. [Release evidence](ESTIMATION_V9_
 
 ## Estimation Labor: four production stages
 
-PUBLISHED, OWNER VISUAL ACCEPTANCE PENDING, P1, USER REQUEST,25-26November2026,
+PUBLISHED BASE, OWNER VISUAL REVISION ACTIVE, P1, USER REQUEST,25-26November2026,
 existing work3.17.4.6. The full Labor2.16 checkpoint is preserved. Ada front-only
 material replacement/coating scope is verified correct. Changing plywood fronts to MDF must retain
 original plywood carcasses/internal parts and their lacquer, while only front
@@ -1215,7 +1240,28 @@ actual Core/wrapper parity are verified. Owner visual acceptance remains pending
 Material switching latency and the APPROVE cause remain separate
 diagnostics. [Scope and release](LABOR_V2_17_COATING_TABLE_2026_11_25.md).
 
-AUTHORIZED, PENDING BEHIND URGENT APPROVE LATENCY, P1, USER REQUEST,25November2026. Add read-only
+OWNER REVISION26November: the owner ran Labor2.17 and reports Save worked.
+This verifies that observed save, not acceptance of the Coating table layout.
+Replace the Coating reference table with compact text detail using the already
+working Trial Installation/Packing list treatment: finish, coated m², min/m²,
+hourly rate. Explain that displayed Coating hours include the accepted small-
+batch preparation; preserve financial formulas and all saved overrides.
+At17.26m² lacquer the existing formula gives13.205333h, displayed13.2h;17.26
+is area, not a conflicting hour total. An illustrative detail may read
+`Wood lacquer ·17.26m² ·40min/m² ·₪100/h`, with the batch effect made clear
+without another nested table or new work item. Never edit the saved audit just
+to make area and hours look equal.
+Shared leaf/disclosure rule: no empty disclosure, arrow or expanded gap for work
+that has no actual detail, including File Preparation and Additional Assembly.
+Keep terminal hours editable. Hide inapplicable Edge Banding when the project
+has no edge-tape operation, as in the reported plywood item; retain applicable
+edging for mixed/LDSP parts and preserve a nonzero explicit saved override.
+Keep the four top stages visible, real CNC breakdown expandable, Elements last,
+and closed aggregate/open-detail rollups unchanged. Owner reconsidered the2h
+CNC concern and did not request an arbitrary increase or new time norm.
+These card revisions are recorded for implementation, not claimed published.
+
+AUTHORIZED, OWNER RESUMED26November2026, P1, USER REQUEST,25November2026. Add read-only
 nonproduction staff costs from Profile Labor Cost to Profile Overhead expenses
 and each object's Overhead, allocated by object labor hours / Production hours
 (owner's example1200h). Management/Office staff include director, general manager,
@@ -1224,6 +1270,12 @@ second payroll load and no editable duplicate salary value. Proposed first
 category label Management & Administration, naming not separately accepted yet.
 Owner accepted the verified coating scope, reauthorized management plus visual/text
 fixes and material switching measurements, then prioritized the APPROVE incident.
+On26November owner explicitly resumed Management alongside the card revisions
+and Project sketch. Reuse active Management/Office staff `total_monthly_cost`,
+display the category first in Profile Overhead and each object's Overhead, and
+allocate by the same object Labor hours / Production capacity. It must not be
+an editable duplicate of payroll or receive employer load a second time.
+Implementation remains pending; proposed name Management & Administration.
 
 COMPLETED PRESERVATION, P1, OWNER REQUEST,25November2026. Exact Labor2.16 runtime
 8e7a26b3 preserved with full source, separate records, immutable tags, Git bundle,

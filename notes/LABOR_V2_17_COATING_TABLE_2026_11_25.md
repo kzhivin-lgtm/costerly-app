@@ -94,3 +94,16 @@ The separate legacy Workers Builds integration is not the Pages publication gate
 Rollback source remains the preserved Labor2.16 runtime8e7a26b3. No full2.17
 archive/checkpoint is claimed. Management & Administration remains queued;
 APPROVE3.15.23 remains diagnostic-only under the owner's instruction.
+
+## Owner review26November2026
+
+The owner reports a fresh2.17 run and successful Save. The Coating detail table
+presentation is superseded by an explicit request for the compact text style
+already used by Trial Installation/Packing. No empty disclosures on terminal
+work and no inapplicable Edge Banding for the reported plywood item. Existing
+40min/m² lacquer recipe on17.26m² gives13.205333h including small-batch setup,
+so area17.26 versus hours13.2 is not an arithmetic discrepancy. Preserve this
+formula and saved overrides. All requested card revisions, Management payroll,
+Project title and Production time metadata are tracked in the authoritative
+TODO. Current step captures requirements and an interactive Project sketch;
+these subsequent changes are not part of the published57a88923 runtime.
