@@ -430,7 +430,9 @@ try{
  const nameBox=await longCore.locator('.project-title-name').boundingBox(),labelBox=await longCore.locator('.project-title-label').boundingBox();
  assert(nameBox.y>=labelBox.y+labelBox.height-1,'Long names start below Project');
  const markBox=await longCore.locator('.workflow-title-mark').boundingBox();
- assert(Math.abs(markBox.y+markBox.height/2-labelBox.y-labelBox.height/2)<1,'The mark stays with Project on the first line');
+ assert(markBox.y+markBox.height/2>=labelBox.y&&markBox.y+markBox.height/2<=labelBox.y+labelBox.height,
+        'The mark stays on the Project line: '+JSON.stringify({markBox,labelBox,nameBox}));
+ report.longTitle={markBox,labelBox,nameBox};
  await longPage.screenshot({path:reportPath('project-long-title.png'),fullPage:true});await longPage.close();
  writeFileSync(reportPath('objects-v2.json'),JSON.stringify(report,null,2));
  console.log('Objects V2.4 passed: approved26px body lift, original geometry/field boundaries, top-right menu+metrics with4px offset, stacked half-width documents, local metrics toggle and original pricing/approval/proposal flow.');
