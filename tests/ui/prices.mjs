@@ -32,6 +32,9 @@ try{
   assert.equal(await core.locator('[class*="st-key-price_catalog_row_"]').count(),0,'Closed catalog builds no row widgets');
   await metal.locator('summary').click();
   await core.locator('.st-key-price_catalog_row_price-row-0').waitFor();
+  // Streamlit streams row containers individually. The first row is not a
+  // readiness receipt for all ten rows; retain the same ten-second deadline.
+  await core.locator('.st-key-price_catalog_row_price-row-9').waitFor();
   assert.equal(await core.locator('[class*="st-key-price_catalog_row_"]').count(),10,'Selected group renders while other catalog groups remain closed');
   const journal=readFileSync(statePath('browser-journal'),'utf8');
   if(width===1280)assert(!journal.includes('prices finished sources'),'Selected group must not wait for unrelated source-library read');

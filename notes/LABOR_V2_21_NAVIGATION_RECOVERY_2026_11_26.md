@@ -91,3 +91,18 @@ The isolated exact completion-away scenario then passed11.072s with one worker,
 saved result on the first ready return, hidden counter and240/241 boundary.
 Profile measurement passed8.223s: Metrics/Pricing closing gaps reduced61to29px,
 matching unchanged Contacts/Bank/Labor. Existing full gates remain required.
+
+Local full1098/ten passed489.997s. Remote run45820352449 on a8e3ca3a
+passed1098 and nine browser suites including the repaired worker-return and
+Profile cases, then failed the unchanged Prices test: it waited for row0 and
+immediately counted1 rather than10 while Streamlit was still streaming the
+row widgets. The artifact shows one partially rendered row at390px, not a
+completed catalog. Source loops/row data are unchanged by this release. Artifact
+15118501843 retained privately, SHA256
+07d6e287363f7e1ace3bebfa6668ae11b1a99ede17a8e5f394bffefd81eeece0.
+Test-only readiness correction waits for expected final row9 with the existing
+ten-second timeout before the unchanged exact10-row assertion. Closed groups,
+independent reads, reopening and all original assertions remain. No Prices
+runtime edit or gate bypass. New exact-SHA full remote gate remains mandatory.
+Additional scoped local Profile failure/retry witness passed11.355s for both
+Pricing and Overhead: real save errors stay visible after spacing correction.
