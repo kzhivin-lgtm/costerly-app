@@ -2,8 +2,9 @@
 
 Owner authorized26November2026. Public release number2.18 is explicit.
 Base runtime57a88923/Labor2.17; source and accepted full2.16 checkpoint remain
-preserved. Existing Labor work3.17.4.6 continues. Implementation/verification
-in progress, no publication claimed by this initial record.
+preserved. Existing Labor work3.17.4.6 continues. Published runtime
+8b1cc9580b0e97b5bab2860d5853238aea2f8c4f; owner visual acceptance pending.
+Build labor-v2.18-b20261126082804-management-production-time-detection-v8.4.29.
 
 ## Owner decisions and before/after
 
@@ -95,3 +96,38 @@ edge row without an operation and retained applicable manual0. Project replay
 passed; Profile replay stopped on a redundant click of its already selected
 Labor Costs tab in the added test, removed without runtime navigation changes.
 These focused results do not substitute for the required final complete gates.
+
+## Final release evidence
+
+[verified] Exact runtime8b1cc958 passed the full GitHub gate in427.344s:
+1061 Python checks and all ten browser suites. Run45788444118/job139801088102,
+[successful gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/45788444118).
+Artifact15101513535 SHA256
+61daeb7562932cc601c7a08238b139079266e7ae5bdb86a4d6fec4e180ef4c3c,
+downloaded and digest/commit/status verified. Five additional PDF tests passed.
+Local coverage is composite:1061 unit checks plus Navigation89.056s,
+Calculation93.752s and Project21.968s on ea7a645e, then all remaining seven
+browser suites on8b1cc958 in227.742s. The only intervening change is the Profile
+uppercase test expectation, no runtime difference. Earlier failed reports remain
+failed, not relabelled as a successful full local run. Remote gate is a fresh
+complete run on the exact published SHA.
+
+The first remote candidate da108cd4 failed its details-only geometry selector,
+run45787486954. The second ea7a645e failed only the new Profile test's title-case
+expectation versus the existing uppercase style, run45787721712. Both logs were
+read; no runtime publication occurred until the final full success. Row count,
+axes, height and financial acceptance criteria were preserved.
+
+[verified] Normal publisher promoted8b1cc958 to main. Remote ruleset27499066
+active, strict required trusted gate, no bypass actors; actual main SHA matches.
+Railway deployment2592880f-1de3-45e2-9054-50494cf9a0fc and Cloudflare Pages
+succeeded. Anonymous browser probe09:14:15.986UTC26November confirms actual Core,
+executed wrapper, wrapper meta and uncached version.json all equal the2.18 build,
+with zero Streamlit exceptions. This is build verification, not authenticated
+owner acceptance of a fresh calculation. Prior APPROVE incident remains separate.
+
+Private receipts and full CI ZIP are in output/labor-v2.18-release-20261126;
+local test reports remain under /private/tmp/labor218-release-gate-2 and
+/private/tmp/labor218-release-remaining. No paid API call, production estimate
+mutation or credential copy. Owner-applied SQL and its rejected negative test
+are recorded above. Existing full2.16 preservation checkpoint remains immutable.

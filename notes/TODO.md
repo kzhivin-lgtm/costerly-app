@@ -548,7 +548,7 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-ACTIVE LABOR2.18, P1, USER REQUEST,26November2026, Project title. Render
+PUBLISHED LABOR2.18, OWNER ACCEPTANCE PENDING, P1, USER REQUEST,26November2026, Project title. Render
 `Project <Project name>` using the saved File Review Project name, preserving
 the entered spelling. For an absent/blank/Unknown name render only `Project`.
 Reuse the existing metadata/cache/header path; no new read on every click or
@@ -556,14 +556,14 @@ change to object identity, durable routes, quantities, prices or navigation.
 Owner authorized implementation in2.18, preserving the actual A3 value rather
 than repairing recognition. [Scope and verification](LABOR_V2_18_MANAGEMENT_PRODUCTION_TIME_2026_11_26.md).
 
-AUTHORIZED, P1, USER REQUEST,26November2026, Production time on Project and the
+PUBLISHED LABOR2.18, OWNER ACCEPTANCE PENDING, P1, USER REQUEST,26November2026, Production time on Project and the
 client proposal. Owner explicitly selected label `Production time`, positioned
 before Delivery, with an ordinary editable numeric input in the existing
 Delivery/Installation row design. Value is a whole number of working days from
 receipt of payment until the project items are ready for delivery. Delivery and
 installation are outside this duration. Fifteen production days means delivery
 can start on working day16; this field does not book or promise that delivery
-date. Compact copy: `Working days after payment. Delivery & installation excluded.`
+date. Compact copy: `Working days after payment` / `Delivery & installation excluded`
 Owner's15/21-day examples are not an approved default. Persist the chosen term
 with this project, retain through Review/Back/reopen/reload, and include exactly
 that saved value in the client proposal. It is commercial metadata, not a price,
@@ -1260,20 +1260,22 @@ Shared leaf/disclosure rule: no empty disclosure, arrow or expanded gap for work
 that has no actual detail, including File Preparation and Additional Assembly.
 Keep terminal hours editable. Hide inapplicable Edge Banding when the project
 has no edge-tape operation, as in the reported plywood item; retain applicable
-edging for mixed/LDSP parts and preserve a nonzero explicit saved override.
+edging for mixed/LDSP parts even when the user sets its hours to0, and preserve
+a nonzero explicit saved override.
 Keep the four top stages visible, real CNC breakdown expandable, Elements last,
 and closed aggregate/open-detail rollups unchanged. Owner reconsidered the2h
 CNC concern and did not request an arbitrary increase or new time norm.
-These card revisions are implemented in the2.18 candidate, verification active,
-not claimed published. [Release record](LABOR_V2_18_MANAGEMENT_PRODUCTION_TIME_2026_11_26.md).
+These card revisions were published as Labor2.18 runtime8b1cc958. Full exact-SHA
+GitHub1061/ten gate passed427.344s, all local suites passed, actual Core/wrapper
+parity and strict/no-bypass main protection verified. Owner acceptance pending. [Release record](LABOR_V2_18_MANAGEMENT_PRODUCTION_TIME_2026_11_26.md).
 
-AUTHORIZED, OWNER RESUMED26November2026, P1, USER REQUEST,25November2026. Add read-only
+PUBLISHED LABOR2.18, OWNER ACCEPTANCE PENDING, OWNER RESUMED26November2026, P1, USER REQUEST,25November2026. Add read-only
 nonproduction staff costs from Profile Labor Cost to Profile Overhead expenses
 and each object's Overhead, allocated by object labor hours / Production hours
 (owner's example1200h). Management/Office staff include director, general manager,
 accounting and office administration. Reuse full monthly employer cost, no
-second payroll load and no editable duplicate salary value. Proposed first
-category label Management & Administration, naming not separately accepted yet.
+second payroll load and no editable duplicate salary value. The initial proposed
+first category label Management & Administration was accepted26November.
 Owner accepted the verified coating scope, reauthorized management plus visual/text
 fixes and material switching measurements, then prioritized the APPROVE incident.
 On26November owner explicitly resumed Management alongside the card revisions
@@ -1282,8 +1284,10 @@ display the category first in Profile Overhead and each object's Overhead, and
 allocate by the same object Labor hours / Production capacity. It must not be
 an editable duplicate of payroll or receive employer load a second time.
 Owner explicitly approved Management & Administration and implementation in2.18.
-Candidate is read-only in Profile and uses the same exact-hour Overhead allocator;
-verification active. No duplicate salary editor or second employer load.
+Published runtime8b1cc958 is read-only in Profile and uses the same exact-hour
+Overhead allocator. Derived employee updates/readonly/VAT and once-only allocation
+passed. No duplicate salary editor or second employer load. Actual owner company
+monthly employer total46250ILS verified; owner production acceptance pending.
 
 COMPLETED PRESERVATION, P1, OWNER REQUEST,25November2026. Exact Labor2.16 runtime
 8e7a26b3 preserved with full source, separate records, immutable tags, Git bundle,

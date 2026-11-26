@@ -1,5 +1,21 @@
 # Done Log
 
+[verified] Labor2.18 published26November2026, existing work3.17.4.6,
+runtime8b1cc958. Saved File Review Project title, Production time before Delivery
+using the existing acknowledged service-field writer, retained Review/Back/reopen
+and proposal term, unchanged financial totals. Price/VAT figures30px regular
+black, Total unchanged purple/bold. Coating uses the shared compact work-detail
+list; empty terminal disclosures removed, inapplicable edging hidden while an
+applicable manual0 remains editable. Management & Administration derives active
+Management/Office employer cost, first/readonly/VAT-exempt in Profile, allocated
+once by exact Labor hours/Production capacity. Actual monthly aggregate46250ILS.
+All local1061/ten coverage and five PDF tests passed; exact GitHub1061/ten gate
+427.344s, run45788444118/artifact15101513535. Actual strict/no-bypass main rule,
+Railway/Pages success and served Core/executed wrapper/meta/version parity
+verified09:14:15.986UTC. Owner production acceptance pending, APPROVE incident
+remains diagnostic-only. No paid call or production estimate mutation.
+[Release and evidence](LABOR_V2_18_MANAGEMENT_PRODUCTION_TIME_2026_11_26.md).
+
 [verified] Labor2.17 shared Coating template published26November2026 local time,
 existing work3.17.4.6, runtime57a88923. Initial details and edit receipts now use
 the shared Materials table rows/cells and keyed row reconciliation; separate

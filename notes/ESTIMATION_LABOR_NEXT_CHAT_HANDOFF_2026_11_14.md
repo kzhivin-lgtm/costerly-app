@@ -1,4 +1,25 @@
-**[verified] Current runtime: Labor2.17,26November2026 local time.**
+**[verified] Current runtime: Labor2.18,26November2026.**
+Runtime8b1cc9580b0e97b5bab2860d5853238aea2f8c4f, existing work3.17.4.6.
+Project title preserves exact saved File Review name, including A3; do not repair
+recognition/Naming. Production time before Delivery is positive whole working
+days after payment until ready for delivery, delivery/installation excluded,
+blank until entered. Owner applied additive SQL, same authenticated commercial
+writer/queue, saved term frozen into proposal, no effect on financial totals.
+Project Price/VAT30px mono regular black; Total remains purple/bold.
+Coating details use the Trial Installation/Packing compact list. Empty terminal
+work has no disclosure; all four stages and terminal hour editing remain.
+Hide absent edge work, retain applicable user0 and nonzero saved override.
+Management & Administration is first/readonly in Profile and Object Overhead,
+active Management/Office total_monthly_cost allocated once by exact object hours
+/ Production capacity; salary VAT exempt. Current company aggregate46250ILS.
+Full exact-SHA GitHub1061/ten gate427.344s passed, run45788444118; all local
+coverage and five PDF checks passed. Main active strict/no-bypass rule and actual
+Core/executed wrapper/meta/version parity verified09:14:15.986UTC. Owner visual
+acceptance pending. Existing2.16 full checkpoint immutable; rollback2.17 via the
+normal gated publisher. APPROVE controller unchanged, incident diagnostic-only.
+[Release, SQL and evidence](LABOR_V2_18_MANAGEMENT_PRODUCTION_TIME_2026_11_26.md).
+
+**[verified] Previous runtime: Labor2.17,26November2026 local time.**
 Runtime57a88923bdccf55d25753fe5c396b63fdde769cb. Owner requested reuse of the
 working universal Coating template. Initial/receipt rows now share Materials'
 table renderer and keyed reconciliation, min/m² copy and equal material row
@@ -11,8 +32,8 @@ Owner visual acceptance pending. No new paid call or production estimate write.
 
 Ada MDF-front4.992204m²/retained plywood48.868232m² coating scope was verified
 correct in the owner's approved result, SC19219.23. Do not repair that math.
-Management & Administration remains authorized/queued behind urgent APPROVE
-investigation. The owner requires diagnostic-only APPROVE work: no new async
+At2.17 Management & Administration remained authorized/queued; the owner resumed
+it for2.18 above. APPROVE remains an independent diagnostic-only investigation. The owner requires diagnostic-only APPROVE work: no new async
 route. Earlier unpublished IO trial is preserved locally in2f24c839 and reverted
 by678eb4e5; neither is in this runtime. The exact2.16 controller also existed
 in2.14. Current incident has a persisted approval and server-ready Project, but
