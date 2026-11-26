@@ -7,7 +7,25 @@ Additional Assembly and separates already-priced hardware without double charge.
 APPROVE acceleration/Profile redesign deferred. Preserve this checkpoint before
 new runtime work. [Restore guide](LABOR_V2_18_PRODUCTION_CHECKPOINT_2026_11_26.md).
 
-**[verified] Current runtime: Labor2.19,26November2026.**
+**[verified] Current runtime: Labor2.20,26November2026.**
+Runtime deb8b8fe8a572d6e84807fdc0d117e68b29e8632, existing work3.17.4.6.
+Prepared Continue/Project metadata follows acknowledged File Review names.
+Compound isometric_technical_perspective UI-priority cause confirmed; current
+Ada's two saved previews repaired to owned page1 with unchanged calculation
+evidence. Optional integer Advance payment0..100/NULL in Pricing Cost, saved/
+cleared/reopened with existing owner writer, frozen into proposal payment terms;
+financial totals unchanged. Owner applied nullable SQL, verified. Profile Save
+geometry/typography/Saving/green Saved uses Contacts/Labor style. Project/Object
+viewport heights1500px+ use natural flow to eliminate25/33% zoom gaps, fixed
+Privacy and normal geometry remain. Exact GitHub1094/ten396.913s passed,
+run45812741297; actual strict/no-bypass main rule, normal publisher and served
+Core/executed wrapper/meta/version parity11:51:39.898UTC verified. Local full gate
+plus Project/nullable-zero Profile evidence passed. Owner acceptance pending,
+no paid calls. Rollback1aa19ed4 via gated publisher;2.18 checkpoint immutable.
+Final records remain on this branch, no second runtime deploy. See
+[release, cause/evidence and checklist](LABOR_V2_20_PROJECT_PROFILE_2026_11_26.md).
+
+**[verified] Previous runtime: Labor2.19,26November2026.**
 Runtime1aa19ed48faf7a9f9c7bc6c12bf254156b5a683a, existing work3.17.4.6.
 Additional Assembly uses saved physical finished units at60min each. Ada Corner
 8 glass boxes+2 mirrors+4 LED zones=14h, Console1 mirror+1 LED=2h. Hardware Fitting

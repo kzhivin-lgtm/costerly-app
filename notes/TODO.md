@@ -548,7 +548,12 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-ACTIVE LABOR2.20, P1, USER APPROVED26November2026, existing work3.17.4.6.
+PUBLISHED LABOR2.20, OWNER ACCEPTANCE PENDING, P1, USER APPROVED26November2026,
+existing work3.17.4.6. Runtime deb8b8fe, exact GitHub1094/ten396.913s passed,
+run45812741297; normal publisher, actual strict/no-bypass main protection and
+served Core/executed wrapper/meta/version parity11:51:39.898UTC verified. Owner
+checklist and preserved failed/cancelled evidence in
+[release record](LABOR_V2_20_PROJECT_PROFILE_2026_11_26.md). No paid calls.
 Base published runtime1aa19ed4/records04f190b7, owner reports generally correct2.19.
 Project name must immediately reflect an acknowledged File Review rename on
 Continue, including warm completed estimates; owner later confirms eventual

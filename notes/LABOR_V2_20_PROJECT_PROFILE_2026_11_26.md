@@ -73,3 +73,47 @@ same geometric criterion, await correlated readiness/fonts and read all three
 boxes atomically in one browser evaluation. No runtime layout patch, new timeout
 or weaker criterion is introduced for this measurement race. Failed report/ZIP
 and screenshot remain preserved, not reported as a passed gate.
+
+## Published release
+
+[verified] Runtime deb8b8fe8a572d6e84807fdc0d117e68b29e8632 published through the
+normal gated publisher26November2026. Human deployment title:
+Labor2.20: Project name, previews, advance payment and Profile UI.
+Exact-SHA full GitHub1094/ten gate passed396.913s,
+[run45812741297](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/45812741297),
+job139884548475/artifact15114028955, SHA256
+aa3bb1ad384a099ae528ee8c070fc8ed82ff88f06d53d8c718aedc1eb23062c7.
+Downloaded ZIP digest, clean exact commit,1094 checks and complete status verified.
+Actual ruleset27499066 active/strict/no bypass, main equals runtime SHA. Core
+deployment success; browser11:51:39.898UTC confirms Core, executed wrapper, meta
+and uncached version.json all equal
+labor-v2.20-b20261126112014-project-profile-detection-v8.4.29, zero exceptions.
+Anonymous build parity is separate from owner authenticated acceptance.
+
+Local evidence is composite: complete1094/ten474.656s, then readiness-corrected
+Project30.794s, explicit nullable-zero Profile93.070s and18 focused checks passed.
+The final change only expresses the same optional/nonoptional focus branches
+explicitly, preserving the old mandatory-input source assertion. The final
+GitHub run is fresh/full on the published SHA. Earlier16ef62e2 gate failed the
+measurement race; superseded6b4f9a91/bff108a3 runs45812014157/45812581944 were
+cancelled, not successful gates. No weaker check or publication bypass.
+
+[verified] Existing saved Ada previews were repaired without a new calculation:
+run_cfa38f855e39448695baf061abe13529, both objects now use their owned page1
+axonometric view. Original PDF SHA25609dc963c8b7c9aa341085ae4dbc1bbd31be606ad9f94c95136ecdc646183d4b3
+matches saved Parts evidence. Existing immutable artifact writer reused; conditional
+updates required exact old refs, changed only preview_ref/presentation_preview_bbox,
+retained all other reference evidence and verified uploaded bytes by digest.
+Raw Detection/Naming, Parts, quantities, prices and costing rows unchanged.
+The existing bbox-padding/neighbor-fragment limitation remains a separate backlog
+item; this release does not claim a new image segmentation algorithm.
+
+Owner-applied nullable schema verified read-only, current value remainsNULL.
+Payment PDF rendered and visually reviewed; no production company setting was
+changed for a test. Private evidence is output/labor-v2.20-20261126, including
+full final/failed CI ZIPs, schema receipt, source replay, two preview write
+receipts and source images, PDF sample, local reports and live-build witness.
+Final records stay on the working branch without another runtime deployment.
+Owner checklist: saved File Review rename/Continue; saved Ada axonometric images;
+integer advance save/clear/reopen and new proposal clause/omission; consistent
+Profile Save/Saving/Saved; Project/Object at25/33% zoom with fixed Privacy.

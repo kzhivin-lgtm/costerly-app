@@ -1,5 +1,22 @@
 # Done Log
 
+[verified] Labor2.20 published26November2026, existing work3.17.4.6, runtime
+deb8b8fe. Acknowledged File Review metadata updates its prepared Continue/Project
+snapshot without cost reload. UI preview recognizes compound isometric traits;
+both saved Ada crops repaired to owned page1, full evidence retained, no paid call.
+Optional whole Advance payment0..100/NULL uses existing Profile writer, preserves
+explicit0 on focus and clearing on reopen, freezes into proposal terms without
+changing financial totals. Owner applied/verified additive nullable SQL. Profile
+primary action height/font and acknowledged green Saved are unified with Contacts/
+Labor. Tall viewport Project/Object follows natural flow, normal geometry and
+fixed Privacy preserved. Local1094/ten plus focused Project/nullable-zero Profile
+passed; exact GitHub1094/ten396.913s passed, run45812741297/artifact15114028955.
+Strict/no-bypass main enforcement, normal publisher and actual Core/executed
+wrapper/meta/version parity11:51:39.898UTC verified. Owner acceptance pending.
+Initial measurement-race gate failed, superseded candidates cancelled, none
+published. Full2.18 checkpoint remains immutable; rollback1aa19ed4 via publisher.
+[Release, causes and owner checklist](LABOR_V2_20_PROJECT_PROFILE_2026_11_26.md).
+
 [verified] Labor2.19 published26November2026, existing work3.17.4.6,
 runtime1aa19ed4. Project reuses shared end-caret editing, centered whole working
 days, uniform row intervals/lowercase helpers and wrapped long titles. Existing
