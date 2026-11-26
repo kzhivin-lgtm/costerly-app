@@ -7,7 +7,25 @@ Additional Assembly and separates already-priced hardware without double charge.
 APPROVE acceleration/Profile redesign deferred. Preserve this checkpoint before
 new runtime work. [Restore guide](LABOR_V2_18_PRODUCTION_CHECKPOINT_2026_11_26.md).
 
-**[verified] Current runtime: Labor2.18,26November2026.**
+**[verified] Current runtime: Labor2.19,26November2026.**
+Runtime1aa19ed48faf7a9f9c7bc6c12bf254156b5a683a, existing work3.17.4.6.
+Additional Assembly uses saved physical finished units at60min each. Ada Corner
+8 glass boxes+2 mirrors+4 LED zones=14h, Console1 mirror+1 LED=2h. Hardware Fitting
+separates already-priced hardware from Block Assembly without double charge,
+retains legacy overrides/planned factors and offers independent terminal hours.
+Owner accepted hinge/plate2min, door5min, drawer slide pair6+5min, drawer front5min.
+Project end-caret/whole-day/centered input, uniform row spacing/lowercase helpers
+and long-name wrapping implemented. Prior price-blur deferred selection cleanup
+is scoped to its original editor, with a deterministic red/green regression.
+Exact-SHA full1068/ten GitHub gate451.532s passed, run45801323099. Actual
+strict/no-bypass main rule, normal publisher and Core/executed wrapper/meta/
+version parity10:37:05.304UTC verified. Owner authenticated acceptance pending.
+No paid calls or live estimate mutation. Owner explicitly says no repeat deploy;
+final records stay on this branch. APPROVE/Profile redesign deferred. Rollback
+8b1cc958 through gated publisher, full2.18 checkpoint above remains immutable.
+[Scope, release and evidence](LABOR_V2_19_ASSEMBLY_INPUTS_2026_11_26.md).
+
+**[verified] Previous runtime: Labor2.18,26November2026.**
 Runtime8b1cc9580b0e97b5bab2860d5853238aea2f8c4f, existing work3.17.4.6.
 Project title preserves exact saved File Review name, including A3; do not repair
 recognition/Naming. Production time before Delivery is positive whole working

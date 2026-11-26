@@ -1,5 +1,23 @@
 # Done Log
 
+[verified] Labor2.19 published26November2026, existing work3.17.4.6,
+runtime1aa19ed4. Project reuses shared end-caret editing, centered whole working
+days, uniform row intervals/lowercase helpers and wrapped long titles. Existing
+price-blur cleanup now preserves a newly active editor's selection, proved red
+before/green after. Additional Assembly counts saved finished units at60min:
+Ada Corner8 glass boxes+2 mirrors+4 physical LED zones=14h, Console1+1=2h.
+Hardware Fitting partitions existing Block Assembly work, preserving old norms,
+legacy budgets and once-only hours/payroll. Owner accepted hinge2min/door5min,
+drawer slide pair6+5min/front5min, existing planning factors retained. Shared
+Labor/Overhead/Management/SC/Project integration and manual hours persist.
+Full exact-SHA1068/ten GitHub gate451.532s passed, run45801323099, artifact
+15108341106 digest/commit verified. Normal publisher and actual strict/no-bypass
+main enforcement verified; served Core/executed wrapper/meta/version parity
+10:37:05.304UTC, zero exceptions. Owner acceptance pending; no repeat deployment
+per owner instruction. Full2.18 checkpoint preserved before changes; no paid call
+or production estimate mutation. APPROVE/Profile redesign remain deferred.
+[Release, norms and evidence](LABOR_V2_19_ASSEMBLY_INPUTS_2026_11_26.md).
+
 [verified] Full Labor2.18 preservation26November2026, existing work3.17.4.6,
 requested before2.19. Exact runtime8b1cc958,852 source files/4,885,106-byte
 helper-validated ZIP, separate source/records tags, self-contained bundle,

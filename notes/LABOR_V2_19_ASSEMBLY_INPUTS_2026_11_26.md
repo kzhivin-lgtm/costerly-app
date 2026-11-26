@@ -97,5 +97,38 @@ APPROVE latency and Profile redesign are explicitly deferred by the owner.
 
 Before publication require full Python/ten-browser local evidence, full exact-SHA
 GitHub UI release gate, actual strict/no-bypass main rule, normal publisher and
-matching executed Core/wrapper/meta/version. Current candidate is under test,
-not yet published. Synthetic screenshots are separate from owner acceptance.
+matching executed Core/wrapper/meta/version. Synthetic screenshots are separate
+from owner acceptance.
+
+## Published release and evidence
+
+[verified] Labor2.19 runtime1aa19ed48faf7a9f9c7bc6c12bf254156b5a683a published
+26November2026 through tools/promote_ui_release.py after its exact-SHA full
+[GitHub gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/45801323099)
+passed1068 Python checks and all ten browser suites in451.532s. Job139844977195,
+artifact15108341106, SHA256
+7161bee81732c6c2ee91f940f3f11649e5554286fc98991a3032880b14088851.
+ZIP downloaded, digest/status/clean exact commit verified. Both earlier rejected
+gates45797225623 and45798125779 remain failed records, never published.
+
+Local verification is composite, not one clean full-run claim: initial1068,
+Navigation88.027s and Calculation101.814s; then remaining eight browser suites
+262.880s on runtime-identical source; after the isolated blur repair, all1068
+Python checks17.780s and full Project suite26.911s passed. New selection regression
+failed before the repair, empty selection versus5, and passed afterward. The
+remote gate is fresh/full on the exact final runtime, including every old check.
+
+[verified] Publisher independently enforced actual ruleset27499066, active and
+strict with no bypass actors. Remote main equals the runtime SHA. Core deployment
+status reports success. Browser witness10:37:05.304UTC confirms actual Core,
+executed wrapper, wrapper meta and uncached version.json all equal
+labor-v2.19-b20261126094310-assembly-inputs-detection-v8.4.29, zero exceptions.
+This anonymous build witness is separate from authenticated owner acceptance.
+
+Private evidence: output/labor-v2.19-20261126, including saved Ada source replay,
+full CI ZIP/report, remote-enforcement and live-build receipts. No paid model
+call or production estimate mutation. Full2.18 checkpoint remains immutable;
+rollback8b1cc958 through the same gated publisher. APPROVE performance and
+Profile redesign remain owner-deferred. Owner explicitly requested no repeat
+deployment after asking for the release summary; final records stay on the
+working branch, without advancing main again.
