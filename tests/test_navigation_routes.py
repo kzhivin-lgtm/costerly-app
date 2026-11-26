@@ -405,7 +405,7 @@ def test_objects_emits_its_target_header_before_starting_the_background_worker()
         "def _render_objects_table_content", 1
     )[0]
 
-    assert render_source.index('"Project"') < render_source.index(
+    assert render_source.index('objects_workflow.project_title(') < render_source.index(
         "_start_prepared_estimation_launch()"
     )
 

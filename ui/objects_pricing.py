@@ -55,14 +55,15 @@ def _input_money(value: object) -> str:
         return _escape(value)
 
 
-def _sale_input_html(value: object, *, overridden: bool = False) -> str:
-    input_value = _input_money(value)
+def _sale_input_html(value: object, *, overridden: bool = False, currency: bool = True, label: str | None = None) -> str:
+    input_value = _input_money(value) if currency else (str(int(value)) if value is not None else '')
     editable_attr = '' if input_value == "—" else ' contenteditable="true" tabindex="0"'
     disabled_attr = ' aria-disabled="true"' if input_value == "—" else ' aria-disabled="false"'
     overridden_attr = ' data-pricing-overridden="true"' if overridden else ''
+    label_attr = f' aria-label="{_attribute(label)}"' if label else ''
     return (
         '<div class="objects-pricing-price-input" role="textbox" inputmode="numeric" '
-        f'{editable_attr}{disabled_attr}{overridden_attr}>{input_value}</div>'
+        f'{editable_attr}{disabled_attr}{overridden_attr}{label_attr}>{input_value}</div>'
     )
 
 
@@ -182,6 +183,21 @@ def _project_cost_row_html(
         f'<div class="objects-pricing-suggestion">{_suggestion(row.get("suggestion"))}</div>'
         '</div>'
         '</div>'
+    )
+
+
+def _production_time_html(value, *, estimate_id, run_id) -> str:
+    if not estimate_id:
+        return ''
+    return (
+        '<div class="objects-pricing-row objects-pricing-row--project-cost" '
+        'data-object-key="__project__" data-commercial-term="production_time_working_days" '
+        f'data-estimate-id="{_estimate_key(estimate_id)}" data-run-id="{_run_key(run_id)}">'
+        '<div><div class="objects-pricing-name">Production time</div>'
+        '<div class="objects-pricing-materials">Working days after payment<br>Delivery &amp; installation excluded</div></div>'
+        '<div class="objects-pricing-project-cost-cell">'
+        + _sale_input_html(value, overridden=value is not None, currency=False, label='Production time') +
+        '</div></div>'
     )
 
 
@@ -437,6 +453,7 @@ def _pricing_table_html(
     run_id: str | None,
     proposal_pdf_url: str | None = None,
     cycle_html: str = "",
+    production_time_working_days: int | None = None,
 ) -> str:
     """Build the complete Objects Estimation pricing table HTML."""
     object_rows = _rows_html(
@@ -459,6 +476,7 @@ def _pricing_table_html(
         f'{_pricing_table_header_html()}'
         '<div class="objects-pricing-table">'
         f'{object_rows}'
+        f'{_production_time_html(production_time_working_days, estimate_id=estimate_id, run_id=run_id)}'
         f'{project_cost_rows}'
         f'{_summary_html(summary, proposal_pdf_url=proposal_pdf_url)}'
         '</div>'

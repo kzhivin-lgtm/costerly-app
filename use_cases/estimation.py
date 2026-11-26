@@ -389,10 +389,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     client = get_supabase_client()
     _assert_screen_estimate_access(client, estimate_id)
     objects_df = read_with_retry(lambda: fetch_rfq_object_estimates(client, estimate_id))
-    try:
-        overrides_df = read_with_retry(lambda: fetch_rfq_estimate_pricing_overrides(client, estimate_id))
-    except Exception:
-        overrides_df = None
+    overrides_df = read_with_retry(lambda: fetch_rfq_estimate_pricing_overrides(client, estimate_id))
     try:
         material_plan_df = read_with_retry(lambda: fetch_rfq_estimate_material_plan(client, estimate_id))
     except Exception:
@@ -459,8 +456,18 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         delivery_percent=delivery_percent,
         installation_percent=installation_percent,
     )
+    project_name = ''
+    if (not objects_df.empty and objects_df.iloc[0].get('run_id')
+            and all(str(row.get('status')) in {'completed', 'review_required', 'failed'} for row in rows)):
+        try:
+            run = _first_row(fetch_rfq_run(client, str(objects_df.iloc[0]['run_id'])))
+            project_name = str(run.get('project_name') or '')
+        except Exception:
+            logging.getLogger(__name__).warning('Project name read failed', exc_info=True)
     return {
         "rows": rows,
+        "project_name": project_name,
+        "production_time_working_days": production_time_from_overrides(overrides_df),
         "company_id": str(objects_df.iloc[0].get("company_id") or "") if not objects_df.empty else "",
         "project_costs": project_costs,
         "summary": summary,
@@ -474,7 +481,8 @@ def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any]) 
     client = get_supabase_client()
     _assert_screen_estimate_access(client, estimate_id)
     objects = fetch_rfq_object_estimates(client, estimate_id)
-    overrides = _pricing_overrides_by_object(fetch_rfq_estimate_pricing_overrides(client, estimate_id))
+    saved_overrides = fetch_rfq_estimate_pricing_overrides(client, estimate_id)
+    overrides = _pricing_overrides_by_object(saved_overrides)
     if objects.empty:
         raise ValueError("The saved estimate is unavailable")
     settings = _first_row(fetch_company_overhead_settings(client, str(objects.iloc[0]["company_id"])))
@@ -496,7 +504,8 @@ def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any]) 
         rows, overrides, vat_percent=_number(settings.get("vat_percent"), 18),
         delivery_percent=_number(settings.get("delivery_percent"), 3),
         installation_percent=_number(settings.get("installation_percent"), 10))
-    return {**cached, "rows": rows, "project_costs": project, "summary": summary}
+    return {**cached, "rows": rows, "project_costs": project, "summary": summary,
+            "production_time_working_days": production_time_from_overrides(saved_overrides)}
 
 
 def _suggested_sale_price(self_cost: Any, markup_percent: float = 30) -> float | None:
@@ -527,6 +536,17 @@ def _pricing_overrides_by_object(overrides_df: Any) -> dict[str, float]:
             continue
         overrides[object_key] = round(_number(row.get("value"), 0), 2)
     return overrides
+
+
+def production_time_from_overrides(overrides_df) -> int | None:
+    if overrides_df is None or overrides_df.empty:
+        return None
+    for row in overrides_df.to_dict('records'):
+        if row.get('object_key') == '__project__' and row.get('field') == 'production_time_working_days':
+            value = _number(row.get('value'), 0)
+            if isfinite(value) and value > 0 and value == int(value):
+                return int(value)
+    return None
 
 
 def _objects_project_pricing(

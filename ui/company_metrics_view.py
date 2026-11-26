@@ -31,6 +31,8 @@ def table_html(
     vat_percent: float,
     *,
     editable: bool,
+    readonly_fields: tuple = (),
+    vat_exempt_fields: tuple = (),
 ) -> str:
     """Render Overhead Expenses with the exact Object Detail table primitives."""
     headers = "".join(
@@ -47,13 +49,13 @@ def table_html(
         )
         for row_index, (field, label) in enumerate(rows):
             net = round(_amount(monthly.get(field)))
-            vat_exempt = field == "arnona_facilities_cost"
+            vat_exempt = field == "arnona_facilities_cost" or field in vat_exempt_fields
             vat = 0 if vat_exempt else round(net * vat_percent / 100)
             gross = net + vat
             gross_total += gross
             editable_attrs = (
                 ' role="textbox" contenteditable="true" tabindex="0" inputmode="decimal"'
-                if editable
+                if editable and field not in readonly_fields
                 else ""
             )
             last_class = " company-metrics-row--last" if row_index == len(rows) - 1 else ""

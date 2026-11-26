@@ -35,6 +35,17 @@ def test_cnc_split_keeps_original_sheet_payroll_and_source_norms():
     assert state==original
 
 
+def test_edge_visibility_uses_applicability_not_a_saved_zero_hour_override():
+    state=labor_state()
+    applicable=_labor_html(state,overrides={'edge-banding':'0'})
+    assert 'data-line-id="edge-banding"' in applicable
+    state['result']['edge_banding']={'minutes':0,'metres':0}
+    state['result']['cnc_edging']={'minutes':0}
+    absent=_labor_html(state)
+    assert 'data-line-id="edge-banding"' not in absent
+    assert 'data-line-id="edge-banding"' in _labor_html(state,overrides={'edge-banding':'2'})
+
+
 def test_saved_old_sheet_override_is_retained_and_new_specific_edit_changes_one_share():
     state=labor_state();original=deepcopy(state)
     work=labor_work_metrics(state,overrides={'sheet-processing':'9'})

@@ -168,3 +168,24 @@ def test_failed_saved_read_cannot_confirm_prices(monkeypatch):
     objects._set_objects_prices(estimate_id="e")
     assert "e" not in session["objects_set_price_basis"]
     assert session["final_approval_error"]
+def test_project_title_preserves_file_review_value_without_identity_repair():
+    from ui.objects_workflow import project_title
+    assert project_title(' A3 ') == 'Project A3'
+    assert project_title('ADA') == 'Project ADA'
+    for value in (None,'','  ','Unknown','unknown'):
+        assert project_title(value) == 'Project'
+
+
+def test_production_days_are_commercial_metadata_and_never_a_price():
+    import pandas as pd
+    from use_cases.estimation import production_time_from_overrides,_pricing_overrides_by_object
+    from ui.objects_pricing import pricing_table_html
+    overrides=pd.DataFrame([{'object_key':'__project__','field':'production_time_working_days','value':15},
+                            {'object_key':'delivery','field':'sale_price_unit','value':200}])
+    assert production_time_from_overrides(overrides)==15
+    assert _pricing_overrides_by_object(overrides)=={'delivery':200}
+    html=pricing_table_html(rows=[],project_costs=[{'object_key':'delivery','name':'Delivery'}],
+                            summary={},estimate_id='e',run_id='r',production_time_working_days=15)
+    assert html.index('Production time') < html.index('>Delivery<')
+    assert '>15</div>' in html and 'Working days after payment<br>Delivery &amp; installation excluded' in html
+    assert '₪15' not in html

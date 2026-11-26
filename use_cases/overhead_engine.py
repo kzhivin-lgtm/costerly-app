@@ -103,7 +103,7 @@ def build_overhead_lines(
     monthly_overhead_total = 0.0
     for column, group_name, item_name in _monthly_overhead_map():
         monthly_cost = _number(overhead_monthly.get(column), 0)
-        if monthly_cost <= 0:
+        if monthly_cost <= 0 and not (column == 'management_administration_cost' and column in overhead_monthly):
             continue
         sort_order += 10
         cost = round(monthly_cost * labor_hours_total / monthly_capacity_hours, 2)
@@ -158,6 +158,7 @@ def _monthly_capacity_hours(settings: dict[str, Any]) -> float:
 
 def _monthly_overhead_map() -> tuple[tuple[str, str, str], ...]:
     return (
+        ("management_administration_cost", "Management & Administration", "Management and office payroll"),
         ("rent_facilities_cost", "Facility / rent / arnona", "Rent"),
         ("arnona_facilities_cost", "Facility / rent / arnona", "Arnona"),
         ("maintenance_fee_facilities_cost", "Facility / rent / arnona", "Maintenance fee"),

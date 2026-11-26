@@ -1219,6 +1219,8 @@ def _load_company_metrics_by_id(company_id: str) -> tuple[dict, dict]:
         ).data or []
     settings = settings_rows[0] if settings_rows else {"company_id": company_id}
     monthly = monthly_rows[0] if monthly_rows else {"company_id": company_id}
+    from db.repositories import fetch_company_management_payroll
+    monthly['management_administration_cost'] = fetch_company_management_payroll(client, company_id)
     settings.setdefault("vat_percent", 18)
     return settings, monthly
 
@@ -1471,6 +1473,7 @@ def save_company_pricing(access: CompanyAccess, values: dict[str, object]) -> No
 
 
 def _invalidate_object_overhead_context(company_id: str) -> None:
+    _load_company_metrics_by_id.clear(str(company_id))
     affected = set()
     for identity, comparison in st.session_state.get("labor_v1_comparisons", {}).items():
         if str(identity[0]) == str(company_id):
@@ -4835,10 +4838,12 @@ def _render_metrics(access: CompanyAccess) -> None:
 
         st.markdown(
             company_metrics_view.table_html(
-                METRIC_GROUPS,
+                (("Management & Administration", (("management_administration_cost", "Management and office payroll"),)),) + METRIC_GROUPS,
                 monthly,
                 vat_percent,
                 editable=editable,
+                readonly_fields=('management_administration_cost',),
+                vat_exempt_fields=('management_administration_cost',),
             ),
             unsafe_allow_html=True,
         )

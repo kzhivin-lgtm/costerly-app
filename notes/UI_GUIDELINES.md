@@ -826,3 +826,35 @@ Synthetic browser scenarios cover1280/390 and the full old matrix. Longer
 business tables use the shared existing page-bottom geometry probe, retaining
 the exact26px fixed-Privacy gap and2px tolerance. Native scrollIntoView alone
 does not establish that the viewport reached the actual bottom.
+
+## Labor2.18, owner approved26November2026
+
+Project title uses the saved File Review Project name verbatim, including A3;
+empty/Unknown shows Project alone. This does not change recognition or identity.
+Before Delivery, Production time uses the existing service-field editor and
+authenticated queued writer. Accept only positive whole working days after
+payment until ready for delivery. Delivery and installation are excluded. New
+terms are blank, no illustrative15-day default. Show Working days after payment
+and Delivery & installation excluded without final periods. Persist through
+Review/Back/reopen and include the saved term in the approved snapshot/PDF.
+Days never enter sale-price calculations. Failed override reads must not become
+an apparently absent saved price or term.
+
+Project Price and VAT figures use the same mono family/30px size as Project
+Total, regular400 and black; Total stays purple/bold700. Existing financial
+values, navigation and geometry remain except the added row and figure size.
+
+Coating reference details supersede the2.17 table presentation: reuse the compact
+Trial Installation/Packing list, with finish, coated m², min/m², hourly rate and
+included batch preparation. Keep calculations, material scope and shared receipt
+reconciliation unchanged. Genuine terminal work without details has no disclosure
+or empty expanded space. Keep hour editors and all four top stages. Hide Edge
+Banding only when the source has no such operation and no nonzero override;
+an applicable operation manually set to0 stays visible and editable.
+
+Management & Administration is the first readonly Overhead category in Profile
+and objects. Sum active Management/Office total_monthly_cost, already employer
+loaded, allocate using the same exact Labor hours / Production monthly capacity.
+Do not apply employer load again or VAT to the salary row. Employee mutations
+invalidate the existing company metrics context. No duplicate editable payroll
+record, new writer, polling, or approval controller is introduced.

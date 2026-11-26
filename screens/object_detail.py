@@ -361,8 +361,8 @@ def _material_editor(context: ObjectDetailContext) -> None:
             labor_hours_overrides=data.get("labor_hours_overrides", {}),
             labor_block_hours=data.get("labor_block_hours", {}),
             part_coating=data.get('part_coating'),
-            reference_tables=[{"key": "coating", "rows_html": object_detail_view.table_rows_html(
-                object_detail_view.coating_table_section(data.get('part_coating')))}],
+            reference_lists=[{"key": "coating", "rows_html": object_detail_view.work_detail_rows_html(
+                object_detail_view.coating_detail_rows(data.get('part_coating')))}],
             labor=data.get("labor"),
             cost_policy=data.get("cost_policy"),
         )

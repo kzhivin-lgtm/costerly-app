@@ -159,7 +159,7 @@ file_review._record_first_file_review_render = lambda *_: None
 file_review._sync_durable_naming_once = lambda *_: None
 file_review._sync_durable_document_identity_once = lambda *_: None
 file_review.load_file_review_data = lambda _: {
- 'run':{'file_name':'ui-fixture.pdf','pages_detected':1},
+ 'run':{'file_name':'ui-fixture.pdf','pages_detected':1,'project_name':scenario().get('project_name','unknown')},
  'objects':list(map(_normalize_object,sample['review_objects'])),
  'timings':{}, 'source':None,
 }
@@ -171,6 +171,7 @@ def read_price_overrides(*_):
  filename=STATE / 'objects-prices.json'
  return pd.DataFrame(json.loads(filename.read_text()) if filename.exists() else [])
 estimation.fetch_rfq_estimate_pricing_overrides = read_price_overrides
+estimation.fetch_rfq_run = lambda *_: pd.DataFrame([{'project_name':scenario().get('project_name','unknown')}])
 estimation.fetch_rfq_estimate_material_plan = read_plans
 objects.get_supabase_client = Client
 objects._data_with_object_routes = lambda data, **_: data
@@ -232,7 +233,13 @@ labor.load_sheet_processing_machinery = lambda *_: {'availability':{'finish_wet_
 _original_labor_loader = labor.load_object_labor
 def fixture_labor_loader(*args, **kwargs):
  if scenario().get('labor_unknown'):return {'status':'preparing'}
- return _original_labor_loader(*args, **kwargs)
+ state=_original_labor_loader(*args, **kwargs)
+ if scenario().get('edge_applicable') and state.get('status')=='ready':
+  # This interaction fixture includes an applicable edge operation at a zero
+  # configured norm. Its financial baseline remains unchanged; inapplicable
+  # edges are checked separately in coatingChecks and the unit source cases.
+  state=deepcopy(state);state['result']['edge_banding']['metres']=10
+ return state
 labor.load_object_labor = fixture_labor_loader
 estimation.load_object_labor = fixture_labor_loader
 
@@ -431,6 +438,7 @@ class ProfileQuery:
  def select(self,*_args,**_kwargs):return self
  def eq(self,key,value):self.filters[key]=value;return self
  def is_(self,key,value):self.filters[key]=None if value=='null' else value;return self
+ def in_(self,key,values):self.filters[key]=list(values);return self
  def limit(self,*_args):return self
  def order(self,*_args,**_kwargs):return self
  def update(self,payload):self.operation='update';self.payload=payload;return self
@@ -445,7 +453,7 @@ class ProfileQuery:
    raise RuntimeError('Injected Profile read failure')
   data=read_db()
   rows=data[self.name]
-  selected=[row for row in rows if all(row.get(key)==value for key,value in self.filters.items())]
+  selected=[row for row in rows if all(row.get(key) in value if isinstance(value,list) else row.get(key)==value for key,value in self.filters.items())]
   if self.operation=='update':
    for row in selected:row.update(self.payload)
   elif self.operation in {'insert','upsert'}:

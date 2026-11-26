@@ -104,7 +104,7 @@ try{
  assert.equal(await core.locator('.st-key-company_profile_tab [role="tab"][aria-selected="true"]').innerText(),selected);
  await core.getByRole('button',{name:'Keep working',exact:true}).click();
  // Existing edits remain live when the owner declines an explicit reload.
- const field=core.locator('.company-metrics-monthly-input').first();
+ const field=core.locator('.company-metrics-monthly-input[data-field="rent_facilities_cost"]');
  await field.fill('999');
  await recovery(core,core.getByRole('button',{name:'All Projects',exact:true}));
  page.once('dialog',dialog=>dialog.dismiss());

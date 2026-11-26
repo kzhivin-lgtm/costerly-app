@@ -66,9 +66,52 @@ def test_all_saved_monthly_categories_including_other_spendings_are_retained():
     monthly = {field: 2016 for field, _, _ in _monthly_overhead_map()}
     result = estimate(overhead_monthly=monthly,
                       settings=settings(warranty_reserve_percent=0, management_buffer_percent=0))
-    assert len(result["lines"]) == len(monthly) == 13
-    assert result["cost"] == 130
+    assert len(result["lines"]) == len(monthly) == 14
+    assert result["cost"] == 140
     assert {line["raw_agent_json"]["source_column"] for line in result["lines"]} == set(monthly)
+
+
+def test_management_employer_cost_uses_same_hours_without_second_payroll_load():
+    result = estimate(settings=settings(production_monthly_hours=1200, warranty_reserve_percent=0, management_buffer_percent=0),
+                      overhead_monthly={'management_administration_cost':46250,'rent_facilities_cost':10000},
+                      labor_hours=100)
+    assert result['lines'][0]['group_name'] == 'Management & Administration'
+    assert result['lines'][0]['monthly_cost'] == 46250
+    assert result['lines'][0]['cost'] == 3854.17
+    assert result['lines'][0]['allocation_basis'] == '100h / 1200h'
+    assert result['cost'] == 4687.5
+
+
+def test_profile_management_payroll_is_readonly_vat_exempt_and_not_editable():
+    from ui.company_metrics_view import table_html
+    field='management_administration_cost'
+    html=table_html((('Management & Administration',((field,'Management and office payroll'),)),),
+                    {field:46250},18,editable=True,readonly_fields=(field,),vat_exempt_fields=(field,))
+    assert 'contenteditable' not in html and 'role="textbox"' not in html
+    assert html.count('₪46\u202f250') == 3
+    assert '₪8\u202f325' not in html
+
+
+def test_management_query_reads_only_company_scoped_active_nonproduction_totals():
+    from db.repositories import fetch_company_management_payroll
+    from types import SimpleNamespace
+    class Query:
+        def table(self,name):assert name=='company_employees';return self
+        def select(self,fields,**kwargs):assert fields=='total_monthly_cost' and kwargs=={'count':'exact'};return self
+        def eq(self,k,v):assert (k,v)==('company_id','c');return self
+        def in_(self,k,v):assert k=='department' and set(v)=={'management','office'};return self
+        def is_(self,k,v):assert (k,v)==('deleted_at','null');return self
+        def execute(self):return SimpleNamespace(data=[{'total_monthly_cost':100.1},{'total_monthly_cost':200.2}],count=2)
+    assert fetch_company_management_payroll(Query(),'c') == 300.3
+
+
+def test_empty_work_is_a_terminal_editable_row_without_disclosure():
+    from screens.estimation_labor_v1 import _cost_band
+    from xml.etree import ElementTree as ET
+    root=ET.fromstring(_cost_band('File Preparation','',{'hours':.2,'pay':10,'taxes':2.5,'total':12.5},key='file-preparation'))
+    assert root.tag=='div' and root.find('summary') is None
+    assert root.find(".//*[@data-field='labor_hours']") is not None
+    assert root.find("./div[@class='object-detail-work-body']") is None
 
 
 def labor_state():

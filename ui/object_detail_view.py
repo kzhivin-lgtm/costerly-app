@@ -458,8 +458,26 @@ def coating_table_section(audit) -> dict:
                      for batch in (audit or {}).get("batches", [])]}
 
 
+def work_detail_rows_html(rows) -> str:
+    return ''.join(f'<li data-row-key="{_escape(row["row_key"])}">{_escape(row["text"])}</li>' for row in rows)
+
+
+def work_details_html(rows, *, key=None) -> str:
+    if not rows and key is None:
+        return ''
+    attr = f' data-reference-list="{_escape(key)}"' if key else ''
+    return f'<ul{attr}>' + work_detail_rows_html(rows) + '</ul>'
+
+
+def coating_detail_rows(audit):
+    return [{"row_key": row['row_key'], "text":
+             f'{row["finish"]} · {row["area"]} · {row["norm"]} · {row["rate"]}'
+             + (' · Batch preparation included' if batch.get('batch_m2') else '')}
+            for row, batch in zip(coating_table_section(audit)['rows'], (audit or {}).get('batches', []))]
+
+
 def coating_details_html(audit) -> str:
-    return _table_html(coating_table_section(audit))
+    return work_details_html(coating_detail_rows(audit), key='coating')
 
 
 def _section_html(section: dict[str, object]) -> str:

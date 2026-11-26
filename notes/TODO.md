@@ -548,12 +548,13 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-AUTHORIZED, P1, USER REQUEST,26November2026, Project title. Render
+ACTIVE LABOR2.18, P1, USER REQUEST,26November2026, Project title. Render
 `Project <Project name>` using the saved File Review Project name, preserving
 the entered spelling. For an absent/blank/Unknown name render only `Project`.
 Reuse the existing metadata/cache/header path; no new read on every click or
 change to object identity, durable routes, quantities, prices or navigation.
-Implementation pending; no new work number assigned during the design step.
+Owner authorized implementation in2.18, preserving the actual A3 value rather
+than repairing recognition. [Scope and verification](LABOR_V2_18_MANAGEMENT_PRODUCTION_TIME_2026_11_26.md).
 
 AUTHORIZED, P1, USER REQUEST,26November2026, Production time on Project and the
 client proposal. Owner explicitly selected label `Production time`, positioned
@@ -571,7 +572,11 @@ Reuse existing acknowledged input persistence and navigation locks, no new
 parallel writer/polling/route. Do not reinterpret this field as a payment-
 percentage editor. Latest wording says after payment, without assuming70%.
 Interactive Project sketch prepared in the thread visualization directory as
-project-production-lead-time.html. Runtime implementation remains pending.
+project-production-lead-time.html. Owner approved implementation in2.18 and
+explicitly reconfirmed excluded delivery/installation, then applied the additive
+field constraint. Candidate uses the existing acknowledged commercial writer.
+Also approved Price/VAT figures matching Total's mono family/size, black regular,
+while Total stays purple/bold. No final period in the affected UI copy.
 
 COMPLETED LOCAL MOCKUP, P1, USER REQUEST, 25 November 2026, Ada presentation
 file illustration. Source is the owner's Desktop/SAMPLES/Adda/Adda.pdf, first
@@ -1259,7 +1264,8 @@ edging for mixed/LDSP parts and preserve a nonzero explicit saved override.
 Keep the four top stages visible, real CNC breakdown expandable, Elements last,
 and closed aggregate/open-detail rollups unchanged. Owner reconsidered the2h
 CNC concern and did not request an arbitrary increase or new time norm.
-These card revisions are recorded for implementation, not claimed published.
+These card revisions are implemented in the2.18 candidate, verification active,
+not claimed published. [Release record](LABOR_V2_18_MANAGEMENT_PRODUCTION_TIME_2026_11_26.md).
 
 AUTHORIZED, OWNER RESUMED26November2026, P1, USER REQUEST,25November2026. Add read-only
 nonproduction staff costs from Profile Labor Cost to Profile Overhead expenses
@@ -1275,7 +1281,9 @@ and Project sketch. Reuse active Management/Office staff `total_monthly_cost`,
 display the category first in Profile Overhead and each object's Overhead, and
 allocate by the same object Labor hours / Production capacity. It must not be
 an editable duplicate of payroll or receive employer load a second time.
-Implementation remains pending; proposed name Management & Administration.
+Owner explicitly approved Management & Administration and implementation in2.18.
+Candidate is read-only in Profile and uses the same exact-hour Overhead allocator;
+verification active. No duplicate salary editor or second employer load.
 
 COMPLETED PRESERVATION, P1, OWNER REQUEST,25November2026. Exact Labor2.16 runtime
 8e7a26b3 preserved with full source, separate records, immutable tags, Git bundle,

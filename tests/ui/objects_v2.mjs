@@ -119,7 +119,7 @@ try{
  // rather than treating macOS glyph widths as a Linux layout requirement.
  const intrinsicWidths=await frame.evaluate(references=>Object.fromEntries(Object.entries(references).map(([selector,reference])=>{
   const host=document.createElement('div');host.style.cssText='position:fixed;left:-10000px;top:0;visibility:hidden;';
-  const shadow=host.attachShadow({mode:'closed'});shadow.innerHTML=reference.html;document.body.append(host);
+  const shadow=host.attachShadow({mode:'closed'});shadow.innerHTML=reference.html.replace('font-size:18px;line-height:1.2;font-weight:700','font-size:30px;line-height:1.2;font-weight:400');document.body.append(host);
   try{return[selector,shadow.firstElementChild.getBoundingClientRect().width];}finally{host.remove();}
  })),baseline.intrinsic_width_references);
  report.intrinsicWidths=intrinsicWidths;
@@ -128,7 +128,7 @@ try{
   await page.setViewportSize({width,height:1244});
   const actual=await frame.evaluate(selectors=>{
    const box=n=>{const b=n.getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,height:b.height};};
-   const preserved=Object.fromEntries(selectors.map(s=>[s,box(document.querySelector(s))]));
+   const preserved=Object.fromEntries(selectors.map(s=>[s,box(document.querySelector(s==='.objects-pricing-row--project-cost'?'.objects-pricing-row[data-object-key="delivery"]':s))]));
    const list=document.querySelector('.objects-workflow-stages'),steps=[...list.children];
    const lines=steps.slice(0,2).map(n=>parseFloat(getComputedStyle(n,'::after').width));
    const end=document.querySelector('[data-stage="3"] .objects-stage-group').getBoundingClientRect().right;
@@ -137,11 +137,14 @@ try{
    const heading=box(document.querySelector('.objects-pricing-summary-title'));
    const documents=[...document.querySelectorAll('.objects-document-button')].map(box);
    const back=box(document.querySelector('.st-key-objects_actions button'));
-   return{preserved,lines,end,action,docs,heading,documents,back};
+   return{preserved,lines,end,action,docs,heading,documents,back,productionHeight:box(document.querySelector('[data-commercial-term]')).height};
   },Object.keys(baseline.viewports[width]));
   for(const [selector,expected] of Object.entries(baseline.viewports[width]))for(const [axis,recorded] of Object.entries(expected)){
    if(selector==='.st-key-objects_actions'&&axis==='y')continue; //9.45 pins the terminal gap, all other axes remain strict.
-   const value=axis==='width'&&selector in intrinsicWidths?intrinsicWidths[selector]:recorded+(axis==='y'&&selector!=='h1.workflow-title'?-26:0);
+   // Owner-approved2.18 adds one service row and raises only Price/VAT values to30px
+   const shifted=selector==='.objects-pricing-row--project-cost'||selector.startsWith('.objects-pricing-summary')||selector==='.st-key-objects_actions';
+   const larger=selector==='.objects-pricing-summary-price'||selector==='.objects-pricing-summary-vat';
+   const value=axis==='width'&&selector in intrinsicWidths?intrinsicWidths[selector]:recorded+(axis==='y'&&selector!=='h1.workflow-title'?-26:0)+(axis==='y'&&shifted?actual.productionHeight:0)+(axis==='height'&&larger?14.40625:0);
    assert(Math.abs(actual.preserved[selector][axis]-value)<.1,JSON.stringify({width,selector,axis,expected:value,actual:actual.preserved[selector][axis]}));
   }
   await checkClosingGap(frame,'.st-key-objects_actions');
@@ -194,6 +197,18 @@ try{
  assert.equal(arrowBefore.x,arrowAfter.x);assert.equal(arrowBefore.y,arrowAfter.y);
  assert.equal(readFileSync(statePath('browser-journal'),'utf8'),beforeJournal,'Dashboard toggle must not rerun/read/write');
  assert(!existsSync(prices),'Focus-only interactions must not write prices');
+ const production=core.getByRole('textbox',{name:'Production time',exact:true});
+ const financialBefore=await core.locator('[data-summary-field]').allTextContents();
+ const productionSaved=page.waitForResponse(response=>response.url().includes('/rfq_estimate_pricing_overrides')&&response.request().method()==='POST'&&response.request().postDataJSON()?.field==='production_time_working_days');
+ await production.fill('15');await production.press('Tab');assert.equal((await productionSaved).status(),204);
+ assert.equal(JSON.parse(readFileSync(prices)).find(row=>row.object_key==='__project__').value,15);
+ assert.deepEqual(await core.locator('[data-summary-field]').allTextContents(),financialBefore,'Production days never enter financial totals');
+ assert.equal(await production.innerText(),'15');
+ const totalStyles=await core.locator('[data-summary-field]').evaluateAll(nodes=>nodes.map(n=>({field:n.dataset.summaryField,font:getComputedStyle(n).fontFamily,size:getComputedStyle(n).fontSize,weight:getComputedStyle(n).fontWeight,color:getComputedStyle(n).color})));
+ assert(totalStyles.every(s=>s.font===totalStyles[2].font&&s.size==='30px'));
+ assert(totalStyles.slice(0,2).every(s=>s.weight==='400'&&s.color==='rgb(23, 19, 28)'));assert.equal(totalStyles[2].weight,'700');
+ report.productionTime={saved:15,totalsUnchanged:true,styles:totalStyles};
+
  await page.screenshot({path:reportPath('objects-v2-initial.png'),fullPage:true});
  await move(core.getByRole('link',{name:/^review$/i}),'object_detail');
  await core.locator('.object-detail-title').first().waitFor();
@@ -227,6 +242,7 @@ try{
  await move(core.getByRole('link',{name:/^(Done|Review)$/i}),'object_detail');
  await move(core.getByRole('link',{name:'Back to Project',exact:true}),'objects');
  assert.equal((await core.locator('.objects-pricing-self-cost-cell').first().innerText()).replace(/[^0-9]/g,''),'1000','Commercial copies do not divide configured unit cost');
+ assert.equal(await core.getByRole('textbox',{name:'Production time',exact:true}).innerText(),'15');
  for(const [key,value] of [['delivery',123],['installation',321],['object-001',1750]]){
   const field=core.locator('.objects-pricing-row[data-object-key="'+key+'"] .objects-pricing-price-input');
   assert.equal((await field.innerText()).replace(/[^0-9]/g,''),String(value),key+' blur save survives Review/Back without Set Prices');
@@ -357,7 +373,7 @@ try{
  // completed native render, not the outgoing button between Streamlit deltas.
  await core.locator('.st-key-final_approval_approved button').waitFor({state:'attached',timeout:1000});
  assert(await generate().isDisabled());
- const proposal=JSON.parse(readFileSync(statePath('generated-proposal.json')));assert.equal(proposal.rows[0].sale_price_unit,1850);
+ const proposal=JSON.parse(readFileSync(statePath('generated-proposal.json')));assert.equal(proposal.rows[0].sale_price_unit,1850);assert.equal(proposal.production_time_working_days,15);
  assert.equal((readFileSync(statePath('browser-journal'),'utf8').match(/proposal generated/g)||[]).length,1);
  const download=core.getByRole('link',{name:'Download Proposal',exact:true});await download.waitFor();
  const availableIcons=await iconState();report.documentIcons.available=availableIcons;
@@ -374,13 +390,17 @@ try{
  assert.equal(await download.getAttribute('href'),proposal.proposal_pdf_url||'data:application/pdf;base64,JVBERi0xLjQ=');
  assert.deepEqual(errors,[]);report.errors=errors;
  await page.screenshot({path:reportPath('objects-v2-generated.png'),fullPage:true});
- writeFileSync(config,JSON.stringify({objects_v2:true,admin:false}));
+ writeFileSync(config,JSON.stringify({objects_v2:true,admin:false,project_name:'A3'}));
  const member=await browser.newPage({viewport:{width:1440,height:1000}}),memberCore=member.frameLocator('#costerly-app-frame');
  await member.goto('http://127.0.0.1:8798/');await member.locator('iframe.is-ready').waitFor();
  await memberCore.getByRole('button',{name:'Last Estimate',exact:true}).click();
  await memberCore.getByRole('button',{name:/continue to project/i}).waitFor();await memberCore.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
  await memberCore.getByRole('button',{name:/continue to project/i}).click();await memberCore.locator('.objects-pricing-table').waitFor();await memberCore.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
  assert.equal(await memberCore.locator('.objects-cycle-metrics,.objects-metrics-toggle').count(),0,'Technical metrics reuse existing platform-admin visibility');
+ assert.equal(await memberCore.locator('h1 .workflow-title-text').innerText(),'Project A3');
+ assert.equal(await memberCore.getByRole('textbox',{name:'Production time',exact:true}).innerText(),'15');
+ await member.setViewportSize({width:390,height:1000});
+ assert(await memberCore.getByRole('textbox',{name:'Production time',exact:true}).isVisible());
  await member.close();report.nonAdminMetricsHidden=true;
  writeFileSync(reportPath('objects-v2.json'),JSON.stringify(report,null,2));
  console.log('Objects V2.4 passed: approved26px body lift, original geometry/field boundaries, top-right menu+metrics with4px offset, stacked half-width documents, local metrics toggle and original pricing/approval/proposal flow.');

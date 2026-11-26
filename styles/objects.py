@@ -469,15 +469,16 @@ def apply_objects_css() -> None:
 
         .objects-pricing-summary-value {
             font-family: var(--font-mono);
-            font-size: 18px;
+            font-size: 30px;
             line-height: 1.2;
-            font-weight: 700;
-            color: var(--color-text-strong);
+            font-weight: 400;
+            color: #17131C;
         }
 
         .objects-pricing-summary-value--total {
             color: var(--color-accent);
             font-size: 30px;
+            font-weight: 700;
         }
 
         .objects-pricing-actions {

@@ -372,3 +372,21 @@ new rate,6612.50 to6687.50 Labor and8670.50 to8745.50 SC. Hours and all other ra
 remain unchanged. The expanded footer assertion uses the existing checkClosingGap
 helper to reach actual page bottom for the extra business rows, still26±2px.
 No earlier scenario or required suite is removed.
+
+Labor2.18 adds saved File Review Project titles (including A3), Production time
+before Delivery using the same service-field editor/writer, save/Review/Back/
+reopen and approved-snapshot coverage. Whole working days never change financial
+totals. Price/VAT figures match Total's font/size with regular black styling;
+old geometry remains, offset only by the measured new row and approved type size.
+Profile Save edits Rent explicitly after the new first readonly Management row,
+adds a Management employee through the existing form and checks derived employer
+cost, VAT exemption and cache invalidation. Python verifies scoped active payroll,
+once-only allocation, missing/truncated data and commercial-field separation.
+
+Calculation at1280/390 verifies the compact shared Coating detail list, retained
+receipt nodes, real terminal rows with no empty disclosure, absent inapplicable
+Edge Banding and all earlier financial/Save/retry/reopen/APPROVE assertions.
+The all-terminal editing fixture explicitly declares10m of applicable edge work
+with its existing zero norm, retaining old exact amounts. Unit coverage separately
+checks an applicable manual0 remains visible and an old nonzero override is kept.
+All ten browser suites and the full Python contract remain mandatory.

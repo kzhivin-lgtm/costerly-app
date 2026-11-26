@@ -20,6 +20,12 @@ from use_cases.final_approval import _json_safe
 class ObjectsHeaderSlots:
     metrics: object
     stages: object
+    title: object = None
+
+
+def project_title(name) -> str:
+    name = str(name or '').strip()
+    return 'Project' if not name or name.lower() in {'unknown', 'none', 'null', '—', '-'} else f'Project {name}'
 
 
 def prices_are_set(estimate_id: str | None, data: dict) -> bool:
@@ -50,7 +56,8 @@ def render_objects_header(title: str, render_header_controls: Callable[[], None]
     # The exact existing title markup and primary container remain unchanged.
     with st.container(key="costerly_screen_header"):
         with st.container(key="costerly_screen_header_primary"):
-            st.markdown(post_upload_title_html(title, class_name="objects-estimation-header", marker_id=OBJECTS_MARKER_ID, align_mark_left=True), unsafe_allow_html=True)
+            title_slot = st.empty()
+            title_slot.markdown(post_upload_title_html(title, class_name="objects-estimation-header", marker_id=OBJECTS_MARKER_ID, align_mark_left=True), unsafe_allow_html=True)
         with st.container(key="objects_header_toolbar", horizontal=True, vertical_alignment="center", gap=24):
             if render_header_controls is not None:
                 with st.container(key="objects_header_controls", width="content"):
@@ -62,10 +69,12 @@ def render_objects_header(title: str, render_header_controls: Callable[[], None]
         with st.container(key="objects_header_stages"):
             stages = st.empty()
             stages.html(stages_html({}, prices_set=False, proposal_ready=False))
-    return ObjectsHeaderSlots(metrics, stages)
+    return ObjectsHeaderSlots(metrics, stages, title_slot)
 
 
 def update_header(slots: ObjectsHeaderSlots, *, metrics_html: str, data: dict, estimate_id: str | None) -> None:
+    if slots.title is not None:
+        slots.title.markdown(post_upload_title_html(project_title(data.get('project_name')), class_name='objects-estimation-header', marker_id=OBJECTS_MARKER_ID, align_mark_left=True), unsafe_allow_html=True)
     proposal_ready = bool(st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id)))
     if slots.metrics is not None:
         slots.metrics.html(
@@ -89,6 +98,7 @@ def pricing_signature(data: dict[str, Any]) -> str:
     """Identify the saved commercial basis, excluding progress/timing/UI state."""
     fields = ("object_key", "quantity", "self_cost_unit", "sale_price_unit", "sale_price_total", "reviewed", "status")
     basis = {
+        "production_time_working_days": data.get('production_time_working_days'),
         "rows": [{field: row.get(field) for field in fields} for row in data.get("rows") or []],
         "project_costs": [{field: row.get(field) for field in ("object_key", "sale_price_unit", "sale_price_total")}
                           for row in data.get("project_costs") or []],

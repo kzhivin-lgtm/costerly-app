@@ -170,6 +170,11 @@ def build_proposal_pdf(
         ])
         canvas.rule()
 
+    production_days = snapshot.get('production_time_working_days')
+    if production_days is not None:
+        canvas.text(f'Production time: {int(production_days)} working days after payment', size=10)
+        canvas.text('Delivery and installation excluded', size=9, color=_MUTED)
+        canvas.rule()
     for row in snapshot.get("project_costs") or []:
         canvas.row([
             (_clean(row.get("name")) or _clean(row.get("object_key")).title(), 415),

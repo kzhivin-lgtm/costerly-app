@@ -522,7 +522,11 @@ def _render_pricing_table(
         cost_usd=cost_usd, running=running,
     ) if estimate_id else ""
     if header_slots is not None:
-        objects_workflow.update_header(header_slots, metrics_html=metrics_html, data={**data, "rows": rows}, estimate_id=estimate_id)
+        metadata = st.session_state.get('file_review_data_cache', {}).get(str(run_id), {}).get('run') or {}
+        if st.session_state.get('file_review_run_metadata_run_id') == run_id:
+            metadata = {**metadata, **(st.session_state.get('file_review_run_metadata') or {})}
+        name = metadata.get('project_name', data.get('project_name'))
+        objects_workflow.update_header(header_slots, metrics_html=metrics_html, data={**data, "rows": rows, 'project_name': name}, estimate_id=estimate_id)
     st.markdown(
         objects_pricing.pricing_table_html(
             rows=rows,
@@ -531,6 +535,7 @@ def _render_pricing_table(
             estimate_id=estimate_id,
             run_id=run_id,
             cycle_html="" if header_slots is not None else metrics_html,
+            production_time_working_days=data.get('production_time_working_days'),
             proposal_pdf_url=(
                 st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id))
                 if estimate_id
@@ -964,8 +969,11 @@ def render_objects_screen(
     # Emit the target screen before even queueing the worker. Streamlit marks
     # prior elements stale while a rerun is in flight, so submitting work first
     # could leave File Review visibly beneath a new Objects heading.
+    metadata = (st.session_state.get('file_review_data_cache', {}).get(str(run_id), {}).get('run') or {})
+    if st.session_state.get('file_review_run_metadata_run_id') == run_id:
+        metadata = {**metadata, **(st.session_state.get('file_review_run_metadata') or {})}
     header_slots = objects_workflow.render_objects_header(
-        "Project", render_header_controls,
+        objects_workflow.project_title(metadata.get('project_name')), render_header_controls,
         show_metrics=st.session_state.get("_platform_access") is not None,
     )
     # The File Review callback already populated visible seed rows. Queue

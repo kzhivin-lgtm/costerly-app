@@ -55,7 +55,30 @@ def fetch_company_production_capacity(client: Client, company_id: str) -> dict:
 
 
 def fetch_company_overhead_monthly(client: Client, company_id: str) -> pd.DataFrame:
-    return fetch_table(client, "overhead_monthly", filters={"company_id": company_id})
+    monthly = fetch_table(client, "overhead_monthly", filters={"company_id": company_id})
+    payroll = fetch_company_management_payroll(client, company_id)
+    if monthly.empty:
+        monthly = pd.DataFrame([{"company_id": company_id}])
+    monthly['management_administration_cost'] = payroll
+    return monthly
+
+
+def fetch_company_management_payroll(client: Client, company_id: str) -> float:
+    """Read only active nonproduction monthly employer totals, scoped to company."""
+    from decimal import Decimal
+    response = (client.table('company_employees').select('total_monthly_cost', count='exact')
+                .eq('company_id', company_id).in_('department', ['management', 'office'])
+                .is_('deleted_at', 'null').execute())
+    rows = response.data or []
+    if getattr(response, 'count', None) is not None and response.count > len(rows):
+        raise ValueError('Management payroll response was truncated')
+    total = Decimal(0)
+    for row in rows:
+        value = Decimal(str(row.get('total_monthly_cost')))
+        if not value.is_finite() or value < 0:
+            raise ValueError('Management payroll total is unavailable')
+        total += value
+    return float(total)
 
 
 def fetch_estimate_driver_quantities(

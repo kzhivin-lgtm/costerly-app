@@ -1858,7 +1858,11 @@ def install_objects_price_input_guard(
 
             function isProjectCostRow(row) {
                 const key = String(row.dataset.objectKey || "").toLowerCase();
-                return key === "delivery" || key === "installation";
+                return key === "delivery" || key === "installation" || !!row.dataset.commercialTerm;
+            }
+
+            function formatCommercialInput(row, value) {
+                return row.dataset.commercialTerm ? String(value) : formatMoney(value);
             }
 
             function hideProjectCostSuggestion(row) {
@@ -1884,8 +1888,8 @@ def install_objects_price_input_guard(
                     const write = priceWrites.get(JSON.stringify([ESTIMATE_ID, objectKey]));
                     if (write && anyInput) {
                         const confirmed = write.done && input && readMoneyNumber(saleInputValue(input)) === write.value;
-                        prices[objectKey] = write.value;
-                        setSaleInputValue(anyInput, formatMoney(write.value));
+                        if (!row.dataset.commercialTerm) prices[objectKey] = write.value;
+                        setSaleInputValue(anyInput, formatCommercialInput(row, write.value));
                         anyInput.dataset.userEdited = "true";
                         if (write.failed) {
                             anyInput.setAttribute("aria-invalid", "true");
@@ -1897,7 +1901,7 @@ def install_objects_price_input_guard(
                         hideProjectCostSuggestion(row);
                         continue;
                     }
-                    if (!input || !objectKey) continue;
+                    if (!input || !objectKey || row.dataset.commercialTerm) continue;
                     prices[objectKey] = Math.max(0, Math.round(readMoneyNumber(saleInputValue(input))));
                     input.dataset.userEdited = "true";
                     hideProjectCostSuggestion(row);
@@ -1907,7 +1911,7 @@ def install_objects_price_input_guard(
             function setManualSaleUnit(row, value) {
                 const key = row.dataset.objectKey || "";
                 if (!key) return;
-                manualPrices()[key] = Math.max(0, Math.round(readNumber(value, 0)));
+                if (!row.dataset.commercialTerm) manualPrices()[key] = Math.max(0, Math.round(readNumber(value, 0)));
                 const input = row.querySelector(".objects-pricing-price-input");
                 if (input) input.dataset.userEdited = "true";
                 hideProjectCostSuggestion(row);
@@ -1919,7 +1923,7 @@ def install_objects_price_input_guard(
                 const payload = {
                     estimate_id: ESTIMATE_ID,
                     object_key: objectKey,
-                    field: "sale_price_unit",
+                    field: row.dataset.commercialTerm || "sale_price_unit",
                     value: Math.max(0, Math.round(readNumber(value, 0))),
                     updated_at: new Date().toISOString(),
                 };
@@ -1929,6 +1933,9 @@ def install_objects_price_input_guard(
                 priceWrites.set(key, write);
                 write.promise = Promise.resolve(previous?.promise).then(async () => {
                   try {
+                    if (row.dataset.commercialTerm && (!Number.isInteger(payload.value) || payload.value < 1)) {
+                        throw new Error("Enter a positive whole number of working days");
+                    }
                     if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_ACCESS_TOKEN) {
                         throw new Error("Authenticated price persistence is unavailable");
                     }
@@ -1956,7 +1963,8 @@ def install_objects_price_input_guard(
                     if (priceWrites.get(key) === write) {
                         const input = rowForObject(objectKey)?.querySelector(".objects-pricing-price-input");
                         input?.setAttribute("aria-invalid", "true");
-                        if (input) input.title = "Could not save. Leave the field to retry.";
+                        if (input) input.title = row.dataset.commercialTerm && payload.value < 1
+                            ? "Enter a positive whole number of working days" : "Could not save. Leave the field to retry";
                     }
                     if (parentWindow.console && parentWindow.console.warn) {
                         parentWindow.console.warn("Could not persist pricing override", error);
@@ -2000,7 +2008,7 @@ def install_objects_price_input_guard(
             function objectRows() {
                 return rowsForEstimate().filter((row) => {
                     const key = String(row.dataset.objectKey || "").toLowerCase();
-                    return key && key !== "delivery" && key !== "installation";
+                    return key && !isProjectCostRow(row);
                 });
             }
 
@@ -2174,12 +2182,16 @@ def install_objects_price_input_guard(
                 const digits = sanitizeActive(ctx.input);
                 const changed = ctx.input.getAttribute("aria-invalid") === "true" ||
                     ctx.input.dataset.editDirty === "true" || digits !== (ctx.input.dataset.editStartDigits || "");
+                if (ctx.row.dataset.commercialTerm && !digits && !changed) {
+                    setSaleInputValue(ctx.input, "");
+                    return;
+                }
                 if (changed) {
                     const value = digits ? Number(digits) : 0;
                     setManualSaleUnit(ctx.row, value);
                     persistManualSaleUnit(ctx.row, value);
                 }
-                setSaleInputValue(ctx.input, formatMoney(digits ? Number(digits) : 0));
+                setSaleInputValue(ctx.input, formatCommercialInput(ctx.row, digits ? Number(digits) : 0));
                 updateLineTotal(ctx.row);
                 updateProjectPricing();
                 if (!pointerStartedInPriceInput) {
@@ -2586,7 +2598,7 @@ def install_object_detail_input_guard(
                 const children = host => [...host.querySelectorAll('.object-detail-work-row')]
                     .filter(row => row.parentElement.closest('.object-detail-work-row') === (host === labor ? null : host));
                 const update = (row, value) => {
-                    const summary = row.querySelector(':scope > summary');
+                    const summary = row.querySelector(':scope > .object-detail-cost-summary');
                     const input = summary.querySelector('[data-field="labor_hours"]');
                     if (input && input !== parentDoc.activeElement && input.getAttribute('aria-invalid') !== 'true')
                         setEditableValue(input, laborHoursText(value.hours));
@@ -2598,7 +2610,7 @@ def install_object_detail_input_guard(
                 };
                 const clearUnknown = row => {
                     if (row.dataset.costUnknown !== 'true') return;
-                    for (const cell of row.querySelectorAll(':scope > summary .object-detail-cost-value')) cell.textContent = '—';
+                    for (const cell of row.querySelectorAll(':scope > .object-detail-cost-summary .object-detail-cost-value')) cell.textContent = '—';
                 };
                 const valueFor = row => {
                     let value;
@@ -2609,7 +2621,7 @@ def install_object_detail_input_guard(
                         if (!value.qualified && row.dataset.costUnknown === 'true') { clearUnknown(row); return null; }
                         if (['sheet-processing', 'cnc'].includes(row.dataset.costBand)) value = {...paid(value.hours),qualified:value.qualified};
                     } else {
-                        const input = row.querySelector(':scope > summary [data-field="labor_hours"]');
+                        const input = row.querySelector(':scope > .object-detail-cost-summary [data-field="labor_hours"]');
                         if (!input) return null;
                         const pending = draft.get(editKey(contextFor(input)));
                         if (!pending && !input.hasAttribute('data-original-value')) {
@@ -2638,8 +2650,8 @@ def install_object_detail_input_guard(
                     return value;
                 };
                 const total = add(children(labor).map(valueFor).filter(Boolean));
-                const cell = labor.querySelector(':scope > summary [data-labor-column="total"] .object-detail-cost-value');
-                const hours = labor.querySelector(':scope > summary .object-detail-labor-hours-value');
+                const cell = labor.querySelector(':scope > .object-detail-cost-summary [data-labor-column="total"] .object-detail-cost-value');
+                const hours = labor.querySelector(':scope > .object-detail-cost-summary .object-detail-labor-hours-value');
                 if (!total.qualified) {
                     labor.dataset.laborTotalHours = labor.dataset.laborBaseHours || '';
                     if (cell) cell.textContent = labor.dataset.laborBaseTotal === '' ? '—' : formatMoney(Number(labor.dataset.laborBaseTotal));
@@ -2790,17 +2802,36 @@ def install_object_detail_input_guard(
                 }
             }
 
-            function reconcileReferenceTables(tables) {
-                for (const receipt of tables || []) {
-                    const table = parentDoc.querySelector(`[data-reference-table="${CSS.escape(receipt.key)}"]`);
+            function reconcileReferenceLists(lists) {
+                for (const receipt of lists || []) {
+                    const table = parentDoc.querySelector(`[data-reference-list="${CSS.escape(receipt.key)}"]`);
                     if (!table) continue;
-                    reconcileTableRows(table, [...table.querySelectorAll(':scope > .object-detail-table-row')],
+                    reconcileTableRows(table, [...table.querySelectorAll(':scope > [data-row-key]')],
                         receipt.rows_html, row => row.dataset.rowKey, (node, fresh) => {
-                            const cells = node.querySelectorAll(':scope > .object-detail-table-cell');
-                            fresh.querySelectorAll(':scope > .object-detail-table-cell').forEach((cell, i) => {
-                                if (cells[i].textContent !== cell.textContent) cells[i].textContent = cell.textContent;
-                            });
+                            if (node.textContent !== fresh.textContent) node.textContent = fresh.textContent;
                         });
+                    const work = table.closest('.object-detail-work-row');
+                    const expandable = table.children.length > 0;
+                    if (work && (work.tagName === 'DETAILS') !== expandable) {
+                        const active = parentDoc.activeElement;
+                        const restoreFocus = work.contains(active);
+                        const selection = parentWindow.getSelection();
+                        const range = restoreFocus && selection?.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+                        const next = parentDoc.createElement(expandable ? 'details' : 'div');
+                        for (const attr of work.attributes) if (attr.name !== 'open') next.setAttribute(attr.name, attr.value);
+                        const previousHeading = work.querySelector(':scope > .object-detail-cost-summary');
+                        const heading = parentDoc.createElement(expandable ? 'summary' : 'div');
+                        heading.className = previousHeading.className;
+                        heading.classList.toggle('object-detail-leaf-summary', !expandable);
+                        heading.append(...previousHeading.childNodes);
+                        previousHeading.remove();
+                        next.append(heading, ...work.childNodes);
+                        work.replaceWith(next);
+                        if (restoreFocus && active?.isConnected) {
+                            active.focus({preventScroll:true});
+                            if (range) {selection.removeAllRanges();selection.addRange(range);}
+                        }
+                    }
                 }
             }
 
@@ -2836,7 +2867,7 @@ def install_object_detail_input_guard(
                     if (draft.get(key)?.value === edit.value || Number(draft.get(key)?.value) === Number(edit.value)) draft.delete(key);
                 }
                 reconcileFrontMaterialRows(result);
-                reconcileReferenceTables(result.reference_tables);
+                reconcileReferenceLists(result.reference_lists);
                 // A first explicit unknown-hours override can complete Overhead.
                 // Reuse server rendering only for a previously pending host;
                 // ready groups and all hour input nodes stay mounted.

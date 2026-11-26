@@ -180,12 +180,13 @@ def test_four_stage_parents_do_not_create_additional_manual_hour_writers():
         def __init__(self):
             super().__init__(); self.stack = []; self.children = []
         def handle_starttag(self, tag, attrs):
-            if tag == 'details':
+            if tag in {'details', 'div'}:
                 key = dict(attrs).get('data-cost-band')
-                if key and self.stack and self.stack[-1] == 'labor': self.children.append(key)
+                parent = next((value for value in reversed(self.stack) if value), None)
+                if key and parent == 'labor': self.children.append(key)
                 self.stack.append(key)
         def handle_endtag(self, tag):
-            if tag == 'details': self.stack.pop()
+            if tag in {'details', 'div'}: self.stack.pop()
     html = _labor_html({'status': 'waiting_for_materials'})
     parsed = Bands(); parsed.feed(html)
     assert parsed.children == ['part-production', 'part-coating', 'assembly-stage', 'preparation-packing']

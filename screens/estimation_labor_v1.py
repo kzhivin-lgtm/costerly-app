@@ -14,7 +14,7 @@ from db.repositories import (
 from db.supabase_client import get_supabase_client
 from observability.runtime import report_runtime_failure
 from screens.block_assembly import assembly_breakdown_html
-from ui.object_detail_view import coating_details_html, detail_elements_html, overhead_section_html, _money as display_money
+from ui.object_detail_view import coating_details_html, work_details_html, detail_elements_html, overhead_section_html, _money as display_money
 from use_cases.overhead_engine import estimate_object_overhead, with_production_capacity, format_labor_hours
 from use_cases.block_assembly import calculate_block_assembly
 from use_cases.estimation_labor_v1 import (
@@ -85,7 +85,7 @@ _pay_metrics = labor_pay_metrics
 _sheet_pay_metrics = sheet_pay_metrics
 
 
-def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False, aggregate=False, cost_quantity=1, explicit_keys=(), detail_key=None, coating=None):
+def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False, aggregate=False, cost_quantity=1, explicit_keys=(), detail_key=None, coating=None, has_details=None):
     is_row = key != 'labor'
 
     def metric(label, value, column, *, total=False):
@@ -138,8 +138,11 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
             '<div class="object-detail-table-head-row object-detail-cost-summary object-detail-cost-column-headings">'
             f'<div class="object-detail-table-head"></div>{fields}</div>{body}</div></details>'
         )
+    expandable = bool(body.strip()) if has_details is None else has_details
+    tag, heading = ('details', 'summary') if expandable else ('div', 'div')
+    leaf_class = ' object-detail-leaf-summary' if heading == 'div' else ''
     return (
-        f'<details class="{classes}" data-cost-band="{key}"'
+        f'<{tag} class="{classes}" data-cost-band="{key}"'
         + (f' data-coating-batches="{escape(json.dumps(coating.get("batches", [])), quote=True)}"' if coating else '')
         + f' data-labor-hourly-rate="{100 if key == "part-coating" else 50}"'
         + (f' data-labor-detail="{detail_key}"' if detail_key else '')
@@ -147,10 +150,10 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
         + (f' data-labor-fixed-hours="{value["hours"]}"' if fixed_leaf and metrics else '')
         + f' data-cost-unknown="{str(metrics is None).lower()}"'
         f' data-cost-partial="{str(bool(value.get("partial"))).lower()}"'
-        + (' open' if open_by_default else '') + '>'
-        f'<summary class="{row} object-detail-cost-summary">'
-        f'<div class="{cell} object-detail-cost-title">{escape(title)}</div>{fields}</summary>'
-        f'<div class="{body_class}">{body}</div></details>'
+        + (' open' if open_by_default and tag == 'details' else '') + '>'
+        f'<{heading} class="{row} object-detail-cost-summary{leaf_class}">'
+        f'<div class="{cell} object-detail-cost-title">{escape(title)}</div>{fields}</{heading}>'
+        + (f'<div class="{body_class}">{body}</div>' if body.strip() else '') + f'</{tag}>'
     )
 
 
@@ -259,10 +262,13 @@ def _cnc_time_breakdown(result, *, inline=False):
 
 
 def _cnc_sheet_html(result, *, elements_html, work):
+    edge_source = result.get('edge_banding') or {}
+    edge_applicable = any(edge_source.get(key) for key in ('metres', 'minutes', 'unestimated'))
     operations = (
         _cost_band('Operator', _cnc_time_breakdown(result, inline=True), work['cnc-operator'], key='cnc-operator')
         + _cost_band('File Preparation', '', work['file-preparation'], key='file-preparation')
-        + _cost_band('Edge Banding', '', work['edge-banding'], key='edge-banding')
+        + (_cost_band('Edge Banding', '', work['edge-banding'], key='edge-banding')
+           if edge_applicable or work['edge-banding'] is None or work['edge-banding']['hours'] is None or float(work['edge-banding']['hours']) != 0 else '')
     )
     # CNC is one read-only work aggregate, not another charge or editable key.
     body = _cost_band('CNC', operations, work['sheet-processing'], key='cnc',
@@ -397,13 +403,11 @@ def _preparation_html(state, *, quantity=1, overrides=None):
     checking, packing, total = preparation_pay_metrics(state, quantity=quantity, overrides=overrides)
     result = state.get('preparation') or {}
     interfaces = result.get('interfaces', ())
-    checking_body = '<ul>' + ''.join(
-        '<li>' + escape(' ↔ '.join(row['unit_ids'])) +
-        f' · {row["quantity"] if row["quantity"] is not None else "—"} × 30 min</li>' for row in interfaces) + '</ul>' if interfaces else ''
-    packing_body = '<ul>' + ''.join(
-        '<li>' + escape(row['id']) + f' · {row["size"] or "—"} · '
-        + escape(str(row['quantity'])) + f' × {row["minutes_per_unit"] if row["minutes_per_unit"] is not None else "—"} min</li>'
-        for row in result.get('packing_units', ())) + '</ul>' if result.get('packing_units') else ''
+    checking_body = work_details_html([{'row_key': str(index), 'text': ' ↔ '.join(row['unit_ids']) +
+        f' · {row["quantity"] if row["quantity"] is not None else "—"} × 30 min'} for index, row in enumerate(interfaces)])
+    packing_body = work_details_html([{'row_key': row['id'], 'text': row['id'] + f' · {row["size"] or "—"} · '
+        + str(row['quantity']) + f' × {row["minutes_per_unit"] if row["minutes_per_unit"] is not None else "—"} min'}
+        for row in result.get('packing_units', ())])
     body = _cost_band('Trial Installation', checking_body, checking, key='trial-fit')
     body += _cost_band('Packing', packing_body, packing, key='packing')
     return _cost_band('Preparation and Packing', body, total, key='preparation-packing', editable=False, aggregate=True)
@@ -439,7 +443,7 @@ def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, 
     additional = _cost_band('Additional Assembly', '', work['additional-assembly'], key='additional-assembly')
     body = (
         _cost_band('Part Production', sheet, sheet_metrics, key='part-production', editable=False, aggregate=True)
-        + _cost_band('Part Coating', _coating_html(state.get('coating')), work['part-coating'], key='part-coating', coating=state.get('coating'))
+        + _cost_band('Part Coating', _coating_html(state.get('coating')), work['part-coating'], key='part-coating', coating=state.get('coating'), has_details=bool((state.get('coating') or {}).get('batches')))
         + _cost_band('Assembly', block_assembly + additional, work['assembly-stage'],
                      key='assembly-stage', editable=False, aggregate=True)
         + _preparation_html(state, quantity=quantity, overrides=overrides)

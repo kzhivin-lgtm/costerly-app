@@ -93,8 +93,8 @@ def test_non_front_ada_veneer_panels_are_included_and_selected_fronts_override_s
     assert result['area_m2']==2.12 and result['parts'][0]['part_id']==panel['part_id']
 
 
-def test_mdf_front_and_plywood_body_keep_both_recipes_in_shared_table():
-    from ui.object_detail_view import coating_details_html, coating_table_section, table_rows_html
+def test_mdf_front_and_plywood_body_keep_both_recipes_in_shared_details():
+    from ui.object_detail_view import coating_details_html, coating_detail_rows, work_detail_rows_html
     from xml.etree import ElementTree as ET
     plan = coating_plan('mdf')
     front = plan['front_panel_groups']['o'][0]['part_sources'][0]
@@ -103,17 +103,16 @@ def test_mdf_front_and_plywood_body_keep_both_recipes_in_shared_table():
                'material_role': 'carcass_sheet', 'part_sources': [front, body]}}}]
     audit = calculate(plan, source_lines=source)
     original = deepcopy(audit)
-    section = coating_table_section(audit)
     table = ET.fromstring(coating_details_html(audit))
-    rows = table.findall("./div[@class='object-detail-table-row']")
+    rows = table.findall('./li')
     assert {row.attrib['data-row-key'] for row in rows} == {'enamel', 'lacquer'}
-    assert {tuple(cell.text for cell in row) for row in rows} == {
-        ('MDF enamel / lacquer', '2.12 m²', '45 min/m²', '₪100/h'),
-        ('Wood lacquer', '2.12 m²', '40 min/m²', '₪100/h'),
+    assert {row.text for row in rows} == {
+        'MDF enamel / lacquer · 2.12 m² · 45 min/m² · ₪100/h · Batch preparation included',
+        'Wood lacquer · 2.12 m² · 40 min/m² · ₪100/h · Batch preparation included',
     }
-    assert all(node.tag not in {'ul', 'li'} and 'contenteditable' not in node.attrib for node in table.iter())
+    assert all(node.tag in {'ul', 'li'} and 'contenteditable' not in node.attrib for node in table.iter())
     assert 'person' not in ''.join(table.itertext())
-    receipt = ET.fromstring('<div>' + table_rows_html(section) + '</div>')
+    receipt = ET.fromstring('<div>' + work_detail_rows_html(coating_detail_rows(audit)) + '</div>')
     assert [ET.tostring(row) for row in rows] == [ET.tostring(row) for row in receipt]
     assert audit == original, 'Presentation must not change the cost audit'
 

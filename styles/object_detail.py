@@ -557,13 +557,13 @@ def apply_object_detail_css() -> None:
         .object-detail-labor-table.object-detail-cost-band[data-cost-band="labor"]:not([open]) > .object-detail-cost-summary > [data-labor-column="hours"] { display: flex; visibility: visible; }
         .object-detail-labor-hours-value { font: 700 16px/1.2 var(--font-mono); white-space: nowrap; text-transform: none; }
         .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body { padding: 0; }
-        .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 20px; }
+        .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body > .object-detail-work-row > :is(summary, .object-detail-leaf-summary) > .object-detail-cost-title { padding-left: 20px; }
         .object-detail-work-row[data-labor-aggregate="true"][open] > summary [data-labor-column] > * { visibility: hidden; }
         .object-detail-labor-table [data-labor-column] { justify-content: center; align-self: stretch; }
         .object-detail-labor-money-pair [data-labor-column] > span { transform: translateX(var(--labor-column-offset, 0px)); }
         .object-detail-labor-table .object-detail-cost-summary:not(.object-detail-band-summary) [data-labor-column="total"] { grid-column: 6; }
         .object-detail-labor-table .object-detail-table-head,
-        .object-detail-work-row > summary .object-detail-table-cell { padding-inline: 7px; }
+        .object-detail-work-row > :is(summary, .object-detail-leaf-summary) .object-detail-table-cell { padding-inline: 7px; }
         .object-detail-work-row > .object-detail-cost-summary { background: none; }
         .object-detail-work-row[open] > .object-detail-cost-summary { background: rgba(128, 73, 198, 0.075); }
         .object-detail-work-row > .object-detail-cost-summary .object-detail-cost-title,
@@ -573,11 +573,13 @@ def apply_object_detail_css() -> None:
             text-transform: uppercase;
             color: rgba(42, 31, 44, 0.68);
         }
-        .object-detail-work-row > summary .object-detail-cost-title { padding-left: 20px; padding-block: 3px; }
-        .object-detail-work-row > summary .object-detail-cost-value { font: 700 13px/1.24 var(--font-mono); }
-        .object-detail-work-row > summary [data-labor-column="hours"] { padding-block: 3px; }
+        .object-detail-work-row > :is(summary, .object-detail-leaf-summary) .object-detail-cost-title { padding-left: 20px; padding-block: 3px; }
+        .object-detail-work-row > :is(summary, .object-detail-leaf-summary) .object-detail-cost-value { font: 700 13px/1.24 var(--font-mono); }
+        .object-detail-work-row > :is(summary, .object-detail-leaf-summary) [data-labor-column="hours"] { padding-block: 3px; }
         .object-detail-labor-review { padding: 8px 12px; margin: 0; }
         .object-detail-work-body { padding: 12px; }
+        div.object-detail-work-row > .object-detail-work-body { display: none; }
+        .object-detail-leaf-summary { cursor: default; }
         .object-detail-disclosure-summary {
             display: flex;
             align-items: center;
@@ -601,9 +603,9 @@ def apply_object_detail_css() -> None:
         .object-detail-cnc-elements .object-detail-element-group > summary { padding: 0 56px; }
         .object-detail-cnc-elements .object-detail-overlay-actions { top: 5px; right: 12px; }
         .object-detail-cnc-elements .object-detail-elements-section:has(.object-detail-overlay-actions) .object-detail-elements > summary { min-height: 42px; }
-        .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 32px; }
-        .object-detail-work-row[data-cost-band="sheet-processing"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 44px; }
-        .object-detail-work-row[data-labor-detail="cnc"] > .object-detail-work-body > .object-detail-work-row > summary > .object-detail-cost-title { padding-left: 56px; }
+        .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body > .object-detail-work-row > :is(summary, .object-detail-leaf-summary) > .object-detail-cost-title { padding-left: 32px; }
+        .object-detail-work-row[data-cost-band="sheet-processing"] > .object-detail-work-body > .object-detail-work-row > :is(summary, .object-detail-leaf-summary) > .object-detail-cost-title { padding-left: 44px; }
+        .object-detail-work-row[data-labor-detail="cnc"] > .object-detail-work-body > .object-detail-work-row > :is(summary, .object-detail-leaf-summary) > .object-detail-cost-title { padding-left: 56px; }
         .object-detail-cnc-breakdown > .object-detail-disclosure-summary { padding: 0 44px; }
         [data-field="labor_hours"]:empty::before { content: attr(data-placeholder); font-weight: 400; }
 
@@ -674,7 +676,7 @@ def apply_object_detail_css() -> None:
         .object-detail-overhead-band .object-detail-group > .object-detail-table-row > :first-child { padding-left: 44px; }
 
         .object-detail-group-title,
-        .object-detail-work-row > summary .object-detail-cost-title,
+        .object-detail-work-row > :is(summary, .object-detail-leaf-summary) .object-detail-cost-title,
         .object-detail-disclosure-title {
             display: flex;
             align-items: center;
@@ -682,7 +684,7 @@ def apply_object_detail_css() -> None:
         }
 
         .object-detail-group-title::before,
-        .object-detail-work-row > summary .object-detail-cost-title::before,
+        .object-detail-work-row > :is(summary, .object-detail-leaf-summary) .object-detail-cost-title::before,
         .object-detail-disclosure-title::before {
             content: "▾";
             display: inline-flex;
@@ -704,6 +706,7 @@ def apply_object_detail_css() -> None:
         details:not([open]) > summary .object-detail-disclosure-title::before {
             content: "▸";
         }
+        .object-detail-leaf-summary .object-detail-cost-title::before { content: ""; border: 0; }
 
         .object-detail-group-total {
             display: flex;
@@ -1129,14 +1132,14 @@ def apply_object_detail_css() -> None:
                 min-width: 609px;
             }
             .object-detail-work-row > .object-detail-cost-summary .object-detail-cost-title { gap: 2px; padding-inline: 6px; }
-            .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 12px; }
-            .object-detail-work-row[data-cost-band="sheet-processing"] > .object-detail-work-body > details > summary > .object-detail-cost-title { padding-left: 20px; }
-            .object-detail-work-row[data-labor-detail="cnc"] > .object-detail-work-body > .object-detail-work-row > summary > .object-detail-cost-title { padding-left: 28px; }
+            .object-detail-work-row[data-labor-aggregate="true"] > .object-detail-work-body > .object-detail-work-row > :is(summary, .object-detail-leaf-summary) > .object-detail-cost-title { padding-left: 12px; }
+            .object-detail-work-row[data-cost-band="sheet-processing"] > .object-detail-work-body > .object-detail-work-row > :is(summary, .object-detail-leaf-summary) > .object-detail-cost-title { padding-left: 20px; }
+            .object-detail-work-row[data-labor-detail="cnc"] > .object-detail-work-body > .object-detail-work-row > :is(summary, .object-detail-leaf-summary) > .object-detail-cost-title { padding-left: 28px; }
             .object-detail-cnc-breakdown > .object-detail-disclosure-summary { padding-left: 32px; }
             .object-detail-disclosure-summary { padding-left: 20px; }
             .object-detail-cnc-elements .object-detail-element-group > summary { padding-left: 28px; }
             .object-detail-overhead-band .object-detail-group-summary { min-width: 760px; }
-            .object-detail-labor-table > summary, .object-detail-cost-column-headings, .object-detail-work-row > summary { min-width: 609px; }
+            .object-detail-labor-table > :is(summary, .object-detail-leaf-summary), .object-detail-cost-column-headings, .object-detail-work-row > :is(summary, .object-detail-leaf-summary) { min-width: 609px; }
             .object-detail-cost-band:not([open]) > .object-detail-cost-summary {
                 grid-template-columns: minmax(0, 1fr) 70px;
                 min-width: 0;

@@ -53,6 +53,19 @@ def test_proposal_omits_empty_contacts_and_self_cost():
     assert "800" not in text
 
 
+def test_proposal_production_time_uses_saved_working_days_without_changing_totals():
+    snapshot=_snapshot()
+    snapshot['production_time_working_days']=15
+    payload=build_proposal_pdf(profile={'company_name':'Workshop'},project_name='A3',
+                               partner_name='',client_name='',snapshot=snapshot)
+    with pymupdf.open(stream=payload,filetype='pdf') as document:
+        text='\n'.join(page.get_text() for page in document)
+    assert 'Production time: 15 working days after payment' in text
+    assert 'delivery and installation excluded' in text.lower()
+    assert 'Production time: 15 working days after payment.' not in text
+    assert snapshot['summary']['total']==3200.16
+
+
 def test_proposal_supports_non_latin_project_names():
     payload = build_proposal_pdf(
         profile={"company_name": "Мастерская"},

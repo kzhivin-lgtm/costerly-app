@@ -160,8 +160,8 @@ async function coatingChecks(){
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('.object-detail-materials-band > summary').click();
   await core.locator('[data-cost-band="labor"] > summary').click();
-  await core.locator('[data-cost-band="part-coating"] > summary .object-detail-cost-title').click();
-  assert.equal(await core.locator('[data-cost-band="part-coating"]').evaluate(n=>n.open),true);
+  assert.equal(await core.locator('[data-cost-band="part-coating"]').evaluate(n=>n.tagName),'DIV');
+  assert.equal(await core.locator('[data-cost-band="edge-banding"]').count(),0,'No edge operation means no Edge Banding row');
   const picker=core.getByRole('combobox',{name:'Front panels',exact:true});
   const hours=core.getByRole('textbox',{name:'Part Coating hours',exact:true});
   const save=core.locator('.object-detail-material-save');
@@ -172,9 +172,10 @@ async function coatingChecks(){
   await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
   assert.equal(await hours.innerText(),'5.1');
   await core.locator('.object-detail-materials-band').getByText('Wood lacquer',{exact:true}).waitFor();
-  const coatingTable=core.locator('[data-reference-table="coating"]');
-  assert.deepEqual(await coatingTable.locator('.object-detail-table-head').allTextContents(),['Finish','Coated area','Time norm','Hourly rate']);
-  assert.deepEqual(await coatingTable.locator('[data-row-key="lacquer"] > div').allTextContents(),['Wood lacquer','2.12 m²','40 min/m²','₪100/h']);
+  await core.locator('[data-cost-band="part-coating"] > .object-detail-cost-summary .object-detail-cost-title').click();
+  assert.equal(await core.locator('[data-cost-band="part-coating"]').evaluate(n=>n.open),true);
+  const coatingTable=core.locator('[data-reference-list="coating"]');
+  assert.equal(await coatingTable.locator('[data-row-key="lacquer"]').innerText(),'Wood lacquer · 2.12 m² · 40 min/m² · ₪100/h · Batch preparation included');
   await coatingTable.evaluate(n=>n.coatingTableWitness='retained');
   const boardPrice=await core.locator('.object-detail-unit-price').first().innerText();
   await picker.selectOption('veneered_mdf_oil');
@@ -183,14 +184,14 @@ async function coatingChecks(){
   assert.equal(await hours.innerText(),'1.2');
   assert.equal(await core.locator('.object-detail-unit-price').first().innerText(),boardPrice);
   await core.locator('.object-detail-materials-band').getByText('Wood oil',{exact:true}).waitFor();
-  assert.deepEqual(await coatingTable.locator('[data-row-key="oil"] > div').allTextContents(),['Wood oil','2.12 m²','35 min/m²','₪100/h']);
+  assert.equal(await coatingTable.locator('[data-row-key="oil"]').innerText(),'Wood oil · 2.12 m² · 35 min/m² · ₪100/h');
   assert.equal(await coatingTable.evaluate(n=>n.coatingTableWitness),'retained','Update rows through the same receipt reconciler, preserving the table');
   assert.equal(await core.getByText('Coating consumables',{exact:true}).count(),1);
   assert.equal(await core.getByText('Paint consumables',{exact:true}).count(),0);
   assert.deepEqual(await core.locator('[data-field="labor_hours"]:not([data-line-id="part-coating"])').evaluateAll(nodes=>nodes.map(n=>[n.dataset.lineId,n.dataset.originalValue])),other);
   await hours.fill('2.0');await hours.press('Tab');
-  assert.equal(await core.locator('[data-cost-band="part-coating"] > summary [data-labor-column="pay"]').innerText(),'₪200');
-  assert.equal(await core.locator('[data-cost-band="part-coating"] > summary [data-labor-column="total"]').innerText(),'₪250');
+  assert.equal(await core.locator('[data-cost-band="part-coating"] > .object-detail-cost-summary [data-labor-column="pay"]').innerText(),'₪200');
+  assert.equal(await core.locator('[data-cost-band="part-coating"] > .object-detail-cost-summary [data-labor-column="total"]').innerText(),'₪250');
   const exactHours=Number(await root.getAttribute('data-labor-total-hours'));
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
   const persisted=JSON.parse(readFileSync(statePath('full-cost-lines.json'),'utf8')).find(row=>row.source==='object_costs_v3_1').raw_agent_json;
@@ -206,7 +207,7 @@ async function coatingChecks(){
   assert.equal(Number(await root.getAttribute('data-labor-total-hours')),exactHours);
   assert.equal(await core.locator('[data-testid="stException"]').count(),0);
   await page.screenshot({path:reportPath('coating-'+width+'.png'),fullPage:true});
-  await core.locator('[data-cost-band="part-coating"] > summary .object-detail-cost-title').click();
+  await core.locator('[data-cost-band="part-coating"] > .object-detail-cost-summary .object-detail-cost-title').click();
   assert.equal(await core.locator('[data-cost-band="part-coating"]').evaluate(n=>n.open),true);
   await picker.selectOption('mdf');
   await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
@@ -389,14 +390,14 @@ try{
  await fresh.page.close();
  for(const width of [1280,390]){
   rmSync(statePath('labor-hours.json'),{force:true});
-  const {page,core,frame}=await boot({labor_ready:true,overhead_delay:1.5},width);
+  const {page,core,frame}=await boot({labor_ready:true,overhead_delay:1.5,edge_applicable:true},width);
   await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
   await core.getByRole('button',{name:/^continue to project$/i}).click();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('[data-cost-band="labor"] > summary').click();
-  const stages=core.locator('[data-cost-band="labor"] > .object-detail-labor-body > details');
+  const stages=core.locator('[data-cost-band="labor"] > .object-detail-labor-body > .object-detail-work-row');
   assert.deepEqual(await stages.evaluateAll(nodes=>nodes.map(n=>n.dataset.costBand)),['part-production','part-coating','assembly-stage','preparation-packing']);
-  assert.equal(await core.locator('[data-cost-band="part-coating"] > summary [data-labor-column="total"]').innerText(),'₪0');
+  assert.equal(await core.locator('[data-cost-band="part-coating"] > .object-detail-cost-summary [data-labor-column="total"]').innerText(),'₪0');
   const preparation=core.locator('[data-cost-band="preparation-packing"]');
   assert.equal(await preparation.locator(':scope > summary [data-labor-column="total"]').innerText(),'₪16');
   await preparation.locator(':scope > summary').click();
@@ -487,12 +488,12 @@ try{
   assert.equal(await core.locator('[data-cost-band="assembly-stage"] > summary [data-labor-column="total"]').textContent(),'₪2\u202f531');
   assert.notEqual(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪1\u202f000');
   if(width===1280){
-   settings({labor_ready:true,hours_write_failure:true});
+   settings({labor_ready:true,hours_write_failure:true,edge_applicable:true});
    await save.click();
    await core.getByRole('button',{name:'Retry save',exact:true}).waitFor();
    assert.equal(await save.getAttribute('data-save-error'),'');
    assert.equal(await hours.innerText(),'40.5');
-   settings({labor_ready:true});
+   settings({labor_ready:true,edge_applicable:true});
   }
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
   const sheetHours=core.getByRole('textbox',{name:'Operator hours',exact:true});
@@ -575,7 +576,7 @@ try{
    const head=document.querySelector('.object-detail-cost-column-headings');
    const cx=n=>{const b=n.getBoundingClientRect();return b.x+b.width/2;};
    const axes=Object.fromEntries(['hours','pay','taxes','total'].map(c=>[c,cx(head.querySelector(`[data-labor-column="${c}"] > span`))]));
-   return [...document.querySelectorAll('.object-detail-work-row > summary')].filter(n=>n.getClientRects().length).map(row=>{
+   return [...document.querySelectorAll('.object-detail-work-row > .object-detail-cost-summary')].filter(n=>n.getClientRects().length).map(row=>{
     const b=row.getBoundingClientRect();
     return {key:row.parentElement.dataset.costBand,height:b.height,cells:[...row.querySelectorAll('[data-labor-column]')]
      .filter(n=>getComputedStyle(n.firstElementChild).visibility==='visible').map(n=>{

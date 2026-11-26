@@ -66,7 +66,7 @@ async function waitDb(predicate){
 try{
  const ctx=await boot();
  await move(ctx,'Profile','account');
- const rent=ctx.core.locator('.company-metrics-monthly-input').first();
+ const rent=ctx.core.locator('.company-metrics-monthly-input[data-field="rent_facilities_cost"]');
  const rentField=await rent.getAttribute('data-field');
  await rent.fill('321');
  await rent.press('Tab');
@@ -81,7 +81,7 @@ try{
  await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
  await waitDb(data=>data.overhead_settings[0].warranty_reserve_percent===7);
  await tab(ctx,'Overhead Expenses');
- assert.match(await ctx.core.locator('.company-metrics-monthly-input').first().innerText(),/321/);
+ assert.match(await ctx.core.locator('.company-metrics-monthly-input[data-field="rent_facilities_cost"]').innerText(),/321/);
  await tab(ctx,'Contacts');
  const email=ctx.core.getByRole('textbox',{name:'Official email',exact:true});
  await email.fill('saved@fixture.invalid');
@@ -138,6 +138,19 @@ try{
  await tab(ctx,'Pricing Cost');
  await tab(ctx,'Labor Costs');
  await ctx.core.getByText('Profile preload worker',{exact:true}).waitFor();
+ await ctx.core.getByRole('textbox',{name:'Worker name',exact:true}).fill('Management payroll worker');
+ await select('Department','Management');await select('Position','General Manager');await select('Pay type','Monthly Salary');
+ await ctx.core.getByRole('textbox',{name:'Monthly Salary',exact:true}).fill('10000');
+ await rendered(()=>ctx.core.getByRole('textbox',{name:'Monthly Salary',exact:true}).press('Tab'));
+ await ctx.core.getByRole('button',{name:'Add Worker',exact:true}).click();await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+ await waitDb(data=>data.company_employees.some(row=>row.worker_name==='Management payroll worker'));
+ const monthlyEmployer=JSON.parse(readFileSync(statePath('profile-db.json'),'utf8')).company_employees.find(row=>row.worker_name==='Management payroll worker').total_monthly_cost;
+ await tab(ctx,'Overhead Expenses');
+ const management=ctx.core.locator('[data-metric-field="management_administration_cost"]');
+ assert.equal(await management.locator('[contenteditable="true"]').count(),0);
+ assert.equal((await management.locator('.company-metrics-monthly-input').innerText()).replace(/[^0-9]/g,''),String(monthlyEmployer));
+ assert.equal(await management.locator('[data-company-metrics-vat]').innerText(),'—');
+ assert.equal(await ctx.core.locator('.company-metrics-group-summary').first().innerText(),'Management & Administration');
  await tab(ctx,'Users');
  const remove=ctx.core.locator('.company-user-delete').first();
  await remove.click();
@@ -149,7 +162,7 @@ try{
  assert.equal(await ctx.core.locator('.company-user-delete').count(),0);
  await move(ctx,'New Estimate','upload');
  await move(ctx,'Profile','account');
- assert.match(await ctx.core.locator('.company-metrics-monthly-input').first().innerText(),/321/);
+ assert.match(await ctx.core.locator('.company-metrics-monthly-input[data-field="rent_facilities_cost"]').innerText(),/321/);
  assert.equal(await ctx.core.locator('[data-testid="stException"]').count(),0);
  results.push('Overhead, Pricing, Contacts, Bank Details, Machinery, worker addition and user removal persisted through tab changes and Profile reopen');
  writeFileSync(reportPath('profile-save.json'),JSON.stringify(results,null,2));
