@@ -1288,8 +1288,8 @@ def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, ro
     app.run()
     pricing_markup = "".join(item.value for item in app.markdown)
     assert not app.text_input
-    assert pricing_markup.count("company-pricing-input") == 9
-    assert (pricing_markup.count('contenteditable="true"') == 9) is (role == "owner")
+    assert pricing_markup.count("company-pricing-input") == 10
+    assert (pricing_markup.count('contenteditable="true"') == 10) is (role == "owner")
     assert ("SAVE PRICING COST" in pricing_markup) is (role == "owner")
 
     app.session_state["company_profile_tab"] = "Labor Costs"
@@ -4365,3 +4365,26 @@ def test_server_auth_client_does_not_rotate_tokens_outside_browser_persistence(m
                       token_type="bearer", user=user)
     client.auth._save_session(session)
     assert client.auth.get_session().refresh_token == "synthetic-refresh"
+
+@pytest.mark.parametrize('advance',[None,0,70,100])
+def test_optional_advance_payment_is_saved_and_cleared(monkeypatch,advance):
+    access=company_auth.CompanyAccess('u','owner@example.com','c','owner','token')
+    monkeypatch.setattr(company_profile,'_current_access',lambda _:access)
+    monkeypatch.setattr(company_profile,'assert_company_owner',lambda *a:None)
+    writes=[]
+    class Query:
+        def update(self,payload):writes.append(payload);return self
+        def eq(self,*a):return self
+        def execute(self):return type('Result',(),{'data':[{'company_id':'c'}]})()
+    client=type('Client',(),{'table':lambda self,name:Query()})()
+    monkeypatch.setattr(company_profile,'get_supabase_client',lambda:client)
+    company_profile.save_company_pricing(access,{'advance_payment_percent':advance})
+    assert writes[0]['advance_payment_percent']==advance
+
+@pytest.mark.parametrize('advance',[-1,101,70.5,True,float('nan')])
+def test_advance_payment_rejects_non_integer_or_outside_range_before_write(monkeypatch,advance):
+    access=company_auth.CompanyAccess('u','owner@example.com','c','owner','token')
+    monkeypatch.setattr(company_profile,'_current_access',lambda _:access)
+    monkeypatch.setattr(company_profile,'assert_company_owner',lambda *a:None)
+    monkeypatch.setattr(company_profile,'get_supabase_client',lambda:object())
+    with pytest.raises(ValueError):company_profile.save_company_pricing(access,{'advance_payment_percent':advance})

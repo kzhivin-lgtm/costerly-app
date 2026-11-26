@@ -171,6 +171,12 @@ def build_proposal_pdf(
         canvas.rule()
 
     production_days = snapshot.get('production_time_working_days')
+    advance = snapshot.get('advance_payment_percent')
+    if advance is not None:
+        if isinstance(advance, bool) or not isinstance(advance, (int, float)) or not float(advance).is_integer() or not 0 <= advance <= 100:
+            raise ValueError('Invalid advance payment percentage')
+        canvas.text(f'Payment terms: {int(advance)}% advance payment, {100-int(advance)}% on completion', size=10)
+        canvas.rule()
     if production_days is not None:
         canvas.text(f'Production time: {int(production_days)} working days after payment', size=10)
         canvas.text('Delivery and installation excluded', size=9, color=_MUTED)

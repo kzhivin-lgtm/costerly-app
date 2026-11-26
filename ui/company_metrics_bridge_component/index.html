@@ -39,7 +39,8 @@
           if (mode === "pricing") {
             const settings = {};
             for (const input of parentDoc.querySelectorAll(".company-pricing-input[data-field]")) {
-              settings[input.dataset.field] = readNumber(input.textContent);
+              const raw = cleanNumber(input.textContent);
+              settings[input.dataset.field] = input.dataset.optionalPercent && !raw ? null : readNumber(raw);
             }
             return {
               nonce: `${Date.now()}-${Math.random().toString(36).slice(2)}`,

@@ -894,3 +894,19 @@ four physical LED zones in Ada, not two Kelvin/material types: Corner8+2+4=14h,
 Console1+1=2h. Keep manual0, shared compact details, exact Labor/Overhead/SC/Project
 integration and all former unknown/saved/reopen/failure behavior. No paid call,
 Detection change, new material demand or schema migration is authorized here.
+
+## Labor2.20, owner approved26November2026
+
+Keep an acknowledged File Review Project name in the same run's prepared
+Continue metadata/Project projection. Do not rebuild costs or poll for a title.
+UI preview priority recognizes compound isometric/axonometric/perspective
+classification traits, preserving raw Detection, Naming order and ownership.
+Pricing Cost adds optional whole Advance payment0..100 below Default sale
+markup. Blank persists asNULL and omits the proposal clause; explicit0 remains
+distinct. Final approval freezes the current setting; price/VAT/total unchanged.
+Profile primary actions reuse Contacts/Labor's60px/19px/700 presentation and
+existing Saving/acknowledged green Saved/failure/reset behavior, with no new
+notice or writer. At CSS viewport heights1500px and above, Project/Object
+summary/actions follow content naturally, eliminating zoom25/33% stretch.
+Normal viewport/footer axes and fixed Privacy remain protected. Required
+scenarios and reasons are in LABOR_V2_20_PROJECT_PROFILE_2026_11_26.md.

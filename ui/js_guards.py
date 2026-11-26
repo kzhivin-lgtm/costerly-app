@@ -431,7 +431,8 @@ def install_company_metrics_input_guard() -> None:
                 const percent = percentInput(event.target);
                 if (percent) percent.value = formatPercent(percent.value);
                 const pricing = pricingInput(event.target);
-                if (pricing) pricing.textContent = formatPercent(pricing.textContent);
+                if (pricing?.dataset.optionalPercent && !cleanNumber(pricing.textContent)) pricing.textContent = "";
+                else if (pricing) pricing.textContent = formatPercent(pricing.textContent);
             }
 
             function handleKeydown(event) {
@@ -449,6 +450,7 @@ def install_company_metrics_input_guard() -> None:
                 }
                 const input = metricsInput(event.target) || metricsTotalInput(event.target) || pricingInput(event.target);
                 if (!input) return;
+                if (input.dataset.optionalPercent && event.key === ".") {event.preventDefault();return;}
                 const allowed = new Set([
                     "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End",
                     "Tab", "Enter", "Escape", ".",
@@ -462,6 +464,7 @@ def install_company_metrics_input_guard() -> None:
                 if (!input) return;
                 event.preventDefault();
                 const text = event.clipboardData ? event.clipboardData.getData("text") : "";
+                if (input.dataset.optionalPercent && !/^\s*\d*%?\s*$/.test(text)) return;
                 parentDoc.execCommand("insertText", false, cleanNumber(text));
             }
 

@@ -153,6 +153,7 @@ PRICING_SETTING_FIELDS = (
     "packaging_percent",
     "paint_consumables_percent",
     "sale_price_markup_percent",
+    "advance_payment_percent",
     "delivery_percent",
     "installation_percent",
 )
@@ -1449,8 +1450,20 @@ def save_company_pricing(access: CompanyAccess, values: dict[str, object]) -> No
     fresh = _current_access(access)
     client = get_supabase_client()
     assert_company_owner(client, fresh.user_id, fresh.company_id)
-    payload: dict[str, int | float] = {}
+    payload: dict[str, int | float | None] = {}
     for field in PRICING_SETTING_FIELDS:
+        if field == "advance_payment_percent":
+            raw = values.get(field)
+            if raw is None or raw == "":
+                payload[field] = None
+                continue
+            if isinstance(raw, bool):
+                raise ValueError("Advance payment must be a whole percentage between 0 and 100")
+            value = float(raw)
+            if not value.is_integer() or not 0 <= value <= 100:
+                raise ValueError("Advance payment must be a whole percentage between 0 and 100")
+            payload[field] = int(value)
+            continue
         value = float(values.get(field) or 0)
         if value < 0 or value > 100:
             raise ValueError("Pricing percentages must be between 0 and 100.")

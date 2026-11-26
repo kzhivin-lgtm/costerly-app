@@ -2653,6 +2653,8 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button,
         .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"],
+        .stApp:has(.company-profile-active) .st-key-company_machinery_save_all button,
+        .stApp:has(.company-profile-active) .company-metrics-save,
         .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"],
         .stApp:has(.company-profile-active) .st-key-company_logo_card [data-testid="stButton"] button[kind="primary"] {
             min-height: 60px !important;
@@ -2671,6 +2673,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button p,
         .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"] p,
+        .stApp:has(.company-profile-active) .st-key-company_machinery_save_all button p,
         .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"] p,
         .stApp:has(.company-profile-active) .st-key-company_logo_card [data-testid="stButton"] button[kind="primary"] p {
             color: #FFFFFF !important;
@@ -2682,6 +2685,8 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button:hover,
         .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"]:hover,
+        .stApp:has(.company-profile-active) .st-key-company_machinery_save_all button:hover,
+        .stApp:has(.company-profile-active) .company-metrics-save:hover,
         .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"]:hover,
         .stApp:has(.company-profile-active) .st-key-company_logo_card [data-testid="stButton"] button[kind="primary"]:hover {
             background: #6F3CB4 !important;
@@ -2693,11 +2698,26 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button:active,
         .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"]:active,
+        .stApp:has(.company-profile-active) .st-key-company_machinery_save_all button:active,
+        .stApp:has(.company-profile-active) .company-metrics-save:active,
         .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"]:active,
         .stApp:has(.company-profile-active) .st-key-company_logo_card [data-testid="stButton"] button[kind="primary"]:active {
             background: #6131A3 !important;
             border-color: #6131A3 !important;
             transform: translateY(0) scale(0.995);
+        }
+
+        .stApp:has(.company-profile-active) button[data-profile-save-saved],
+        .stApp:has(.company-profile-active) button[data-profile-save-saved]:hover {
+            background: #e3f1eb !important;
+            border-color: #198c5b !important;
+            color: #198c5b !important;
+            opacity: 1 !important;
+            text-transform: none !important;
+        }
+        .stApp:has(.company-profile-active) button[data-profile-save-saved] p {
+            color: #198c5b !important;
+            text-transform: none !important;
         }
 
         .stApp:has(.company-profile-active)

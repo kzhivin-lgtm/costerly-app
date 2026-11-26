@@ -445,6 +445,26 @@ try{
         'The mark stays on the Project line: '+JSON.stringify({markBox,labelBox,nameBox}));
  report.longTitle={markBox,labelBox,nameBox};
  await longPage.screenshot({path:reportPath('project-long-title.png'),fullPage:true});await longPage.close();
+ writeFileSync(config,JSON.stringify({objects_v2:true,project_name:'Before edit',project_name_edit:true}));
+ const editPage=await browser.newPage({viewport:{width:1280,height:1000}}),editCore=editPage.frameLocator('#costerly-app-frame');
+ await editPage.goto('http://127.0.0.1:8798/');await editPage.locator('iframe.is-ready').waitFor();
+ await editCore.getByRole('button',{name:'Last Estimate',exact:true}).click();
+ await editCore.getByRole('button',{name:/continue to project/i}).click();await editCore.locator('.objects-pricing-table').waitFor();
+ await editCore.getByRole('button',{name:'Back to File Review',exact:true}).click();
+ await editCore.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
+ const projectName=editCore.getByRole('textbox',{name:'Project name',exact:true});
+ await projectName.fill('ADA renamed');await projectName.press('Tab');
+ for(let attempt=0;attempt<30&&!existsSync(statePath('project-metadata.json'));attempt++)await new Promise(resolve=>setTimeout(resolve,100));
+ assert.equal(JSON.parse(readFileSync(statePath('project-metadata.json'))).project_name,'ADA renamed','File Review acknowledged the rename before Continue');
+ await editCore.getByRole('button',{name:/continue to project/i}).click();
+ await editCore.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
+ assert.equal((await editCore.locator('h1 .workflow-title-text').innerText()).replace(/\s+/g,' '),'Project ADA renamed','Renaming a completed project appears on the first ready Project render');
+ assert.equal(JSON.parse(readFileSync(statePath('project-metadata.json'))).project_name,'ADA renamed');
+ report.projectRename={saved:true,completedEstimate:true,immediateReadyTitle:true};
+ await editPage.setViewportSize({width:3840,height:3000});
+ const tallProject=await editCore.locator('.st-key-objects_actions').evaluate(node=>({top:node.getBoundingClientRect().top,summary:document.querySelector('.objects-pricing-summary').getBoundingClientRect().bottom}));
+ assert(tallProject.top-tallProject.summary<120,'Zoomed-out Project must not stretch the gap: '+JSON.stringify(tallProject));
+ report.tallProject=tallProject;await editPage.close();
  writeFileSync(reportPath('objects-v2.json'),JSON.stringify(report,null,2));
  console.log('Objects V2.4 passed: approved26px body lift, original geometry/field boundaries, top-right menu+metrics with4px offset, stacked half-width documents, local metrics toggle and original pricing/approval/proposal flow.');
 }catch(error){

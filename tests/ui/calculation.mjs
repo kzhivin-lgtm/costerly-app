@@ -658,6 +658,10 @@ try{
  assert.equal(await readyGroup.evaluate(n=>n.open),true,'Healthy Overhead keeps native disclosure state on later saves');
  assert.equal(await recovered.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪20');
  assert.equal(await unknown.core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪1\u202f145');
+ await unknown.page.setViewportSize({width:3840,height:3000});
+ const tallObject=await unknown.core.locator('.object-detail-page-end').evaluate(node=>({top:node.getBoundingClientRect().top,body:document.querySelector('.object-detail-overhead-band').getBoundingClientRect().bottom}));
+ assert(tallObject.top-tallObject.body<100,'Zoomed-out Object must not stretch the gap: '+JSON.stringify(tallObject));
+ report.tallObject=tallObject;
  await unknown.page.close();
  console.log(JSON.stringify({freshFrames:report.fresh.length,...report[1280],mobile:report[390]}));
  writeFileSync(reportPath('calculation.json'),JSON.stringify(report,null,2));

@@ -1,5 +1,12 @@
 # Persistent UI release contract
 
+Labor2.20 adds acknowledged completed-project rename/Continue coverage,
+nullable Advance payment save/clear/reopen, matching Contacts/Pricing/Machinery
+button metrics and tall CSS viewport Project/Object gap bounds. Existing normal
+viewport/fixed Privacy/navigation/write failure/role/reopen checks remain.
+PDF/snapshot and whole/null/range validation are included in the Python gate.
+No paid model call or production write is made by these fixtures.
+
 The owner-requested [Objects V2.6 full checkpoint](../../notes/OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md)
 pins runtime82d55026, records tags and full release evidence, including the first
 blocked CI. Its independent restore procedure checks803 source files and the

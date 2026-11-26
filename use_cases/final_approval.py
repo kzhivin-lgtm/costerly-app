@@ -52,6 +52,7 @@ def final_approval(
     assert_estimate_owned(client, estimate_id, company_id)
     snapshot = _json_safe({
         "production_time_working_days": data.get('production_time_working_days'),
+        "advance_payment_percent": data.get('advance_payment_percent'),
         "rows": rows,
         "project_costs": [dict(row) for row in data.get("project_costs") or []],
         "summary": summary,

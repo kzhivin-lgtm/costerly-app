@@ -163,6 +163,22 @@ def _commit_run_metadata(run_id: str, field: str, widget_key: str) -> None:
         data = cache.get(run_id)
         if isinstance(data, dict) and isinstance(data.get("run"), dict):
             data["run"][field] = saved_value
+        # Metadata widgets rerun only their fragment. Keep the already prepared
+        # Continue snapshot current without reloading/rebuilding the estimate.
+        for key in ("objects_estimation_launch_plan", "objects_navigation_ready"):
+            prepared = st.session_state.get(key)
+            if not isinstance(prepared, dict) or str(prepared.get("run_id") or "") != str(run_id):
+                continue
+            if key == "objects_estimation_launch_plan":
+                prepared.setdefault("metadata_values", {})[field] = saved_value
+            if field == "project_name":
+                state = prepared.get("screen_state", prepared)
+                if isinstance(state, dict) and isinstance(state.get("data"), dict):
+                    state["data"]["project_name"] = saved_value
+                estimate_id = str(prepared.get("estimate_id") or "")
+                cached = st.session_state.get("objects_estimation_data_cache", {}).get(estimate_id)
+                if isinstance(cached, dict):
+                    cached["project_name"] = saved_value
         st.session_state.file_review_metadata_save_error = None
     st.session_state.screen = "file_review"
 

@@ -32,6 +32,7 @@ class _Client:
 
 def _approved_data():
     return {
+        "advance_payment_percent": 70,
         "rows": [
             {
                 "object_key": "object-1",
@@ -67,6 +68,7 @@ def test_final_approval_freezes_fresh_priced_snapshot(monkeypatch):
     payload = client.calls[0][1]
     assert payload["p_snapshot"]["rows"][0]["sale_price_total"] == 130.5
     assert payload["p_snapshot"]["summary"]["total"] == 158.62
+    assert payload['p_snapshot']['advance_payment_percent']==70
     assert result["proposal_pdf_path"] == "001/project-1/version-1.pdf"
     assert result["proposal_pdf_url"] == "https://signed.example/proposal.pdf"
 

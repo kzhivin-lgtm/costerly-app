@@ -1,4 +1,5 @@
 import pymupdf
+import pytest
 
 from use_cases.proposal_pdf import (
     _contact_lines,
@@ -107,3 +108,19 @@ def test_proposal_download_name_uses_project_partner_and_approval_date():
         partner_name="Studio Tree",
         approved_at="2026-10-03T13:39:35+03:00",
     ) == "Restaurant - Deer_Studio Tree_2026-10-03.pdf"
+
+@pytest.mark.parametrize('advance',[None,0,70,100])
+def test_optional_payment_terms_preserve_financial_totals(advance):
+    snapshot=_snapshot();snapshot['advance_payment_percent']=advance
+    payload=build_proposal_pdf(profile={'company_name':'Workshop'},project_name='ADA',partner_name='',client_name='',snapshot=snapshot)
+    with pymupdf.open(stream=payload,filetype='pdf') as pdf:
+        text='\n'.join(page.get_text() for page in pdf)
+    if advance is None:assert 'Payment terms:' not in text
+    else:assert f'Payment terms: {advance}% advance payment, {100-advance}% on completion' in text
+    assert snapshot['summary']['total']==3200.16
+
+@pytest.mark.parametrize('advance',[-1,101,70.5,True])
+def test_pdf_rejects_invalid_advance_payment(advance):
+    snapshot=_snapshot();snapshot['advance_payment_percent']=advance
+    with pytest.raises(ValueError):
+        build_proposal_pdf(profile={},project_name='ADA',partner_name='',client_name='',snapshot=snapshot)

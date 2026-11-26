@@ -475,6 +475,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         "rows": rows,
         "project_name": project_name,
         "production_time_working_days": production_time_from_overrides(overrides_df),
+        "advance_payment_percent": _optional_advance_payment(settings),
         "company_id": str(objects_df.iloc[0].get("company_id") or "") if not objects_df.empty else "",
         "project_costs": project_costs,
         "summary": summary,
@@ -512,7 +513,17 @@ def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any]) 
         delivery_percent=_number(settings.get("delivery_percent"), 3),
         installation_percent=_number(settings.get("installation_percent"), 10))
     return {**cached, "rows": rows, "project_costs": project, "summary": summary,
+            "advance_payment_percent": _optional_advance_payment(settings),
             "production_time_working_days": production_time_from_overrides(saved_overrides)}
+
+
+def _optional_advance_payment(settings):
+    value = settings.get('advance_payment_percent')
+    if value is None or isinstance(value, float) and value != value:
+        return None
+    if isinstance(value, bool) or not float(value).is_integer() or not 0 <= float(value) <= 100:
+        raise ValueError('Invalid advance payment percentage')
+    return int(value)
 
 
 def _suggested_sale_price(self_cost: Any, markup_percent: float = 30) -> float | None:

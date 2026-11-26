@@ -928,6 +928,22 @@ def test_file_review_renders_all_three_editable_project_fields():
     assert "objects_estimation_launch_plan" in source
 
 
+def test_acknowledged_project_rename_updates_prepared_transition_without_cost_reload(monkeypatch):
+    st.session_state.clear()
+    st.session_state.file_review_run_metadata = {'project_name': 'Before'}
+    st.session_state['file_review_run_metadata.project_name'] = 'ADA'
+    st.session_state.objects_estimation_launch_plan = {
+        'run_id':'r','estimate_id':'e','metadata_values':{'project_name':'Before'},
+        'screen_state':{'data':{'project_name':'Before','summary':{'total':123}}}}
+    st.session_state.objects_estimation_data_cache = {'e':{'project_name':'Before','rows':['unchanged']},'other':{'project_name':'Other'}}
+    monkeypatch.setattr(file_review,'save_file_review_run_metadata',lambda **kw:kw['values'])
+    file_review._commit_run_metadata('r','project_name','file_review_run_metadata.project_name')
+    assert st.session_state.objects_estimation_launch_plan['metadata_values']['project_name']=='ADA'
+    assert st.session_state.objects_estimation_launch_plan['screen_state']['data']=={'project_name':'ADA','summary':{'total':123}}
+    assert st.session_state.objects_estimation_data_cache=={'e':{'project_name':'ADA','rows':['unchanged']},'other':{'project_name':'Other'}}
+    st.session_state.clear()
+
+
 def test_file_review_metadata_state_does_not_leak_between_runs():
     st.session_state.clear()
     st.session_state.file_review_run_metadata_run_id = "run-old"

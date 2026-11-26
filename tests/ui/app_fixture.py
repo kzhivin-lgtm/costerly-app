@@ -158,8 +158,16 @@ file_review.evidence_signed_url = lambda **kw: preview_url if kw['storage_ref'] 
 file_review._record_first_file_review_render = lambda *_: None
 file_review._sync_durable_naming_once = lambda *_: None
 file_review._sync_durable_document_identity_once = lambda *_: None
+def fixture_project_metadata():
+ path=STATE/'project-metadata.json'
+ return json.loads(path.read_text()) if scenario().get('project_name_edit') and path.exists() else {'project_name':scenario().get('project_name','unknown')}
+def save_project_metadata(**kwargs):
+ values={**fixture_project_metadata(),**kwargs['values']}
+ (STATE/'project-metadata.json').write_text(json.dumps(values))
+ return values
+file_review.save_file_review_run_metadata=save_project_metadata
 file_review.load_file_review_data = lambda _: {
- 'run':{'file_name':'ui-fixture.pdf','pages_detected':1,'project_name':scenario().get('project_name','unknown')},
+ 'run':{'file_name':'ui-fixture.pdf','pages_detected':1,**fixture_project_metadata()},
  'objects':list(map(_normalize_object,sample['review_objects'])),
  'timings':{}, 'source':None,
 }
@@ -171,7 +179,7 @@ def read_price_overrides(*_):
  filename=STATE / 'objects-prices.json'
  return pd.DataFrame(json.loads(filename.read_text()) if filename.exists() else [])
 estimation.fetch_rfq_estimate_pricing_overrides = read_price_overrides
-estimation.fetch_rfq_run = lambda *_: pd.DataFrame([{'project_name':scenario().get('project_name','unknown')}])
+estimation.fetch_rfq_run = lambda *_: pd.DataFrame([fixture_project_metadata()])
 estimation.fetch_rfq_estimate_material_plan = read_plans
 objects.get_supabase_client = Client
 objects._data_with_object_routes = lambda data, **_: data

@@ -30,7 +30,8 @@ def choose(groups, *, ui=True):
 @pytest.mark.parametrize("kind", [
     "isometric", "isometric_technical", "technical_isometric", "axonometric",
     "technical_perspective", "presentation_render", "perspective_view",
-    "Axonometric", "isometric-technical",
+    "Axonometric", "isometric-technical", "isometric_technical_perspective",
+    "technical_axonometry", "technical perspective view",
 ])
 def test_ui_prefers_available_axonometry_over_larger_front_or_plan(kind):
     assert choose([view("top_plan", area=800), view("front_elevation", area=600),

@@ -503,6 +503,12 @@ def _select_presentation_view(
         if ui_preview:
             representation = representation.strip().replace("-", "_").replace(" ", "_")
             priority = _UI_PRESENTATION_REPRESENTATION_PRIORITY.get(representation, 4)
+            # Classification can combine the same view traits, for example
+            # isometric_technical_perspective. UI ordering uses those traits;
+            # the original Naming order and stored classification stay intact.
+            traits = set(representation.split("_"))
+            if traits & {"isometric", "axonometric", "axonometry", "perspective", "3d"} and not traits & {"non", "not"}:
+                priority = 0
         else:
             priority = _PRESENTATION_REPRESENTATION_PRIORITY.get(representation, 3)
         area = (

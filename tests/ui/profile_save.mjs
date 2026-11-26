@@ -14,6 +14,10 @@ const server=createServer((req,res)=>{
 await new Promise(resolve=>server.listen(8796,'127.0.0.1',resolve));
 const browser=await chromium.launch(chromeOptions);
 const results=[];
+const buttonStyle=button=>button.evaluate(node=>{
+ const text=node.querySelector('p')||node,s=getComputedStyle(text),b=getComputedStyle(node);
+ return {height:node.getBoundingClientRect().height,font:s.fontFamily,size:s.fontSize,weight:s.fontWeight,case:s.textTransform,radius:b.borderRadius,color:b.backgroundColor};
+});
 async function boot(value={},route='',readyObserver=null){
  rmSync(expiry,{force:true});settings(value);
  const page=await browser.newPage({viewport:{width:1280,height:900}});
@@ -75,16 +79,22 @@ try{
  await waitDb(data=>data.overhead_monthly[0][rentField]===321);
  await tab(ctx,'Pricing Cost');
  const reserve=ctx.core.locator('.company-pricing-input[data-field="warranty_reserve_percent"]');
+ const pricingButtonStyle=await buttonStyle(ctx.core.locator('[data-company-settings-save="pricing"]'));
  await reserve.fill('7');
  await reserve.press('Tab');
+ const advance=ctx.core.locator('.company-pricing-input[data-field="advance_payment_percent"]');
+ assert.equal(await advance.innerText(),'');
+ await advance.fill('70');await advance.press('Tab');
  await ctx.core.locator('[data-company-settings-save="pricing"]').click();
  await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
  await waitDb(data=>data.overhead_settings[0].warranty_reserve_percent===7);
+ await waitDb(data=>data.overhead_settings[0].advance_payment_percent===70);
  await tab(ctx,'Overhead Expenses');
  assert.match(await ctx.core.locator('.company-metrics-monthly-input[data-field="rent_facilities_cost"]').innerText(),/321/);
  await tab(ctx,'Contacts');
  const email=ctx.core.getByRole('textbox',{name:'Official email',exact:true});
  await email.fill('saved@fixture.invalid');
+ assert.deepEqual(await buttonStyle(ctx.core.getByRole('button',{name:'Save Contacts',exact:true})),pricingButtonStyle,'Pricing uses Contacts button geometry and typography');
  await ctx.core.getByRole('button',{name:'Save Contacts',exact:true}).click();
  
  await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
@@ -104,11 +114,19 @@ try{
  await ctx.core.getByRole('textbox',{name:/^Working length/}).fill('2.8');
  await ctx.core.getByRole('textbox',{name:/^Working width/}).fill('2.07');
  await ctx.core.getByRole('textbox',{name:/^Working width/}).press('Tab');
+ assert.deepEqual(await buttonStyle(ctx.core.getByRole('button',{name:'Save',exact:true})),pricingButtonStyle,'Machinery uses Contacts button geometry and typography');
  await ctx.core.getByRole('button',{name:'Save',exact:true}).click();
  await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
  await waitDb(data=>data.company_machinery.some(row=>row.machine_code==='wood_cnc_router'&&row.availability_status==='in_house'));
  await tab(ctx,'Pricing Cost');
  assert.match(await reserve.innerText(),/7/);
+ assert.equal(await advance.innerText(),'70%');
+ await advance.fill('');await advance.press('Tab');
+ await ctx.core.locator('[data-company-settings-save="pricing"]').click();
+ await ctx.core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+ await waitDb(data=>data.overhead_settings[0].advance_payment_percent===null);
+ await tab(ctx,'Contacts');await tab(ctx,'Pricing Cost');
+ assert.equal(await advance.innerText(),'','Cleared optional advance remains blank after reopening');
  await tab(ctx,'Machinery');
  assert.ok(await ctx.core.getByRole('radio',{name:'Yes',exact:true}).first().isChecked());
  await tab(ctx,'Labor Costs');

@@ -463,6 +463,20 @@ def apply_base_css() -> None:
             background: var(--color-bg);
         }
 
+        /* Avoid viewport-stretched gaps at 25/33 percent browser zoom.
+           Ordinary viewport geometry and fixed Privacy stay unchanged. */
+        @media (min-height: 1500px) {
+            .stApp:is(:has(.st-key-objects_actions), :has(.object-detail-page-end))
+            [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {
+                min-height: 0 !important;
+            }
+            [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] >
+            [data-testid="stLayoutWrapper"]:has(.st-key-objects_actions),
+            .stApp:has(.object-detail-page-end) [data-testid="stElementContainer"]:has(.object-detail-page-end) {
+                margin-top: 0 !important;
+            }
+        }
+
         .post-upload-stage {
             position: fixed;
             inset: 0;

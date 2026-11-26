@@ -120,6 +120,7 @@ PRICING_GROUPS = (
             ("warranty_reserve_percent", "Warranty reserve", 5, "A % of the object self-cost, reserved for potential warranty work and related costs."),
             ("sale_price_markup_percent", "Default sale markup", 30, "The default % added to self-cost when suggesting an object sale price. You can change it here or override an individual object's sale price in an estimate."),
             ("vat_percent", "Ma'am / VAT rate", 18, "Tax added to the final sale price. VAT is shown separately from revenue."),
+            ("advance_payment_percent", "Advance payment", None, "Optional whole percentage paid before production starts. Leave blank to omit payment terms from the commercial proposal"),
         ),
     ),
 )
@@ -138,13 +139,18 @@ def pricing_table_html(settings: dict, *, editable: bool) -> str:
         for start in range(0, len(fields), 2):
             cells: list[str] = []
             for field, label, default, help_text in fields[start:start + 2]:
+                value = settings.get(field, default)
+                optional = field == 'advance_payment_percent'
+                display = '' if optional and value is None else _percent(value)
+                attrs = editable_attrs.replace('inputmode="decimal"', 'inputmode="numeric"') if optional else editable_attrs
                 cells.extend((
                     '<div class="object-detail-table-cell company-pricing-label">'
                     f'{_escape(label)}<span class="company-pricing-help" '
                     f'data-tooltip="{_escape(help_text)}" aria-label="{_escape(help_text)}">?</span></div>',
                     '<div class="object-detail-table-cell"><div class="object-detail-cell-input '
-                    f'company-pricing-input" data-field="{_escape(field)}"{editable_attrs}>'
-                    f'{_percent(settings.get(field, default))}</div></div>',
+                    f'company-pricing-input" data-field="{_escape(field)}"'
+                    + (' data-optional-percent="true"' if optional else '') + attrs + '>'
+                    f'{display}</div></div>',
                 ))
             while len(cells) < 4:
                 cells.append('<div class="object-detail-table-cell company-pricing-empty"></div>')

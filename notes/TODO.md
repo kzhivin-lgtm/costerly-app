@@ -548,6 +548,25 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+ACTIVE LABOR2.20, P1, USER APPROVED26November2026, existing work3.17.4.6.
+Base published runtime1aa19ed4/records04f190b7, owner reports generally correct2.19.
+Project name must immediately reflect an acknowledged File Review rename on
+Continue, including warm completed estimates; owner later confirms eventual
+appearance, so investigate propagation latency, not assume failed persistence.
+UI preview diagnostic confirmed current Ada run_cfa38f855e39448695baf061abe13529
+classified its page1 views as isometric_technical_perspective, absent from the
+UI priority aliases; page2 orthographic_elevation incorrectly wins. Restore
+accepted axonometric priority only in UI, keep Detection/Naming unchanged.
+Optional Advance payment integer0..100 below Default sale markup, NULL/blank
+omits proposal payment terms; snapshot it with the existing final approval.
+Owner applied additive nullable overhead_settings migration. No effect on costs.
+Unify Profile primary Save/action button geometry/typography using Contacts/
+Labor styling and current acknowledgement-driven Saving/Saved/failure flow.
+At25/33% zoom eliminate viewport-stretched gaps on Project/Object, retain fixed
+Privacy and ordinary viewport geometry. Preserve all earlier checks, exact-SHA
+gate/publisher/parity, no paid calls. Deployment title must start Labor2.20 and
+describe the full release, not an incidental technical correction.
+
 PUBLISHED LABOR2.19, OWNER ACCEPTANCE PENDING, P1, USER APPROVED26November2026,
 existing work3.17.4.6. Runtime1aa19ed4, exact GitHub1068/ten gate451.532s passed,
 run45801323099; actual strict/no-bypass main enforcement, normal publisher and
