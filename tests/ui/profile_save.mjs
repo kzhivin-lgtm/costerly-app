@@ -150,7 +150,7 @@ try{
  assert.equal(await management.locator('[contenteditable="true"]').count(),0);
  assert.equal((await management.locator('.company-metrics-monthly-input').innerText()).replace(/[^0-9]/g,''),String(monthlyEmployer));
  assert.equal(await management.locator('[data-company-metrics-vat]').innerText(),'—');
- assert.equal(await ctx.core.locator('.company-metrics-group-summary').first().innerText(),'Management & Administration');
+ assert.equal(await ctx.core.locator('.company-metrics-group-summary').first().innerText(),'MANAGEMENT & ADMINISTRATION');
  await tab(ctx,'Users');
  const remove=ctx.core.locator('.company-user-delete').first();
  await remove.click();
