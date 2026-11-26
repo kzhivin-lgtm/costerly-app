@@ -548,6 +548,29 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
+ACTIVE LABOR2.19, P1, USER APPROVED26November2026, existing work3.17.4.6.
+First preserve full2.18 checkpoint with separate exact runtime/records tags,
+source/bundle/evidence/manifest and independent restore; no2.19 runtime edit
+before preservation. Owner reports generally working costing, with UI limits.
+Project input correction: reuse Object Detail/Profile end-caret behavior for
+pointer and keyboard entry, preserve active edits and acknowledged writes;
+center Production time editing and accept whole positive days only. Match
+Production time row/divider spacing to Delivery/Installation, lowercase helper
+and object-description text, retain headings, proper names and stored business
+data. For long Project names keep Project on the first line, name on the next.
+Additional Assembly: one hour per actual finished glass box, mirror or LED
+assembly as provisional owner-selected norm, not per glass piece/metre/roll;
+owner Ada example8+2+2=12h is a control to verify from source, not a hardcoded
+universal count. Add Hardware Fitting & Adjustment under Assembly, research
+installation/adjustment scope and time evidence. Existing Block Assembly already
+contains hardware work: partition it without double charge, preserve old norms
+and saved override budgets. Use shared costing/editing/Overhead/SC/persistence
+and shared compact details, no paid model calls or Detection changes.
+Owner explicitly defers APPROVE acceleration and Profile redesign. Publish2.19
+only after all protected checks/exact GitHub gate and served build parity.
+[2.18 checkpoint](LABOR_V2_18_PRODUCTION_CHECKPOINT_2026_11_26.md).
+
+
 PUBLISHED LABOR2.18, OWNER ACCEPTANCE PENDING, P1, USER REQUEST,26November2026, Project title. Render
 `Project <Project name>` using the saved File Review Project name, preserving
 the entered spelling. For an absent/blank/Unknown name render only `Project`.
