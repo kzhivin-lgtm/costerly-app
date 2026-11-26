@@ -1,5 +1,15 @@
 # Done Log
 
+[verified] Full Labor2.18 preservation26November2026, existing work3.17.4.6,
+requested before2.19. Exact runtime8b1cc958,852 source files/4,885,106-byte
+helper-validated ZIP, separate source/records tags, self-contained bundle,
+full existing1061/ten release evidence, original owner screenshot, verifier,
+SHA256 manifest and independent byte-identical restore. Four frozen material
+controls pass with network blocked, restored2.18 checks passed. Owner reports
+generally working costing; Project caret/spacing/copy/title and APPROVE latency
+limits remain explicit. Runtime/main unchanged, prior archives immutable.
+[Checkpoint and restoration](LABOR_V2_18_PRODUCTION_CHECKPOINT_2026_11_26.md).
+
 [verified] Labor2.18 published26November2026, existing work3.17.4.6,
 runtime8b1cc958. Saved File Review Project title, Production time before Delivery
 using the existing acknowledged service-field writer, retained Review/Back/reopen

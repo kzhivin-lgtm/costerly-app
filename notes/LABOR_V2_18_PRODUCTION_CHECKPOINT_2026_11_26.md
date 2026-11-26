@@ -10,8 +10,8 @@ Exact runtime8b1cc9580b0e97b5bab2860d5853238aea2f8c4f, release records86a46564.
 Build labor-v2.18-b20261126082804-management-production-time-detection-v8.4.29.
 Runtime tag estimation-labor-v2.18-production-checkpoint-2026-11-26.
 Separate records tag estimation-labor-v2.18-checkpoint-records-2026-11-26.
-Main/runtime stay unchanged during preservation. Full archive and independent
-restore verification are being prepared before any2.19 runtime edit.
+Main/runtime stay unchanged during preservation. Full source preservation and
+independent restoration passed before any2.19 runtime edit.
 
 Reuse exact-runtime GitHub1061 Python checks/ten browser suites427.344s,
 run45788444118/job139801088102, artifact15101513535 with verified SHA256
@@ -32,3 +32,19 @@ screenshot, four frozen material controls, executable verifier/replay and SHA256
 manifest. No credentials, dependencies or live database snapshot. Old immutable
 checkpoints remain untouched. Restore to a new empty path; rollback publication
 still uses the exact-SHA UI gate and normal publisher.
+
+[verified] Exact runtime archive:852 files,4,885,106 bytes, helper validated,
+SHA25624905910798d274b5d5f1f14799a8ce6c610121766c80ccb0559c35724e7b714.
+Fresh bundle restoration matched every source byte; four frozen material controls
+passed with network blocked. Restored Coating/front/Project/Overhead/PDF checks
+passed. Separate records source/tag, final manifest and a fresh final restoration
+are retained in checkpoint.json and verification receipts in the archive.
+
+```sh
+python /checkpoint/verify_checkpoint.py --restore /new/empty/path --output /outside/checkpoint/restore.json
+python /checkpoint/replay_checkpoint.py --source /new/empty/path
+```
+
+Known UI corrections and the new2.19 assembly scope remain in the authoritative
+TODO. No new runtime deployment, paid model call or production data change is
+part of this preservation. The owner's11.20.29 screenshot is archived.

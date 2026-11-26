@@ -1,3 +1,12 @@
+**[verified] Latest full preservation checkpoint: Labor2.18,26November2026.**
+Exact runtime8b1cc958,852 source files/4,885,106 bytes, source/records tags,
+bundle, original screenshot and full release proof preserved. Independent restore
+and four offline material controls passed. Owner reports generally working
+costing, with Project input/row/copy/title issues retained. Approved2.19 adds
+Additional Assembly and separates already-priced hardware without double charge.
+APPROVE acceleration/Profile redesign deferred. Preserve this checkpoint before
+new runtime work. [Restore guide](LABOR_V2_18_PRODUCTION_CHECKPOINT_2026_11_26.md).
+
 **[verified] Current runtime: Labor2.18,26November2026.**
 Runtime8b1cc9580b0e97b5bab2860d5853238aea2f8c4f, existing work3.17.4.6.
 Project title preserves exact saved File Review name, including A3; do not repair
@@ -41,7 +50,7 @@ no admitted browser-ready before15.812s timeout. Outer-frame console results
 cannot establish inner Core DOM failure. Coating2.17 is not an APPROVE fix.
 [Investigation](APPROVE_LATENCY_2026_11_25.md).
 
-**[verified] Latest full preservation checkpoint: Labor2.16,25November2026.**
+**[verified] Previous full preservation checkpoint: Labor2.16,25November2026.**
 Exact runtime8e7a26b3 and separate records/tags,847 source files byte-matched
 after fresh bundle restore. Full1053/ten release gates reused; four frozen
 material controls and62 coating/front tests pass offline. Both owner screenshots

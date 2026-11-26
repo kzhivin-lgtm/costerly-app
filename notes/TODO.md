@@ -549,7 +549,8 @@ Naming or calculation evidence to hide this source-layout limitation.
 ## Objects Estimation workflow and proposal revisions
 
 ACTIVE LABOR2.19, P1, USER APPROVED26November2026, existing work3.17.4.6.
-First preserve full2.18 checkpoint with separate exact runtime/records tags,
+Preservation2.18 source/restore verified:852 files/4,885,106 bytes; four offline
+material controls and restored checks passed. Separate exact runtime/records tags,
 source/bundle/evidence/manifest and independent restore; no2.19 runtime edit
 before preservation. Owner reports generally working costing, with UI limits.
 Project input correction: reuse Object Detail/Profile end-caret behavior for
