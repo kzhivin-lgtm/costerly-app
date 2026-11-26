@@ -71,6 +71,22 @@ front5min, push latch3min. Existing planned-time factor1.25/0.80 remains. These
 are internal model norms, not externally validated industry standards. Owner
 can replace/calibrate them later; this release changes only their grouping.
 
+Owner explicitly accepted26November2026: hinge/plate2min plus door hanging and
+adjustment5min per door; one drawer's complete slide pair6min installation+
+5min adjustment, plus drawer front5min separately. These are active-work norms;
+the existing planning factor remains unchanged, and the details distinguish
+active and planned time.
+
+## Project input regression evidence
+
+Two candidate GitHub gates rejected the unchanged failed-save quantity check:
+the requested6 became65. A deterministic local Project regression then proved
+that deferred price-blur cleanup cleared a selection already made in the next
+active quantity input. It failed before the repair with empty selection instead
+of5. Restrict the existing cleanup to its originating field, preserving any new
+active editor and its selection. No new timer or write path is added. Retain all
+original delayed-write, failure/retry and Review/Back assertions.
+
 ## Verification and publication
 
 Protected: all four Labor roots, terminal0/unknown/manual override semantics,

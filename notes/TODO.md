@@ -567,6 +567,9 @@ installation/adjustment scope and time evidence. Existing Block Assembly already
 contains hardware work: partition it without double charge, preserve old norms
 and saved override budgets. Use shared costing/editing/Overhead/SC/persistence
 and shared compact details, no paid model calls or Detection changes.
+Owner accepted hinge/plate2min, door fitting/adjustment5min; one drawer's slide
+pair6min installation+5min adjustment, drawer front5min separately. Existing
+planned-time coefficient remains; these are internal active-work norms.
 Owner explicitly defers APPROVE acceleration and Profile redesign. UI uses shared end-caret, rejects
 fractional days and preserves focused edits during old write reconciliation.
 [2.19 scope/research](LABOR_V2_19_ASSEMBLY_INPUTS_2026_11_26.md). Publish2.19
@@ -7747,8 +7750,9 @@ not left the contenteditable field. Restore only current-row live Cost feedback
 (`unit_cost * quantity`, or the equivalent Labor row formula), while blur or
 Enter remains the single persistence and authoritative server-recalculation
 boundary. Do not restore browser-wide section or final-total calculation.
-ACTIVE, P0, OWNER RESUMED25November2026, 3.15.23 Approve transition optimization.
-The owner prioritizes this above Labor2.17 coating presentation/Management work.
+DEFERRED, P0, OWNER DEFERRED26November2026, 3.15.23 Approve transition optimization.
+Owner prioritized this25November, then explicitly deferred it during2.19 on
+26November. Resume only on owner instruction after the current release.
 DIAGNOSTIC ONLY after owner correction: compare the prior mechanism and deployed
 versions before repairing. Proposed asynchronous approval route is withdrawn.
 The IO/diagnostic trial is preserved locally as2f24c839 and reverted by678eb4e5;

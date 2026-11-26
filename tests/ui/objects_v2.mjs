@@ -327,6 +327,17 @@ try{
  await core.locator('.objects-quantity-saving-overlay.is-visible').waitFor({state:'hidden'});
  assert.equal(JSON.parse(readFileSync(statePath('object-quantities.json')))['estimate-ui-saved:object-001'],5,'A delayed older quantity cannot overwrite the latest edit');
  quantityFailure=true;
+ const nextFieldSelection=await frame.evaluate(async()=>{
+  const price=document.querySelector('.objects-pricing-price-input');
+  const quantity=document.querySelector('[data-object-quantity-input]');
+  price.focus();quantity.focus();
+  const selection=getSelection(),range=document.createRange();
+  range.selectNodeContents(quantity);selection.removeAllRanges();selection.addRange(range);
+  await new Promise(resolve=>setTimeout(resolve,10));
+  return {value:quantity.textContent,selected:selection.toString(),active:document.activeElement===quantity};
+ });
+ assert.equal(nextFieldSelection.selected,nextFieldSelection.value,'Previous price blur must preserve selection in the next active quantity field');
+ assert(nextFieldSelection.active,'Previous price blur must preserve the next active field');
  await quantity.fill('6');await quantity.press('Tab');
  await frame.waitForFunction(()=>document.querySelector('[data-object-quantity-input]')?.getAttribute('aria-invalid')==='true');
  assert.equal(await quantity.innerText(),'6','Failed quantity save retains the requested value');

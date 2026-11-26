@@ -2209,11 +2209,12 @@ def install_objects_price_input_guard(
                 if (!pointerStartedInPriceInput) {
                     parentWindow.setTimeout(() => {
                         const active = parentDoc.activeElement;
-                        if (active && active.closest && active.closest(".objects-pricing-price-input")) {
-                            active.blur();
-                        }
+                        // A previous field's deferred cleanup must not alter
+                        // focus or selection after the user enters another field.
+                        if (active !== ctx.input && active?.closest?.("input, textarea, [contenteditable='true']")) return;
+                        if (active === ctx.input) active.blur();
                         const selection = parentWindow.getSelection ? parentWindow.getSelection() : null;
-                        if (selection) selection.removeAllRanges();
+                        if (selection && ctx.input.contains(selection.anchorNode)) selection.removeAllRanges();
                     }, 0);
                 }
             }
