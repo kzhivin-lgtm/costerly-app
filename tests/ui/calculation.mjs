@@ -430,7 +430,12 @@ try{
  await away.core.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
  const projectName=away.core.getByRole('textbox',{name:'Project name',exact:true});
  await projectName.focus();
- assert.equal(await projectName.getAttribute('maxlength'),'240');
+ const savedName=await projectName.inputValue();
+ await projectName.fill('x'.repeat(240));
+ assert.equal((await projectName.inputValue()).length,240);
+ await projectName.fill('x'.repeat(241));
+ assert.equal((await projectName.inputValue()).length,240,'Streamlit max_chars rejects over-limit edits');
+ await projectName.fill(savedName);await projectName.press('Tab');
  assert.equal(await away.core.locator('[data-testid="InputInstructions"]:visible,[data-testid="stInputInstructions"]:visible').count(),0);
  writeFileSync(statePath('fresh-release'),'release');
  for(let i=0;i<100&&!existsSync(statePath('fresh-done'));i++)await new Promise(r=>setTimeout(r,100));

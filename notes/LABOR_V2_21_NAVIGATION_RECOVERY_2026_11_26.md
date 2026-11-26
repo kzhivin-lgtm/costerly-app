@@ -74,3 +74,10 @@ navigation when the owner selected2.21. No source runtime changed during that
 run; it was not a failed check or publication receipt. Final local2.21 run is
 independent. Previous checkpoints remain immutable. Rollback is deb8b8fe through
 the same gated publisher, never a forced/unchecked main push.
+
+The first2.21 local candidate passed1098 Python and navigation, then its new
+limit test failed because it assumed Streamlit emits a DOM maxlength attribute.
+Installed Streamlit1.64 TextInput/useUpdateUiValue instead enforces maxChars in
+the React change handler. The test now accepts240 characters, rejects241 and
+restores the original value before blur. Runtime validation was never changed.
+Failed candidate6ddebe32 is not approved for publication.
