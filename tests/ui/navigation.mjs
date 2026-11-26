@@ -272,7 +272,7 @@ try {
    const head=document.querySelector('[data-cost-band="labor"] .object-detail-cost-column-headings');
    const cx=n=>{const b=n.getBoundingClientRect();return b.x+b.width/2;};
    const axes=Object.fromEntries(['hours','pay','taxes','total'].map(c=>[c,cx(head.querySelector(`[data-labor-column="${c}"] > span`))]));
-   return [...document.querySelectorAll('.object-detail-work-row > summary')].flatMap(row=>{
+   return [...document.querySelectorAll('.object-detail-work-row > .object-detail-cost-summary')].flatMap(row=>{
     const box=row.getBoundingClientRect();if(!box.height)return [];
     return [...row.querySelectorAll('[data-labor-column]')].filter(n=>getComputedStyle(n.firstElementChild).visibility==='visible').map(cell=>{
      const value=cell.querySelector('[contenteditable],.object-detail-cost-value');
@@ -286,7 +286,7 @@ try {
   assert.ok(rowGeometry.every(r=>r.x<1 && r.y<2),JSON.stringify(rowGeometry));
   console.log(cfg.name,'Labor nested text geometry',JSON.stringify(rowGeometry));
   const rowGaps=await frame.evaluate(()=>{
-   const summary=key=>document.querySelector(`[data-cost-band="${key}"] > summary`).getBoundingClientRect();
+   const summary=key=>document.querySelector(`[data-cost-band="${key}"] > .object-detail-cost-summary`).getBoundingClientRect();
    return [['part-production','sheet-processing'],['assembly-stage','assembly'],['preparation-packing','trial-fit'],
      ['sheet-processing','part-coating'],['additional-assembly','preparation-packing']]
      .map(([a,b])=>({a,b,gap:summary(b).top-summary(a).bottom}));
