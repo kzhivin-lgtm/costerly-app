@@ -106,3 +106,15 @@ independent reads, reopening and all original assertions remain. No Prices
 runtime edit or gate bypass. New exact-SHA full remote gate remains mandatory.
 Additional scoped local Profile failure/retry witness passed11.355s for both
 Pricing and Overhead: real save errors stay visible after spacing correction.
+
+Remote run45822429477/cde91890 passed1098/navigation, then one original
+File Review Privacy check sampled14.125px versus the unchanged26±2px contract
+and blocked publication. The same exact application source had passed this
+check in the complete local gate and the preceding remote calculation suite.
+An isolated four-transition/160-frame witness at1758/390px measured stable
+26.40625/26.125px, fonts loaded. Historical failure cause is not established;
+no Privacy runtime or tolerance change is made. Retain failed artifact
+15118433306, digestfc11ad52b020b2ab902c533f8970ff8184041692c2bc8e464198851f79f7b350.
+A full fresh check is required, not a fabricated successful status. GitHub
+integration and existing Git credential both reject the rerun endpoint403, so
+a records commit starts the normal cumulative full gate without changing code.
