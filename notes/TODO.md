@@ -743,6 +743,23 @@ presence, service-row columns, purple total, production terms and no cents verif
 No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation remains a proposal, outside this artifact request.
 
+COMPLETED LOCAL ADA PDF MOCKUP V2, OWNER REVIEW PENDING, P1, USER REQUEST,
+26November2026. Revise the approved temporary client-commercial-proposal-a4
+layout using the owner's23.24.40 Project Adda screenshot. Same Hebrew company
+mark/contacts/requisites, typography, white A4 and lowercase Costerly attribution.
+Title Commercial Proposal: / ADA, two small owned technical previews, Vanity
+unit10597 and Display cabinet32337 (quantity1 each), Delivery1900,
+Installation4500, Project Price49334/VAT18%8880/Total58214, whole ILS and no
+Self Cost. All three summary amounts28px Plex Mono; Price/VAT regular dark,
+Total600 purple. Preserve15 working days and70% advance terms from approved
+layout. One-page A4 PDF plus350x450 and1050x1350 presentation PNGs are in
+output/pdf/ada-commercial-proposal-v2; self-contained HTML/design receipt,
+render checks and reproducible helpers in tmp/pdfs/ada-proposal. Chrome,
+Poppler and PyMuPDF render checked, totals/geometry/previews/fonts verified,
+original PDF unchanged. No new Profile read, application edit, release,
+provider call, database write or Canva edit. This is an artifact revision;
+production PDF generation and deferred Profile button cosmetics are unchanged.
+
 PUBLISHED, FRESH OWNER ADA RECOVERY VERIFIED, LABOR2.15, P1, USER REQUEST,
 25 November 2026, latest Ada estimate and one-word OCR counterfactual.
 Latest run c09d9a0f5b96420e8c0fca5b61249ec2, created 11:49 UTC, actual Labor2.14
