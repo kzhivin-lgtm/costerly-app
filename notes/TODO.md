@@ -548,7 +548,26 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-PUBLISHED LABOR2.21, OWNER ACCEPTANCE PENDING, P1, USER REPORT26November2026,
+FULL PRESERVATION CHECKPOINT, VERIFIED SOURCE/RESTORE, P1, USER REQUEST26November2026,
+Labor2.21, existing work3.17.4.6. Preserve exact runtimeb7902b42 and separate
+records, source archive/bundle/tags, all release and failure receipts, independent
+restore and frozen offline controls. Owner says generally appears correct but
+has not checked everything: acceptance is partial, not a fully accepted matrix.
+Reuse exact1098/ten release evidence; no new paid call or runtime deployment. Runtime archive859 files/4,917,112 bytes, independent byte comparison,
+restored1098 Python and four network-blocked saved controls passed. Final refs,
+records archive and integrity receipt in [checkpoint guide](LABOR_V2_21_PRODUCTION_CHECKPOINT_2026_11_26.md).
+
+DEFERRED UNTIL AFTER CHECKPOINT, P2, USER REQUEST26November2026,
+Profile action-button cosmetics. Machinery bottom action must say Save Machinery
+and match accepted Profile Save typography/size and existing Saving/Saved flow.
+Compare Price Lists Extract Prices styling to the same accepted action design;
+owner notices a difference, inspect before changing. Preserve extraction,
+persistence, draft and failure/retry behavior. No implementation or new release
+number assigned now. Distinct from the older proposed Machinery transactional
+RPC, whose scope/status is unchanged.
+
+PUBLISHED LABOR2.21, OWNER ACCEPTANCE PARTIAL26November2026, P1,
+USER REPORT26November2026,
 navigation recovery (owner-selected release number),
 existing work3.17.4.6. Runtimeb7902b42, exact GitHub1098/ten446.307s passed,
 run45823691299, normal publisher and actual strict/no-bypass main verified.

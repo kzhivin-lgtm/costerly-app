@@ -1,11 +1,13 @@
-**[verified] Latest full preservation checkpoint: Labor2.18,26November2026.**
-Exact runtime8b1cc958,852 source files/4,885,106 bytes, source/records tags,
-bundle, original screenshot and full release proof preserved. Independent restore
-and four offline material controls passed. Owner reports generally working
-costing, with Project input/row/copy/title issues retained. Approved2.19 adds
-Additional Assembly and separates already-priced hardware without double charge.
-APPROVE acceleration/Profile redesign deferred. Preserve this checkpoint before
-new runtime work. [Restore guide](LABOR_V2_18_PRODUCTION_CHECKPOINT_2026_11_26.md).
+**[verified] Latest full preservation checkpoint: Labor2.21,26November2026.**
+Exact runtimeb7902b42,859 source files/4,917,112 bytes; separate source/records
+tags, self-contained bundle, inventories,2.19-2.21 release/CI/incident evidence,
+verifier/replay and SHA256 manifest. Fresh restoration matched every byte;
+restored1098 Python checks and four offline saved material controls passed.
+Owner requests preservation but explicitly has not checked the whole production
+matrix, so acceptance remains partial. Previous2.18 checkpoint stays immutable.
+Deferred next: Machinery Save Machinery label/style and Price Lists Extract
+Prices action consistency. No new version, runtime edit, paid call or deployment
+is part of this checkpoint. [Restore guide](LABOR_V2_21_PRODUCTION_CHECKPOINT_2026_11_26.md).
 
 **[verified] Current runtime: Labor2.21,26November2026.**
 Runtimeb7902b424c0797e4fc6ef009b5921f68ec3b4106, work3.17.4.6. Saved Ada
@@ -18,7 +20,7 @@ Save/error/retry retained. Full exact-SHA GitHub1098/ten446.307s passed,
 run45823691299; artifact15120056347 digest and clean SHA verified. Local full
 489.997s and scoped Prices/Privacy/error-retry passed. Actual strict/no-bypass
 main rule, normal publisher and served Core/executed wrapper/meta/version parity
-15:16:02.733UTC verified. Owner acceptance pending. All failed/cancelled receipts,
+15:16:02.733UTC verified. Owner acceptance partial, full preservation requested. All failed/cancelled receipts,
 readiness test corrections and one unexplained prior CI Privacy sample retained.
 No gate tolerance weakened, no paid calls;2.18 preservation immutable. Rollback
 deb8b8fe via publisher. [Release](LABOR_V2_21_NAVIGATION_RECOVERY_2026_11_26.md).

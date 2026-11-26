@@ -20,9 +20,12 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
   cases inside the existing Profile Save suite. Layout, inputs, writes, costing
   and all other mechanics are unchanged. [Publication/evidence](OBJECTS_V2_7_RELEASE_2026_11_21.md).
 
-- Latest full runtime/records restoration reference: [Objects V2.6 checkpoint](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md),
-  runtime82d55026. Preserve the private archive, blocked-CI evidence and known
-  acceptance limits before further UI work. No new runtime is published by it.
+- Latest full runtime/records restoration reference: [Labor2.21 checkpoint](LABOR_V2_21_PRODUCTION_CHECKPOINT_2026_11_26.md),
+  runtimeb7902b42. Preserve exact code/records, complete release/incident evidence
+  and partial owner acceptance separately. Source restore1098 checks and four
+  offline controls passed. Previous [Objects V2.6 checkpoint](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md)
+  and [Labor2.18 checkpoint](LABOR_V2_18_PRODUCTION_CHECKPOINT_2026_11_26.md) remain immutable.
+  No runtime is published by preservation.
 
 - Preserved Objects V2.6 presentation: `ui/objects_pricing.py` owns compact R labels,
   `ui/objects_workflow.py` the right-arrow markup, `styles/objects.py` confirmation/

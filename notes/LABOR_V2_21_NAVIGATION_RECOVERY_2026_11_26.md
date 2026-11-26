@@ -147,3 +147,12 @@ Owner production acceptance pending. All private receipts are in
 output/labor-v2.21-20261126; exact affected RFQ evidence remains in the incident
 folder. Records-only follow-up stays on the candidate branch, no second runtime
 deployment. Full2.18 and other accepted checkpoints remain immutable.
+
+## Owner preservation request,26November2026
+
+Owner reports generally correct behavior but says not everything checked, then
+requests a full checkpoint. Acceptance is partial. Exact runtime is preserved
+with independent source restoration and existing release evidence; no new paid
+cycle or runtime deployment. Machinery Save Machinery and Price Lists Extract
+Prices visual consistency are deferred in TODO. See the
+[full preservation guide](LABOR_V2_21_PRODUCTION_CHECKPOINT_2026_11_26.md).

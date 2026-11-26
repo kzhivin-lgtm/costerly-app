@@ -1,5 +1,16 @@
 # Done Log
 
+[verified] Full Labor2.21 preservation requested26November2026, work3.17.4.6,
+exact runtimeb7902b42. Owner acceptance is explicitly partial. Runtime source
+archive859 files/4,917,112 bytes, unchanged helper/5MiB cap/LZMA preservation.
+Independent restore byte-identical; restored1098 checks and four network-blocked
+saved material controls passed. Runtime/records tags, bundle, source inventories,
+2.19-2.21 release/failed-CI/incident evidence, replay/verifier and SHA256 manifest
+are preserved separately from production. Main/build remain unchanged. Machinery
+Save Machinery and Extract Prices styling are recorded as deferred cosmetics,
+no new runtime or paid call. Final records/ref/restore receipts live in the
+private archive. [Guide](LABOR_V2_21_PRODUCTION_CHECKPOINT_2026_11_26.md).
+
 [verified] Labor2.21 published26November2026, existing work3.17.4.6, runtime
 b7902b42. Exact saved Ada evidence confirms both objects finished100% while
 Project later showed stale45%/pending. Terminal Future consumption now discards
