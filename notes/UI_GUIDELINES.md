@@ -858,3 +858,39 @@ loaded, allocate using the same exact Labor hours / Production monthly capacity.
 Do not apply employer load again or VAT to the salary row. Employee mutations
 invalidate the existing company metrics context. No duplicate editable payroll
 record, new writer, polling, or approval controller is introduced.
+
+
+## Labor2.19, owner approved26November2026
+
+Before changes preserve the full2.18 checkpoint, exact runtime8b1cc958 and
+separate records0578c583,852 source files and independent byte-identical restore.
+The owner's generally working calculation acceptance does not accept its
+reported Project input/spacing/title issues. APPROVE latency is deferred.
+
+Project numeric fields follow the same shared end-caret contract as Object
+Detail/Profile, on pointer entry and keyboard focus. Keep the active field's
+value/caret during older queued-write reconciliation. Preserve existing serial
+writes, acknowledgement, failure/retry and navigation protection. Production
+working days are positive integers only; reject fractional paste, retain centered
+active/empty input and existing service-field border/hit area. No new writer,
+observer, timer, callback, request or rerun. Helper/material descriptions display
+lowercase. Reserve the same two-line helper region and133px minimum row interval,
+including rows without description, preserving existing field axes/typography.
+Long content can grow without clipping. Long Project names start below Project,
+with the mark on the Project line; do not change saved names or identity.
+
+Assembly contains Block Assembly, Hardware Fitting and Additional Assembly.
+Hardware Fitting is installation and adjustment of fittings, separated from
+already-counted Block Assembly operations. Existing source/norms and once-only
+combined payroll rounding remain. Existing assembly overrides stay legacy whole
+budgets, allocated over their old structural/hardware proportions. New terminal
+keys block-assembly/hardware-fitting override only their share through the same
+hours writer. CNC boring remains Sheet Processing; no double hardware charge.
+
+Additional Assembly uses saved finished-unit evidence, provisional60min per glass
+box, mirror and physical LED zone, including source repeats once. Do not count
+glass walls, metres or purchase packages as separate assemblies. Owner confirmed
+four physical LED zones in Ada, not two Kelvin/material types: Corner8+2+4=14h,
+Console1+1=2h. Keep manual0, shared compact details, exact Labor/Overhead/SC/Project
+integration and all former unknown/saved/reopen/failure behavior. No paid call,
+Detection change, new material demand or schema migration is authorized here.

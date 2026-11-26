@@ -194,7 +194,7 @@ def _production_time_html(value, *, estimate_id, run_id) -> str:
         'data-object-key="__project__" data-commercial-term="production_time_working_days" '
         f'data-estimate-id="{_estimate_key(estimate_id)}" data-run-id="{_run_key(run_id)}">'
         '<div><div class="objects-pricing-name">Production time</div>'
-        '<div class="objects-pricing-materials">Working days after payment<br>Delivery &amp; installation excluded</div></div>'
+        '<div class="objects-pricing-materials">working days after payment<br>delivery &amp; installation excluded</div></div>'
         '<div class="objects-pricing-project-cost-cell">'
         + _sale_input_html(value, overridden=value is not None, currency=False, label='Production time') +
         '</div></div>'

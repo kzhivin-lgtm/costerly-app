@@ -10,9 +10,21 @@ def apply_objects_css() -> None:
         <style>
         .objects-estimation-header .workflow-title-mark {
             justify-content: flex-start;
+            top: 0.61em;
         }
         .objects-estimation-header .workflow-title-mark img {
             width: auto;
+        }
+        .objects-estimation-header .workflow-title-primary { max-width: 100%; }
+        .objects-estimation-header .workflow-title-text {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 0 0.45em;
+            max-width: 100%;
+        }
+        .objects-estimation-header .project-title-name {
+            min-width: 0;
+            overflow-wrap: anywhere;
         }
         .objects-estimation-header .post-upload-subtitle {
             color: rgba(42, 31, 44, 0.58) !important;
@@ -106,7 +118,7 @@ def apply_objects_css() -> None:
         }
 
         .objects-pricing-row {
-            min-height: 112px;
+            min-height: 133px;
             padding: 18px 0;
             border-top: 1px solid rgba(42, 31, 44, 0.14);
         }
@@ -137,6 +149,10 @@ def apply_objects_css() -> None:
             font-size: 11px;
             white-space: nowrap;
             text-align: center;
+        }
+        .objects-pricing-materials {
+            min-height: 36px;
+            text-transform: lowercase;
         }
 
         .objects-pricing-number,
@@ -240,9 +256,9 @@ def apply_objects_css() -> None:
             font-weight: 700;
             text-align: center;
             outline: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: block;
+            line-height: 40px;
+            white-space: nowrap;
             transition: border-color 140ms ease, box-shadow 140ms ease;
         }
 

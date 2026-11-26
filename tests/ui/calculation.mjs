@@ -355,6 +355,36 @@ async function detailSaveChecks(){
  }
  for(const name of ['front-choice','object-quantities.json','full-cost-totals.json','full-cost-lines.json','labor-hours.json','object-approvals.json'])rmSync(statePath(name),{force:true});
 }
+async function specialAssemblyChecks(){
+ for(const width of [1280,390]){
+  for(const name of ['labor-hours.json','full-cost-totals.json','full-cost-lines.json'])rmSync(statePath(name),{force:true});
+  const {page,core,frame}=await boot({labor_ready:true,special_assembly:true},width);
+  await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
+  await core.getByRole('button',{name:/continue to project/i}).click();await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+  await core.locator('[data-cost-band="labor"] > summary').click();
+  await core.locator('[data-cost-band="assembly-stage"] > summary').click();
+  const additional=core.getByRole('textbox',{name:'Additional Assembly hours',exact:true});
+  const hardware=core.getByRole('textbox',{name:'Hardware Fitting hours',exact:true});
+  await additional.waitFor();assert.equal(await additional.innerText(),'14.0');assert.equal(await hardware.innerText(),'0.6');
+  await core.locator('[data-cost-band="additional-assembly"] > summary .object-detail-cost-title').click();
+  const detail=await core.locator('[data-cost-band="additional-assembly"] .object-detail-work-body').innerText();
+  assert.match(detail,/Glass box.*8 × 60 min/);assert.match(detail,/Mirror.*2 × 60 min/);assert.match(detail,/LED zone.*4 × 60 min/);
+  const base=await core.locator('[data-cost-band="labor"]').getAttribute('data-labor-total-hours');
+  await hardware.fill('1.0');await hardware.press('Tab');
+  const changed=Number(await core.locator('[data-cost-band="labor"]').getAttribute('data-labor-total-hours'));
+  assert(Math.abs(changed-Number(base)-(1-.625))<.00001,'Hardware changes only its own share');
+  await core.getByRole('button',{name:'Save changes',exact:true}).click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+  await core.getByRole('link',{name:'Back to Project',exact:true}).click();await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
+  await core.locator('[data-cost-band="labor"] > summary').click();await core.locator('[data-cost-band="assembly-stage"] > summary').click();
+  assert.equal(await hardware.innerText(),'1.0');assert.equal(await additional.innerText(),'14.0');
+  await core.locator('[data-cost-band="hardware-fitting"] > summary .object-detail-cost-title').click();
+  await page.screenshot({path:reportPath('special-assembly-'+width+'.png'),fullPage:true});
+  assert.equal(await core.locator('[data-testid="stException"]').count(),0);
+  await page.close();
+ }
+ report.specialAssembly={viewports:[1280,390],automaticHours:14,hardwareSeparate:true,savedReopen:true};
+}
+await specialAssemblyChecks();
 await detailSaveChecks();
 await frontPanelChecks();
 await coatingChecks();
@@ -527,7 +557,7 @@ try{
   assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f408',
    JSON.stringify(await overhead.evaluate(node=>({host:{...node.dataset},rows:[...node.querySelectorAll('[data-line-id]')].map(row=>({...row.dataset})),context:window.__costerlyObjectDetailDraft?.context}))));
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
-  assert.equal(JSON.parse(readFileSync(statePath('labor-hours.json'),'utf8')).find(row=>row.raw_agent_json.block==='assembly').raw_agent_json.hours_per_item,'40.5');
+  assert.equal(JSON.parse(readFileSync(statePath('labor-hours.json'),'utf8')).find(row=>row.raw_agent_json.block==='block-assembly').raw_agent_json.hours_per_item,'40.5');
   await hours.fill('1.25');await hours.press('Tab');
   assert.equal(await hours.getAttribute('aria-invalid'),'true');
   await hours.fill('0');await hours.press('Tab');
@@ -585,7 +615,7 @@ try{
      })};
    });
   });
-  assert.ok(workGeometry.length>=13,JSON.stringify(workGeometry));
+  assert.ok(workGeometry.length>=14,JSON.stringify(workGeometry));
   assert.ok(workGeometry.every(row=>Math.abs(row.height-workGeometry[0].height)<1 && row.cells.every(c=>c.x<1&&c.y<2)),JSON.stringify(workGeometry));
   console.log('editable work geometry',width,JSON.stringify(workGeometry));
   const body=await core.locator('body').innerText();

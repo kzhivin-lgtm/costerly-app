@@ -2,7 +2,8 @@
 from decimal import Decimal, InvalidOperation
 
 BLOCKS = frozenset({'sheet-processing', 'assembly', 'part-coating', 'additional-assembly',
-                    'trial-fit', 'packing', 'cnc-operator', 'file-preparation', 'edge-banding'})
+                    'trial-fit', 'packing', 'cnc-operator', 'file-preparation', 'edge-banding',
+                    'block-assembly', 'hardware-fitting'})
 SOURCE = 'labor_hours_override'
 
 

@@ -28,6 +28,14 @@ def project_title(name) -> str:
     return 'Project' if not name or name.lower() in {'unknown', 'none', 'null', '—', '-'} else f'Project {name}'
 
 
+def project_header_html(title, **kwargs):
+    markup = post_upload_title_html(title, **kwargs)
+    if title.startswith('Project '):
+        markup = markup.replace(html.escape(title), '<span class="project-title-label">Project</span> '
+                                '<span class="project-title-name">' + html.escape(title[8:]) + '</span>', 1)
+    return markup
+
+
 def prices_are_set(estimate_id: str | None, data: dict) -> bool:
     return bool(estimate_id) and st.session_state.get("objects_set_price_basis", {}).get(str(estimate_id)) == pricing_signature(data)
 
@@ -57,7 +65,7 @@ def render_objects_header(title: str, render_header_controls: Callable[[], None]
     with st.container(key="costerly_screen_header"):
         with st.container(key="costerly_screen_header_primary"):
             title_slot = st.empty()
-            title_slot.markdown(post_upload_title_html(title, class_name="objects-estimation-header", marker_id=OBJECTS_MARKER_ID, align_mark_left=True), unsafe_allow_html=True)
+            title_slot.markdown(project_header_html(title, class_name="objects-estimation-header", marker_id=OBJECTS_MARKER_ID, align_mark_left=True), unsafe_allow_html=True)
         with st.container(key="objects_header_toolbar", horizontal=True, vertical_alignment="center", gap=24):
             if render_header_controls is not None:
                 with st.container(key="objects_header_controls", width="content"):
@@ -74,7 +82,7 @@ def render_objects_header(title: str, render_header_controls: Callable[[], None]
 
 def update_header(slots: ObjectsHeaderSlots, *, metrics_html: str, data: dict, estimate_id: str | None) -> None:
     if slots.title is not None:
-        slots.title.markdown(post_upload_title_html(project_title(data.get('project_name')), class_name='objects-estimation-header', marker_id=OBJECTS_MARKER_ID, align_mark_left=True), unsafe_allow_html=True)
+        slots.title.markdown(project_header_html(project_title(data.get('project_name')), class_name='objects-estimation-header', marker_id=OBJECTS_MARKER_ID, align_mark_left=True), unsafe_allow_html=True)
     proposal_ready = bool(st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id)))
     if slots.metrics is not None:
         slots.metrics.html(

@@ -1701,6 +1701,8 @@ def install_objects_price_input_guard(
             const quantityWrites = parentWindow.__costerlyObjectsQuantityWrites ||= new Map();
             let pointerStartedInPriceInput = false;
 
+            __MOVE_CARET_TO_END__
+
             if (parentWindow[HANDLER_KEY]) parentWindow[HANDLER_KEY]();
 
             function readNumber(value, fallback) {
@@ -1820,6 +1822,7 @@ def install_objects_price_input_guard(
                     if (estimate !== ESTIMATE_ID) continue;
                     const input = rowForObject(objectKey)?.querySelector("[data-object-quantity-input]");
                     if (!input) continue;
+                    if (input === parentDoc.activeElement) continue;
                     if (write.done && quantityValue(input) === write.value) {quantityWrites.delete(key);continue;}
                     input.textContent = String(write.value);
                     if (write.failed) {
@@ -1887,6 +1890,7 @@ def install_objects_price_input_guard(
                     const anyInput = row.querySelector('.objects-pricing-price-input');
                     const write = priceWrites.get(JSON.stringify([ESTIMATE_ID, objectKey]));
                     if (write && anyInput) {
+                        if (anyInput === parentDoc.activeElement) continue;
                         const confirmed = write.done && input && readMoneyNumber(saleInputValue(input)) === write.value;
                         if (!row.dataset.commercialTerm) prices[objectKey] = write.value;
                         setSaleInputValue(anyInput, formatCommercialInput(row, write.value));
@@ -2081,7 +2085,7 @@ def install_objects_price_input_guard(
                 const quantity = quantityContext(event);
                 if (quantity) {
                     quantity.input.dataset.savedQuantity = String(quantityValue(quantity.input) || 1);
-                    quantity.input.textContent = "";
+                    moveCaretToEnd(quantity.input);
                     return;
                 }
                 const ctx = context(event);
@@ -2090,6 +2094,7 @@ def install_objects_price_input_guard(
                 ctx.input.dataset.editStartDigits = digits;
                 ctx.input.dataset.editDirty = "false";
                 setSaleInputValue(ctx.input, digits);
+                moveCaretToEnd(ctx.input);
             }
 
             function handlePointerDown(event) {
@@ -2097,6 +2102,12 @@ def install_objects_price_input_guard(
                 pointerStartedInPriceInput = Boolean(
                     target && target.closest && target.closest(".objects-pricing-price-input")
                 );
+                if (event.button !== 0) return;
+                const input = quantityContext(event)?.input || context(event)?.input;
+                if (!input || isDisabled(input)) return;
+                event.preventDefault();
+                input.focus();
+                moveCaretToEnd(input);
             }
 
             function handleKeydown(event) {
@@ -2149,6 +2160,7 @@ def install_objects_price_input_guard(
                 if (!ctx || isDisabled(ctx.input)) return;
                 event.preventDefault();
                 const text = event.clipboardData ? event.clipboardData.getData("text") : "";
+                if (ctx.row.dataset.commercialTerm && !/^\s*\d+\s*$/.test(text)) return;
                 parentDoc.execCommand("insertText", false, inputDigits(text));
             }
 
@@ -2236,6 +2248,7 @@ def install_objects_price_input_guard(
         .replace("__SUPABASE_URL__", supabase_url_json)
         .replace("__SUPABASE_ANON_KEY__", supabase_anon_key_json)
         .replace("__SUPABASE_ACCESS_TOKEN__", supabase_access_token_json)
+        .replace("__MOVE_CARET_TO_END__", _MOVE_CARET_TO_END)
     )
     # Keep event handlers and in-flight promises in the persistent Core document,
     # rather than the disposable Streamlit component iframe that installs them.
@@ -2618,6 +2631,17 @@ def install_object_detail_input_guard(
                         const known = children(row).map(valueFor).filter(Boolean);
                         if (!known.length) { clearUnknown(row); return null; }
                         value = add(known);
+                        if (row.dataset.costBand === 'assembly-stage') {
+                            const structural = children(row).find(n => n.dataset.costBand === 'assembly');
+                            const hardware = children(row).find(n => n.dataset.costBand === 'hardware-fitting');
+                            const a = structural && valueFor(structural), b = hardware && valueFor(hardware);
+                            if (a && b) {
+                                const combined = paid(a.hours + b.hours);
+                                const balanced = {...b, ...Object.fromEntries(['pay','taxes','total'].map(key => [key, combined[key] - a[key]]))};
+                                update(hardware, balanced);
+                                value = add([a, balanced, ...children(row).filter(n => n !== structural && n !== hardware).map(valueFor).filter(Boolean)]);
+                            }
+                        }
                         if (!value.qualified && row.dataset.costUnknown === 'true') { clearUnknown(row); return null; }
                         if (['sheet-processing', 'cnc'].includes(row.dataset.costBand)) value = {...paid(value.hours),qualified:value.qualified};
                     } else {
@@ -2643,7 +2667,7 @@ def install_object_detail_input_guard(
                             }, 0);
                         }
                         if (!Number.isFinite(hours)) return null;
-                        value = {...paid(hours, Number(row.dataset.laborHourlyRate || 50)),qualified: !['part-coating','additional-assembly'].includes(row.dataset.costBand)
+                        value = {...paid(hours, Number(row.dataset.laborHourlyRate || 50)),qualified: !['part-coating','additional-assembly','hardware-fitting'].includes(row.dataset.costBand)
                             || hours > 0 || !!pending || explicit.has(row.dataset.costBand)};
                     }
                     update(row, value);

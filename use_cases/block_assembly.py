@@ -23,6 +23,29 @@ _SUPPORTED_ROLES = frozenset((
     "drawer_box_side", "drawer_box_end", "drawer_box_bottom", "drawer_front",
     "pull_out_shelf", "hinge", "door_front", "gas_lift", "lift_up_front", "push_latch",
 ))
+HARDWARE_OPERATIONS = frozenset({'drawer_runner_installation', 'drawer_runner_adjustment',
+    'shelf_runner_installation', 'shelf_runner_check', 'hinge_and_plate', 'door_fitting', 'drawer_front',
+    'lift_kit', 'lift_front_fitting', 'push_latch'})
+
+
+def partition_block_assembly(result):
+    """Partition existing operations without adding a norm or changing original data."""
+    partitions = []
+    for hardware in (False, True):
+        blocks = []
+        for block in result.get('blocks', ()):
+            operations = [op for op in block.get('operations', ())
+                          if (op['operation'] in HARDWARE_OPERATIONS) == hardware]
+            active = sum(op['active_minutes'] for op in operations)
+            planned = _planned_minutes(active)
+            blocks.append({**block, 'operations': operations, 'active_minutes': active,
+                           'planned_minutes': planned, 'base_labor_ils': _labor_cost(planned)})
+        planned = sum((block['planned_minutes'] for block in blocks), Decimal(0))
+        if not blocks and not hardware:
+            planned = Decimal(str(result['planned_minutes']))
+        partitions.append({**result, 'blocks': blocks, 'active_minutes': sum(b['active_minutes'] for b in blocks),
+                           'planned_minutes': planned, 'base_labor_ils': _labor_cost(planned)})
+    return tuple(partitions)
 
 
 def _whole_quantity(value):

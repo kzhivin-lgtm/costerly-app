@@ -561,13 +561,15 @@ and object-description text, retain headings, proper names and stored business
 data. For long Project names keep Project on the first line, name on the next.
 Additional Assembly: one hour per actual finished glass box, mirror or LED
 assembly as provisional owner-selected norm, not per glass piece/metre/roll;
-owner Ada example8+2+2=12h is a control to verify from source, not a hardcoded
-universal count. Add Hardware Fitting & Adjustment under Assembly, research
+Owner clarified physical LED zones: saved Ada Corner8+2+4=14h; Console1+1=2h.
+These saved controls are not hardcoded universal counts. Add Hardware Fitting under Assembly, research
 installation/adjustment scope and time evidence. Existing Block Assembly already
 contains hardware work: partition it without double charge, preserve old norms
 and saved override budgets. Use shared costing/editing/Overhead/SC/persistence
 and shared compact details, no paid model calls or Detection changes.
-Owner explicitly defers APPROVE acceleration and Profile redesign. Publish2.19
+Owner explicitly defers APPROVE acceleration and Profile redesign. UI uses shared end-caret, rejects
+fractional days and preserves focused edits during old write reconciliation.
+[2.19 scope/research](LABOR_V2_19_ASSEMBLY_INPUTS_2026_11_26.md). Publish2.19
 only after all protected checks/exact GitHub gate and served build parity.
 [2.18 checkpoint](LABOR_V2_18_PRODUCTION_CHECKPOINT_2026_11_26.md).
 

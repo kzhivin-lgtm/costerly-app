@@ -546,13 +546,39 @@ def labor_work_metrics(state, *, quantity=1, overrides=None):
         partial = bool(assembly['common_roles_for_review'] or any(block['issues'] for block in assembly['blocks']))
         assembled = labor_pay_metrics(assembly['planned_minutes'] * count / 60, partial=partial)
     work['assembly'] = manual('assembly', assembled)
+    from use_cases.block_assembly import partition_block_assembly
+    hardware_hours = Decimal(0)
+    if assembly is not None:
+        _, hardware = partition_block_assembly(assembly)
+        hardware_hours = hardware['planned_minutes'] * count / 60
+        if 'assembly' in overrides:
+            source_hours = Decimal(str(assembly['planned_minutes'])) * count / 60
+            hardware_hours = (work['assembly']['hours'] * hardware_hours / source_hours
+                              if source_hours else Decimal(0))
+    structural = (labor_pay_metrics(work['assembly']['hours'] - hardware_hours,
+                                   partial=work['assembly']['partial']) if work['assembly'] else None)
+    work['block-assembly'] = manual('block-assembly', structural)
+    work['hardware-fitting'] = manual('hardware-fitting', labor_pay_metrics(hardware_hours))
+    if work['block-assembly'] is not None:
+        combined = labor_pay_metrics(work['block-assembly']['hours'] + work['hardware-fitting']['hours'],
+                                     partial=work['block-assembly']['partial'])
+        # Preserve the accepted once-only payroll rounding across this partition.
+        for key in ('pay', 'taxes', 'total'):
+            work['hardware-fitting'][key] = combined[key] - work['block-assembly'][key]
+        work['assembly'] = combined
     work['part-coating'] = coating_pay_metrics(state.get('coating'), quantity=quantity, overrides=overrides)
-    work['additional-assembly'] = manual('additional-assembly', labor_pay_metrics(0))
+    additional = state.get('additional_assembly') or {'hours': 0, 'partial': False}
+    work['additional-assembly'] = manual('additional-assembly', labor_pay_metrics(
+        Decimal(str(additional['hours'])) * count, partial=additional['partial']))
     checking, packing, _ = preparation_pay_metrics(state, quantity=quantity, overrides=overrides)
     work['trial-fit'], work['packing'] = checking, packing
     work['part-production'] = sheet
-    work['assembly-stage'] = (_sum_labor_metrics([work['assembly'], work['additional-assembly']])
-                              if work['assembly'] is not None or 'additional-assembly' in overrides else None)
+    assembly_rows = [work['assembly'], work['additional-assembly']]
+    if work['assembly'] is None and 'hardware-fitting' in overrides:
+        assembly_rows.append(work['hardware-fitting'])
+    work['assembly-stage'] = (_sum_labor_metrics(assembly_rows)
+                              if work['assembly'] is not None or any(key in overrides for key in
+                                  ('additional-assembly', 'hardware-fitting')) else None)
     work['preparation-packing'] = _sum_labor_metrics([checking, packing])
     work['labor'] = (_sum_labor_metrics([sheet, work['part-coating'], work['assembly-stage'], work['preparation-packing']])
                      if any(work[key] is not None for key in ('sheet-processing', 'assembly-stage', 'preparation-packing'))
@@ -648,7 +674,9 @@ def load_object_labor(client, *, identity, parts_loader=None, plan_loader=None, 
     except Exception as exc:
         report_runtime_failure("preparation.calculate", exc, rfq_run_id=run_id, estimate_id=estimate_id, object_id=object_id)
         _LOG.exception("Could not calculate Preparation and Packing for estimate %s", estimate_id)
-    return {**sheet, "assembly": assembly, "preparation": preparation}
+    from use_cases.additional_assembly import calculate_additional_assembly
+    return {**sheet, "assembly": assembly, "preparation": preparation,
+            "additional_assembly": calculate_additional_assembly(report, object_id=object_id)}
 
 
 def _load_object_sheet(client, report, *, company_id, estimate_id, object_id, plan_loader, machinery_loader, plan=None):

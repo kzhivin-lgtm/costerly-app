@@ -17,6 +17,7 @@ from screens.block_assembly import assembly_breakdown_html
 from ui.object_detail_view import coating_details_html, work_details_html, detail_elements_html, overhead_section_html, _money as display_money
 from use_cases.overhead_engine import estimate_object_overhead, with_production_capacity, format_labor_hours
 from use_cases.block_assembly import calculate_block_assembly
+from use_cases.block_assembly import partition_block_assembly
 from use_cases.estimation_labor_v1 import (
     LAYOUT_VERSION, SPLIT_ROLES, build_sheet_layout, describe_layout_issues, sheet_layout_basis,
     labor_pay_metrics, sheet_pay_metrics, object_labor_metrics, load_object_labor,
@@ -85,7 +86,7 @@ _pay_metrics = labor_pay_metrics
 _sheet_pay_metrics = sheet_pay_metrics
 
 
-def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False, aggregate=False, cost_quantity=1, explicit_keys=(), detail_key=None, coating=None, has_details=None):
+def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False, aggregate=False, cost_quantity=1, explicit_keys=(), detail_key=None, coating=None, has_details=None, edit_key=None):
     is_row = key != 'labor'
 
     def metric(label, value, column, *, total=False):
@@ -101,7 +102,7 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
                 '<div class="object-detail-material-input" data-quantity-decimals="1">'
                 '<div class="object-detail-cell-input object-detail-cell-input--number"'
                 ' role="textbox" contenteditable="true" tabindex="0" inputmode="decimal"'
-                f' aria-label="{escape(title)} hours" data-field="labor_hours" data-line-id="{key}"'
+                f' aria-label="{escape(title)} hours" data-field="labor_hours" data-line-id="{edit_key or key}"'
                 f'{original} data-placeholder="—">{displayed}</div></div>'
             )
         return f'<div class="{cell} {css}" data-labor-column="{column}">{content}</div>'
@@ -415,7 +416,7 @@ def _preparation_html(state, *, quantity=1, overrides=None):
 
 def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, quantity=1, overrides=None):
     work = labor_work_metrics(state, quantity=quantity, overrides=overrides)
-    sheet_metrics, assembly_metrics, total = (work[key] for key in ('sheet-processing', 'assembly', 'labor'))
+    sheet_metrics, assembly_metrics, total = (work[key] for key in ('sheet-processing', 'block-assembly', 'labor'))
     elements_html = detail_elements_html(elements, revision=overlay_revision, object_id=object_id)
     if state['status'] == 'ready':
         sheet = (_cnc_sheet_html(state['result'], elements_html=elements_html, work=work)
@@ -433,18 +434,31 @@ def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, 
                                metrics=sheet_metrics)
     assembly = state.get('assembly')
     if assembly is not None:
+        assembly, hardware = partition_block_assembly(assembly)
         assembly_body = assembly_breakdown_html(assembly, quantity=quantity, payroll_share=DISPLAY_PAYROLL_SHARE, inline=True)
         if not assembly['blocks']:
             assembly_body = '<p class="object-detail-cnc-caption">No assembly blocks in Parts Check.</p>'
     else:
         message = 'Preparing Assembly…' if state['status'] == 'preparing' else 'Assembly is unavailable.'
         assembly_body = f'<p class="object-detail-cnc-caption">{message}</p>'
-    block_assembly = _cost_band('Block Assembly', assembly_body, assembly_metrics, key='assembly')
-    additional = _cost_band('Additional Assembly', '', work['additional-assembly'], key='additional-assembly')
+    block_assembly = _cost_band('Block Assembly', assembly_body, assembly_metrics, key='assembly', edit_key='block-assembly')
+    from screens.block_assembly import _OPERATIONS
+    hardware_rows = [{'row_key': f'{block["block_id"]}:{op["operation"]}',
+                      'text': f'{block["block_id"]} · {_OPERATIONS[op["operation"]]} · '
+                              f'{op["quantity"] * quantity:g} × {op["minutes_per_unit"]} min · '
+                              f'{Decimal(str(op["active_minutes"])) * Decimal(str(quantity)) * Decimal("1.25") / Decimal(".8"):g} planned min'}
+                     for block in (hardware['blocks'] if state.get('assembly') is not None else ())
+                     for op in block['operations']]
+    hardware_html = _cost_band('Hardware Fitting', work_details_html(hardware_rows),
+                              work['hardware-fitting'], key='hardware-fitting')
+    additional_rows = [{'row_key': str(index), 'text': f'{row["name"]} · {row["instance_ref"] or row["owner_id"] or ""} · '
+                       f'{row["quantity"] * quantity:g} × {row["minutes_per_unit"]} min'}
+                       for index, row in enumerate((state.get('additional_assembly') or {}).get('rows', ()))]
+    additional = _cost_band('Additional Assembly', work_details_html(additional_rows), work['additional-assembly'], key='additional-assembly')
     body = (
         _cost_band('Part Production', sheet, sheet_metrics, key='part-production', editable=False, aggregate=True)
         + _cost_band('Part Coating', _coating_html(state.get('coating')), work['part-coating'], key='part-coating', coating=state.get('coating'), has_details=bool((state.get('coating') or {}).get('batches')))
-        + _cost_band('Assembly', block_assembly + additional, work['assembly-stage'],
+        + _cost_band('Assembly', block_assembly + hardware_html + additional, work['assembly-stage'],
                      key='assembly-stage', editable=False, aggregate=True)
         + _preparation_html(state, quantity=quantity, overrides=overrides)
     )

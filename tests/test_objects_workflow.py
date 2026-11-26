@@ -187,5 +187,5 @@ def test_production_days_are_commercial_metadata_and_never_a_price():
     html=pricing_table_html(rows=[],project_costs=[{'object_key':'delivery','name':'Delivery'}],
                             summary={},estimate_id='e',run_id='r',production_time_working_days=15)
     assert html.index('Production time') < html.index('>Delivery<')
-    assert '>15</div>' in html and 'Working days after payment<br>Delivery &amp; installation excluded' in html
+    assert '>15</div>' in html and 'working days after payment<br>delivery &amp; installation excluded' in html
     assert '₪15' not in html

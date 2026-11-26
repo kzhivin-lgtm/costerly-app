@@ -121,6 +121,8 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
         assembly_labor = saved["labor_blocks"]["assembly"]
         preparation_labor = saved["labor_blocks"].get("preparation_packing")
         preparation_audit = saved.get("preparation_packing")
+        additional_audit = saved.get('additional_assembly')
+        hardware_audit = saved.get('hardware_fitting')
         labor_work = saved.get("labor_work")
         if labor_work is not None:
             from use_cases.estimation_labor_v1 import with_coating_work
@@ -136,6 +138,9 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
         sheet_labor, assembly_labor, labor = (labor_work[key] for key in ('sheet-processing', 'assembly-stage', 'labor'))
         preparation_labor = labor_work['preparation-packing']
         preparation_audit = state.get("preparation")
+        additional_audit = state.get('additional_assembly')
+        from use_cases.block_assembly import partition_block_assembly
+        hardware_audit = partition_block_assembly(state['assembly'])[1] if state.get('assembly') else None
     overhead = estimate_object_overhead(
         estimate_id=estimate_id, object_id=str(obj["object_id"]), company_id=str(obj["company_id"]),
         settings=context["settings"], overhead_monthly=context["monthly"],
@@ -159,6 +164,8 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
                                     'part-coating' in overrides or coating['batches'] or coating['issues']) else {})},
                "part_coating": coating,
                "preparation_packing": preparation_audit,
+               "additional_assembly": additional_audit,
+               "hardware_fitting": hardware_audit,
                **({"labor_work": labor_work} if labor_work is not None else {}),
                "parts_check_source": plan.get("parts_check_source"),
                "previous_totals": saved.get("previous_totals") if isinstance(saved, dict) else {

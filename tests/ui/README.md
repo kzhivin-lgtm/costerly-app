@@ -390,3 +390,17 @@ The all-terminal editing fixture explicitly declares10m of applicable edge work
 with its existing zero norm, retaining old exact amounts. Unit coverage separately
 checks an applicable manual0 remains visible and an old nonzero override is kept.
 All ten browser suites and the full Python contract remain mandatory.
+
+
+Labor2.19 adds Project end-caret probes across left/middle/right clicks, centered
+active day text, rejected fractional paste and the unchanged delayed older-write
+ordering/retry matrix. Object and service rows share133px minimum divider
+intervals, with old axes and field dimensions retained. Only approved row heights
+and subsequent y offsets differ from the frozen reference. Long saved Project
+names wrap below Project with its mark on the first line; helper copy is lowercase.
+Calculation adds8 glass boxes+2 mirrors+4 LED zones=14h, separate editable Hardware
+Fitting, correct one-share preview, Save/reopen on1280/390 and all14 work rows at
+42px. Unknown0 placeholders still cannot fabricate a completed calculation.
+New unit cases cover physical counts/repeats/duplicate/conflicting evidence,
+unchanged hardware norms/total/once-only payroll and legacy/manual budgets. All
+prior financial, geometry, persistence, recovery/auth and ten suites remain.

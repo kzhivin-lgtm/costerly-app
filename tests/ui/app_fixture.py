@@ -234,6 +234,19 @@ _original_labor_loader = labor.load_object_labor
 def fixture_labor_loader(*args, **kwargs):
  if scenario().get('labor_unknown'):return {'status':'preparing'}
  state=_original_labor_loader(*args, **kwargs)
+ if scenario().get('special_assembly'):
+  from use_cases.additional_assembly import calculate_additional_assembly
+  from use_cases.block_assembly import calculate_block_assembly
+  evidence={'objects':{'fixture':{'blocks':[{'id':'B01'}],'parts':[
+   {'role':'fixed_panel','quantity':3,'block_id':'B01'},
+   {'role':'hinge','quantity':4,'block_id':'B01'},
+   {'role':'door_front','quantity':2,'block_id':'B01'},
+   {'role':'push_latch','quantity':2,'block_id':'B01'},
+   {'role':'glass_box_lid','quantity':8,'instance_ref':'glass boxes'},
+   {'role':'mirror_glass','quantity':2,'instance_ref':'mirrors'},
+   {'role':'led_strip_run','quantity':4,'instance_ref':'LED zones'}]}}}
+  state={**state,'assembly':calculate_block_assembly(evidence,object_id='fixture'),
+         'additional_assembly':calculate_additional_assembly(evidence,object_id='fixture')}
  if scenario().get('edge_applicable') and state.get('status')=='ready':
   # This interaction fixture includes an applicable edge operation at a zero
   # configured norm. Its financial baseline remains unchanged; inapplicable

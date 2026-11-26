@@ -144,9 +144,16 @@ try{
    // Owner-approved2.18 adds one service row and raises only Price/VAT values to30px
    const shifted=selector==='.objects-pricing-row--project-cost'||selector.startsWith('.objects-pricing-summary')||selector==='.st-key-objects_actions';
    const larger=selector==='.objects-pricing-summary-price'||selector==='.objects-pricing-summary-vat';
-   const value=axis==='width'&&selector in intrinsicWidths?intrinsicWidths[selector]:recorded+(axis==='y'&&selector!=='h1.workflow-title'?-26:0)+(axis==='y'&&shifted?actual.productionHeight:0)+(axis==='height'&&larger?14.40625:0);
+   //2.19 reserves the same two-line helper region in every row, keeping all
+   // existing field axes and typography. Only row heights/later y positions move.
+   const rowHeight=133, rowGrowth=rowHeight-baseline.viewports[width]['.objects-pricing-row--project-cost'].height;
+   const wholeRow=selector==='.objects-pricing-row--project-cost'||selector==='.objects-pricing-row:not(.objects-pricing-row--project-cost)';
+   const laterGrowth=selector==='.objects-pricing-row--project-cost'?rowGrowth:selector.startsWith('.objects-pricing-summary')||selector==='.st-key-objects_actions'?3*rowGrowth:0;
+   const value=axis==='width'&&selector in intrinsicWidths?intrinsicWidths[selector]:recorded+(axis==='y'&&selector!=='h1.workflow-title'?-26:0)+(axis==='y'&&shifted?actual.productionHeight:0)+(axis==='y'?laterGrowth:0)+(axis==='height'&&larger?14.40625:0)+(axis==='height'&&wholeRow?rowGrowth:0);
    assert(Math.abs(actual.preserved[selector][axis]-value)<.1,JSON.stringify({width,selector,axis,expected:value,actual:actual.preserved[selector][axis]}));
   }
+  assert.equal(actual.productionHeight,133);
+  assert.equal(await core.locator('.objects-pricing-row').evaluateAll(nodes=>new Set(nodes.map(n=>n.getBoundingClientRect().height)).size),1,'Object and service divider intervals match');
   await checkClosingGap(frame,'.st-key-objects_actions');
   assert(Math.abs(actual.lines[0]-actual.lines[1])<1);
   assert(Math.abs(actual.end-actual.action)<1);
@@ -197,13 +204,24 @@ try{
  assert.equal(arrowBefore.x,arrowAfter.x);assert.equal(arrowBefore.y,arrowAfter.y);
  assert.equal(readFileSync(statePath('browser-journal'),'utf8'),beforeJournal,'Dashboard toggle must not rerun/read/write');
  assert(!existsSync(prices),'Focus-only interactions must not write prices');
+ for(const field of [core.locator('.objects-pricing-sale-cell .objects-pricing-price-input').first(),core.locator('[data-object-key="delivery"] .objects-pricing-price-input')]){
+  for(const x of [8,50,100]){
+   await field.click({position:{x,y:20}});
+   assert(await field.evaluate(input=>{const s=getSelection(),r=s.getRangeAt(0).cloneRange();r.selectNodeContents(input);r.setEnd(s.anchorNode,s.anchorOffset);return r.toString().length===input.textContent.length;}),'Pointer entry always positions the shared end caret');
+  }
+  await field.press('Tab');
+ }
  const production=core.getByRole('textbox',{name:'Production time',exact:true});
+ await production.click();await production.pressSequentially('1');
+ assert(await production.evaluate(input=>{const r=document.createRange();r.selectNodeContents(input);const t=r.getBoundingClientRect(),b=input.getBoundingClientRect();return Math.abs(t.x+t.width/2-b.x-b.width/2)<1;}),'Active day text stays centered');
  const financialBefore=await core.locator('[data-summary-field]').allTextContents();
  const productionSaved=page.waitForResponse(response=>response.url().includes('/rfq_estimate_pricing_overrides')&&response.request().method()==='POST'&&response.request().postDataJSON()?.field==='production_time_working_days');
  await production.fill('15');await production.press('Tab');assert.equal((await productionSaved).status(),204);
  assert.equal(JSON.parse(readFileSync(prices)).find(row=>row.object_key==='__project__').value,15);
  assert.deepEqual(await core.locator('[data-summary-field]').allTextContents(),financialBefore,'Production days never enter financial totals');
  assert.equal(await production.innerText(),'15');
+ await production.evaluate(input=>{const data=new DataTransfer();data.setData('text/plain','12.5');input.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}));});
+ assert.equal(await production.innerText(),'15','Fractional day paste is rejected without silently concatenating digits');
  const totalStyles=await core.locator('[data-summary-field]').evaluateAll(nodes=>nodes.map(n=>({field:n.dataset.summaryField,font:getComputedStyle(n).fontFamily,size:getComputedStyle(n).fontSize,weight:getComputedStyle(n).fontWeight,color:getComputedStyle(n).color})));
  assert(totalStyles.every(s=>s.font===totalStyles[2].font&&s.size==='30px'));
  assert(totalStyles.slice(0,2).every(s=>s.weight==='400'&&s.color==='rgb(23, 19, 28)'));assert.equal(totalStyles[2].weight,'700');
@@ -397,11 +415,23 @@ try{
  await memberCore.getByRole('button',{name:/continue to project/i}).waitFor();await memberCore.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
  await memberCore.getByRole('button',{name:/continue to project/i}).click();await memberCore.locator('.objects-pricing-table').waitFor();await memberCore.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
  assert.equal(await memberCore.locator('.objects-cycle-metrics,.objects-metrics-toggle').count(),0,'Technical metrics reuse existing platform-admin visibility');
- assert.equal(await memberCore.locator('h1 .workflow-title-text').innerText(),'Project A3');
+ assert.equal((await memberCore.locator('h1 .workflow-title-text').textContent()).replace(/\s+/g,' '),'Project A3');
  assert.equal(await memberCore.getByRole('textbox',{name:'Production time',exact:true}).innerText(),'15');
  await member.setViewportSize({width:390,height:1000});
  assert(await memberCore.getByRole('textbox',{name:'Production time',exact:true}).isVisible());
  await member.close();report.nonAdminMetricsHidden=true;
+ const longName='A very long custom furniture project name for a complete residential interior and multiple display cabinets';
+ writeFileSync(config,JSON.stringify({objects_v2:true,admin:false,project_name:longName}));
+ const longPage=await browser.newPage({viewport:{width:1280,height:1000}}),longCore=longPage.frameLocator('#costerly-app-frame');
+ await longPage.goto('http://127.0.0.1:8798/');await longPage.locator('iframe.is-ready').waitFor();
+ await longCore.getByRole('button',{name:'Last Estimate',exact:true}).click();await longCore.getByRole('button',{name:/continue to project/i}).click();
+ await longCore.locator('.objects-pricing-table').waitFor();
+ assert.equal(await longCore.locator('.project-title-name').innerText(),longName);
+ const nameBox=await longCore.locator('.project-title-name').boundingBox(),labelBox=await longCore.locator('.project-title-label').boundingBox();
+ assert(nameBox.y>=labelBox.y+labelBox.height-1,'Long names start below Project');
+ const markBox=await longCore.locator('.workflow-title-mark').boundingBox();
+ assert(Math.abs(markBox.y+markBox.height/2-labelBox.y-labelBox.height/2)<1,'The mark stays with Project on the first line');
+ await longPage.screenshot({path:reportPath('project-long-title.png'),fullPage:true});await longPage.close();
  writeFileSync(reportPath('objects-v2.json'),JSON.stringify(report,null,2));
  console.log('Objects V2.4 passed: approved26px body lift, original geometry/field boundaries, top-right menu+metrics with4px offset, stacked half-width documents, local metrics toggle and original pricing/approval/proposal flow.');
 }catch(error){

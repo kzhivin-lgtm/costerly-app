@@ -80,7 +80,7 @@ def test_assembly_remains_available_when_materials_are_pending_and_quantity_is_a
 
 def test_labor_has_four_stages_and_retains_existing_work_rows():
     html = _labor_html({'status': 'waiting_for_materials'})
-    assert html.count('object-detail-work-row') == 9
+    assert html.count('object-detail-work-row') == 10
     assert html.count('object-detail-cost-band') == 1
     assert '>Labor<br>Pay<' in html
     assert '₪50/h' not in html and 'In-house labor</p>' not in html
