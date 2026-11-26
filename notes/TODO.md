@@ -548,8 +548,16 @@ Naming or calculation evidence to hide this source-layout limitation.
 
 ## Objects Estimation workflow and proposal revisions
 
-ACTIVE, P0, USER REPORT26November2026, Labor2.21 navigation recovery (owner-selected release number),
-existing work3.17.4.6. Owner accepted previews, immediate Project name, Advance
+PUBLISHED LABOR2.21, OWNER ACCEPTANCE PENDING, P1, USER REPORT26November2026,
+navigation recovery (owner-selected release number),
+existing work3.17.4.6. Runtimeb7902b42, exact GitHub1098/ten446.307s passed,
+run45823691299, normal publisher and actual strict/no-bypass main verified.
+Served Core/executed wrapper/meta/version parity15:16:02.733UTC, zero exceptions.
+Local full and isolated completion-away/limit/gap/error-retry witnesses passed.
+Preserved failed CI, test-readiness corrections and unexplained prior Privacy
+sample in [release record](LABOR_V2_21_NAVIGATION_RECOVERY_2026_11_26.md).
+Owner check: fresh calculation finishing during Profile/File Review navigation.
+Owner accepted previews, immediate Project name, Advance
 payment, Profile buttons and zoom gaps, but reported Project stuck45%/pending
 after Profile/File Review navigation. Exact run_b10730a250624e53a5b46a6fe0528510,
 estimate suffix20261126115535, routeEiTYFdrAYzxL. Durable object rows both
@@ -566,7 +574,8 @@ max_chars240/server validation; remove empty footer inside every Profile Save
 card using the established layout, retain errors, Saving/Saved and fixed Privacy.
 Evidence: private output/labor-v2.20-incident-20261126/saved-run.json.
 
-PUBLISHED LABOR2.20, OWNER ACCEPTANCE PENDING, P1, USER APPROVED26November2026,
+PUBLISHED LABOR2.20, OWNER ACCEPTED FEATURE UI26November2026, P1,
+USER APPROVED26November2026. Separate navigation incident repaired in2.21 above,
 existing work3.17.4.6. Runtime deb8b8fe, exact GitHub1094/ten396.913s passed,
 run45812741297; normal publisher, actual strict/no-bypass main protection and
 served Core/executed wrapper/meta/version parity11:51:39.898UTC verified. Owner

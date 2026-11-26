@@ -7,7 +7,23 @@ Additional Assembly and separates already-priced hardware without double charge.
 APPROVE acceleration/Profile redesign deferred. Preserve this checkpoint before
 new runtime work. [Restore guide](LABOR_V2_18_PRODUCTION_CHECKPOINT_2026_11_26.md).
 
-**[verified] Current runtime: Labor2.20,26November2026.**
+**[verified] Current runtime: Labor2.21,26November2026.**
+Runtimeb7902b424c0797e4fc6ef009b5921f68ec3b4106, work3.17.4.6. Saved Ada
+run_b10730a250624e53a5b46a6fe0528510 completed both objects by11:58UTC;
+45%/pending screenshot was a prepared-progress/cache lifecycle error on return.
+Discard matching navigation seed after consuming terminal Future, use existing
+dirty result read and live fragment, no model/input/timer changes. File Review
+counter hidden with240 limit; Profile bridge slots add no blank footer, existing
+Save/error/retry retained. Full exact-SHA GitHub1098/ten446.307s passed,
+run45823691299; artifact15120056347 digest and clean SHA verified. Local full
+489.997s and scoped Prices/Privacy/error-retry passed. Actual strict/no-bypass
+main rule, normal publisher and served Core/executed wrapper/meta/version parity
+15:16:02.733UTC verified. Owner acceptance pending. All failed/cancelled receipts,
+readiness test corrections and one unexplained prior CI Privacy sample retained.
+No gate tolerance weakened, no paid calls;2.18 preservation immutable. Rollback
+deb8b8fe via publisher. [Release](LABOR_V2_21_NAVIGATION_RECOVERY_2026_11_26.md).
+
+**[verified] Previous runtime: Labor2.20,26November2026.**
 Runtime deb8b8fe8a572d6e84807fdc0d117e68b29e8632, existing work3.17.4.6.
 Prepared Continue/Project metadata follows acknowledged File Review names.
 Compound isometric_technical_perspective UI-priority cause confirmed; current

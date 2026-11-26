@@ -1,5 +1,21 @@
 # Done Log
 
+[verified] Labor2.21 published26November2026, existing work3.17.4.6, runtime
+b7902b42. Exact saved Ada evidence confirms both objects finished100% while
+Project later showed stale45%/pending. Terminal Future consumption now discards
+only its matching prepared progress snapshot before result-cache loading.
+Browser completion-away witness shows the saved result on first ready return,
+with one worker. No new paid call or Parts change. File Review counters hidden,
+240-character boundary preserved. Metrics/Pricing zero-height bridge flex slots
+removed, closing29px matches Contacts/Bank/Labor; error/retry still works.
+Exact GitHub1098/ten446.307s passed, run45823691299/artifact15120056347,
+digest/clean SHA verified. Local full489.997s plus focused checks passed.
+Actual strict/no-bypass main rule, publisher, Core/executed wrapper/meta/version
+parity15:16:02.733UTC verified. Prior blocked checks/readiness corrections and
+one unexplained Privacy sample retained; no tolerance weakened. Owner production
+acceptance pending,2.18 checkpoint immutable, rollbackdeb8b8fe via publisher.
+[Cause, release and checklist](LABOR_V2_21_NAVIGATION_RECOVERY_2026_11_26.md).
+
 [verified] Labor2.20 published26November2026, existing work3.17.4.6, runtime
 deb8b8fe. Acknowledged File Review metadata updates its prepared Continue/Project
 snapshot without cost reload. UI preview recognizes compound isometric traits;

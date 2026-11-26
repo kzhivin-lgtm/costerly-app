@@ -64,7 +64,7 @@ against actual padding/border and retain the existing failure/retry scenarios.
 
 ## Publication state
 
-Candidate implementation. Full local and exact-SHA remote gates, actual remote
+Published runtime, owner acceptance pending. Full local and exact-SHA remote gates, actual remote
 strict/no-bypass enforcement and Core/executed wrapper/meta/version parity are
 required before publication. Owner production acceptance remains pending.
 Build labor-v2.21-b20261126121656-navigation-recovery-detection-v8.4.29.
@@ -118,3 +118,32 @@ no Privacy runtime or tolerance change is made. Retain failed artifact
 A full fresh check is required, not a fabricated successful status. GitHub
 integration and existing Git credential both reject the rerun endpoint403, so
 a records commit starts the normal cumulative full gate without changing code.
+
+## Published verification,26November2026
+
+[verified] Runtime b7902b424c0797e4fc6ef009b5921f68ec3b4106 published via
+normal tools/promote_ui_release.py after exact-SHA full UI gate. GitHub run
+45823691299/job139922220098 passed1098 Python and all ten browser suites in
+446.307s, clean working tree. Artifact15120056347 downloaded and SHA256 checked:
+fdee7b8d41b7b02186dd7f35994b9256678f03f5a294a9f38e994c540dcaf2bd.
+Local full1098/ten489.997s plus Prices ready17.568s and scoped error/retry
+11.355s passed. No threshold/assertion removed; only Prices completion wait
+added. The later full exact-source pass includes unchanged26±2px Privacy checks.
+The isolated prior CI Privacy sample remains an unexplained observation, not
+a claimed application repair or reason to weaken that contract.
+
+Actual ruleset27499066 active/strict/trusted UI gate, no bypass actors, verified
+independently after publication; remote main points to the exact runtime SHA.
+Core service reports success. Browser15:16:02.733UTC verified Core, executed
+wrapper, meta and uncached version.json all equal
+labor-v2.21-b20261126121656-navigation-recovery-detection-v8.4.29, zero exceptions.
+This was an anonymous build-parity witness, not owner-authenticated acceptance.
+
+Owner checklist: fresh calculation, Profile then File Review while work runs,
+wait away from Project, Continue shows completed results without another
+calculation; File Review counters absent; Profile Save-card bottoms consistent,
+Saving/Saved and errors still usable. Previous2.20 features remain protected.
+Owner production acceptance pending. All private receipts are in
+output/labor-v2.21-20261126; exact affected RFQ evidence remains in the incident
+folder. Records-only follow-up stays on the candidate branch, no second runtime
+deployment. Full2.18 and other accepted checkpoints remain immutable.
