@@ -137,9 +137,10 @@ def test_branded_document_uses_native_text_requisites_and_frozen_date():
     with pymupdf.open(stream=result,filetype='pdf') as pdf:
         assert len(pdf)==1
         text='\n'.join(p.get_text() for p in pdf)
-        for expected in ['27 November 2026','Workshop Ltd','123456789','Saved bank','12345','estimated with','plywood 18 mm fronts','Partner: Studio','Client: Customer','₪2 400']:
+        for expected in ['27 November 2026','123456789','Saved bank','12345','estimated with','plywood 18 mm fronts','Partner: Studio','Client: Customer','₪2 400']:
             assert expected in text
         assert 'DO NOT DUPLICATE HEADER' not in text
+        assert 'Workshop Ltd' not in text
         assert 'facebook' not in text.lower()
         assert '\x00' not in text
         assert not pdf[0].get_images()
@@ -203,3 +204,33 @@ def test_pdf_logo_preserves_complete_wordmark_without_the_profile_preview_card()
         rect=pdf[0].get_image_rects(pdf[0].get_images()[0][0])[0]
         assert abs(rect.x0-51)<.01
         assert 'Duplicate name' not in pdf[0].get_text()
+
+
+def test_owner_footer_revision_aligns_both_languages_and_omits_legal_name():
+    snapshot=_snapshot();snapshot['production_time_working_days']=15;snapshot['advance_payment_percent']=70
+    result=build_proposal_pdf(profile={'legal_name':'Do not print legal name','legal_name_hebrew':'לא להציג',
+        'company_registration_number':'123456789','bank_name':'Saved bank'},
+        project_name='ADA',partner_name='',client_name='',snapshot=snapshot)
+    with pymupdf.open(stream=result,filetype='pdf') as pdf:
+        page=pdf[0]
+        spans=[span for block in page.get_text('dict')['blocks'] if block['type']==0
+               for line in block['lines'] for span in line['spans']]
+        text=page.get_text()
+        assert 'Do not print legal name' not in text and 'לא להציג' not in text
+        terms=[span for span in spans if span['text'].startswith(('Production lead time:','Payment terms:','Delivery and installation excluded'))]
+        assert len(terms)==3
+        assert all(abs(span['bbox'][2]-544)<1.5 for span in terms)
+        hebrew=[span for span in spans if 'ייצור' in span['text']]
+        assert hebrew
+        same_line=[span for span in spans if abs(span['bbox'][1]-hebrew[0]['bbox'][1])<1]
+        assert abs(max(span['bbox'][2] for span in same_line)-544)<2
+        heading=[span for span in spans if 'הצעת' in span['text']]
+        assert heading and abs(max(span['bbox'][2] for span in heading)-544)<2
+        lines=[item[1].y for path in page.get_drawings() for item in path['items']
+               if item[0]=='l' and abs(item[1].x-51)<.01 and abs(item[2].x-544)<.01]
+        footer=max(lines)
+        registration=next(span for span in spans if span['text'].startswith('Company No.'))
+        assert 0<registration['bbox'][1]-footer<11
+        credit=next(span for span in spans if span['text']=='estimated with')
+        assert abs(credit['bbox'][2]-544)<1.5
+        assert credit['bbox'][3]<footer+18

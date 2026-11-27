@@ -122,10 +122,12 @@ class ProposalDocument:
         if _hebrew(value):
             first = re.search('[A-Za-z\u0400-\u04ff\u0590-\u05ff]', value)
             direction = 'rtl' if first and _hebrew(first[0]) else 'ltr'
+            # Story uses logical sides for RTL; callers specify the physical edge.
+            css_align = {'left':'right','right':'left','center':'center'}[align] if direction == 'rtl' else align
             css = ("@font-face{font-family:proposal;src:url(NotoSansHebrew-400.ttf)}"
                    "@font-face{font-family:body;src:url(SpaceGrotesk-400.ttf)}"
                    f'body{{margin:0;padding:0;font-family:proposal,body,sans-serif;font-size:{size}pt;'
-                   f'line-height:1.42;color:{color}}}p{{margin:0;text-align:{align};direction:{direction}}}')
+                   f'line-height:1.42;color:{color}}}p{{margin:0;text-align:{css_align};direction:{direction}}}')
             height = max(lineheight * len(lines) + 5, lineheight + 5)
             rect = pymupdf.Rect(x, top, x + width, top + height)
             spare, _ = self.page.insert_htmlbox(rect, '<p>' + html.escape(value).replace('\n','<br>') + '</p>',
@@ -155,8 +157,6 @@ class ProposalDocument:
     def _footer_lines(self):
         p = self.profile
         lines = []
-        legal = clean(p.get('legal_name_hebrew')) or clean(p.get('legal_name'))
-        if legal: lines.extend(self.wrap(legal, 300, 7.4))
         for key, label in [('company_registration_number','Company No.'),('vat_file_number','VAT File No.')]:
             if clean(p.get(key)): lines.append(label + ' ' + clean(p[key]))
         bank = ' · '.join(label + ': ' + clean(p[key]) for key,label in
@@ -194,13 +194,13 @@ class ProposalDocument:
 
     def _footer(self):
         self.rule(self.footer_y)
-        credit_y = self.footer_y + 12
-        self.text('estimated with', 366,credit_y,65,6.7,color=MUTED)
+        credit_y = self.footer_y + 6
+        self.text('estimated with', RIGHT-84,credit_y,84,6.4,color=MUTED,align='right')
         svg = (ROOT / 'assets/brand/costelry_logo_full_cropped.svg').read_bytes()
         with pymupdf.open(stream=svg, filetype='svg') as source:
             with pymupdf.open(stream=source.convert_to_pdf(),filetype='pdf') as brand:
-                self.page.show_pdf_page(pymupdf.Rect(435,credit_y-1,RIGHT,credit_y+14),brand,0,keep_proportion=True)
-        y = self.footer_y + 13
+                self.page.show_pdf_page(pymupdf.Rect(RIGHT-72,self.footer_y+18,RIGHT,self.footer_y+32),brand,0,keep_proportion=True)
+        y = self.footer_y + 7
         for line in self.footer_lines:
             # Requisites use the left portion first, leaving the brand intact.
             width = 300 if y < self.footer_y + 27 else RIGHT-LEFT
@@ -304,7 +304,7 @@ class ProposalDocument:
             self.text(money(summary.get(key)),x,self.y+26,width,amount_size,face,color,align='right')
         self.y+=68
         for line in terms:
-            self.y+=self.text(line,LEFT,self.y,RIGHT-LEFT,8,color=MUTED)+4
+            self.y+=self.text(line,LEFT,self.y,RIGHT-LEFT,8,color=MUTED,align='right')+4
 
     def finish(self):
         total=len(self.doc)

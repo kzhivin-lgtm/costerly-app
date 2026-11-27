@@ -744,13 +744,13 @@ No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation was outside the earlier local artifact request.
 Owner activated production-generator planning below on27November2026.
 
-ACTIVE IMPLEMENTATION, P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
+PENDING PUBLICATION, P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
 Outcome: existing Set Prices -> Generate Proposal produces a customer proposal
 matching the approved Ada A4 visual style, with every variable element supplied
 by saved Company Profile and the particular estimate. Owner approved implementation after the plan and clarified the first-download behavior.
 Implementation is underway; publication and owner production acceptance remain pending.
 Railway commit/release/deploy title must be human readable, proposed exact title:
-Labor V3: генерация PDF коммерческого предложения.
+Labor V3: генерация и скачивание PDF коммерческого предложения.
 Release label is owner-approved; no new hierarchical work number assigned.
 Existing continuation reference3.17.4.6 agrees between local records and the
 GitHub main Project Map; this does not allocate a new task/block number.
@@ -790,13 +790,17 @@ OWNER-APPROVED DISPLAY/FLOW DECISIONS,27November2026, latest clarification:
 In the document header place the uploaded company logo as a complete asset.
 Do not separately typeset Company Name or a subtitle; those header texts appear
 only when already contained in the uploaded logo. This supersedes the earlier
-proposal to typeset Company Name alongside it; legal footer requisites still
-come from the saved Profile. No new subtitle field. Show Client and Partner only
+proposal to typeset Company Name alongside it. The latest owner correction
+omits company legal names from the footer; registration/bank requisites come
+from the saved Profile. No new subtitle field. Show Client and Partner only
 when filled; omit social links.
 Attribution order is literal estimated with followed by the complete existing
 Costerly brand lockup (icon + costerly.ai wordmark together). Never insert the
 estimated with words between the brand icon and its wordmark; do not rename the
-brand based on the dictated Costly spelling.
+brand based on the dictated Costly spelling. Latest owner layout correction:
+right-align English/Hebrew commercial terms to the same physical edge; estimated
+with is the upper row, the smaller intact brand is the lower row; registration/
+bank details move immediately below the footer divider.
 Owner final clarification: Generate Proposal creates, saves and initiates the FIRST
 download in that same accepted action. After durable success, Download Proposal
 becomes active and its PDF icon turns red for subsequent downloads, with no regeneration.
@@ -814,14 +818,21 @@ Implementation now includes the native PDF renderer, immutable document metadata
 logo, shared WebP previews, confirmed-basis reuse, first automatic download, red
 repeat-download action and shared diagnostic spans. All1106 Python checks and
 all ten local browser suites passed (466.850s), including final Objects first/
-repeat/pending/error cases. Exact-SHA remote gate, publication/parity and owner
-acceptance are pending.
+repeat/pending/error cases. Local candidate8ff9203f is committed with a validated
+backup. Owner explicitly approved GitHub source/test transfer to kzhivin-lgtm/costerly-app
+(codex/labor-v3-pdf) and gated main publication on27November2026 after the earlier
+automatic approval rejection. That approval blocker is resolved. Exact-SHA remote
+gate, publication/parity and owner production acceptance remain pending.
+The superseded8ff remote gate45991172599 failed at Profile logo after reload;
+historical cause is unknown, artifacts retained. The unchanged current Profile
+suite passed in76.230s. Owner footer revision passed44 focused Python checks
+and native-coordinate/visual checks; a fresh exact-SHA full gate is required.
 Acceptance cases: Ada, many/long rows and multiple A4 pages, absent optional data/
 logo/preview, Hebrew and mixed scripts, manual prices/quantities/zero service values,
 VAT and rounding, advanceNULL/0/70/100, missing production days, retry after storage
 or reference-write failure, repeat click, profile edits after issuance, old PDF
-repeat download and cross-company ownership. This is a plan based on inspection,
-not evidence that the feature or live responsiveness has passed.
+repeat download and cross-company ownership. These are required scenarios;
+local fixtures do not establish owner production acceptance.
 
 COMPLETED LOCAL WHITE-BACKGROUND REVISION, P1, USER REQUEST26November2026.
 Ada proposal V3 has explicit opaque white paper and white HTML/viewer underlay,

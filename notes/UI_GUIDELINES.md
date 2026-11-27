@@ -939,3 +939,7 @@ The proposal is native-text/vector white A4, matching the approved Ada layout,
 with whole-ILS values, frozen Profile/project data, complete uploaded company logo,
 conditional Client/Partner, no social links and intact Costerly footer lockup.
 Existing old PDFs, navigation, price inputs, calculations and all prior gates remain.
+
+Labor V3 owner footer correction: English/Hebrew terms share the physical right
+edge. Attribution stacks estimated with above a smaller intact brand. Footer
+company legal names are omitted; registration/bank details begin near the divider.

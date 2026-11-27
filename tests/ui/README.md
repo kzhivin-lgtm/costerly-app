@@ -428,3 +428,7 @@ geometry, delayed-write, approval, auth and navigation assertions are retained.
 Python verifies frozen document/retry metadata, no redundant Generate estimate
 read, native A4 content, shared WebP images, logo/card separation, white paper,
 whole-ILS output, mixed-script fonts and multi-page/summary-only layout.
+
+Labor V3 PDF coordinate checks additionally require common physical right edges
+for English/Hebrew terms, no footer legal company name, raised registration
+details, and estimated with above the smaller complete brand asset.
