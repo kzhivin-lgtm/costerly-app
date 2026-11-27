@@ -744,7 +744,7 @@ No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation was outside the earlier local artifact request.
 Owner activated production-generator planning below on27November2026.
 
-ACTIVE LABOR V3.3, PREVIOUS V3.2 PUBLISHED, OWNER VISUAL ACCEPTANCE PENDING, V3.1 OWNER-ACCEPTED,
+PUBLISHED LABOR V3.3, OWNER PRODUCTION ACCEPTANCE PENDING, V3.1 OWNER-ACCEPTED,
 P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
 Outcome: existing Set Prices -> Generate Proposal produces a customer proposal
 matching the approved Ada A4 visual style, with every variable element supplied
@@ -945,7 +945,7 @@ in outputs/labor-v3.2-20261127/. Old production PDF/snapshot/references untouche
 Owner new-PDF/50% acceptance pending, not a newly accepted checkpoint. Native
 owner Chrome was unavailable; actual Streamlit/wrapper CSS viewports passed.
 Records-only branch follow-up does not trigger a second main/runtime deployment.
-ACTIVE LABOR V3.3, P1, OWNER APPROVED IMPLEMENTATION AND GATED PUBLICATION,
+PUBLISHED LABOR V3.3, P1, OWNER PRODUCTION ACCEPTANCE PENDING,
 27November2026, same continuation3.17.4.6. Owner explicitly approved new public3.3.
 Outcome: changed inputs revoke Set Prices and both download actions; reconfirm,
 Generate and first-download the next immutable Vn. Technical retry keeps a number;
@@ -958,21 +958,36 @@ that project, no name-based object merging. Add project_files and a nullable
 source_file_id FK, full atomic calculation snapshots, immutable history/source
 identity, service-only writes and company-scoped reads. Explicit future project
 picker uses owned UUID; existing callers retain named/unnamed matching. Existing
-All Projects now hosts history, with no separate page or CRUD. Current source causes verified: cached URL bypass
-and unique(company,estimate) returning only the first PDF. Prepared SQL pg_temp
-checks cover1201 calculation lines and frozen source/version behavior. Final gate,
-production migration and served-build parity remain pending. Previous checkpoint8f06b549.
+All Projects now hosts history, with no separate page or CRUD. Original causes
+verified: cached URL bypass and unique(company,estimate) returning only the first
+PDF. SQL pg_temp checks passed1201 frozen lines, source identity, immutable
+history and canonical-name projection. Exact runtime a077dd848db55a683ed8312ea5d31789e1b730cf
+passed1159 Python/6subtests/all10 browser suites in GitHub458.863s, local423.238s.
+Migration bbf849eb62ba51a4aba459bad3c9653dbd35e176a8e0b647839e74495e4bc933 applied
+16:53:44UTC; existing3organizations/3projects/2versions byte-content digests
+unchanged, no generated test history. Private RPC/table ACL and REST projections
+verified. Publisher moved main after the trusted full gate; actual ruleset27499066
+active/strict/trusted/no bypass confirmed. Railway69535f91 and Pages succeeded.
+At16:56UTC real headless Chrome Core/executed wrapper/meta/version.json all match
+labor-v3.3-b20261127154849-proposal-file-versions-detection-v8.4.29, health200/ok,
+anonymous Sign in, zero exceptions. This is not owner-authenticated acceptance.
+Evidence outputs/labor-v3.3-20261127/, including SHA-verified full CI ZIP, migration
+and served-build receipts. Previous independent runtime8f06b549 remains preserved.
 Owner approved softer compact EN paragraph then conversational-business Hebrew,
 Installation as next sentence in same paragraph, no final full stop. UI label
 Estimated production time, existing caption preliminary estimate in working days /
 installation time not included; no new notice. Keep18pt leading/right alignment,
 all earlier geometry/costing/persistence/auth/tenant/old-wrapper protections.
-ACTIVE ALL PROJECTS INTEGRATION, P1, OWNER CLARIFICATION27November2026:
+PUBLISHED ALL PROJECTS INTEGRATION, P1, OWNER PRODUCTION ACCEPTANCE PENDING,
+OWNER CLARIFICATION27November2026:
 Use the existing All Projects page for Partner -> Project -> File -> Calculation
 -> immutable proposal history and its objects/PDFs. Retain its header/navigation,
 local native expanders, tenant/read protections and existing latest-project row.
-No new page or project CRUD controls. Batch PDF signing, avoid one request per
-version/accordion click; preserve named and partnerless/legacy records.
+No new page or project CRUD controls. Paginated/four-parallel reads and batched
+PDF signing avoid per-version/accordion requests. Full exact browser gate confirms
+all generated versions, identical-name distinct sources, old prices/PDF bytes,
+partnerless/legacy/mobile and zero rerun on native history. File Review rename
+then Continue/reconfirm/Generate createsV5 while V1 retains its old object name.
 PENDING NEXT RELEASE, P1, OWNER REQUEST27November2026, not in V3.3:
 Reduce duplicate Partner/Project creation through searchable existing-catalog
 suggestions while typing, including prefix D and equivalent address/name token
