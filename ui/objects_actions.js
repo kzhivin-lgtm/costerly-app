@@ -4,12 +4,23 @@
     const estimateId = __ESTIMATE_ID__;
     const key = "__costerlyObjectsActionsCleanup";
     if (host[key]) host[key]();
-    function invalidate(event) {
-        const input = event.target.closest?.('.objects-pricing-price-input, .objects-pricing-quantity-input');
-        if (!input || input.closest('.objects-pricing-row')?.dataset.estimateId !== estimateId) return;
+    const dirty = host.__costerlyProposalDrafts ||= new Map();
+    function revoke() {
         const generate = doc.querySelector('[class*="st-key-objects_generate_proposal_"] button');
         const set = doc.querySelector('.st-key-objects_set_prices button');
         if (generate) generate.disabled = true;
+        const download = doc.querySelector('.st-key-final_approval_approved a');
+        if (download) {
+            download.removeAttribute('href');
+            download.setAttribute('aria-disabled', 'true');
+            const label = download.querySelector('p');
+            if (label) label.textContent = 'GENERATE PROPOSAL';
+        }
+        const secondary = doc.querySelector('.objects-pricing-downloads a.objects-document-button');
+        if (secondary) {
+            secondary.removeAttribute('href');
+            secondary.setAttribute('aria-disabled', 'true');
+        }
         const steps = doc.querySelector('.objects-workflow-stages');
         const allReviewed = steps?.querySelector('[data-stage="1"]')?.dataset.state === "complete";
         if (set) set.disabled = !allReviewed;
@@ -27,9 +38,20 @@
             }
         }
     }
+    function invalidate(event) {
+        const input = event.target.closest?.('.objects-pricing-price-input, .objects-pricing-quantity-input');
+        if (!input || input.closest('.objects-pricing-row')?.dataset.estimateId !== estimateId) return;
+        dirty.set(estimateId, doc.querySelector('.objects-workflow-stages')?.dataset.confirmationId);
+        revoke();
+    }
     // Observe existing input events only to update the new header/footer.
     // Original input handlers, requests, normalization and rows stay untouched.
     doc.addEventListener("input", invalidate, true);
+    const confirmationId = doc.querySelector('.objects-workflow-stages')?.dataset.confirmationId;
+    if (dirty.has(estimateId)) {
+        if (dirty.get(estimateId) === confirmationId) revoke();
+        else dirty.delete(estimateId);
+    }
     function proposalPending(event) {
         const button = event.target.closest?.('[class*="st-key-objects_generate_proposal_"] button');
         if (!button || button.disabled) return;

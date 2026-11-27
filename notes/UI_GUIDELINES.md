@@ -976,3 +976,41 @@ Owner accepted the V3.1 Generate/download result, then requested V3.2:
 No new callback, timer, observer, polling, request, schema or notification is
 introduced. Native Download uses the existing browser URL operation without a
 Python rerun. No already issued PDF is overwritten by a template update.
+
+## Labor V3.3, owner approved27November2026
+
+Any changed saved proposal input revokes Set Prices and both generated download
+entry points immediately, using existing events. Set Prices waits for pending
+writes, confirms the fresh saved basis, then enables Generate. A newly accepted
+generation creates the next immutable project version, including unchanged inputs
+when explicitly confirmed again. Technical retry reuses its request/number;
+Download returns saved bytes. Reverted edits still require confirmation. Keep
+Set Prices natively actionable after issuance; unchanged card viewing and progress
+do not revoke a valid download. Profile success invalidates only that company.
+
+Preserve optional Partner/Client/title. The existing All Projects page presents
+Partner -> Project -> Source File -> Calculation -> immutable proposal versions,
+objects and PDFs. Keep its header/navigation/latest-project row. Native disclosure
+and download add no rerun; company-scoped collections are paginated and loaded
+in parallel, PDF URLs signed in batches. No separate page or CRUD controls.
+Partnerless/legacy history remains visible, identical filenames do not merge.
+Content hash identifies a source within a project, changed content creates a new
+file/object set, names are not identity. Explicit future project selection uses
+an owned stable Project ID. Each issued version freezes complete calculation
+inputs/results/source/Profile metadata. Date stays in the PDF/metadata; filenames
+contain the version and optional names without date. Old issued files stay intact.
+
+Production terms are one compact preliminary estimate paragraph in English,
+then its conversational-business Hebrew translation; Installation is a second
+sentence in the same paragraph. No final full stop. Both languages retain the
+same right edge and18pt leading. The existing input label becomes Estimated
+production time; caption says preliminary estimate in working days / installation
+time not included. Preserve units, defaults/NULL/zero, input behavior and geometry.
+No new notice, observer, timer, poll, writer or full pricing reload on Generate.
+Database extension/publication is explicitly owner-approved after full checks.
+
+Manual File Review names persist through a private tenant-scoped compare-and-set
+RPC into the canonical record and working estimate mirrors. Late worker writes
+retain the canonical name. Successful changed names revoke draft confirmation,
+refresh affected cached/prepared names and require Set Prices for the next Vn.
+A failed name write retains the current actionable state; old issued names stay.

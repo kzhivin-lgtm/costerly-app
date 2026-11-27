@@ -63,6 +63,7 @@ from db.repositories import (
     insert_agent_usage_events,
     update_rfq_detected_object,
     update_rfq_detected_object_name_if_unchanged,
+    rename_file_review_object_if_unchanged,
     update_rfq_run,
     update_rfq_run_field_if_unchanged,
     upsert_rfq_detection_result,
@@ -1391,8 +1392,9 @@ def apply_file_review_edits(
             raise RuntimeError("File Review name edit is missing its observed value.")
         if object_name and object_name != str(edit.get("expected_name") or "").strip():
             expected_name = str(edit.get("expected_name") or "").strip()
-            if not update_rfq_detected_object_name_if_unchanged(
+            if not rename_file_review_object_if_unchanged(
                 client,
+                company_id=str(company_id or get_company_id()),
                 run_id=run_id,
                 object_id=str(object_id),
                 expected_name=expected_name,
@@ -1505,8 +1507,9 @@ def save_file_review_object_name(
         )
         return normalized_name
 
-    if not update_rfq_detected_object_name_if_unchanged(
+    if not rename_file_review_object_if_unchanged(
         client,
+        company_id=str(get_company_id()),
         run_id=str(run_id),
         object_id=str(object_id),
         expected_name=str(expected_name or "").strip(),

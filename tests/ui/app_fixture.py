@@ -89,7 +89,9 @@ def read_objects(_client, estimate_id):
  approvals=json.loads((STATE / 'object-approvals.json').read_text()) if (STATE / 'object-approvals.json').exists() else {}
  quantities_path=STATE/'object-quantities.json'
  quantities=json.loads(quantities_path.read_text()) if quantities_path.exists() else {}
- return pd.DataFrame([{**row,**totals.get(row['object_id'],{}),**({'quantity':quantities[estimate_id+':'+row['object_id']]} if estimate_id+':'+row['object_id'] in quantities else {}),**({'approved':approvals[row['object_id']]} if row['object_id'] in approvals else {})} for row in sample['objects'] if row['estimate_id']==estimate_id])
+ names_path=STATE/'object-names.json'
+ names=json.loads(names_path.read_text()) if names_path.exists() else {}
+ return pd.DataFrame([{**row,**({'object_name':names[row['object_id']]} if row['object_id'] in names else {}),**totals.get(row['object_id'],{}),**({'quantity':quantities[estimate_id+':'+row['object_id']]} if estimate_id+':'+row['object_id'] in quantities else {}),**({'approved':approvals[row['object_id']]} if row['object_id'] in approvals else {})} for row in sample['objects'] if row['estimate_id']==estimate_id])
 def read_plans(_client, estimate_id):
  rows=[row for row in sample['plans'] if row['estimate_id']==estimate_id]
  if scenario().get('labor_ready'):
@@ -166,9 +168,26 @@ def save_project_metadata(**kwargs):
  (STATE/'project-metadata.json').write_text(json.dumps(values))
  return values
 file_review.save_file_review_run_metadata=save_project_metadata
+def review_objects():
+ result=list(map(_normalize_object,sample['review_objects']))
+ names=json.loads((STATE/'object-names.json').read_text()) if (STATE/'object-names.json').exists() else {}
+ for item in result:
+  if item['object_id'] in names:item['name']=names[item['object_id']]
+ return result
+def save_review_name(**kwargs):
+ assert kwargs['run_id']==run_id
+ values={item['object_id']:item['name'] for item in review_objects()}
+ current=values[kwargs['object_id']]
+ if kwargs.get('expected_name')!=current:
+  from use_cases.rfq_processing import FileReviewNameConflict
+  raise FileReviewNameConflict(current)
+ values[kwargs['object_id']]=kwargs['object_name'].strip()
+ (STATE/'object-names.json').write_text(json.dumps(values))
+ return values[kwargs['object_id']]
+file_review.save_file_review_object_name=save_review_name
 file_review.load_file_review_data = lambda _: {
  'run':{'file_name':'ui-fixture.pdf','pages_detected':1,**fixture_project_metadata()},
- 'objects':list(map(_normalize_object,sample['review_objects'])),
+ 'objects':review_objects(),
  'timings':{}, 'source':None,
 }
 file_review._source_bytes_for_objects_plan = no_estimation
@@ -356,13 +375,28 @@ if scenario().get('objects_v2'):
  def generate_proposal(**kwargs):
   assert kwargs['company_id']==company_id and kwargs['estimate_id']==estimate_id and kwargs['run_id']==run_id
   current=estimation.load_objects_estimation_data(estimate_id)
+  previous=json.loads((STATE / 'generated-proposal.json').read_text()) if (STATE / 'generated-proposal.json').exists() else {}
+  request=(kwargs.get('confirmed_data') or {}).get('proposal_request_id')
+  version=int(previous.get('version_number',0))+(previous.get('proposal_request_id')!=request or not previous)
   if (STATE / 'generation-failure').exists():raise RuntimeError('Controlled proposal failure')
   if (STATE / 'proposal-delay').exists():sleep(float((STATE / 'proposal-delay').read_text()))
-  record('proposal generated')
+  if not previous or version!=previous.get('version_number'):record('proposal generated')
+  current.update(version_number=version,proposal_request_id=request)
+  if not previous or version!=previous.get('version_number'):
+   history_path=STATE/'generated-proposal-history.json'
+   history=json.loads(history_path.read_text()) if history_path.exists() else []
+   history.append(deepcopy(current));history_path.write_text(json.dumps(history,default=str))
   (STATE / 'generated-proposal.json').write_text(json.dumps(current,default=str))
-  return {'project_id':'project-one','version_id':'version-one','proposal_pdf_url':'http://127.0.0.1:8798/generated-proposal.pdf'}
+  url='http://127.0.0.1:8798/'+('generated-proposal.pdf' if version==1 else f'generated-proposal-v{version}.pdf')
+  return {'project_id':'project-one','version_id':f'version-{version}','version_number':version,'proposal_pdf_url':url}
  objects.final_approval=generate_proposal
- objects.load_estimate_proposal_url=lambda **_:('http://127.0.0.1:8798/generated-proposal.pdf' if (STATE / 'generated-proposal.json').exists() else None)
+ def saved_proposal_url(**kwargs):
+  if not (STATE / 'generated-proposal.json').exists():return None
+  saved=json.loads((STATE / 'generated-proposal.json').read_text())
+  if objects.pricing_signature(saved)!=objects.pricing_signature(kwargs.get('current_data') or saved):return None
+  version=saved['version_number']
+  return 'http://127.0.0.1:8798/'+('generated-proposal.pdf' if version==1 else f'generated-proposal-v{version}.pdf')
+ objects.load_estimate_proposal_url=saved_proposal_url
 def guarded_load(screen, data):
  settings=scenario()
  record('load '+screen)
@@ -384,7 +418,32 @@ platform_admin.load_company_dashboard=lambda *_args,**_kwargs: guarded_load('adm
  {'company_id':company_id,'company_name':'Lev1 workshop','users_count':1}
 ])
 platform_admin.load_manufacturing_parameter_library=lambda *_args,**_kwargs: guarded_load('admin',[])
+def history_workspace():
+ versions=[]
+ for n in [1,2,3]:
+  versions.append({'version_id':f'history-{n}','project_id':'history-project',
+   'source_file_id':'source-a' if n<3 else 'source-b','estimate_id':'calc-a' if n<3 else 'calc-b',
+   'version_number':n,'approved_at':'2026-11-27T10:00:00Z','summary':{'total':n*100},
+   'project_metadata':{'project_name':'Furniture'},'objects':[{'name':'Chair','quantity':n,'sale_price_unit':100,'sale_price_total':n*100}],
+   'proposal_pdf_url':'http://127.0.0.1:8798/'+('generated-proposal.pdf' if n==1 else f'generated-proposal-v{n}.pdf')})
+ history_path=STATE/'generated-proposal-history.json'
+ for saved in json.loads(history_path.read_text()) if history_path.exists() else []:
+  n=saved['version_number']
+  versions.append({'version_id':f'generated-{n}','project_id':'generated-project','source_file_id':'generated-source',
+   'estimate_id':estimate_id,'version_number':n,'approved_at':'2026-11-27T12:00:00Z','summary':saved['summary'],
+   'project_metadata':{'project_name':saved.get('project_name')},'objects':saved['rows'],
+   'proposal_pdf_url':'http://127.0.0.1:8798/'+('generated-proposal.pdf' if n==1 else f'generated-proposal-v{n}.pdf')})
+ versions.append({'version_id':'legacy','project_id':'partnerless','source_file_id':None,'estimate_id':'legacy-calc','version_number':1,
+  'approved_at':'2026-11-26T12:00:00Z','summary':{'total':100},'objects':[{'name':'Legacy object','quantity':1}], 'proposal_pdf_url':None})
+ return {'organizations':[{'organization_id':'partner-1','name':'Lev1 Partner'}], 'clients':[],
+  'projects':[{'project_id':'history-project','partner_organization_id':'partner-1','name':'Version workspace'},
+              {'project_id':'generated-project','partner_organization_id':'partner-1','name':'Generated project'},
+              {'project_id':'partnerless','partner_organization_id':None,'name':None}],
+  'files':[{'file_id':'source-a','project_id':'history-project','file_name':'Drawing.pdf'},
+           {'file_id':'source-b','project_id':'history-project','file_name':'Drawing.pdf'},
+           {'file_id':'generated-source','project_id':'generated-project','file_name':'Current drawing.pdf'}], 'versions':versions}
 projects.load_projects_workspace=lambda *_args: guarded_load('projects',
+ history_workspace() if scenario().get('project_history') else
  {'organizations':[],'projects':[],'clients':[],'versions':[]} if scenario().get('empty_projects') else
  {'organizations':[{'organization_id':'partner-1','name':'Lev1 Partner'}],
   'projects':[{'project_id':'project-1','partner_organization_id':'partner-1','name':'Lev1 booth'}],

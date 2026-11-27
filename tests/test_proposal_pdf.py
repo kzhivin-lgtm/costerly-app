@@ -61,8 +61,8 @@ def test_proposal_production_time_uses_saved_working_days_without_changing_total
                                partner_name='',client_name='',snapshot=snapshot)
     with pymupdf.open(stream=payload,filetype='pdf') as document:
         text='\n'.join(page.get_text() for page in document)
-    assert 'Production time: 15 working days' in text
-    assert 'Delivery and installation are excluded from the production time' in text
+    assert 'Preliminary production time estimate: approximately 15 working days' in text.replace('\n',' ')
+    assert 'Installation time is not included' in text.replace('\n',' ')
     assert 'Production lead time' not in text and 'Payment terms:' not in text
     assert snapshot['summary']['total']==3200.16
 
@@ -102,23 +102,24 @@ def test_signed_proposal_url_accepts_supabase_response_spelling():
     )
 
 
-def test_proposal_download_name_uses_project_partner_and_approval_date():
+def test_proposal_download_name_uses_project_partner_and_version_number():
     assert proposal_download_name(
         project_name="Restaurant / Deer",
         partner_name="Studio Tree",
-        approved_at="2026-10-03T13:39:35+03:00",
-    ) == "Restaurant - Deer_Studio Tree_2026-10-03.pdf"
+        version_number=2,
+        approved_at="2026-11-27T13:00:00Z",
+    ) == "Restaurant - Deer_Studio Tree_V2.pdf"
 
 
 @pytest.mark.parametrize('project,partner,expected',[
-    (None,None,'2026-11-27.pdf'),
-    ('unknown','none','2026-11-27.pdf'),
-    ('ADA',None,'ADA_2026-11-27.pdf'),
-    (None,'Studio','Studio_2026-11-27.pdf'),
+    (None,None,'V1.pdf'),
+    ('unknown','none','V1.pdf'),
+    ('ADA',None,'ADA_V1.pdf'),
+    (None,'Studio','Studio_V1.pdf'),
 ])
 def test_download_name_omits_absent_metadata(project,partner,expected):
     assert proposal_download_name(project_name=project,partner_name=partner,
-                                  approved_at='2026-11-27T12:00:00Z') == expected
+                                  version_number=1,approved_at='2026-11-27T13:00:00Z') == expected
 
 
 @pytest.mark.parametrize('project_present',[False,True])
@@ -155,9 +156,10 @@ def test_pdf_rejects_invalid_advance_payment(advance):
         build_proposal_pdf(profile={},project_name='ADA',partner_name='',client_name='',snapshot=snapshot)
 
 
-def test_branded_document_uses_native_text_requisites_and_frozen_date():
+def test_branded_document_uses_native_text_requisites_frozen_version_and_date():
     snapshot=_snapshot()
     snapshot['document']={'issued_at':'2026-11-27T09:00:00Z'}
+    snapshot['version_number']=3
     profile={'company_name':'DO NOT DUPLICATE HEADER','legal_name':'Workshop Ltd',
              'company_registration_number':'123456789','bank_name':'Saved bank',
              'account_number':'12345','facebook_url':'https://example.test/not-in-proposal'}
@@ -166,7 +168,8 @@ def test_branded_document_uses_native_text_requisites_and_frozen_date():
     with pymupdf.open(stream=result,filetype='pdf') as pdf:
         assert len(pdf)==1
         text='\n'.join(p.get_text() for p in pdf)
-        for expected in ['27 November 2026','123456789','Saved bank','12345','estimated with','plywood 18 mm fronts','Partner: Studio','Client: Customer','₪2 400']:
+        assert 'V3' in text and '27 November 2026' in text
+        for expected in ['V3','123456789','Saved bank','12345','estimated with','plywood 18 mm fronts','Partner: Studio','Client: Customer','₪2 400']:
             assert expected in text
         assert 'DO NOT DUPLICATE HEADER' not in text
         assert 'Workshop Ltd' not in text
@@ -246,16 +249,18 @@ def test_owner_footer_revision_aligns_both_languages_and_omits_legal_name():
                for line in block['lines'] for span in line['spans']]
         text=page.get_text()
         assert 'Do not print legal name' not in text and 'לא להציג' not in text
-        terms=[span for span in spans if span['text'].startswith(('Production time:','Delivery and installation are excluded'))]
-        assert len(terms)==2
-        assert all(abs(span['bbox'][2]-544)<1.5 for span in terms)
-        hebrew=[span for span in spans if 'ייצור' in span['text']]
-        assert hebrew
-        same_line=[span for span in spans if abs(span['bbox'][1]-hebrew[0]['bbox'][1])<1]
-        assert abs(max(span['bbox'][2] for span in same_line)-544)<2
+        start=next(span['origin'][1] for span in spans if span['text'].startswith('Preliminary production time estimate:'))
+        terms=[span for span in spans if span['origin'][1]>=start-.2 and abs(span['size']-8)<.1]
+        assert terms
+        grouped={}
+        for span in terms:grouped.setdefault(round(span['origin'][1],1),[]).append(span)
+        assert all(abs(max(span['bbox'][2] for span in line)-544)<2 for line in grouped.values())
+        hebrew=[span for span in terms if any('א'<=char<='ת' for char in span['text'])]
+        english=[span for span in terms if not any('א'<=char<='ת' for char in span['text'])]
+        assert hebrew and english
         heading=[span for span in spans if 'הצעת' in span['text']]
         assert not heading
-        english_bottom=max(span['bbox'][3] for span in terms)
+        english_bottom=max(span['bbox'][3] for span in english)
         assert min(span['bbox'][1] for span in hebrew)>english_bottom
         assert 'הובלה' in text and 'התקנה' in text
         assert 'Production lead time' not in text and 'Payment terms:' not in text
@@ -290,13 +295,149 @@ def test_bilingual_terms_share_the_same_line_pitch():
     snapshot=_snapshot();snapshot['production_time_working_days']=14;snapshot['advance_payment_percent']=70
     result=build_proposal_pdf(profile={},project_name='ADA',partner_name='',client_name='',snapshot=snapshot)
     with pymupdf.open(stream=result,filetype='pdf') as pdf:
-        rows=[]
-        for block in pdf[0].get_text('dict')['blocks']:
-            for line in block.get('lines',[]):
-                value=''.join(span['text'] for span in line['spans'])
-                if any(label in value for label in ('Production time:','Delivery and installation are excluded','זמן ייצור','הובלה')):
-                    rows.append((value,line['spans'][0]['origin'][1]))
-    assert len(rows)==4
-    pitches=[rows[i+1][1]-rows[i][1] for i in range(3)]
+        spans=[span for block in pdf[0].get_text('dict')['blocks'] for line in block.get('lines',[]) for span in line['spans']]
+        start=next(span['origin'][1] for span in spans if span['text'].startswith('Preliminary production time estimate:'))
+        rows=sorted({round(span['origin'][1],2) for span in spans if span['origin'][1]>=start-.2 and abs(span['size']-8)<.1})
+        text=pdf[0].get_text().replace('\n',' ')
+    assert len(rows)==3
+    pitches=[rows[i+1]-rows[i] for i in range(len(rows)-1)]
     assert max(pitches)-min(pitches)<.2,pitches
     assert all(abs(pitch-18)<.2 for pitch in pitches),pitches
+    assert 'site. Installation time is not included' in text
+    assert 'Installation time is not included.' not in text
+    assert 'זמן ההתקנה אינו כלול.' not in text
+
+
+
+@pytest.mark.parametrize('change',['price','partner','client','days','profile','source'])
+def test_reopening_changed_inputs_cannot_restore_an_old_proposal_url(change):
+    from copy import deepcopy
+    from use_cases.proposal_pdf import load_estimate_proposal_url
+    original=_snapshot()
+    original.update(project_name='ADA',design_partner='Studio',client='Client',proposal_source={'settings':{'advance':70}})
+    original['document']={'project':{'project_name':'ADA','design_partner':'Studio','client':'Client'},'profile':{'public_email':'old@example.test'}}
+    current=deepcopy(original)
+    if change=='price':current['rows'][0]['sale_price_unit']=999
+    if change=='partner':current['design_partner']='New studio'
+    if change=='client':current['client']='New client'
+    if change=='days':current['production_time_working_days']=999
+    if change=='source':current['proposal_source']['settings']['advance']=50
+    class Query:
+        def table(self,name):self.name=name;return self
+        def select(self,*a):return self
+        def eq(self,*a):return self
+        def order(self,*a,**kw):return self
+        def limit(self,*a):return self
+        def execute(self):
+            class Response:pass
+            r=Response()
+            r.data=([{'snapshot':original,'version_number':1,'proposal_pdf_path':'old.pdf'}]
+                    if self.name=='project_versions' else [{'public_email':'new@example.test' if change=='profile' else 'old@example.test'}])
+            return r
+        @property
+        def storage(self):raise AssertionError('A stale PDF must never be signed')
+    assert load_estimate_proposal_url(client=Query(),company_id='c',estimate_id='e',current_data=current) is None
+
+
+def test_unchanged_legacy_proposal_reopens_with_frozen_name_and_version():
+    from copy import deepcopy
+    from use_cases.proposal_pdf import load_estimate_proposal_url
+    frozen=_snapshot();frozen['document']={'project':{'project_name':'Original','design_partner':'Studio'},'profile':{}}
+    current=deepcopy(frozen);current.update(project_name='Original',design_partner='Studio',proposal_source={'new_receipt':True})
+    current['rows'][0]['proposal_input_basis']='not captured by legacy snapshot'
+    calls=[]
+    class Query:
+        def table(self,name):self.name=name;return self
+        def select(self,*a):return self
+        def eq(self,*a):calls.append(('eq',*a));return self
+        def order(self,*a,**kw):calls.append(('order',a,kw));return self
+        def limit(self,*a):return self
+        def execute(self):
+            class Response:pass
+            r=Response();r.data=[{'snapshot':frozen,'version_number':2,'proposal_pdf_path':'original-v2.pdf'}] if self.name=='project_versions' else [{}]
+            assert self.name!='rfq_runs','Use frozen metadata for an issued filename'
+            return r
+        @property
+        def storage(self):return self
+        def from_(self,bucket):assert bucket=='project-proposals';return self
+        def create_signed_url(self,path,expiry,options):
+            calls.append(('signed',path,options))
+            return {'signedURL':'signed-v2.pdf'}
+    assert load_estimate_proposal_url(client=Query(),company_id='c',estimate_id='e',current_data=current)=='signed-v2.pdf'
+    assert ('eq','company_id','c') in calls and ('eq','estimate_id','e') in calls
+    assert ('order',('version_number',),{'desc':True}) in calls
+    assert ('signed','original-v2.pdf',{'download':'Original_Studio_V2.pdf'}) in calls
+
+
+@pytest.mark.parametrize('company',['c','foreign'])
+def test_proposal_source_reuses_private_content_identity_and_checks_company(company):
+    from use_cases.proposal_pdf import capture_proposal_source
+    meta={'storage_ref':f'storage://rfq-estimation-originals/{company}/'+('a'*64)+'.pdf',
+          'content_sha256':'a'*64,'size_bytes':100,'mime_type':'application/pdf'}
+    calls=[]
+    class Query:
+        def table(self,name):assert name=='agent_usage_events';return self
+        def select(self,*a):return self
+        def eq(self,*a):calls.append(a);return self
+        def in_(self,*a):return self
+        def order(self,*a,**k):return self
+        def execute(self):
+            class Response:data=[{'raw_usage':{'estimation_original':meta}}]
+            return Response()
+    if company=='foreign':
+        with pytest.raises(ValueError,match='does not belong'):
+            capture_proposal_source(client=Query(),company_id='c',run_id='r',file_name='same-name.pdf')
+    else:
+        source=capture_proposal_source(client=Query(),company_id='c',run_id='r',file_name='same-name.pdf')
+        assert source=={**meta,'file_name':'same-name.pdf'}
+        assert ('company_id','c') in calls and ('run_id','r') in calls
+
+
+def test_missing_legacy_source_stays_unknown_without_blocking_generation():
+    from use_cases.proposal_pdf import capture_proposal_source
+    class Query:
+        def table(self,*a):return self
+        def select(self,*a):return self
+        def eq(self,*a):return self
+        def in_(self,*a):return self
+        def order(self,*a,**k):return self
+        def execute(self):
+            class Response:data=[{'raw_usage':'invalid legacy JSON'},{'raw_usage':{}}]
+            return Response()
+    assert capture_proposal_source(client=Query(),company_id='c',run_id='r',file_name='old.pdf') is None
+
+
+def test_new_proposal_download_reads_small_basis_without_full_calculation():
+    from use_cases.proposal_pdf import load_estimate_proposal_url
+    from use_cases.proposal_basis import pricing_signature
+    current=_snapshot();current['proposal_source']={'settings':{'vat_percent':18}}
+    selections=[]
+    class Query:
+        def table(self,name):self.name=name;return self
+        def select(self,columns):
+            selections.append(columns)
+            assert columns!='snapshot','Do not download the complete issued calculation for a link'
+            return self
+        def eq(self,*a):return self
+        def order(self,*a,**k):return self
+        def limit(self,*a):return self
+        def execute(self):
+            class Response:pass
+            r=Response();r.data=([{'version_id':'v2','version_number':2,'proposal_pdf_path':'v2.pdf',
+                                  'proposal_basis_sha256':pricing_signature(current),'project':{},'profile':{}}]
+                                 if self.name=='project_versions' else [{}])
+            return r
+        @property
+        def storage(self):return self
+        def from_(self,*a):return self
+        def create_signed_url(self,*a,**k):return {'signedURL':'download-v2'}
+    assert load_estimate_proposal_url(client=Query(),company_id='c',estimate_id='e',current_data=current)=='download-v2'
+    assert len(selections)==2
+
+
+def test_frozen_pdf_date_uses_the_saved_local_timezone_at_midnight():
+    snapshot=_snapshot();snapshot['version_number']=2
+    snapshot['document']={'issued_at':'2026-11-27T22:30:00Z','timezone':'Asia/Jerusalem'}
+    result=build_proposal_pdf(profile={},project_name='A3',partner_name='',client_name='',snapshot=snapshot)
+    with pymupdf.open(stream=result,filetype='pdf') as pdf:text=pdf[0].get_text()
+    assert '28 November 2026' in text and 'V2' in text

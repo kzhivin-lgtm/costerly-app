@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from io import BytesIO
-from datetime import datetime, UTC
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from functools import lru_cache
 import html
 import re
@@ -227,7 +228,7 @@ class ProposalDocument:
         if self.y + height > self.bottom:
             raise ValueError('Proposal block is taller than one page')
 
-    def heading(self, partner, client, date):
+    def heading(self, partner, client, version_number, issued_at, timezone='Asia/Jerusalem'):
         self.text('Commercial Proposal:' if self.project else 'Commercial Proposal',LEFT,self.y,360,21.5,'mono')
         self.y += 31
         if self.project:
@@ -235,12 +236,12 @@ class ProposalDocument:
         for label, value in [('Partner',partner),('Client',client)]:
             if optional_metadata(value):
                 self.y += 4 + self.text(label + ': ' + optional_metadata(value),LEFT,self.y+4,RIGHT-LEFT,9,color=MUTED)
-        try:
-            stamp=datetime.fromisoformat(clean(date).replace('Z','+00:00'))
-        except ValueError:
-            stamp=datetime.now(UTC)
         self.y += 4
-        self.y += self.text('Date: ' + stamp.strftime('%d %B %Y').lstrip('0'),LEFT,self.y,RIGHT-LEFT,8.5,color=MUTED,align='right')
+        stamp = datetime.fromisoformat(clean(issued_at).replace('Z','+00:00')) if clean(issued_at) else None
+        if stamp is not None and stamp.tzinfo is not None:
+            stamp = stamp.astimezone(ZoneInfo(timezone))
+        label = f'V{int(version_number)}' + (' · ' + stamp.strftime('%d %B %Y').lstrip('0') if stamp else '')
+        self.y += self.text(label,LEFT,self.y,RIGHT-LEFT,8.5,color=MUTED,align='right')
         self.y += 17
         self.table_header()
 
@@ -295,16 +296,17 @@ class ProposalDocument:
         days=self.snapshot.get('production_time_working_days')
         terms=[]
         if days is not None:
-            english=f'Production time: {int(days)} working days'
-            hebrew=f'זמן ייצור: {int(days)} ימי עבודה'
+            english=f'Preliminary production time estimate: approximately {int(days)} working days'
+            hebrew=f'הערכה ראשונית לזמן הייצור: כ־{int(days)} ימי עבודה'
             if advance is not None and advance>0:
                 english+=f' from receipt of a {int(advance)}% advance payment'
-                hebrew+=f' ממועד קבלת מקדמה בשיעור {int(advance)}%'
+                hebrew+=f' ממועד קבלת מקדמה של {int(advance)}%'
             elif advance == 0:
                 english+=' with no advance payment required'
-                hebrew+=', ללא מקדמה'
-            terms=[english,'Delivery and installation are excluded from the production time',
-                   hebrew,'הובלה והתקנה אינן כלולות בתקופת הייצור']
+                hebrew+=', ללא צורך במקדמה'
+            english+=', until the items are ready for delivery to site. Installation time is not included'
+            hebrew+=', עד שהפריטים יהיו מוכנים להובלה לאתר. זמן ההתקנה אינו כלול'
+            terms=[english,hebrew]
         elif advance is not None:
             terms=[f'Advance payment: {int(advance)}%',f'מקדמה: {int(advance)}%']
         term_lines=[line for term in terms for line in self.wrap(term,RIGHT-LEFT,8)]
@@ -342,8 +344,8 @@ class ProposalDocument:
 
 def render_proposal(*, profile,project_name,partner_name,client_name,snapshot,logo_bytes=None,preview_bytes=None):
     canvas=ProposalDocument(profile,project_name,snapshot,logo_bytes)
-    date=(snapshot.get('document') or {}).get('issued_at','')
-    canvas.heading(partner_name,client_name,date)
+    document=snapshot.get('document') or {}
+    canvas.heading(partner_name,client_name,snapshot.get('version_number',1),document.get('issued_at'),document.get('timezone','Asia/Jerusalem'))
     preview_bytes=preview_bytes or {}
     for row in snapshot.get('rows') or []:
         image=preview_bytes.get(clean(row.get('object_key')))

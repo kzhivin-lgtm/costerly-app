@@ -451,14 +451,22 @@ def apply_objects_css() -> None:
             font-weight: var(--button-font-weight) !important;
             text-transform: uppercase !important;
             text-decoration: none !important;
+        }
+        .stApp:has(.objects-estimation-header) .st-key-final_approval_approved a:not([aria-disabled="true"]) {
             background: rgba(52, 168, 83, 0.12) !important;
             border-color: rgba(52, 168, 83, 0.32) !important;
             color: #2F8D48 !important;
         }
-        .stApp:has(.objects-estimation-header) .st-key-final_approval_approved a:hover {
+        .stApp:has(.objects-estimation-header) .st-key-final_approval_approved a:not([aria-disabled="true"]):hover {
             background: rgba(52, 168, 83, 0.18) !important;
             border-color: rgba(52, 168, 83, 0.48) !important;
             color: #26763B !important;
+        }
+        .stApp:has(.objects-estimation-header) .st-key-final_approval_approved a[aria-disabled="true"] {
+            background: #f7f5f8 !important;
+            border-color: #d4ced8 !important;
+            color: #8c8492 !important;
+            cursor: default;
         }
 
         .objects-pricing-summary {

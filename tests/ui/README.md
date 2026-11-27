@@ -1,5 +1,23 @@
 # Persistent UI release contract
 
+Labor V3.3 adds V1 -> price edit -> confirmation -> V2 -> production-time edit
+-> confirmation -> V3 -> reverted edit -> confirmation -> V4. Both download actions
+revoke immediately, unchanged card viewing retains a valid issued file, filenames
+carry Vn without date. Existing first/repeat-download and failure/pending tests
+remain. Python checks input/basis identity, tenant-scoped successful Profile
+invalidation, stale URL reopening, small metadata reads, frozen version/date and
+compact EN/HE terms with18pt leading/no final full stop. The SQL verifier uses
+pg_temp/rollback for source-file hash identity, explicit Project ID/tenant gates,
+all1201 calculation lines, immutable history and source/reference protection.
+The normal browser fixture cannot prove the real database contract.
+All Projects checks two different source IDs with the same filename, all four
+issued versions, old prices and PDF bytes, partnerless/legacy records, mobile
+visibility and no rerun while browsing/downloading native history. The final
+File Review rename/Continue/Set Prices/Generate case creates V5 with the new
+name while V1 retains its old name. Python checks pagination, batched signing,
+frozen filenames, HTML escaping and foreign-path rejection. SQL tests atomic
+manual name projection, late-worker protection, stale CAS and tenant rejection.
+
 Labor2.21 adds completion while away from Project: the real local worker is
 held until Profile then File Review are open, completed there, then Continue
 must show saved costs and Review immediately with one worker submission. File

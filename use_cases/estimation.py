@@ -202,6 +202,9 @@ def _ensure_full_object_costs(client, *, estimate_id, objects, plan, settings):
             settings=settings, lines_df=lines.copy(), plan_snapshot=plan, cost_context=context,
         )
         if summary:
+            if 'proposal_input_basis' not in objects.columns:
+                objects['proposal_input_basis'] = None
+            objects.loc[objects['object_id'] == obj['object_id'], 'proposal_input_basis'] = summary.get('basis_sha256')
             objects.loc[objects["object_id"] == obj["object_id"], "cost_partial"] = int(summary.get("partial", False))
             for field in ("self_cost_ex_vat", "vat_amount", "self_cost_total", "approved"):
                 if field in summary:
@@ -437,6 +440,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         rows.append(
             {
                 "object_key": row.get("object_id"),
+                "proposal_input_basis": row.get("proposal_input_basis"),
                 "name": row.get("object_name"),
                 "materials": visible_materials,
                 "quantity": quantity,
@@ -463,6 +467,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         delivery_percent=delivery_percent,
         installation_percent=installation_percent,
     )
+    run = {}
     project_name = ''
     if (not objects_df.empty and objects_df.iloc[0].get('run_id')
             and all(str(row.get('status')) in {'completed', 'review_required', 'failed'} for row in rows)):
@@ -474,6 +479,13 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     return {
         "rows": rows,
         "project_name": project_name,
+        "run_id": str(objects_df.iloc[0].get('run_id') or '') if not objects_df.empty else '',
+        "design_partner": run.get('design_partner'),
+        "client": run.get('client'),
+        "proposal_source": {
+            "material_plan_updated_at": (material_plan_row or {}).get('updated_at'),
+            "settings": {k: v for k, v in settings.items() if k not in {'updated_at', 'created_at'}},
+        },
         "production_time_working_days": production_time_from_overrides(overrides_df),
         "advance_payment_percent": _optional_advance_payment(settings),
         "company_id": str(objects_df.iloc[0].get("company_id") or "") if not objects_df.empty else "",
@@ -505,6 +517,7 @@ def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any]) 
         cost = obj.get("self_cost_ex_vat")
         price = overrides.get(oid, _suggested_sale_price(cost, _number(settings.get("sale_price_markup_percent"), 30)))
         rows.append({**original, "quantity": quantity, "self_cost_unit": cost,
+                     "name": obj.get('object_name',original.get('name')),
                      "sale_price_unit": price, "sale_price_total": _line_total(price, quantity),
                      "sale_price_overridden": oid in overrides, "reviewed": bool(obj.get("approved")),
                      "status": obj.get("status", original.get("status"))})
@@ -512,7 +525,10 @@ def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any]) 
         rows, overrides, vat_percent=_number(settings.get("vat_percent"), 18),
         delivery_percent=_number(settings.get("delivery_percent"), 3),
         installation_percent=_number(settings.get("installation_percent"), 10))
+    source = dict(cached.get('proposal_source') or {})
+    source['settings'] = {k: v for k, v in settings.items() if k not in {'updated_at', 'created_at'}}
     return {**cached, "rows": rows, "project_costs": project, "summary": summary,
+            "proposal_source": source,
             "advance_payment_percent": _optional_advance_payment(settings),
             "production_time_working_days": production_time_from_overrides(saved_overrides)}
 

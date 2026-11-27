@@ -26,9 +26,18 @@ def verify(connection_file: Path, migration: Path) -> dict:
     with psycopg.connect(match[1], connect_timeout=15) as conn:
         try:
             conn.execute("set local statement_timeout = '15s'")
+            conn.execute('create temp table companies (company_id text primary key)')
+            conn.execute('create temp table company_members (company_id text, user_id uuid)')
             conn.execute('create temp table rfq_runs (run_id text primary key, company_id text, project_name text, design_partner text, client text)')
             conn.execute('create temp table rfq_estimates (estimate_id text primary key, run_id text, company_id text)')
             conn.execute('create temp table rfq_object_estimates (estimate_id text, approved boolean, status text, self_cost_ex_vat numeric)')
+            conn.execute('alter table rfq_object_estimates add column run_id text, add column company_id text, add column object_id text, add column object_name text, add column updated_at timestamptz')
+            conn.execute('create temp table rfq_detected_objects (run_id text,company_id text,object_id text,object_name text,primary key(run_id,object_id))')
+            conn.execute('create temp table rfq_estimate_lines (estimate_id text, company_id text, line_id text, hours numeric, cost numeric)')
+            conn.execute('create temp table rfq_estimate_material_plans (estimate_id text, company_id text, plan_payload jsonb)')
+            conn.execute('create temp table rfq_estimate_pricing_overrides (estimate_id text, object_key text, field text, value numeric)')
+            conn.execute('create temp table rfq_estimate_material_norm_overrides (estimate_id text, company_id text, quantity_per_item numeric)')
+            conn.execute('create temp table rfq_estimate_material_purchase_overrides (estimate_id text, company_id text, purchase_quantity numeric)')
             for table in ('organizations', 'projects', 'project_versions'):
                 conn.execute(f'create temp table {table} (like public.{table} including all)')
             conn.execute('alter table pg_temp.projects add foreign key (partner_organization_id,company_id) references pg_temp.organizations(organization_id,company_id)')
@@ -39,9 +48,11 @@ def verify(connection_file: Path, migration: Path) -> dict:
             def scalar(query, args=()): return conn.execute(query, args).fetchone()[0]
             def seed(run, project=None, partner=None, client=None, *, owner=company, estimate=None):
                 estimate = estimate or run + '-estimate'
+                conn.execute('insert into pg_temp.companies values (%s) on conflict do nothing',(owner,))
                 conn.execute('insert into pg_temp.rfq_runs values (%s,%s,%s,%s,%s) on conflict (run_id) do nothing', (run,owner,project,partner,client))
                 conn.execute('insert into pg_temp.rfq_estimates values (%s,%s,%s)', (estimate,run,owner))
-                conn.execute("insert into pg_temp.rfq_object_estimates values (%s,true,'completed',100)", (estimate,))
+                conn.execute("insert into pg_temp.rfq_detected_objects values (%s,%s,'object-one','Object one') on conflict do nothing",(run,owner))
+                conn.execute("insert into pg_temp.rfq_object_estimates(estimate_id,approved,status,self_cost_ex_vat,run_id,company_id,object_id,object_name) values (%s,true,'completed',100,%s,%s,'object-one','Object one')", (estimate,run,owner))
                 return estimate
             snapshot = {'summary': {'total': 118}, 'rows': [{'object_key': 'object-one', 'sale_price_total': 100}]}
             def approve(run, estimate=None, *, owner=company):
@@ -59,7 +70,7 @@ def verify(connection_file: Path, migration: Path) -> dict:
                         row = conn.execute('select name,partner_organization_id,client_organization_id from pg_temp.projects where project_id=%s',(result['project_id'],)).fetchone()
                         assert (row[0] is not None,row[1] is not None,row[2] is not None) == (named,partnered,cliented)
                         frozen = scalar('select snapshot from pg_temp.project_versions where version_id=%s',(result['version_id'],))
-                        assert frozen == snapshot
+                        assert {k:v for k,v in frozen.items() if k!='calculation'} == snapshot
                         # Metadata edits on retry must not create a second association or rewrite the frozen version.
                         conn.execute("update pg_temp.rfq_runs set project_name='Changed',design_partner='Changed',client='Changed' where run_id=%s",(run,))
                         again = approve(run)
@@ -97,6 +108,112 @@ def verify(connection_file: Path, migration: Path) -> dict:
                 else: raise AssertionError('Unapproved object was allowed')
             assert counts()==before
             checks.append({'company_ownership':True,'object_approval':True})
+            if 'project_versions_proposal_request_key' in sql:
+                run=uuid4().hex;estimate=seed(run,'Revision project','Revision partner')
+                snapshot['proposal_request_id']=uuid4().hex
+                source_a=f'storage://rfq-estimation-originals/{company}/'+('a'*64)+'.pdf'
+                source_b=f'storage://rfq-estimation-originals/{company}/'+('b'*64)+'.pdf'
+                snapshot['document']={'source':{'storage_ref':source_a,'content_sha256':'a'*64,'file_name':'first.pdf','mime_type':'application/pdf','size_bytes':100}}
+                conn.execute("insert into pg_temp.rfq_estimate_lines select %s,%s,'line-'||n,1,10 from generate_series(1,1201) n",(estimate,company))
+                first=approve(run,estimate)
+                assert scalar('select source_file_path from pg_temp.project_versions where version_id=%s',(first['version_id'],))==source_a
+                frozen=scalar('select snapshot from pg_temp.project_versions where version_id=%s',(first['version_id'],))
+                assert len(frozen['calculation']['lines'])==1201
+                file_a=scalar('select source_file_id from pg_temp.project_versions where version_id=%s',(first['version_id'],))
+                assert file_a is not None
+                snapshot['summary']['total']=999
+                retry=approve(run,estimate)
+                assert not retry['created'] and retry['version_id']==first['version_id']
+                assert scalar('select snapshot from pg_temp.project_versions where version_id=%s',(first['version_id'],))==frozen
+                snapshot['proposal_request_id']=uuid4().hex
+                conn.execute("update pg_temp.rfq_runs set project_name='Renamed',design_partner=null where run_id=%s",(run,))
+                second=approve(run,estimate)
+                assert second['created'] and second['project_id']==first['project_id'] and second['version_number']==first['version_number']+1
+                assert second['version_id']!=first['version_id']
+                assert scalar('select source_file_id from pg_temp.project_versions where version_id=%s',(second['version_id'],))==file_a
+                snapshot['summary']['total']=118
+                snapshot['proposal_request_id']=uuid4().hex
+                third=approve(run,estimate)
+                assert third['created'] and third['version_number']==second['version_number']+1
+                assert third['project_id']==first['project_id']
+                assert scalar('select source_file_path from pg_temp.project_versions where version_id=%s',(third['version_id'],))==source_a
+                assert scalar('select snapshot from pg_temp.project_versions where version_id=%s',(first['version_id'],))==frozen
+                assert not approve(run,estimate)['created']
+                snapshot.pop('proposal_request_id')
+                assert approve(run,estimate)['version_id']==third['version_id'], 'Old client reuses latest, no duplicate'
+                new_run=uuid4().hex;new_estimate=seed(new_run,'Different title','Different presentation partner')
+                snapshot['target_project_id']=first['project_id']
+                snapshot['proposal_request_id']=uuid4().hex
+                snapshot['document']['source']={'storage_ref':source_b,'content_sha256':'b'*64,'file_name':'second.pdf','mime_type':'application/pdf','size_bytes':101}
+                fourth=approve(new_run,new_estimate)
+                assert fourth['project_id']==first['project_id'] and fourth['version_number']==third['version_number']+1
+                file_b=scalar('select source_file_id from pg_temp.project_versions where version_id=%s',(fourth['version_id'],))
+                assert file_b!=file_a
+                assert scalar('select count(*) from pg_temp.project_files where project_id=%s',(first['project_id'],))==2
+                with conn.transaction(force_rollback=True):
+                    try:conn.execute('update pg_temp.project_files set content_sha256=%s where file_id=%s',('c'*64,file_a))
+                    except psycopg.Error as exc:assert exc.diag.message_primary=='Project source file identity is immutable'
+                    else:raise AssertionError('File content identity was rewritten')
+                # A repeated filename cannot merge different contents or object sets.
+                snapshot['document']['source']['file_name']='first.pdf'
+                snapshot['proposal_request_id']=uuid4().hex
+                fifth=approve(new_run,new_estimate)
+                assert scalar('select source_file_id from pg_temp.project_versions where version_id=%s',(fifth['version_id'],))==file_b
+                conn.execute("update pg_temp.rfq_estimate_lines set hours=7 where estimate_id=%s",(estimate,))
+                assert scalar('select snapshot from pg_temp.project_versions where version_id=%s',(first['version_id'],))==frozen
+                with conn.transaction(force_rollback=True):
+                    try:conn.execute("update pg_temp.project_versions set snapshot='{}'::jsonb where version_id=%s",(first['version_id'],))
+                    except psycopg.Error as exc:assert exc.diag.message_primary=='Issued project versions are immutable'
+                    else:raise AssertionError('Issued snapshot was rewritten')
+                conn.execute("update pg_temp.project_versions set proposal_pdf_path='first.pdf' where version_id=%s",(first['version_id'],))
+                with conn.transaction(force_rollback=True):
+                    try:conn.execute("update pg_temp.project_versions set proposal_pdf_path='replacement.pdf' where version_id=%s",(first['version_id'],))
+                    except psycopg.Error as exc:assert exc.diag.message_primary=='Issued project versions are immutable'
+                    else:raise AssertionError('Issued PDF reference was replaced')
+                snapshot['proposal_request_id']='invalid'
+                with conn.transaction(force_rollback=True):
+                    try: approve(run,estimate)
+                    except psycopg.Error as exc: assert exc.diag.message_primary=='Invalid proposal revision request'
+                    else: raise AssertionError('Malformed revision was accepted')
+                checks.append({'same_estimate_revisions':3,'retry_frozen':True,'metadata_edits_keep_project':True,
+                               'return_to_old_values_gets_new_number':True,'legacy_client_idempotent':True,'frozen_source_per_version':True,
+                               'same_content_reuses_file':True,'changed_content_new_file':True,'same_name_not_identity':True,
+                               'all_calculation_lines':1201,'old_calculation_retained_after_edits':True,'append_only_snapshots':True,'immutable_file_identity':True,
+                               'explicit_project_id_not_title_matching':True})
+                foreign=scalar('insert into pg_temp.projects(company_id,name,normalized_name) values (%s,%s,%s) returning project_id',(company+'-other','Foreign project','foreign project'))
+                snapshot['proposal_request_id']=uuid4().hex
+                snapshot['target_project_id']=str(foreign)
+                with conn.transaction(force_rollback=True):
+                    try: approve(new_run,new_estimate)
+                    except psycopg.Error as exc:assert exc.diag.message_primary=='Project is not available to this company'
+                    else:raise AssertionError('Foreign target project was accepted')
+                other_owned=scalar('select project_id from pg_temp.projects where company_id=%s and project_id<>%s limit 1',(company,first['project_id']))
+                snapshot['target_project_id']=str(other_owned)
+                with conn.transaction(force_rollback=True):
+                    try:approve(new_run,new_estimate)
+                    except psycopg.Error as exc:assert exc.diag.message_primary=='An issued estimate cannot be moved to another project'
+                    else:raise AssertionError('Issued estimate was moved')
+                snapshot['target_project_id']=first['project_id']
+                checks.append({'explicit_project_company_ownership':True,'issued_estimate_project_is_stable':True})
+                snapshot['proposal_request_id']=uuid4().hex
+                snapshot['document']['source']['storage_ref']=f'storage://rfq-estimation-originals/other-company/{"b"*64}.pdf'
+                with conn.transaction(force_rollback=True):
+                    try: approve(run,estimate)
+                    except psycopg.Error as exc: assert exc.diag.message_primary=='Proposal source does not belong to this company'
+                    else: raise AssertionError('Foreign source was accepted')
+                checks.append({'source_company_ownership':True})
+                assert scalar('select pg_temp.rename_file_review_object(%s,%s,%s,%s,%s)',(company,run,'object-one','Object one','Renamed desk'))
+                assert scalar('select object_name from pg_temp.rfq_object_estimates where estimate_id=%s',(estimate,))=='Renamed desk'
+                conn.execute("update pg_temp.rfq_object_estimates set object_name='Stale worker' where estimate_id=%s",(estimate,))
+                assert scalar('select object_name from pg_temp.rfq_object_estimates where estimate_id=%s',(estimate,))=='Renamed desk'
+                assert not scalar('select pg_temp.rename_file_review_object(%s,%s,%s,%s,%s)',(company,run,'object-one','Object one','Stale user'))
+                assert scalar('select object_name from pg_temp.rfq_detected_objects where run_id=%s',(run,))=='Renamed desk'
+                assert scalar('select snapshot from pg_temp.project_versions where version_id=%s',(first['version_id'],))==frozen
+                with conn.transaction(force_rollback=True):
+                    try:scalar('select pg_temp.rename_file_review_object(%s,%s,%s,%s,%s)',(company+'-other',run,'object-one','Renamed desk','Foreign'))
+                    except psycopg.Error as exc:assert exc.diag.message_primary=='RFQ is not available to this company'
+                    else:raise AssertionError('Foreign object rename was accepted')
+                checks.append({'manual_name_and_estimate_mirrors_atomic':True,'late_worker_cannot_restore_old_name':True,'rename_cas_and_tenant_protection':True,'issued_names_unchanged':True})
             assert scalar("select count(*) from pg_temp.organizations where lower(name) in ('unknown partner','unknown','untitled project')")==0
             return {'status':'passed','scope':'pg_temp only, all changes rolled back','checks':checks}
         finally:

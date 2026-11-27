@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import html
-import hashlib
 import json
 from pathlib import Path
 from typing import Any, Callable
@@ -13,7 +12,7 @@ import streamlit.components.v1 as components
 
 from ui.layout import post_upload_title_html
 from ui.screen_transition import OBJECTS_MARKER_ID
-from use_cases.final_approval import _json_safe
+from use_cases.proposal_basis import pricing_signature
 
 
 @dataclass(frozen=True)
@@ -38,6 +37,27 @@ def project_header_html(title, **kwargs):
 
 def prices_are_set(estimate_id: str | None, data: dict) -> bool:
     return bool(estimate_id) and st.session_state.get("objects_set_price_basis", {}).get(str(estimate_id)) == pricing_signature(data)
+
+
+def invalidate_proposal(estimate_id: str, *, session=None) -> None:
+    """Revoke this draft's confirmation/download, preserving every issued file."""
+    session = st.session_state if session is None else session
+    key = str(estimate_id)
+    for name in ('objects_set_price_basis', 'objects_confirmed_proposal_data', 'proposal_basis_by_estimate'):
+        session.setdefault(name, {}).pop(key, None)
+    session.setdefault('proposal_pdf_urls_by_estimate', {})[key] = None
+    if (session.get('proposal_first_download') or {}).get('estimate_id') == key:
+        session.pop('proposal_first_download', None)
+
+
+def current_proposal_url(estimate_id: str | None, data: dict) -> str | None:
+    key = str(estimate_id)
+    signature = pricing_signature(data)
+    issued = st.session_state.get('proposal_basis_by_estimate', {}).get(key)
+    confirmed = st.session_state.get('objects_set_price_basis', {}).get(key)
+    if (issued and issued != signature) or (confirmed and confirmed != signature):
+        invalidate_proposal(key)
+    return st.session_state.get('proposal_pdf_urls_by_estimate', {}).get(key)
 
 
 def stages_html(data: dict, *, prices_set: bool, proposal_ready: bool, confirmation_id: int = 0) -> str:
@@ -83,7 +103,7 @@ def render_objects_header(title: str, render_header_controls: Callable[[], None]
 def update_header(slots: ObjectsHeaderSlots, *, metrics_html: str, data: dict, estimate_id: str | None) -> None:
     if slots.title is not None:
         slots.title.markdown(project_header_html(project_title(data.get('project_name')), class_name='objects-estimation-header', marker_id=OBJECTS_MARKER_ID, align_mark_left=True), unsafe_allow_html=True)
-    proposal_ready = bool(st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id)))
+    proposal_ready = bool(current_proposal_url(estimate_id, data))
     if slots.metrics is not None:
         slots.metrics.html(
             '<div class="objects-technical-metrics">'
@@ -101,20 +121,6 @@ def install_actions_runtime(estimate_id: str) -> None:
     source = source.replace("__ESTIMATE_ID__", json.dumps(estimate_id))
     components.html('<script>' + source + '</script>', height=0)
 
-
-def pricing_signature(data: dict[str, Any]) -> str:
-    """Identify the saved commercial basis, excluding progress/timing/UI state."""
-    fields = ("object_key", "name", "materials", "quantity", "self_cost_unit", "sale_price_unit", "sale_price_total", "reviewed", "status")
-    basis = {
-        "production_time_working_days": data.get('production_time_working_days'),
-        "advance_payment_percent": data.get('advance_payment_percent'),
-        "project_name": data.get('project_name'),
-        "rows": [{field: row.get(field) for field in fields} for row in data.get("rows") or []],
-        "project_costs": [{field: row.get(field) for field in ("object_key", "sale_price_unit", "sale_price_total")}
-                          for row in data.get("project_costs") or []],
-        "summary": {field: (data.get("summary") or {}).get(field) for field in ("project_price", "vat", "total", "vat_percent")},
-    }
-    return hashlib.sha256(json.dumps(_json_safe(basis), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def download_generated_proposal(request: dict) -> None:

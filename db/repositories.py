@@ -629,6 +629,18 @@ def update_rfq_detected_object_name_if_unchanged(
     )
 
 
+def rename_file_review_object_if_unchanged(
+    client: Client, *, company_id: str, run_id: str, object_id: str,
+    expected_name: str, object_name: str,
+) -> bool:
+    """Commit a manual canonical name and its working-estimate mirrors atomically."""
+    result=client.rpc('rename_file_review_object',{
+        'p_company_id':company_id,'p_run_id':run_id,'p_object_id':object_id,
+        'p_expected_name':expected_name,'p_object_name':object_name,
+    }).execute()
+    return result.data is True
+
+
 def update_rfq_run_project_name_if_unchanged(
     client: Client,
     *,

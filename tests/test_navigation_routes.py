@@ -1228,11 +1228,11 @@ def test_projects_uses_existing_styled_transition_contract():
     assert 'parentDocument.querySelector(".projects-empty, .projects-table-card")' in source
 
 
-def test_projects_workspace_loads_three_collections_concurrently():
+def test_projects_workspace_loads_four_collections_concurrently():
     source = Path("use_cases/projects.py").read_text()
 
-    assert "ThreadPoolExecutor(max_workers=3)" in source
-    assert source.count("executor.submit(") == 3
+    assert "ThreadPoolExecutor(max_workers=4)" in source
+    assert source.count("executor.submit(") == 4
 
 
 def test_projects_is_one_page_with_native_partner_disclosure_rows():

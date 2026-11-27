@@ -171,14 +171,17 @@ def _commit_run_metadata(run_id: str, field: str, widget_key: str) -> None:
                 continue
             if key == "objects_estimation_launch_plan":
                 prepared.setdefault("metadata_values", {})[field] = saved_value
-            if field == "project_name":
+            if field in _RUN_METADATA_LABELS:
                 state = prepared.get("screen_state", prepared)
                 if isinstance(state, dict) and isinstance(state.get("data"), dict):
-                    state["data"]["project_name"] = saved_value
+                    state["data"][field] = saved_value
                 estimate_id = str(prepared.get("estimate_id") or "")
                 cached = st.session_state.get("objects_estimation_data_cache", {}).get(estimate_id)
                 if isinstance(cached, dict):
-                    cached["project_name"] = saved_value
+                    cached[field] = saved_value
+                from ui.objects_workflow import invalidate_proposal
+                if estimate_id:
+                    invalidate_proposal(estimate_id)
         st.session_state.file_review_metadata_save_error = None
     st.session_state.screen = "file_review"
 
@@ -194,6 +197,32 @@ def _run_metadata_snapshot() -> dict[str, str]:
         ).strip()
         for field in _RUN_METADATA_LABELS
     }
+
+
+def _accept_object_name_projection(run_id: str, object_id: str, name: str) -> None:
+    """Invalidate only affected draft confirmation, preserving issued snapshots."""
+    affected=set()
+    estimate_id=str(st.session_state.get('current_estimate_id') or '')
+    cache=st.session_state.get('objects_estimation_data_cache',{})
+    if estimate_id and (cache.get(estimate_id,{}).get('run_id')==run_id or estimate_id.startswith(run_id)):
+        affected.add(estimate_id)
+    for key in ('objects_estimation_launch_plan','objects_navigation_ready'):
+        prepared=st.session_state.get(key)
+        if not isinstance(prepared,dict) or prepared.get('run_id')!=run_id:continue
+        eid=str(prepared.get('estimate_id') or '')
+        if eid:affected.add(eid)
+        prepared.get('object_edits',{}).get(object_id,{}).update(name=name,expected_name=name)
+        state=prepared.get('screen_state',prepared)
+        data=state.get('data') or {} if isinstance(state,dict) else {}
+        for row in data.get('rows') or []:
+            if str(row.get('object_key'))==object_id:row['name']=name
+    from ui.objects_workflow import invalidate_proposal
+    from state.session import invalidate_object_detail_cache
+    for eid in affected:
+        for row in cache.get(eid,{}).get('rows') or []:
+            if str(row.get('object_key'))==object_id:row['name']=name
+        st.session_state.setdefault('objects_estimation_pricing_dirty',set()).add(eid)
+        invalidate_proposal(eid);invalidate_object_detail_cache(eid)
 
 
 def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
@@ -251,6 +280,8 @@ def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
         )
     except FileReviewNameConflict as exc:
         latest_name = str(exc.current_name or previous_name)
+        if latest_name!=previous_name:
+            _accept_object_name_projection(run_id,object_id,latest_name)
         edit["name"] = latest_name
         edit["expected_name"] = latest_name
         st.session_state[widget_key] = latest_name
@@ -268,6 +299,8 @@ def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
         st.session_state[widget_key] = previous_name
         st.session_state.file_review_name_save_error = str(exc)
     else:
+        if saved_name!=previous_name:
+            _accept_object_name_projection(run_id,object_id,saved_name)
         edit["name"] = saved_name
         edit["expected_name"] = saved_name
         cache = st.session_state.setdefault("file_review_data_cache", {})

@@ -113,6 +113,31 @@ def apply_projects_css() -> None:
             border: 1px solid rgba(42, 31, 44, 0.14);
             border-radius: 16px;
         }
+        .projects-project > summary { list-style: none; cursor: pointer; }
+        .projects-project > summary::-webkit-details-marker { display:none; }
+        .projects-project-name::before { content:"›"; margin-right:10px; font-size:22px; }
+        .projects-project[open] > summary .projects-project-name::before { content:"⌄"; }
+        .projects-history { padding:0 22px 14px 54px; }
+        .projects-file,.projects-calculation,.projects-version { border-top:1px solid rgba(42,31,44,.1); }
+        .projects-file > summary,.projects-calculation > summary,.projects-version > summary {
+            min-height:48px; display:flex; align-items:center; gap:16px; cursor:pointer;
+            list-style:none; overflow-wrap:anywhere; font-size:14px; color:var(--color-text-strong);
+        }
+        .projects-file > summary::-webkit-details-marker,.projects-calculation > summary::-webkit-details-marker,
+        .projects-version > summary::-webkit-details-marker { display:none; }
+        .projects-file > summary::before,.projects-calculation > summary::before,.projects-version > summary::before {
+            content:"›"; flex:none; font-size:22px; color:rgba(42,31,44,.52);
+        }
+        .projects-file[open] > summary::before,.projects-calculation[open] > summary::before,
+        .projects-version[open] > summary::before { content:"⌄"; }
+        .projects-calculations,.projects-version-list { margin-left:20px; }
+        .projects-version > summary > .projects-total { margin-left:auto; }
+        .projects-version > summary > .projects-pdf-link,.projects-version > summary > .projects-pdf-empty { width:40px; text-align:right; }
+        .projects-objects { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:14px; }
+        .projects-objects th,.projects-objects td { padding:10px; text-align:right; border-top:1px solid rgba(42,31,44,.08); }
+        .projects-objects th:first-child,.projects-objects td:first-child { text-align:left; }
+        .projects-objects th { color:rgba(42,31,44,.52); font-weight:600; }
+        .projects-objects small { display:block; color:rgba(42,31,44,.52); margin-top:3px; }
         @media (max-width: 820px) {
             .projects-projects-body { overflow-x: auto; }
             .projects-project-head,

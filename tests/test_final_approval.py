@@ -17,8 +17,11 @@ class _Response:
 
 
 class _Rpc:
+    def __init__(self, data=None): self.data = data or _Response.data
     def execute(self):
-        return _Response()
+        class Response: pass
+        response = Response(); response.data = self.data
+        return response
 
 
 class _Client:
@@ -37,17 +40,26 @@ class _Client:
         self.filters[key] = value
         return self
     def limit(self, _): return self
+    def order(self, *args, **kwargs): return self
     def execute(self):
         class Response: pass
         result = Response()
-        result.data = self.versions
+        result.data = [v for v in reversed(self.versions) if all(
+            (v.get('snapshot') or {}).get('proposal_request_id') == value if key == 'snapshot->>proposal_request_id'
+            else v.get(key) == value if key == 'version_id' else True
+            for key, value in self.filters.items())][:1]
         return result
 
     def rpc(self, name, values):
         self.calls.append((name, values))
-        if not self.versions:
-            self.versions = [{**_Response.data, 'snapshot': values['p_snapshot'], 'proposal_pdf_path':None}]
-        return _Rpc()
+        request = values['p_snapshot'].get('proposal_request_id')
+        existing = next((v for v in reversed(self.versions) if not request or v['snapshot'].get('proposal_request_id') == request),None)
+        if existing: return _Rpc({**existing, 'created':False})
+        number = len(self.versions) + 1
+        version = {**_Response.data, 'version_id':f'version-{number}', 'version_number':number,
+                   'snapshot': values['p_snapshot'], 'proposal_pdf_path':None}
+        self.versions.append(version)
+        return _Rpc(version)
 
 
 def _approved_data():
@@ -145,3 +157,30 @@ def test_retry_renders_the_first_stored_document_without_recapturing_profile(mon
     client.versions[0]['proposal_pdf_path']=result['proposal_pdf_path']
     final_approval(company_id='001',run_id='run-1',estimate_id='estimate-1',confirmed_data=data)
     assert len(attempts)==2
+
+
+def test_changed_confirmed_revision_creates_next_version_and_retry_keeps_it(monkeypatch):
+    from copy import deepcopy
+    client=_Client();captures=[];published=[]
+    monkeypatch.setattr('use_cases.final_approval.get_supabase_client',lambda:client)
+    monkeypatch.setattr('use_cases.final_approval.assert_run_owned',lambda *a:None)
+    monkeypatch.setattr('use_cases.final_approval.assert_estimate_owned',lambda *a:None)
+    monkeypatch.setattr('use_cases.final_approval.capture_proposal_document',lambda **_:captures.append(1) or {'profile':{'public_email':f'email-{len(captures)}'}})
+    monkeypatch.setattr('use_cases.final_approval.load_estimate_proposal_url',lambda **kw:kw['version_id']+'.pdf')
+    def publish(**kwargs):
+        published.append(kwargs)
+        return kwargs['version_id']+'.pdf'
+    monkeypatch.setattr('use_cases.final_approval.publish_proposal_pdf',publish)
+    first_data={**_approved_data(),'proposal_request_id':'a'*32}
+    first=final_approval(company_id='001',run_id='run-1',estimate_id='estimate-1',confirmed_data=first_data)
+    client.versions[0]['proposal_pdf_path']=first['proposal_pdf_path']
+    frozen=deepcopy(client.versions[0]['snapshot'])
+    second_data={**first_data,'proposal_request_id':'b'*32,'production_time_working_days':16}
+    second=final_approval(company_id='001',run_id='run-1',estimate_id='estimate-1',confirmed_data=second_data)
+    assert first['version_number']==1 and second['version_number']==2
+    assert first['proposal_pdf_url']=='version-1.pdf' and second['proposal_pdf_url']=='version-2.pdf'
+    assert published[1]['snapshot']['version_number']==2
+    client.versions[1]['proposal_pdf_path']=second['proposal_pdf_path']
+    again=final_approval(company_id='001',run_id='run-1',estimate_id='estimate-1',confirmed_data=second_data)
+    assert again['version_id']==second['version_id'] and len(published)==2 and len(captures)==2
+    assert client.versions[0]['snapshot']==frozen

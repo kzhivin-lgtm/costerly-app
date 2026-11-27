@@ -1835,6 +1835,11 @@ def _read_only_group(title: str, items: list[tuple[str, object]]) -> None:
 
 def _profile_save_ack(access: CompanyAccess, action: str, *, ok: bool = True) -> None:
     """An invisible receipt emitted only after an existing persistence result."""
+    if ok:
+        from ui.objects_workflow import invalidate_proposal
+        for estimate_id, data in st.session_state.get('objects_estimation_data_cache', {}).items():
+            if str(data.get('company_id')) == str(access.company_id):
+                invalidate_proposal(estimate_id)
     st.markdown(
         '<span style="display:none" data-profile-save-ack="' + uuid4().hex
         + '" data-profile-save-company="' + escape(str(access.company_id), quote=True)

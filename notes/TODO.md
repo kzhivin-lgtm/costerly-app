@@ -744,7 +744,7 @@ No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation was outside the earlier local artifact request.
 Owner activated production-generator planning below on27November2026.
 
-PUBLISHED LABOR V3.2, OWNER VISUAL ACCEPTANCE PENDING, V3.1 OWNER-ACCEPTED,
+ACTIVE LABOR V3.3, PREVIOUS V3.2 PUBLISHED, OWNER VISUAL ACCEPTANCE PENDING, V3.1 OWNER-ACCEPTED,
 P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
 Outcome: existing Set Prices -> Generate Proposal produces a customer proposal
 matching the approved Ada A4 visual style, with every variable element supplied
@@ -945,6 +945,47 @@ in outputs/labor-v3.2-20261127/. Old production PDF/snapshot/references untouche
 Owner new-PDF/50% acceptance pending, not a newly accepted checkpoint. Native
 owner Chrome was unavailable; actual Streamlit/wrapper CSS viewports passed.
 Records-only branch follow-up does not trigger a second main/runtime deployment.
+ACTIVE LABOR V3.3, P1, OWNER APPROVED IMPLEMENTATION AND GATED PUBLICATION,
+27November2026, same continuation3.17.4.6. Owner explicitly approved new public3.3.
+Outcome: changed inputs revoke Set Prices and both download actions; reconfirm,
+Generate and first-download the next immutable Vn. Technical retry keeps a number;
+repeat download creates none. Reverted edit still reconfirms. Keep date in PDF/
+metadata, omit date from filename. Keep existing issued files/nullable fields.
+Approved architecture: optional Partner -> stable Project -> content-hash Source
+Files -> independent object/calculation sets -> project-wide numbered proposals.
+Same bytes/renamed file reuse identity; changed bytes create a new source within
+that project, no name-based object merging. Add project_files and a nullable
+source_file_id FK, full atomic calculation snapshots, immutable history/source
+identity, service-only writes and company-scoped reads. Explicit future project
+picker uses owned UUID; existing callers retain named/unnamed matching. Existing
+All Projects now hosts history, with no separate page or CRUD. Current source causes verified: cached URL bypass
+and unique(company,estimate) returning only the first PDF. Prepared SQL pg_temp
+checks cover1201 calculation lines and frozen source/version behavior. Final gate,
+production migration and served-build parity remain pending. Previous checkpoint8f06b549.
+Owner approved softer compact EN paragraph then conversational-business Hebrew,
+Installation as next sentence in same paragraph, no final full stop. UI label
+Estimated production time, existing caption preliminary estimate in working days /
+installation time not included; no new notice. Keep18pt leading/right alignment,
+all earlier geometry/costing/persistence/auth/tenant/old-wrapper protections.
+ACTIVE ALL PROJECTS INTEGRATION, P1, OWNER CLARIFICATION27November2026:
+Use the existing All Projects page for Partner -> Project -> File -> Calculation
+-> immutable proposal history and its objects/PDFs. Retain its header/navigation,
+local native expanders, tenant/read protections and existing latest-project row.
+No new page or project CRUD controls. Batch PDF signing, avoid one request per
+version/accordion click; preserve named and partnerless/legacy records.
+PENDING NEXT RELEASE, P1, OWNER REQUEST27November2026, not in V3.3:
+Reduce duplicate Partner/Project creation through searchable existing-catalog
+suggestions while typing, including prefix D and equivalent address/name token
+orders (Prospekt Mira12 /12Prospekt Mira). Research UI best practices before
+implementation. Empty catalog permits plain first creation; populated catalog
+prioritizes choosing an existing entity, with explicit new creation retained.
+Selection binds stable IDs rather than rewriting names. Matching may normalize
+case/spacing/token order for ranking only, never auto-merge similar entities or
+mutate old versions. Scope suggestions to company and selected Partner/Project;
+cover keyboard/mobile, homonyms, changing parent selection and read failures.
+Dependency: V3.3 stable IDs/catalog foundation. Next public/work number unassigned;
+finish/verify V3.3 before starting this separate UX task. Current record:
+notes/LABOR_V3_PDF_2026_11_27.md, Labor V3.3 section.
 Acceptance cases: Ada, many/long rows and multiple A4 pages, absent optional data/
 logo/preview, Hebrew and mixed scripts, manual prices/quantities/zero service values,
 VAT and rounding, advanceNULL/0/70/100, missing production days, retry after storage

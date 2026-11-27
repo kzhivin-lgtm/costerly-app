@@ -733,6 +733,7 @@ def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) 
         st.session_state.setdefault("proposal_pdf_urls_by_estimate", {})[estimate_id] = result.get(
             "proposal_pdf_url"
         )
+        st.session_state.setdefault('proposal_basis_by_estimate', {})[estimate_id] = basis
         st.session_state['proposal_first_download'] = {
             'token': uuid4().hex, 'url': result['proposal_pdf_url'], 'estimate_id': estimate_id,
         }
@@ -746,12 +747,20 @@ def _set_objects_prices(*, estimate_id: str) -> None:
             raise ValueError("Could not reload the saved prices. Try again")
         if not _final_approval_ready(state.data):
             raise ValueError("Approve every object before setting prices")
-        st.session_state.setdefault("objects_set_price_basis", {})[estimate_id] = pricing_signature(state.data)
+        basis = pricing_signature(state.data)
+        previous = st.session_state.get('objects_confirmed_proposal_data', {}).get(estimate_id) or {}
+        same_basis = (st.session_state.get('objects_set_price_basis', {}).get(estimate_id) == basis
+                      and not st.session_state.get('proposal_pdf_urls_by_estimate', {}).get(estimate_id))
+        if not same_basis:
+            objects_workflow.invalidate_proposal(estimate_id)
+        st.session_state.setdefault("objects_set_price_basis", {})[estimate_id] = basis
         st.session_state.setdefault('objects_confirmed_proposal_data', {})[estimate_id] = {
             key: deepcopy(state.data.get(key)) for key in (
                 'rows','project_costs','summary','production_time_working_days','advance_payment_percent',
-                'company_id','project_name')
+                'company_id','project_name','design_partner','client','proposal_source')
         }
+        st.session_state['objects_confirmed_proposal_data'][estimate_id]['proposal_request_id'] = (
+            previous.get('proposal_request_id') if same_basis else None) or uuid4().hex
         st.session_state["objects_price_confirmation_id"] = st.session_state.get("objects_price_confirmation_id", 0) + 1
         _cache_routed_objects_data(estimate_id=estimate_id, data=state.data, data_error=None)
         st.session_state["final_approval_error"] = None
@@ -761,7 +770,7 @@ def _set_objects_prices(*, estimate_id: str) -> None:
         st.session_state["final_approval_error"] = str(exc)
 
 
-def _load_existing_proposal_url(*, company_id: str, estimate_id: str | None) -> None:
+def _load_existing_proposal_url(*, company_id: str, estimate_id: str | None, data: dict) -> None:
     if not estimate_id:
         return
     cache = st.session_state.setdefault("proposal_pdf_urls_by_estimate", {})
@@ -773,7 +782,10 @@ def _load_existing_proposal_url(*, company_id: str, estimate_id: str | None) -> 
             client=get_supabase_client(),
             company_id=company_id,
             estimate_id=estimate_key,
+            current_data=data,
         )
+        if cache[estimate_key]:
+            st.session_state.setdefault('proposal_basis_by_estimate', {})[estimate_key] = pricing_signature(data)
     except Exception:
         cache[estimate_key] = None
 
@@ -797,7 +809,7 @@ def _render_objects_actions(
     data: dict[str, object],
 ) -> None:
     """Render bottom navigation actions for Project."""
-    proposal_url = st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id))
+    proposal_url = objects_workflow.current_proposal_url(estimate_id, data)
     proposal_ready = bool(proposal_url)
 
     prices_set = objects_workflow.prices_are_set(estimate_id, data)
@@ -814,7 +826,7 @@ def _render_objects_actions(
 
     col_set.button(
         "Set Prices", key="objects_set_prices", type="secondary",
-        use_container_width=True, disabled=proposal_ready or not ready,
+        use_container_width=True, disabled=not ready,
         on_click=_set_objects_prices, kwargs={"estimate_id": str(estimate_id or "")},
     )
     if proposal_ready:
@@ -1036,7 +1048,7 @@ def render_objects_screen(
             data_error=screen_state.data_error,
         )
     if _final_approval_ready(screen_state.data):
-        _load_existing_proposal_url(company_id=company_id, estimate_id=estimate_id)
+        _load_existing_proposal_url(company_id=company_id, estimate_id=estimate_id, data=screen_state.data)
     live = bool(estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future))
     # The timed fragment can enable Review without a full app rerun. Its
     # native buttons must already exist for all objects in the prepared batch.
