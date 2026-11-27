@@ -744,7 +744,8 @@ No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation was outside the earlier local artifact request.
 Owner activated production-generator planning below on27November2026.
 
-ACTIVE LABOR V3.2, V3.1 OWNER-ACCEPTED, P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
+PUBLISHED LABOR V3.2, OWNER VISUAL ACCEPTANCE PENDING, V3.1 OWNER-ACCEPTED,
+P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
 Outcome: existing Set Prices -> Generate Proposal produces a customer proposal
 matching the approved Ada A4 visual style, with every variable element supplied
 by saved Company Profile and the particular estimate. Owner approved implementation after the plan and clarified the first-download behavior.
@@ -873,7 +874,8 @@ verified. Durable receipts/control in outputs/labor-v3.1-20261127/. Owner subseq
 Generate/download repair; earlier checkpoints remain unchanged. No new archive/tag
 checkpoint was requested.
 
-ACTIVE V3.2, owner request27November2026, continuation3.17.4.6:
+V3.2 approved scope and validation history, owner request27November2026,
+continuation3.17.4.6. Current published verification follows below:
 P1 PDF: one terms block, English production time/payment-start and exclusion of
 delivery/installation from that time, then both matching Hebrew translations.
 Remove lead, duplicate Payment terms/remainder text and fixed Hebrew proposal
@@ -893,7 +895,7 @@ Protect all x/width/height, scroll-end26px footer clearance, inputs/nav/auth and
 saved data. Verify normal/mobile and zoom-equivalent50/33/25% CSS viewports,
 including the actual screenshot-size File Review, mounted invisible bridges,
 Project/Object and old-wrapper scenarios. No new timer/observer/request/rerun.
-Runtime label Labor V3.2, build labor-v3.2-b20261127131519-pdf-download-spacing-detection-v8.4.29.
+Runtime label Labor V3.2, final build labor-v3.2-b20261127132831-pdf-download-spacing-detection-v8.4.29.
 Deploy title Labor V3.2: PDF, Download Proposal и отступы при масштабировании.
 61 focused Python checks and Objects33.583s/Calculation105.629s pass. New
 File Review gap28px at all three zoom-equivalent heights (before248.40625px),
@@ -924,7 +926,25 @@ required. Failed CI artifact15202443614/99fef429caa31364b7a1996757771bc54124d1d7
 retained. Runtime bd97465a remains unpublished, actual main is accepted V3.1.
 Fixture-corrected Calculation113.004s passes original assertions/deadlines;
 1125 Python checks pass26.80s. Validated883-file/5,143,350-byte archive. Final
-candidate full remote gate required; no production algorithm was changed for CI.
+candidate full remote gate required at that stage; no production algorithm was changed for CI.
+[verified] Final exact runtime8f06b549e607ce854a8f281700ff217bcce73952 passed
+GitHub46009101584/job140539715132:1125 Python,6 subtests,all10 browser suites,
+445.267s,clean remote tree. Artifact15203247156 ZIP SHA256
+25e227fb918ba5ac1d0fb6944cc241614830b3ea2ecf3e88eb6e15f1238a6eeb verified.
+Published through the required publisher; actual main8f06b549 and remote ruleset
+27499066 active/strict/trusted/no bypass independently confirmed. Railway exact
+commit status success13:49:43UTC, provider deploymentc785f89c-723a-480d-b8ef-9fca502765e3.
+GitHub deployment8111387111 bridge still said in_progress13:57UTC despite that
+terminal provider success, retained as evidence. Core health200/ok, target
+Cloudflare Pages success; live browser Core/executed-wrapper/meta and public
+version.json all match the final build, no Streamlit exceptions on Sign in.
+Legacy separate Workers Builds fails as before, existing deferred item retained.
+Final real CI File Review gap28px/all3viewports, action56px; PDF baseline gaps
+18/18/18pt in both languages. Permanent evidence and final186939-byte control
+in outputs/labor-v3.2-20261127/. Old production PDF/snapshot/references untouched.
+Owner new-PDF/50% acceptance pending, not a newly accepted checkpoint. Native
+owner Chrome was unavailable; actual Streamlit/wrapper CSS viewports passed.
+Records-only branch follow-up does not trigger a second main/runtime deployment.
 Acceptance cases: Ada, many/long rows and multiple A4 pages, absent optional data/
 logo/preview, Hebrew and mixed scripts, manual prices/quantities/zero service values,
 VAT and rounding, advanceNULL/0/70/100, missing production days, retry after storage
