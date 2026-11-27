@@ -1000,9 +1000,11 @@ an owned stable Project ID. Each issued version freezes complete calculation
 inputs/results/source/Profile metadata. Date stays in the PDF/metadata; filenames
 contain the version and optional names without date. Old issued files stay intact.
 
-Production terms are one compact preliminary estimate paragraph in English,
-then its conversational-business Hebrew translation; Installation is a second
-sentence in the same paragraph. No final full stop. Both languages retain the
+Owner27November refinement after accepted V3.3 checkpoint: production terms have
+three explicit rows in English, then three in conversational-business Hebrew.
+Row1 Preliminary production time estimate:, row2 approximate working days/payment,
+row3 readiness for site delivery plus Installation time is not included. Keep
+Installation in row3 and no final full stop. Both languages retain the
 same right edge and18pt leading. The existing input label becomes Estimated
 production time; caption says preliminary estimate in working days / installation
 time not included. Preserve units, defaults/NULL/zero, input behavior and geometry.

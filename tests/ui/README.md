@@ -6,7 +6,7 @@ revoke immediately, unchanged card viewing retains a valid issued file, filename
 carry Vn without date. Existing first/repeat-download and failure/pending tests
 remain. Python checks input/basis identity, tenant-scoped successful Profile
 invalidation, stale URL reopening, small metadata reads, frozen version/date and
-compact EN/HE terms with18pt leading/no final full stop. The SQL verifier uses
+three explicit EN rows/three HE rows with18pt leading/no final full stop. The SQL verifier uses
 pg_temp/rollback for source-file hash identity, explicit Project ID/tenant gates,
 all1201 calculation lines, immutable history and source/reference protection.
 The normal browser fixture cannot prove the real database contract.

@@ -299,13 +299,33 @@ def test_bilingual_terms_share_the_same_line_pitch():
         start=next(span['origin'][1] for span in spans if span['text'].startswith('Preliminary production time estimate:'))
         rows=sorted({round(span['origin'][1],2) for span in spans if span['origin'][1]>=start-.2 and abs(span['size']-8)<.1})
         text=pdf[0].get_text().replace('\n',' ')
-    assert len(rows)==3
+    assert len(rows)==6
     pitches=[rows[i+1]-rows[i] for i in range(len(rows)-1)]
     assert max(pitches)-min(pitches)<.2,pitches
     assert all(abs(pitch-18)<.2 for pitch in pitches),pitches
     assert 'site. Installation time is not included' in text
     assert 'Installation time is not included.' not in text
     assert 'זמן ההתקנה אינו כלול.' not in text
+
+
+@pytest.mark.parametrize('advance',[None,0,70,100])
+def test_owner_terms_keep_three_explicit_rows_in_each_language(advance):
+    snapshot=_snapshot();snapshot['production_time_working_days']=365;snapshot['advance_payment_percent']=advance
+    result=build_proposal_pdf(profile={},project_name='',partner_name='',client_name='',snapshot=snapshot)
+    with pymupdf.open(stream=result,filetype='pdf') as pdf:
+        spans=[s for block in pdf[-1].get_text('dict')['blocks'] for line in block.get('lines',[]) for s in line['spans']]
+        start=next(s['origin'][1] for s in spans if s['text']=='Preliminary production time estimate:')
+        rows={}
+        for span in spans:
+            if span['origin'][1]>=start-.2 and abs(span['size']-8)<.1:
+                rows.setdefault(round(span['origin'][1],1),[]).append(span)
+        lines=list(rows.values())
+        assert len(lines)==6
+        assert ''.join(s['text'] for s in lines[0])=='Preliminary production time estimate:'
+        assert 'approximately 365 working days' in ''.join(s['text'] for s in lines[1])
+        assert ''.join(s['text'] for s in lines[2])=='until the items are ready for delivery to site. Installation time is not included'
+        assert all(abs(max(s['bbox'][2] for s in row)-544)<2 for row in lines)
+        for row in lines[3:]:assert any(any('א'<=c<='ת' for c in s['text']) for s in row)
 
 
 

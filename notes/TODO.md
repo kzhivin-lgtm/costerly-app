@@ -995,12 +995,16 @@ and four network-blocked material controls passed. Source/records tags, bundle,
 migration/release/CI/PDF evidence and verifier/manifest preserved separately.
 Owner reports mechanism works; no claim of exhaustive manual UI acceptance.
 Guide notes/LABOR_V3_3_PRODUCTION_CHECKPOINT_2026_11_27.md.
-ACTIVE VISUAL REFINEMENT, P1, OWNER REQUEST27November2026, same PDF objective:
+LOCAL VERIFIED VISUAL REFINEMENT, P1, REMOTE GATE/PUBLICATION PENDING,
+OWNER REQUEST27November2026, same PDF objective:
 After preserving baseline, three explicit rows in each EN/HE production block:
 Preliminary production time estimate:, approximatelyX working days/payment,
 until items ready for site delivery plus Installation time not included.
 Owner explicitly retained Installation at end of row3. Keep fields dynamic,
 NULL/zero handling,18pt leading/right alignment and no final full stop.
+Offline saved-owner control1A4/188660bytes, three rows per language,18pt pitch
+and63.79pt footer clearance. Full local1163/all10 passed550.498s; one earlier
+10s recovery boot timeout retained, unchanged focused/full retries passed.
 PENDING AFTER CHECKPOINT, P1, OWNER REQUEST27November2026:
 Cycle progress should advance through more real completed stages, reducing long
 plateaus. First inspect actual stage/callback/durable-write timeline and existing

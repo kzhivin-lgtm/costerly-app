@@ -296,17 +296,22 @@ class ProposalDocument:
         days=self.snapshot.get('production_time_working_days')
         terms=[]
         if days is not None:
-            english=f'Preliminary production time estimate: approximately {int(days)} working days'
-            hebrew=f'הערכה ראשונית לזמן הייצור: כ־{int(days)} ימי עבודה'
+            english=f'approximately {int(days)} working days'
+            hebrew=f'כ־{int(days)} ימי עבודה'
             if advance is not None and advance>0:
                 english+=f' from receipt of a {int(advance)}% advance payment'
                 hebrew+=f' ממועד קבלת מקדמה של {int(advance)}%'
             elif advance == 0:
                 english+=' with no advance payment required'
                 hebrew+=', ללא צורך במקדמה'
-            english+=', until the items are ready for delivery to site. Installation time is not included'
-            hebrew+=', עד שהפריטים יהיו מוכנים להובלה לאתר. זמן ההתקנה אינו כלול'
-            terms=[english,hebrew]
+            terms=[
+                'Preliminary production time estimate:',
+                english,
+                'until the items are ready for delivery to site. Installation time is not included',
+                'הערכה ראשונית לזמן הייצור:',
+                hebrew,
+                'עד שהפריטים יהיו מוכנים להובלה לאתר. זמן ההתקנה אינו כלול',
+            ]
         elif advance is not None:
             terms=[f'Advance payment: {int(advance)}%',f'מקדמה: {int(advance)}%']
         term_lines=[line for term in terms for line in self.wrap(term,RIGHT-LEFT,8)]
