@@ -625,10 +625,14 @@ try{
  writeFileSync(reportPath('objects-v2.json'),JSON.stringify(report,null,2));
  console.log('Objects V2.4 passed: approved26px body lift, original geometry/field boundaries, top-right menu+metrics with4px offset, stacked half-width documents, local metrics toggle and original pricing/approval/proposal flow.');
 }catch(error){
+ console.error('Original Objects V2 failure:',error);
  for(const page of browser.contexts().flatMap(context=>context.pages())){
-  await page.screenshot({path:reportPath('objects-v2-latest-failure.png'),fullPage:true});
+  try{
+  try{await page.screenshot({path:reportPath('objects-v2-latest-failure.png'),fullPage:true});}
+  catch(captureError){console.error('Failure screenshot unavailable:',captureError.message);}
   const handle=await page.locator('#costerly-app-frame').elementHandle();const frame=handle&&await handle.contentFrame();
-  if(frame)writeFileSync(reportPath('objects-v2-latest-failure.json'),JSON.stringify(await frame.evaluate(()=>({text:document.body.innerText,receipt:document.getElementById('objects-actions-error')?.outerHTML,pending:[...(window.__costerlyObjectsPricingWrites?.latest||new Map())].map(([key,entry])=>({key,ok:entry.ok})),serviceInputs:[...document.querySelectorAll('.objects-pricing-project-cost-cell .objects-pricing-price-input')].map(n=>({key:n.closest('.objects-pricing-row')?.dataset.objectKey,text:n.textContent,active:document.activeElement===n,dirty:n.dataset.editDirty})),buttons:[...document.querySelectorAll('.st-key-objects_actions button')].map(button=>({text:button.innerText,disabled:button.disabled,busy:button.getAttribute('aria-busy'),phase:button.dataset.objectsPhase}))})),null,2));
+  if(frame)writeFileSync(reportPath('objects-v2-latest-failure.json'),JSON.stringify(await frame.evaluate(()=>({text:document.body.innerText,confirmationId:document.querySelector('.objects-workflow-stages')?.dataset.confirmationId,dirtyDrafts:[...(window.__costerlyProposalDrafts||new Map())],issuedAction:{hasHref:!!document.querySelector('.st-key-final_approval_approved a')?.getAttribute('href'),disabled:document.querySelector('.st-key-final_approval_approved a')?.getAttribute('aria-disabled')},receipt:document.getElementById('objects-actions-error')?.outerHTML,pending:[...(window.__costerlyObjectsPricingWrites?.latest||new Map())].map(([key,entry])=>({key,ok:entry.ok})),serviceInputs:[...document.querySelectorAll('.objects-pricing-project-cost-cell .objects-pricing-price-input')].map(n=>({key:n.closest('.objects-pricing-row')?.dataset.objectKey,text:n.textContent,active:document.activeElement===n,dirty:n.dataset.editDirty})),buttons:[...document.querySelectorAll('.st-key-objects_actions button')].map(button=>({text:button.innerText,disabled:button.disabled,busy:button.getAttribute('aria-busy'),phase:button.dataset.objectsPhase}))})),null,2));
+  }catch(captureError){console.error('Failure DOM unavailable:',captureError.message);}
  }
  throw error;
 }finally{await browser.close();server.close();}

@@ -1005,18 +1005,27 @@ NULL/zero handling,18pt leading/right alignment and no final full stop.
 Offline saved-owner control1A4/188660bytes, three rows per language,18pt pitch
 and63.79pt footer clearance. Full local1163/all10 passed550.498s; one earlier
 10s recovery boot timeout retained, unchanged focused/full retries passed.
-PENDING AFTER CHECKPOINT, P1, OWNER REQUEST27November2026:
+DIAGNOSED, P1, IMPLEMENTATION PROPOSAL READY, OWNER REQUEST27November2026:
 Cycle progress should advance through more real completed stages, reducing long
 plateaus. First inspect actual stage/callback/durable-write timeline and existing
 versioned controllers. Propose truthful monotonic weighting/stage mapping before
 any changed timer/poll/worker behavior. Preserve terminal/recovery/multi-object
 semantics and avoid unrelated client/server work. Work number unassigned.
-PENDING DIAGNOSTIC, P1, OWNER OBSERVATION27November2026:
+Owner clarified Project indicator. Source persists15/70; material/nesting is
+already calculated before70.13 saved cycles put Parts Check completion at
+84.87-88.45% of seed-to-first-plan time, with11.1-21.8s tail. Recommend90 rather
+than95, plus real internal-stage receipts; no progress implementation yet.
+Evidence and complete route inventory: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md.
+DIAGNOSED OBSERVATION, P1, OWNER OBSERVATION27November2026:
 Repeat Download Proposal briefly appeared slow/strange, then fast. Distinguish
 signed-link expiry/redirect/network/storage/browser opening from Generate freeze,
 render/upload/signing and navigation shields. Reuse telemetry/read-only probes;
 no repair until an actual cause or reproducible fault is supported. Preserve
 issued bytes, immediate actionable download and no new version on repeat.
+Isolated real Chrome existing-file downloads1.362/.438/.073s, identical bytes;
+repeat _blank popup observed, first automatic helper has no popup. Persistent
+long delay not reproduced. Proposed reuse of first-download interaction remains
+unimplemented pending its bounded interaction matrix.
 PENDING NEXT RELEASE, P1, OWNER REQUEST27November2026, not in V3.3:
 Reduce duplicate Partner/Project creation through searchable existing-catalog
 suggestions while typing, including prefix D and equivalent address/name token
@@ -1244,13 +1253,19 @@ Route witness run_186f97810a4b4506a8fe356c0d5abf9b, object-001, quantity3:
 4979.21 unit net/5875.47 incl VAT. Actual transitions8.382s cold Review,
 3.487s warm Review,7.252s APPROVE return; stage breakdown retained privately.
 
-ACTIVE READ-ONLY AUDIT, P1, OWNER REQUEST27November2026, extends23November options.
+PARTIAL VERIFIED READ-ONLY AUDIT, P1, OWNER REQUEST27November2026, extends23November options.
 After full V3.3 checkpoint, inventory all page/stage/Profile/auth/Admin covered
 transitions. Report production n/median/p95/range and explicit missing evidence,
 separating event/rerun/write/read/render/ready/visible latency. Retain local
 fixture timings as synthetic only. Prioritize measured bottlenecks and propose
 small bounded fixes with protection/rollback, no blanket cache/overlay changes.
-Current formal work number remains unassigned for implementation. Historical witness:
+Current formal work number remains unassigned for implementation. November DB
+read526 completed transitions;106 inventory paths/classes include56 Profile
+tab pairs, with missing measurements explicit. Current V3.3 cold Project render
+12.388s, Admin read-only RPC5.228s. Fresh full click matrix remains unverified:
+authenticated IAB observed, but input tool cannot dispatch clicks/keys. Owner
+asks agent to navigate, do not delegate manual matrix to owner. Proposal/report
+notes/LABOR_V3_3_PERFORMANCE_AUDIT.md, no broad optimization patch. Historical witness:
 Actual cold/warm Review8.382/3.487s has server render4.717/0.661s; APPROVE return
 7.252s has render3.776s. Guarded profiling confirms detail reads attempt unchanged
 pricing-policy writes. Proposed next: avoid no-op writes and parallelise independent
