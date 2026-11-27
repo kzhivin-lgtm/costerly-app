@@ -9,7 +9,7 @@ from typing import Any
 from use_cases.company_logo import load_company_logo_bytes
 from use_cases.detection_previews import saved_presentation_preview_ref
 from use_cases.estimation_artifacts import download_evidence_artifact
-from use_cases.proposal_document import render_proposal
+from use_cases.proposal_document import render_proposal, optional_metadata
 
 PROPOSAL_BUCKET = "project-proposals"
 PROFILE_COLUMNS = (
@@ -103,11 +103,9 @@ def proposal_download_name(
         date_value = datetime.fromisoformat(date_value.replace("Z", "+00:00")).date().isoformat()
     except ValueError:
         date_value = date_value[:10] or datetime.now().date().isoformat()
-    return (
-        f"{_filename_part(project_name, 'Project')}_"
-        f"{_filename_part(partner_name, 'Partner')}_"
-        f"{_filename_part(date_value, 'Date')}.pdf"
-    )
+    parts = [_filename_part(optional_metadata(value), '') for value in (project_name, partner_name)]
+    parts.append(_filename_part(date_value, 'Date'))
+    return '_'.join(part for part in parts if part) + '.pdf'
 
 
 def proposal_signed_url(

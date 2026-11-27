@@ -102,6 +102,27 @@ def install_workflow_header_alignment_guard(
                 const { title, actions } = targets();
                 if (!title || !actions) return;
 
+                const header = title.closest('.st-key-costerly_screen_header');
+                const toolbar = header?.querySelector('.st-key-objects_header_toolbar');
+                if (toolbar) {
+                    // Reuse the existing render/resize callback. The absolute
+                    // Objects toolbar must reserve space in the title's flow.
+                    if (parentWindow.getComputedStyle(toolbar).position === 'absolute') {
+                        const label = title.querySelector('.project-title-label') || title.querySelector('.workflow-title-text');
+                        const titleRect = title.getBoundingClientRect();
+                        const minimum = Math.ceil(label.getBoundingClientRect().right - titleRect.left);
+                        const set = (name, value) => {
+                            if (header.style.getPropertyValue(name) !== value) header.style.setProperty(name, value);
+                        };
+                        set('--objects-title-min-width', `${minimum}px`);
+                        const available = Math.max(minimum, Math.floor(toolbar.getBoundingClientRect().left - titleRect.left - 24));
+                        set('--objects-title-available-width', `${available}px`);
+                    } else {
+                        header.style.removeProperty('--objects-title-min-width');
+                        header.style.removeProperty('--objects-title-available-width');
+                    }
+                }
+
                 if (parentWindow.getComputedStyle(actions).position !== "fixed") {
                     actions.style.removeProperty("transform");
                     delete actions.dataset.workflowHeaderAligned;

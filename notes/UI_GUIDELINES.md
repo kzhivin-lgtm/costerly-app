@@ -943,3 +943,10 @@ Existing old PDFs, navigation, price inputs, calculations and all prior gates re
 Labor V3 owner footer correction: English/Hebrew terms share the physical right
 edge. Attribution stacks estimated with above a smaller intact brand. Footer
 company legal names are omitted; registration/bank details begin near the divider.
+
+Labor V3.1 owner clarification: Project name/Partner/Client are optional. Omit
+missing metadata in PDF/filenames; create no Unknown Partner or Untitled project
+placeholder. Preserve IDs, immutable versions, company ownership and object
+approval. Long Project text must clear the menu and technical dashboard with
+admin metrics visible or collapsed, without changing the accepted short-title
+axes or mobile flow. Reuse the existing alignment callback, no new observers.

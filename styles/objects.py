@@ -15,7 +15,10 @@ def apply_objects_css() -> None:
         .objects-estimation-header .workflow-title-mark img {
             width: auto;
         }
-        .objects-estimation-header .workflow-title-primary { max-width: 100%; }
+        .objects-estimation-header .workflow-title-primary {
+            max-width: var(--objects-title-available-width, 100%);
+            box-sizing: border-box;
+        }
         .objects-estimation-header .workflow-title-text {
             display: inline-flex;
             flex-wrap: wrap;
@@ -535,11 +538,13 @@ def apply_objects_css() -> None:
         .st-key-objects_header_metrics {
             flex: 0 0 auto !important;
         }
+        .st-key-objects_header_metrics { min-width: 0; max-width: 100%; }
         .st-key-objects_header_toolbar {
             position: absolute !important;
             top: 11px;
             right: 0;
             width: fit-content !important;
+            max-width: calc(100% - var(--objects-title-min-width, 0px) - 24px);
             flex-direction: column !important;
             align-items: flex-end !important;
             gap: 8px !important;
@@ -560,7 +565,7 @@ def apply_objects_css() -> None:
             padding: 0;
             margin: 0;
             min-width: 0;
-            max-width: calc(var(--post-upload-width) - 22px);
+            max-width: calc(100% - 22px);
             overflow-x: auto;
             scrollbar-width: thin;
         }
@@ -664,7 +669,7 @@ def apply_objects_css() -> None:
             display: flex;
             align-items: center;
             width: max-content;
-            max-width: var(--post-upload-width);
+            max-width: 100%;
             padding-right: 22px;
         }
         .stApp .objects-metrics-toggle {
@@ -791,6 +796,7 @@ def apply_objects_css() -> None:
             .st-key-objects_header_toolbar {
                 position: static !important;
                 width: 100% !important;
+                max-width: 100%;
                 align-items: flex-start !important;
             }
             .st-key-objects_header_metrics { max-width: 100%; }

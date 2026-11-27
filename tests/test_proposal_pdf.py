@@ -109,6 +109,34 @@ def test_proposal_download_name_uses_project_partner_and_approval_date():
         approved_at="2026-10-03T13:39:35+03:00",
     ) == "Restaurant - Deer_Studio Tree_2026-10-03.pdf"
 
+
+@pytest.mark.parametrize('project,partner,expected',[
+    (None,None,'2026-11-27.pdf'),
+    ('unknown','none','2026-11-27.pdf'),
+    ('ADA',None,'ADA_2026-11-27.pdf'),
+    (None,'Studio','Studio_2026-11-27.pdf'),
+])
+def test_download_name_omits_absent_metadata(project,partner,expected):
+    assert proposal_download_name(project_name=project,partner_name=partner,
+                                  approved_at='2026-11-27T12:00:00Z') == expected
+
+
+@pytest.mark.parametrize('project_present',[False,True])
+@pytest.mark.parametrize('partner_present',[False,True])
+@pytest.mark.parametrize('client_present',[False,True])
+def test_pdf_omits_each_absent_metadata_field(project_present,partner_present,client_present):
+    result=build_proposal_pdf(profile={},project_name='Named project' if project_present else 'unknown',
+        partner_name='Named partner' if partner_present else None,
+        client_name='Named client' if client_present else '',snapshot=_snapshot())
+    with pymupdf.open(stream=result,filetype='pdf') as pdf:
+        text='\n'.join(p.get_text() for p in pdf)
+    assert ('Named project' in text) == project_present
+    assert ('Partner: Named partner' in text) == partner_present
+    assert ('Client: Named client' in text) == client_present
+    assert 'Untitled project' not in text and 'Unknown Partner' not in text and 'unknown' not in text
+    assert ('Partner:' in text) == partner_present
+    assert ('Client:' in text) == client_present
+
 @pytest.mark.parametrize('advance',[None,0,70,100])
 def test_optional_payment_terms_preserve_financial_totals(advance):
     snapshot=_snapshot();snapshot['advance_payment_percent']=advance

@@ -744,7 +744,7 @@ No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation was outside the earlier local artifact request.
 Owner activated production-generator planning below on27November2026.
 
-DEPLOYED, OWNER ACCEPTANCE PENDING, P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
+ACTIVE REPAIR, P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
 Outcome: existing Set Prices -> Generate Proposal produces a customer proposal
 matching the approved Ada A4 visual style, with every variable element supplied
 by saved Company Profile and the particular estimate. Owner approved implementation after the plan and clarified the first-download behavior.
@@ -836,7 +836,33 @@ The superseded8ff remote gate45991172599 failed at Profile logo after reload;
 historical cause is unknown, artifacts retained. The unchanged current Profile
 suite passed in76.230s. Owner footer revision passed44 focused Python checks
 and native-coordinate/visual checks; the exact-SHA full gate above passed.
-Only owner new-proposal acceptance remains open; no new checkpoint declared.
+OWNER REPORTED FAILURE,27November2026: Generate Proposal returns an error and
+no download. Existing traces confirm two failures14:20/14:22 Israel on
+server.proposal_freeze (APIError), before rendering/upload; source reads succeed.
+Run1ddd0dcceec14da5b6b13c365bc2cc33, estimate20261127120506, tracee01c6abd-8317-4507-842e-a856fe93be3e.
+Existing immutable version count0. All object gates approved/priced; Partner is
+unknown. Current SQL definition/guard needs live confirmation before repair.
+The earlier local/CI passes did not establish owner end-to-end acceptance.
+P1: repair actual generation failure with existing finalization/ownership/history
+contracts retained. P2: owner also requests Project name wrapping around the
+right-side technical dashboard; current long-title browser check omits admin
+metrics and therefore does not test that overlap. Preserve short-title/menu/
+dashboard/table geometry and test long names with metrics visible/collapsed,
+member/no metrics, desktop/narrow widths. Screenshot attachment path is missing;
+diagnosis proceeds from server evidence and reproducible local UI.
+Owner latest clarification supersedes the old Unknown Partner group: Project
+name, Partner and Client all optional; omit missing values everywhere in the PDF
+and filename. Owner explicitly approved nullable existing metadata fields and
+atomic finalization repair. Migration2026_11_27_final_approval_optional_metadata
+applied12:34:18UTC; existing rows/counts/execute ACL unchanged. SQL real temp-table
+matrix passes8 combinations/8 missing sentinels/versions/retry/ownership/approval.
+Actual owner-case SQL finalization/retry now succeeds with rollback, real native
+PDF185298 bytes/one preview built locally via read-only REST. No PDF was issued
+or uploaded by replay. Title overlap reproduced with admin dashboard, corrected
+using existing alignment callback, no added observer/timer/request. Original
+Objects checks and new1280/901/390/1440 clearance pass. Labor V3.1 build
+labor-v3.1-b20261127123416-proposal-optional-metadata-detection-v8.4.29 is preparing
+for full local/remote gate and publication. No accepted new checkpoint exists.
 Acceptance cases: Ada, many/long rows and multiple A4 pages, absent optional data/
 logo/preview, Hebrew and mixed scripts, manual prices/quantities/zero service values,
 VAT and rounding, advanceNULL/0/70/100, missing production days, retry after storage
@@ -6653,14 +6679,15 @@ Project Summary / Download XLS control is the reserved UI entry point. Define
 aggregation, duplicate-material merging, units, quantities, source prices, and
 supplier fields before implementation.
 
-DEFERRED, P1, USER REQUEST, 3.16.6 Unknown Partner completion path: a missing,
-blank, or explicitly `unknown` Partner must never block Final Approval. Final
-Approval must complete normally and store the finalized Project Version under
-one company-scoped reserved Unknown Partner group in Partners. All unresolved
-projects share that group until the user assigns a real Partner name. Renaming
-or assigning the Partner must move the project to the matching real Partner
-without changing its immutable estimate versions, proposal files, totals, or
-approval history. Trigger: resume Projects and Final Approval completion work.
+PARTLY SUPERSEDED, DEFERRED REMAINDER, P1, USER REQUEST,
+3.16.6 Unknown Partner completion path. Owner27November2026 explicitly replaced
+the reserved Unknown Partner group with optional Project/Partner/Client metadata:
+missing fields are omitted, no fictional names or organization rows. The old
+group requirement is cancelled, reference3.16.6 retained. Required Generate
+Proposal completion is being repaired under the active Labor V3 continuation,
+reference3.17.4.6, without starting a new Projects UI block. Assignment of a real
+Partner later, preserving immutable versions/PDF/totals/history, remains deferred
+until owner resumes Projects work. No new group/assignment UI is authorized here.
 
 COMPLETED, OWNER-ACCEPTED, P0, USER REQUEST, 3.16.7 Price Lists rebuild:
 replace the legacy

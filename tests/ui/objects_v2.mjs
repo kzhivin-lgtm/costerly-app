@@ -465,6 +465,34 @@ try{
         'The mark stays on the Project line: '+JSON.stringify({markBox,labelBox,nameBox}));
  report.longTitle={markBox,labelBox,nameBox};
  await longPage.screenshot({path:reportPath('project-long-title.png'),fullPage:true});await longPage.close();
+ writeFileSync(config,JSON.stringify({objects_v2:true,project_name:longName}));
+ const adminTitlePage=await browser.newPage({viewport:{width:1280,height:1000}}),adminTitleCore=adminTitlePage.frameLocator('#costerly-app-frame');
+ await adminTitlePage.goto('http://127.0.0.1:8798/');await adminTitlePage.locator('iframe.is-ready').waitFor();
+ await adminTitleCore.getByRole('button',{name:'Last Estimate',exact:true}).click();
+ await adminTitleCore.getByRole('button',{name:/continue to project/i}).click();
+ await adminTitleCore.locator('.objects-pricing-table').waitFor();
+ await adminTitleCore.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
+ const adminTitleFrame=await(await adminTitlePage.locator('#costerly-app-frame').elementHandle()).contentFrame();
+ report.adminTitleClearance=[];
+ for(const width of [1280,901,390,1440]){
+  await adminTitlePage.setViewportSize({width,height:1000});
+  const clearance=await adminTitleFrame.evaluate(async()=>{
+   await document.fonts.ready;await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);
+   const name=document.querySelector('.project-title-name'),range=document.createRange();range.selectNodeContents(name);
+   const box=r=>({x:r.x,y:r.y,width:r.width,height:r.height});
+   return {lines:[...range.getClientRects()].map(box),toolbar:box(document.querySelector('.st-key-objects_header_toolbar').getBoundingClientRect()),text:name.textContent};
+  });
+  assert.equal(clearance.text,longName);
+  assert(clearance.lines.every(line=>line.x+line.width<=clearance.toolbar.x-8 || line.x>=clearance.toolbar.x+clearance.toolbar.width+8 || line.y+line.height<=clearance.toolbar.y-1 || line.y>=clearance.toolbar.y+clearance.toolbar.height+1),
+         'Project text must wrap clear of the menu and technical dashboard: '+JSON.stringify({width,...clearance}));
+  report.adminTitleClearance.push({width,...clearance});
+  if(width===1280){
+   await adminTitleCore.getByRole('button',{name:'Collapse technical metrics',exact:true}).click();
+   assert.equal(await adminTitleCore.locator('.objects-metrics-toggle').getAttribute('aria-expanded'),'false');
+   await adminTitleCore.getByRole('button',{name:'Expand technical metrics',exact:true}).click();
+  }
+ }
+ await adminTitlePage.screenshot({path:reportPath('project-admin-long-title.png'),fullPage:true});await adminTitlePage.close();
  writeFileSync(config,JSON.stringify({objects_v2:true,project_name:'Before edit',project_name_edit:true}));
  const editPage=await browser.newPage({viewport:{width:1280,height:1000}}),editCore=editPage.frameLocator('#costerly-app-frame');
  await editPage.goto('http://127.0.0.1:8798/');await editPage.locator('iframe.is-ready').waitFor();

@@ -25,6 +25,11 @@ def clean(value):
     return '' if value is None else str(value).strip().replace('\u202f', ' ').replace('\xa0', ' ')
 
 
+def optional_metadata(value):
+    value = clean(value)
+    return '' if value.lower() in {'unknown', 'none', 'null', '—', '-'} else value
+
+
 def money(value):
     if value is None or value == '':
         return ''
@@ -76,7 +81,7 @@ def _hebrew(value):
 class ProposalDocument:
     def __init__(self, profile, project_name, snapshot, logo_bytes):
         self.doc = pymupdf.open()
-        self.profile, self.project, self.snapshot = profile, project_name, snapshot
+        self.profile, self.project, self.snapshot = profile, optional_metadata(project_name), snapshot
         self.logo = logo_bytes
         self.fonts = {'body': 'SpaceGrotesk-400', 'medium': 'SpaceGrotesk-500',
                       'mono': 'IBMPlexMono-400', 'boldmono': 'IBMPlexMono-600',
@@ -188,7 +193,8 @@ class ProposalDocument:
         self.y = self.header_y + 24
         self._footer()
         if self.doc.page_count > 1:
-            self.y += self.text(self.project,LEFT,self.y,RIGHT-LEFT,15,'mono') + 16
+            if self.project:
+                self.y += self.text(self.project,LEFT,self.y,RIGHT-LEFT,15,'mono') + 16
             if table_header:
                 self.table_header()
 
@@ -213,13 +219,14 @@ class ProposalDocument:
             raise ValueError('Proposal block is taller than one page')
 
     def heading(self, partner, client, date):
-        self.text('Commercial Proposal:',LEFT,self.y,360,21.5,'mono')
+        self.text('Commercial Proposal:' if self.project else 'Commercial Proposal',LEFT,self.y,360,21.5,'mono')
         self.text('הצעת מחיר',420,self.y,RIGHT-420,18,align='right')
         self.y += 31
-        self.y += self.text(self.project or 'Untitled project',LEFT,self.y,RIGHT-LEFT,21.5,'mono')
+        if self.project:
+            self.y += self.text(self.project,LEFT,self.y,RIGHT-LEFT,21.5,'mono')
         for label, value in [('Partner',partner),('Client',client)]:
-            if clean(value) and clean(value).lower() not in {'unknown','none','null'}:
-                self.y += 4 + self.text(label + ': ' + clean(value),LEFT,self.y+4,RIGHT-LEFT,9,color=MUTED)
+            if optional_metadata(value):
+                self.y += 4 + self.text(label + ': ' + optional_metadata(value),LEFT,self.y+4,RIGHT-LEFT,9,color=MUTED)
         try:
             stamp=datetime.fromisoformat(clean(date).replace('Z','+00:00'))
         except ValueError:

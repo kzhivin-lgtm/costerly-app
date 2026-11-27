@@ -432,3 +432,11 @@ whole-ILS output, mixed-script fonts and multi-page/summary-only layout.
 Labor V3 PDF coordinate checks additionally require common physical right edges
 for English/Hebrew terms, no footer legal company name, raised registration
 details, and estimated with above the smaller complete brand asset.
+
+Labor V3.1 adds actual admin-metrics/long-title clearance at1280/901/390/1440,
+retaining the existing member long-title and every short-title geometry probe.
+Python covers all8 optional-metadata PDF combinations and4 filename cases. The
+operator SQL checker tools/verify_proposal_finalization_sql.py executes the actual
+migration against pg_temp table copies with original constraints, then rolls back;
+it covers nullable metadata, grouping, retry immutability, ownership and approval.
+Its database receipt is distinct from stubbed UI tests and owner browser acceptance.
