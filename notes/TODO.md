@@ -913,6 +913,18 @@ checks pass. Actual saved-snapshot control186939 bytes/one page, no write.
 Candidate21a0b36f full local1123/ten481.849s and remote46005952467 pass are
 superseded, never published. UI source is unchanged; exact revised full remote
 gate is required. Current build labor-v3.2-b20261127132831-pdf-download-spacing-detection-v8.4.29.
+Exact bd97465a gate46007694313 failed Calculation Continue: server log confirms
+NameError scenario from6 chained fixture_labor_loader wrappers. The fixture
+re-captured a previous script wrapper, whose globals Streamlit had cleared.
+Actual-source deterministic regression reproduces that precise failure; retain
+original production loader once in the fixture instead of wrapping prior scripts.
+All19 release-check tests pass after repair. Product code/readiness/pricing,
+12s timeout and all assertions remain intact. New Calculation/exact full gate
+required. Failed CI artifact15202443614/99fef429caa31364b7a1996757771bc54124d1d79cd75da5675237c76d13bac4
+retained. Runtime bd97465a remains unpublished, actual main is accepted V3.1.
+Fixture-corrected Calculation113.004s passes original assertions/deadlines;
+1125 Python checks pass26.80s. Validated883-file/5,143,350-byte archive. Final
+candidate full remote gate required; no production algorithm was changed for CI.
 Acceptance cases: Ada, many/long rows and multiple A4 pages, absent optional data/
 logo/preview, Hebrew and mixed scripts, manual prices/quantities/zero service values,
 VAT and rounding, advanceNULL/0/70/100, missing production days, retry after storage

@@ -238,7 +238,8 @@ labor.get_supabase_client = Client
 labor.load_parts_check = lambda **_: {'status':'ready', 'payload':parts}
 labor.fetch_rfq_estimate_material_plan = read_plans
 labor.load_sheet_processing_machinery = lambda *_: {'availability':{'finish_wet_spray_booth':'in_house'}} if scenario().get('coating') else {}
-_original_labor_loader = labor.load_object_labor
+_original_labor_loader = getattr(labor,'_ui_fixture_original_labor_loader',labor.load_object_labor)
+labor._ui_fixture_original_labor_loader = _original_labor_loader
 def fixture_labor_loader(*args, **kwargs):
  if scenario().get('labor_unknown'):return {'status':'preparing'}
  state=_original_labor_loader(*args, **kwargs)
