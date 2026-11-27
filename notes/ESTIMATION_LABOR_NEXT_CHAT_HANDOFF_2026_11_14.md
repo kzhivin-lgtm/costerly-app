@@ -1,4 +1,21 @@
-**[verified] Latest full preservation checkpoint: Labor2.21,26November2026.**
+[verified] Full Labor V3.3 checkpoint requested27November2026, work3.17.4.6.
+Owner reports proposal/version mechanism working and other layout acceptable,
+with three-line EN/HE terms explicitly requested as the next isolated revision.
+This accepts the mechanism, not an unobserved exhaustive authenticated UI matrix.
+Exact runtime a077dd848db55a683ed8312ea5d31789e1b730cf, prior records2ae4d950.
+Source880files/5142854bytes; standalone restore matched every source byte,
+1159 restored Python checks and four network-blocked material controls passed.
+Exact source/records tags, bundle, migration/release/CI/PDF evidence, inventories,
+verifier/replay and SHA256 manifest are preserved. No runtime deploy or paid call
+is added by checkpoint records. [Restore guide](LABOR_V3_3_PRODUCTION_CHECKPOINT_2026_11_27.md).
+
+Current production is Labor V3.3. Proposal source/version model, metadata,
+copy, migration and served-build evidence: [release record](LABOR_V3_PDF_2026_11_27.md).
+Do not use the following historical2.21 current-runtime paragraph as the latest
+pointer. Three-line terms refinement, cycle progress and full navigation audit
+are the new owner requests; broader optimizations require measured proposals.
+
+**[verified] Previous full preservation checkpoint: Labor2.21,26November2026.**
 Exact runtimeb7902b42,859 source files/4,917,112 bytes; separate source/records
 tags, self-contained bundle, inventories,2.19-2.21 release/CI/incident evidence,
 verifier/replay and SHA256 manifest. Fresh restoration matched every byte;
@@ -9,7 +26,7 @@ Deferred next: Machinery Save Machinery label/style and Price Lists Extract
 Prices action consistency. No new version, runtime edit, paid call or deployment
 is part of this checkpoint. [Restore guide](LABOR_V2_21_PRODUCTION_CHECKPOINT_2026_11_26.md).
 
-**[verified] Current runtime: Labor2.21,26November2026.**
+**[verified] Previous runtime: Labor2.21,26November2026.**
 Runtimeb7902b424c0797e4fc6ef009b5921f68ec3b4106, work3.17.4.6. Saved Ada
 run_b10730a250624e53a5b46a6fe0528510 completed both objects by11:58UTC;
 45%/pending screenshot was a prepared-progress/cache lifecycle error on return.

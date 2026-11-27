@@ -1,5 +1,16 @@
 # Done Log
 
+[verified] Full Labor V3.3 checkpoint requested27November2026, work3.17.4.6.
+Owner reports proposal/version mechanism working and other layout acceptable,
+with three-line EN/HE terms explicitly requested as the next isolated revision.
+This accepts the mechanism, not an unobserved exhaustive authenticated UI matrix.
+Exact runtime a077dd848db55a683ed8312ea5d31789e1b730cf, prior records2ae4d950.
+Source880files/5142854bytes; standalone restore matched every source byte,
+1159 restored Python checks and four network-blocked material controls passed.
+Exact source/records tags, bundle, migration/release/CI/PDF evidence, inventories,
+verifier/replay and SHA256 manifest are preserved. No runtime deploy or paid call
+is added by checkpoint records. [Restore guide](LABOR_V3_3_PRODUCTION_CHECKPOINT_2026_11_27.md).
+
 [verified] Full Labor2.21 preservation requested26November2026, work3.17.4.6,
 exact runtimeb7902b42. Owner acceptance is explicitly partial. Runtime source
 archive859 files/4,917,112 bytes, unchanged helper/5MiB cap/LZMA preservation.

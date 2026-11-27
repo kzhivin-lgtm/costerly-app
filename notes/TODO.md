@@ -470,8 +470,9 @@ revoke it automatically after this task. Never commit its value or transfer
 it to production; routine publication continues to use normal Git access.
 [Procedure and scope](../tests/ui/README.md).
 
-DEFERRED, P3, explicit owner decision, 2026-11-18. Do not prioritize Admin
-navigation performance. Resume only on a new explicit owner request.
+READ-ONLY DIAGNOSTIC REACTIVATED27November2026 by owner all-page timing request.
+Admin optimization implementation remains deferred until measured proposal/approval.
+Previous deferral,2026-11-18: do not prioritize Admin without a new owner request.
 Historical baseline from 2026-11-17: live openings measured 8.345 s and
 6.395 s; read-only dashboard RPC probes took 6.847 s and 5.174 s, while
 staff access reads took 0.226 s and 0.309 s. If resumed, investigate
@@ -744,7 +745,7 @@ No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation was outside the earlier local artifact request.
 Owner activated production-generator planning below on27November2026.
 
-PUBLISHED LABOR V3.3, OWNER PRODUCTION ACCEPTANCE PENDING, V3.1 OWNER-ACCEPTED,
+OWNER-ACCEPTED MECHANISM, FULL LABOR V3.3 CHECKPOINT27NOVEMBER2026, V3.1 OWNER-ACCEPTED,
 P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
 Outcome: existing Set Prices -> Generate Proposal produces a customer proposal
 matching the approved Ada A4 visual style, with every variable element supplied
@@ -945,7 +946,7 @@ in outputs/labor-v3.2-20261127/. Old production PDF/snapshot/references untouche
 Owner new-PDF/50% acceptance pending, not a newly accepted checkpoint. Native
 owner Chrome was unavailable; actual Streamlit/wrapper CSS viewports passed.
 Records-only branch follow-up does not trigger a second main/runtime deployment.
-PUBLISHED LABOR V3.3, P1, OWNER PRODUCTION ACCEPTANCE PENDING,
+OWNER-ACCEPTED MECHANISM, P1, FULL CHECKPOINT REQUESTED27NOVEMBER2026,
 27November2026, same continuation3.17.4.6. Owner explicitly approved new public3.3.
 Outcome: changed inputs revoke Set Prices and both download actions; reconfirm,
 Generate and first-download the next immutable Vn. Technical retry keeps a number;
@@ -978,7 +979,7 @@ Installation as next sentence in same paragraph, no final full stop. UI label
 Estimated production time, existing caption preliminary estimate in working days /
 installation time not included; no new notice. Keep18pt leading/right alignment,
 all earlier geometry/costing/persistence/auth/tenant/old-wrapper protections.
-PUBLISHED ALL PROJECTS INTEGRATION, P1, OWNER PRODUCTION ACCEPTANCE PENDING,
+OWNER-ACCEPTED MECHANISM, ALL PROJECTS INTEGRATION, P1,
 OWNER CLARIFICATION27November2026:
 Use the existing All Projects page for Partner -> Project -> File -> Calculation
 -> immutable proposal history and its objects/PDFs. Retain its header/navigation,
@@ -988,6 +989,30 @@ PDF signing avoid per-version/accordion requests. Full exact browser gate confir
 all generated versions, identical-name distinct sources, old prices/PDF bytes,
 partnerless/legacy/mobile and zero rerun on native history. File Review rename
 then Continue/reconfirm/Generate createsV5 while V1 retains its old object name.
+FULL CHECKPOINT, P1, OWNER REQUEST27November2026, same work3.17.4.6:
+Exact baselinea077dd84, source880files/5142854bytes, independent restore1159 checks
+and four network-blocked material controls passed. Source/records tags, bundle,
+migration/release/CI/PDF evidence and verifier/manifest preserved separately.
+Owner reports mechanism works; no claim of exhaustive manual UI acceptance.
+Guide notes/LABOR_V3_3_PRODUCTION_CHECKPOINT_2026_11_27.md.
+ACTIVE VISUAL REFINEMENT, P1, OWNER REQUEST27November2026, same PDF objective:
+After preserving baseline, three explicit rows in each EN/HE production block:
+Preliminary production time estimate:, approximatelyX working days/payment,
+until items ready for site delivery plus Installation time not included.
+Owner explicitly retained Installation at end of row3. Keep fields dynamic,
+NULL/zero handling,18pt leading/right alignment and no final full stop.
+PENDING AFTER CHECKPOINT, P1, OWNER REQUEST27November2026:
+Cycle progress should advance through more real completed stages, reducing long
+plateaus. First inspect actual stage/callback/durable-write timeline and existing
+versioned controllers. Propose truthful monotonic weighting/stage mapping before
+any changed timer/poll/worker behavior. Preserve terminal/recovery/multi-object
+semantics and avoid unrelated client/server work. Work number unassigned.
+PENDING DIAGNOSTIC, P1, OWNER OBSERVATION27November2026:
+Repeat Download Proposal briefly appeared slow/strange, then fast. Distinguish
+signed-link expiry/redirect/network/storage/browser opening from Generate freeze,
+render/upload/signing and navigation shields. Reuse telemetry/read-only probes;
+no repair until an actual cause or reproducible fault is supported. Preserve
+issued bytes, immediate actionable download and no new version on repeat.
 PENDING NEXT RELEASE, P1, OWNER REQUEST27November2026, not in V3.3:
 Reduce duplicate Partner/Project creation through searchable existing-catalog
 suggestions while typing, including prefix D and equivalent address/name token
@@ -1215,7 +1240,13 @@ Route witness run_186f97810a4b4506a8fe356c0d5abf9b, object-001, quantity3:
 4979.21 unit net/5875.47 incl VAT. Actual transitions8.382s cold Review,
 3.487s warm Review,7.252s APPROVE return; stage breakdown retained privately.
 
-PENDING PROPOSAL, P2, OWNER-REQUESTED TRANSITION PERFORMANCE OPTIONS,23November2026.
+ACTIVE READ-ONLY AUDIT, P1, OWNER REQUEST27November2026, extends23November options.
+After full V3.3 checkpoint, inventory all page/stage/Profile/auth/Admin covered
+transitions. Report production n/median/p95/range and explicit missing evidence,
+separating event/rerun/write/read/render/ready/visible latency. Retain local
+fixture timings as synthetic only. Prioritize measured bottlenecks and propose
+small bounded fixes with protection/rollback, no blanket cache/overlay changes.
+Current formal work number remains unassigned for implementation. Historical witness:
 Actual cold/warm Review8.382/3.487s has server render4.717/0.661s; APPROVE return
 7.252s has render3.776s. Guarded profiling confirms detail reads attempt unchanged
 pricing-policy writes. Proposed next: avoid no-op writes and parallelise independent

@@ -13,6 +13,12 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
+- Latest full preservation: [Labor V3.3 checkpoint](LABOR_V3_3_PRODUCTION_CHECKPOINT_2026_11_27.md), exact
+  runtimea077dd84. Owner accepts the working proposal/version mechanism; the
+  requested three-line terms and performance audit are subsequent work. Restore
+  source880files,1159 checks and four frozen controls passed. Earlier checkpoints
+  remain immutable; source/records/evidence are separate.
+
 - Current Objects V2.7 repair: `ui/workflow_transition.js` coordinates one
   per-transition DOM watcher with run-indexed ready receipts and Profile tab
   matching. Original covers/recovery/host-auth/protocol checks remain protected.
@@ -20,7 +26,7 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
   cases inside the existing Profile Save suite. Layout, inputs, writes, costing
   and all other mechanics are unchanged. [Publication/evidence](OBJECTS_V2_7_RELEASE_2026_11_21.md).
 
-- Latest full runtime/records restoration reference: [Labor2.21 checkpoint](LABOR_V2_21_PRODUCTION_CHECKPOINT_2026_11_26.md),
+- Previous full runtime/records restoration reference: [Labor2.21 checkpoint](LABOR_V2_21_PRODUCTION_CHECKPOINT_2026_11_26.md),
   runtimeb7902b42. Preserve exact code/records, complete release/incident evidence
   and partial owner acceptance separately. Source restore1098 checks and four
   offline controls passed. Previous [Objects V2.6 checkpoint](OBJECTS_V2_6_PRODUCTION_CHECKPOINT_2026_11_21.md)
