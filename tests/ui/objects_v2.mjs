@@ -5,7 +5,7 @@ import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 const config=statePath('scenario.json'),prices=statePath('objects-prices.json');
 let priceDelay=0,priceFailure=false,quantityDelay=0,quantityFailure=false;
-for(const file of ['object-approvals.json','objects-prices.json','object-quantities.json','generated-proposal.json','generation-failure','browser-journal'])rmSync(statePath(file),{force:true});
+for(const file of ['object-approvals.json','objects-prices.json','object-quantities.json','generated-proposal.json','generation-failure','proposal-delay','browser-journal'])rmSync(statePath(file),{force:true});
 writeFileSync(config,JSON.stringify({objects_v2:true,detail_prefetch:true}));
 
 const server=createServer(async(req,res)=>{
@@ -396,7 +396,16 @@ try{
  await set().click();
  await frame.waitForFunction(()=>{const button=document.querySelector('[class*="st-key-objects_generate_proposal_"] button');return button&&!button.disabled;});
  writeFileSync(statePath('generation-failure'),'fail');await generate().click();await core.getByText('Controlled proposal failure',{exact:true}).waitFor();assert(await generate().isEnabled());
- rmSync(statePath('generation-failure'));await generate().click();
+ rmSync(statePath('generation-failure'));
+ writeFileSync(statePath('proposal-delay'),'0.8');
+ const firstDownloadPromise=page.waitForEvent('download',{timeout:10000});
+ await generate().click();
+ await core.getByRole('button',{name:'GENERATING…',exact:true}).waitFor({timeout:500});
+ assert(await core.getByRole('button',{name:'GENERATING…',exact:true}).isDisabled());
+ const firstDownload=await firstDownloadPromise;
+ rmSync(statePath('proposal-delay'));
+ assert.equal(await firstDownload.failure(),null);
+ report.firstProposalDownload={name:firstDownload.suggestedFilename()};
  await frame.waitForFunction(()=>document.querySelector('.objects-workflow-stages [data-stage="3"]')?.dataset.state==='complete');
  // The stage table is emitted before native footer actions. Assert the
  // completed native render, not the outgoing button between Streamlit deltas.
@@ -417,6 +426,12 @@ try{
  });
  assert.equal(futureExcelColor,'rgb(40, 121, 76)','Available Excel appearance is green; no export is enabled');
  assert.equal(await download.getAttribute('href'),proposal.proposal_pdf_url||'data:application/pdf;base64,JVBERi0xLjQ=');
+ const repeatDownloadPromise=page.waitForEvent('download',{timeout:10000});
+ await download.click();
+ const repeatedDownload=await repeatDownloadPromise;
+ assert.equal(await repeatedDownload.failure(),null);
+ assert.equal(readFileSync(await firstDownload.path(),'utf8'),readFileSync(await repeatedDownload.path(),'utf8'));
+ assert.equal((readFileSync(statePath('browser-journal'),'utf8').match(/proposal generated/g)||[]).length,1,'Repeat download does not regenerate');
  assert.deepEqual(errors,[]);report.errors=errors;
  await page.screenshot({path:reportPath('objects-v2-generated.png'),fullPage:true});
  writeFileSync(config,JSON.stringify({objects_v2:true,admin:false,project_name:'A3'}));

@@ -365,7 +365,8 @@ def apply_objects_css() -> None:
             padding-top: calc(var(--objects-row-main-offset) + 4px);
         }
 
-        .st-key-object_detail_navigation_bridges {
+        .st-key-object_detail_navigation_bridges,
+        .st-key-proposal_first_download_host {
             display: none !important;
         }
 

@@ -30,6 +30,17 @@
     // Observe existing input events only to update the new header/footer.
     // Original input handlers, requests, normalization and rows stay untouched.
     doc.addEventListener("input", invalidate, true);
+    function proposalPending(event) {
+        const button = event.target.closest?.('[class*="st-key-objects_generate_proposal_"] button');
+        if (!button || button.disabled) return;
+        // The delegated React click has already accepted the native action.
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        const label = button.querySelector('p');
+        if (label) label.textContent = 'GENERATING…';
+    }
+    doc.addEventListener('click', proposalPending);
+
     const metricsHost = doc.querySelector('.st-key-objects_header_metrics');
     function applyMetricsView() {
         if (!metricsHost) return;
@@ -54,6 +65,7 @@
     applyMetricsView();
     host[key] = () => {
         doc.removeEventListener("input", invalidate, true);
+        doc.removeEventListener('click', proposalPending);
         doc.removeEventListener('click', toggleMetrics);
         metricsObserver?.disconnect();
     };

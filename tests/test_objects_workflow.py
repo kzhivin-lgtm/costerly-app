@@ -189,3 +189,37 @@ def test_production_days_are_commercial_metadata_and_never_a_price():
     assert html.index('Production time') < html.index('>Delivery<')
     assert '>15</div>' in html and 'working days after payment<br>delivery &amp; installation excluded' in html
     assert '₪15' not in html
+
+
+def test_generate_consumes_confirmed_values_without_another_saved_data_read(monkeypatch):
+    from copy import deepcopy
+    class Session(dict):
+        __getattr__ = dict.__getitem__
+        __setattr__ = dict.__setitem__
+    saved = data()
+    session = Session(objects_estimation_data_cache={'e':saved})
+    monkeypatch.setattr(objects.st,'session_state',session)
+    monkeypatch.setattr(objects,'_persisted_objects_state',lambda _:objects.ObjectsScreenState(data=saved))
+    monkeypatch.setattr(objects,'_cache_routed_objects_data',lambda **_:None)
+    objects._set_objects_prices(estimate_id='e')
+    monkeypatch.setattr(objects,'_persisted_objects_state',lambda _:(_ for _ in ()).throw(AssertionError('redundant saved read')))
+    captured=[]
+    monkeypatch.setattr(objects,'final_approval',lambda **kw:captured.append(kw) or {'proposal_pdf_url':'https://example.test/file.pdf'})
+    objects._complete_final_approval(company_id='c',run_id='r',estimate_id='e')
+    assert captured[0]['confirmed_data']['rows']==saved['rows']
+    assert session['proposal_first_download']['url']=='https://example.test/file.pdf'
+    assert not session.final_approval_error
+    saved['rows'][0]['sale_price_unit']=999
+    objects._complete_final_approval(company_id='c',run_id='r',estimate_id='e')
+    assert len(captured)==1
+    assert 'Set prices again' in session.final_approval_error
+
+
+def test_document_relevant_changes_invalidate_price_confirmation():
+    from copy import deepcopy
+    before=data()
+    for field,value in [('advance_payment_percent',70),('project_name','Changed')]:
+        after=deepcopy(before);after[field]=value
+        assert pricing_signature(after)!=pricing_signature(before)
+    after=deepcopy(before);after['rows'][0]['materials']='Changed fronts'
+    assert pricing_signature(after)!=pricing_signature(before)

@@ -1,0 +1,33 @@
+Fonts preserved from the approved self-contained ADA proposal mockup.
+
+IBMPlexMono-400.ttf
+Copyright 2017 IBM Corp. All rights reserved.
+http://scripts.sil.org/OFL
+
+IBMPlexMono-500.ttf
+Copyright 2017 IBM Corp. All rights reserved.
+http://scripts.sil.org/OFL
+
+IBMPlexMono-600.ttf
+Copyright 2017 IBM Corp. All rights reserved.
+http://scripts.sil.org/OFL
+
+NotoSansHebrew-400.ttf
+Copyright 2024 The Noto Project Authors (https://github.com/notofonts/hebrew)
+https://openfontlicense.org
+
+NotoSansHebrew-500.ttf
+Copyright 2024 The Noto Project Authors (https://github.com/notofonts/hebrew)
+https://openfontlicense.org
+
+SpaceGrotesk-400.ttf
+Copyright 2020 The Space Grotesk Project Authors (https://github.com/floriankarsten/space-grotesk)
+https://scripts.sil.org/OFL
+
+SpaceGrotesk-500.ttf
+Copyright 2020 The Space Grotesk Project Authors (https://github.com/floriankarsten/space-grotesk)
+https://scripts.sil.org/OFL
+
+SpaceGrotesk-600.ttf
+Copyright 2020 The Space Grotesk Project Authors (https://github.com/floriankarsten/space-grotesk)
+https://scripts.sil.org/OFL

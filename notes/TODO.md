@@ -741,7 +741,87 @@ total is 31779 ILS. Poppler PDF render and preview visually reviewed, including
 RTL Hebrew and footer attribution. A4 size, both PNG dimensions, Profile field
 presence, service-row columns, purple total, production terms and no cents verified.
 No runtime/PDF-generator implementation, database changes or Canva edits.
-Future client-PDF generation remains a proposal, outside this artifact request.
+Future client-PDF generation was outside the earlier local artifact request.
+Owner activated production-generator planning below on27November2026.
+
+ACTIVE IMPLEMENTATION, P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
+Outcome: existing Set Prices -> Generate Proposal produces a customer proposal
+matching the approved Ada A4 visual style, with every variable element supplied
+by saved Company Profile and the particular estimate. Owner approved implementation after the plan and clarified the first-download behavior.
+Implementation is underway; publication and owner production acceptance remain pending.
+Railway commit/release/deploy title must be human readable, proposed exact title:
+Labor V3: генерация PDF коммерческого предложения.
+Release label is owner-approved; no new hierarchical work number assigned.
+Existing continuation reference3.17.4.6 agrees between local records and the
+GitHub main Project Map; this does not allocate a new task/block number.
+
+Inspection verified existing screens/objects.py price-basis check and callback,
+use_cases/final_approval.py, use_cases/proposal_pdf.py, immutable project_versions
+snapshot and private project-proposals bucket. Existing builder needs the new
+layout, company requisites, date, material descriptions and saved object crops.
+Proposed field map: companies logo_url (header company text only inside logo), public contacts/address,
+legal_name_hebrew/legal_name, registration/VAT numbers and bank/branch/account/
+IBAN/SWIFT; rfq_runs project_name/client/design_partner; approved version date;
+saved estimate rows name/materials/quantity/sale prices; project-level delivery/
+installation; frozen summary/VAT; production_time_working_days; overhead_settings
+advance_payment_percent. None of the sample names, amounts, logos, dates,15 days
+or70% is a runtime default. Costerly attribution and labels are template assets.
+
+Proposed plan: agree field/display contract; extend the existing JSON snapshot
+with the whitelisted document/profile metadata and stable assets; render a
+native-text/vector A4 PDF with embedded app/Hebrew fonts and white paper, retaining
+only logo/small preview images; connect to existing publish/download path; verify
+financial/content/layout/failure/idempotency and all protected UI contracts;
+publish through exact release gate and verify matching Core/wrapper then owner
+production acceptance. Existing PDFs/versions remain untouched. No new AI/OCR,
+pricing calculation, workflow redesign, background worker or polling is proposed.
+On retry, use the stored version snapshot and existing finished PDF, not new live
+Profile values or a newly loaded snapshot. Current publish path reads Profile/run
+live and upserts the version PDF, so it does not yet meet this full document-freeze
+criterion. Logo replacement deletes the previous company-logo file: freeze its
+bytes/stable copy for the proposal. Detection preview artifacts are content-hashed;
+freeze their existing refs instead of making new recognition/crops. Detailed asset
+persistence is an implementation choice to resolve within the approved existing
+storage mechanisms, not a new bucket/service assumed approved by this plan.
+Whole-ILS display reuses Project formatting while leaving exact saved prices and
+VAT calculations intact; verify fractional/rounding cases explicitly.
+
+OWNER-APPROVED DISPLAY/FLOW DECISIONS,27November2026, latest clarification:
+In the document header place the uploaded company logo as a complete asset.
+Do not separately typeset Company Name or a subtitle; those header texts appear
+only when already contained in the uploaded logo. This supersedes the earlier
+proposal to typeset Company Name alongside it; legal footer requisites still
+come from the saved Profile. No new subtitle field. Show Client and Partner only
+when filled; omit social links.
+Attribution order is literal estimated with followed by the complete existing
+Costerly brand lockup (icon + costerly.ai wordmark together). Never insert the
+estimated with words between the brand icon and its wordmark; do not rename the
+brand based on the dictated Costly spelling.
+Owner final clarification: Generate Proposal creates, saves and initiates the FIRST
+download in that same accepted action. After durable success, Download Proposal
+becomes active and its PDF icon turns red for subsequent downloads, with no regeneration.
+Owner places business-data validation at Set Prices: changes to the relevant
+commercial basis invalidate confirmation and disable Generate Proposal. Avoid
+repeating full estimate loads, review checks or calculations in Generate; consume
+the confirmed basis. Server ownership and atomic protection against publishing a
+stale/invalid confirmed basis remain data-integrity requirements, without a second
+full validation pass. The accepted basis/invalidations need implementation review
+before choosing any persistence change; do not claim existing session-only UI
+invalidation alone proves cross-session or concurrent safety.
+Owner then explicitly authorized building Labor V3. Current implementation status
+and verification are recorded in LABOR_V3_PDF_2026_11_27.md; production acceptance is pending.
+Implementation now includes the native PDF renderer, immutable document metadata/
+logo, shared WebP previews, confirmed-basis reuse, first automatic download, red
+repeat-download action and shared diagnostic spans. All1106 Python checks and
+all ten local browser suites passed (466.850s), including final Objects first/
+repeat/pending/error cases. Exact-SHA remote gate, publication/parity and owner
+acceptance are pending.
+Acceptance cases: Ada, many/long rows and multiple A4 pages, absent optional data/
+logo/preview, Hebrew and mixed scripts, manual prices/quantities/zero service values,
+VAT and rounding, advanceNULL/0/70/100, missing production days, retry after storage
+or reference-write failure, repeat click, profile edits after issuance, old PDF
+repeat download and cross-company ownership. This is a plan based on inspection,
+not evidence that the feature or live responsiveness has passed.
 
 COMPLETED LOCAL WHITE-BACKGROUND REVISION, P1, USER REQUEST26November2026.
 Ada proposal V3 has explicit opaque white paper and white HTML/viewer underlay,

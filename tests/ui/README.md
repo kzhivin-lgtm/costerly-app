@@ -419,3 +419,12 @@ Fitting, correct one-share preview, Save/reopen on1280/390 and all14 work rows a
 New unit cases cover physical counts/repeats/duplicate/conflicting evidence,
 unchanged hardware norms/total/once-only payroll and legacy/manual budgets. All
 prior financial, geometry, persistence, recovery/auth and ten suites remain.
+
+Labor V3 extends Objects with an observed first browser download from Generate,
+immediate disabled GENERATING… under a finite test-only server delay, successful
+retry after a generation error, the existing active/red PDF state and an observed
+second download with identical bytes and exactly one generation. All earlier
+geometry, delayed-write, approval, auth and navigation assertions are retained.
+Python verifies frozen document/retry metadata, no redundant Generate estimate
+read, native A4 content, shared WebP images, logo/card separation, white paper,
+whole-ILS output, mixed-script fonts and multi-page/summary-only layout.

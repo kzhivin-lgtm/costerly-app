@@ -196,6 +196,8 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
         "workflow_route_tokens",
         "validated_workflow_access",
         "proposal_pdf_urls_by_estimate",
+        "objects_confirmed_proposal_data",
+        "proposal_first_download",
         "object_detail_material_edit_results",
     ):
         st.session_state.pop(key, None)

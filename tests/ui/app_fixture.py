@@ -356,6 +356,7 @@ if scenario().get('objects_v2'):
   assert kwargs['company_id']==company_id and kwargs['estimate_id']==estimate_id and kwargs['run_id']==run_id
   current=estimation.load_objects_estimation_data(estimate_id)
   if (STATE / 'generation-failure').exists():raise RuntimeError('Controlled proposal failure')
+  if (STATE / 'proposal-delay').exists():sleep(float((STATE / 'proposal-delay').read_text()))
   record('proposal generated')
   (STATE / 'generated-proposal.json').write_text(json.dumps(current,default=str))
   return {'project_id':'project-one','version_id':'version-one','proposal_pdf_url':'data:application/pdf;base64,JVBERi0xLjQ='}

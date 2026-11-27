@@ -104,12 +104,22 @@ def install_actions_runtime(estimate_id: str) -> None:
 
 def pricing_signature(data: dict[str, Any]) -> str:
     """Identify the saved commercial basis, excluding progress/timing/UI state."""
-    fields = ("object_key", "quantity", "self_cost_unit", "sale_price_unit", "sale_price_total", "reviewed", "status")
+    fields = ("object_key", "name", "materials", "quantity", "self_cost_unit", "sale_price_unit", "sale_price_total", "reviewed", "status")
     basis = {
         "production_time_working_days": data.get('production_time_working_days'),
+        "advance_payment_percent": data.get('advance_payment_percent'),
+        "project_name": data.get('project_name'),
         "rows": [{field: row.get(field) for field in fields} for row in data.get("rows") or []],
         "project_costs": [{field: row.get(field) for field in ("object_key", "sale_price_unit", "sale_price_total")}
                           for row in data.get("project_costs") or []],
         "summary": {field: (data.get("summary") or {}).get(field) for field in ("project_price", "vat", "total", "vat_percent")},
     }
     return hashlib.sha256(json.dumps(_json_safe(basis), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def download_generated_proposal(request: dict) -> None:
+    """One download after the accepted generation, with no poll, timer or popup."""
+    source = Path(__file__).with_name('proposal_download.js').read_text()
+    source = source.replace('__DOWNLOAD_REQUEST__', json.dumps(request).replace('<', '\u003c'))
+    with st.container(key='proposal_first_download_host'):
+        components.html('<script>' + source + '</script>', height=0)

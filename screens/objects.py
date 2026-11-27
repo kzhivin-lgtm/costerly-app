@@ -3,13 +3,15 @@ from __future__ import annotations
 from concurrent.futures import Future
 from dataclasses import dataclass
 import json
+from copy import deepcopy
+from uuid import uuid4
 from time import perf_counter
 from typing import Callable
 
 import streamlit as st
 
 from config import get_optional_secret
-from observability.runtime import report_runtime_failure
+from observability.runtime import report_runtime_failure, new_runtime_trace, LABOR_BUILD_VERSION
 from styles.objects import apply_objects_css
 from ui.js_guards import (
     install_objects_price_input_guard,
@@ -695,26 +697,45 @@ def _prefetch_completed_object_details(
 
 
 def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) -> None:
-    """Freeze the estimate and keep its proposal available on Objects."""
+    """Freeze the estimate and initiate its first download after durable success."""
+    started = perf_counter()
+    trace = new_runtime_trace(session_state=st.session_state, requested_trace_id=None,
+                              screen='objects', started_at=started, build_version=LABOR_BUILD_VERSION)
+    trace.event('server.proposal_accepted', metadata={'estimate_id':estimate_id})
     try:
         basis = st.session_state.get("objects_set_price_basis", {}).get(estimate_id)
         if not basis:
             raise ValueError("Select Set prices before generating the proposal")
-        saved = _persisted_objects_state(estimate_id)
-        if saved.data_error or saved.cache_warning or not objects_workflow.prices_are_set(estimate_id, saved.data):
+        confirmed = st.session_state.get('objects_confirmed_proposal_data', {}).get(estimate_id)
+        current = st.session_state.get('objects_estimation_data_cache', {}).get(estimate_id)
+        if not confirmed or not current or pricing_signature(current) != basis:
             raise ValueError("Prices changed. Select Set prices again")
         result = final_approval(
             company_id=company_id,
             run_id=run_id,
             estimate_id=estimate_id,
+            confirmed_data=confirmed,
+            trace=trace,
         )
+        if not result.get('proposal_pdf_url'):
+            raise RuntimeError('The proposal download is unavailable. Try again')
     except Exception as exc:
         st.session_state.final_approval_error = str(exc)
+        st.session_state['objects_price_confirmation_id'] = st.session_state.get('objects_price_confirmation_id',0) + 1
+        report_runtime_failure('proposal.generate',exc,trace=trace,rfq_run_id=run_id,estimate_id=estimate_id)
+        st.session_state['_runtime_completed_action'] = {'action':'generate_proposal','status':'error',
+            'error_type':type(exc).__name__,'duration_ms':(perf_counter()-started)*1000}
     else:
+        st.session_state['_runtime_completed_action'] = {'action':'generate_proposal','status':'ok',
+            'duration_ms':(perf_counter()-started)*1000}
+        trace.event('server.proposal_ready',duration_ms=(perf_counter()-started)*1000)
         st.session_state.final_approval_error = None
         st.session_state.setdefault("proposal_pdf_urls_by_estimate", {})[estimate_id] = result.get(
             "proposal_pdf_url"
         )
+        st.session_state['proposal_first_download'] = {
+            'token': uuid4().hex, 'url': result['proposal_pdf_url'], 'estimate_id': estimate_id,
+        }
 
 
 def _set_objects_prices(*, estimate_id: str) -> None:
@@ -726,11 +747,17 @@ def _set_objects_prices(*, estimate_id: str) -> None:
         if not _final_approval_ready(state.data):
             raise ValueError("Approve every object before setting prices")
         st.session_state.setdefault("objects_set_price_basis", {})[estimate_id] = pricing_signature(state.data)
+        st.session_state.setdefault('objects_confirmed_proposal_data', {})[estimate_id] = {
+            key: deepcopy(state.data.get(key)) for key in (
+                'rows','project_costs','summary','production_time_working_days','advance_payment_percent',
+                'company_id','project_name')
+        }
         st.session_state["objects_price_confirmation_id"] = st.session_state.get("objects_price_confirmation_id", 0) + 1
         _cache_routed_objects_data(estimate_id=estimate_id, data=state.data, data_error=None)
         st.session_state["final_approval_error"] = None
     except Exception as exc:
         st.session_state.setdefault("objects_set_price_basis", {}).pop(estimate_id, None)
+        st.session_state.setdefault('objects_confirmed_proposal_data', {}).pop(estimate_id, None)
         st.session_state["final_approval_error"] = str(exc)
 
 
@@ -1036,6 +1063,9 @@ def render_objects_screen(
         estimate_id=estimate_id,
         data=action_data,
     )
+    first_download = st.session_state.pop('proposal_first_download', None)
+    if first_download and first_download.get('estimate_id') == estimate_id:
+        objects_workflow.download_generated_proposal(first_download)
     if not live:
         _prefetch_completed_object_details(estimate_id=estimate_id, company_id=company_id, data=action_data)
     if st.session_state.get("final_approval_error"):

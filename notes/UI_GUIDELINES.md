@@ -925,3 +925,17 @@ matching existing Profile input presentation. Profile Save cards retain their
 normal bottom padding; invisible guard/fragment bridge slots must add no blank
 footer. Actual errors, acknowledgement-driven Saving/Saved and fixed Privacy
 remain visible and functional.
+
+## Labor V3 PDF, owner approved 27 November 2026
+
+Set Prices confirms saved commercial data once; Generate consumes that confirmed
+basis without a second full estimate read/recalculation. Relevant edits invalidate
+confirmation. Existing ownership/finalization checks remain. The first Generate
+creates, durably saves and initiates a download; the existing Download Proposal
+then stays available with its red PDF icon for repeat downloads without rebuilding.
+Use one immediate disabled GENERATING… button state and restore retry on failure.
+No new notice, polling, background worker or layout shift is authorized.
+The proposal is native-text/vector white A4, matching the approved Ada layout,
+with whole-ILS values, frozen Profile/project data, complete uploaded company logo,
+conditional Client/Partner, no social links and intact Costerly footer lockup.
+Existing old PDFs, navigation, price inputs, calculations and all prior gates remain.
