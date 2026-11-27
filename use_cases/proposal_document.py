@@ -118,20 +118,21 @@ class ProposalDocument:
             result.append(line.rstrip())
         return result or ['']
 
-    def text(self, value, x, top, width, size=10, face='body', color=INK, align='left'):
+    def text(self, value, x, top, width, size=10, face='body', color=INK, align='left', html_layout=False):
         value = clean(value)
         if not value:
             return 0.
         lines = self.wrap(value, width, size, face)
         lineheight = size * 1.42
-        if _hebrew(value):
+        if _hebrew(value) or html_layout:
             first = re.search('[A-Za-z\u0400-\u04ff\u0590-\u05ff]', value)
             direction = 'rtl' if first and _hebrew(first[0]) else 'ltr'
             # Story uses logical sides for RTL; callers specify the physical edge.
             css_align = {'left':'right','right':'left','center':'center'}[align] if direction == 'rtl' else align
+            family = 'proposal,body,sans-serif' if _hebrew(value) else 'body,proposal,sans-serif'
             css = ("@font-face{font-family:proposal;src:url(NotoSansHebrew-400.ttf)}"
                    "@font-face{font-family:body;src:url(SpaceGrotesk-400.ttf)}"
-                   f'body{{margin:0;padding:0;font-family:proposal,body,sans-serif;font-size:{size}pt;'
+                   f'body{{margin:0;padding:0;font-family:{family};font-size:{size}pt;'
                    f'line-height:1.42;color:{color}}}p{{margin:0;text-align:{css_align};direction:{direction}}}')
             height = max(lineheight * len(lines) + 5, lineheight + 5)
             rect = pymupdf.Rect(x, top, x + width, top + height)
@@ -306,7 +307,9 @@ class ProposalDocument:
                    hebrew,'הובלה והתקנה אינן כלולות בתקופת הייצור']
         elif advance is not None:
             terms=[f'Advance payment: {int(advance)}%',f'מקדמה: {int(advance)}%']
-        terms_height=sum(len(self.wrap(t,RIGHT-LEFT,8))*8*1.42+(5 if _hebrew(t) else 0)+4 for t in terms)
+        term_lines=[line for term in terms for line in self.wrap(term,RIGHT-LEFT,8)]
+        line_pitch=18.
+        terms_height=len(term_lines)*line_pitch
         self.ensure(107+terms_height, table_header=False)
         self.y+=11
         self.text('Prices in ILS, excluding VAT',LEFT,self.y,RIGHT-LEFT,8,color=MUTED)
@@ -321,8 +324,11 @@ class ProposalDocument:
             self.text(title,x,self.y,width,11,'medium',align='right')
             self.text(money(summary.get(key)),x,self.y+26,width,amount_size,face,color,align='right')
         self.y+=68
-        for line in terms:
-            self.y+=self.text(line,LEFT,self.y,RIGHT-LEFT,8,color=MUTED,align='right')+4
+        for line in term_lines:
+            # Both faces use the same shaping engine and baseline grid. The
+            # Hebrew HTML-box safety padding must not become extra leading.
+            self.text(line,LEFT,self.y,RIGHT-LEFT,8,color=MUTED,align='right',html_layout=True)
+            self.y+=line_pitch
 
     def finish(self):
         total=len(self.doc)

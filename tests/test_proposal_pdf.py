@@ -284,3 +284,19 @@ def test_profile_normalized_logos_use_one_pdf_height_without_contact_overlap(wid
         assert abs(rect.width/rect.height-size[0]/size[1])<.001
         contacts=page.search_for('contact@fixture.invalid')
         assert contacts and all((rect & box).is_empty for box in contacts)
+
+
+def test_bilingual_terms_share_the_same_line_pitch():
+    snapshot=_snapshot();snapshot['production_time_working_days']=14;snapshot['advance_payment_percent']=70
+    result=build_proposal_pdf(profile={},project_name='ADA',partner_name='',client_name='',snapshot=snapshot)
+    with pymupdf.open(stream=result,filetype='pdf') as pdf:
+        rows=[]
+        for block in pdf[0].get_text('dict')['blocks']:
+            for line in block.get('lines',[]):
+                value=''.join(span['text'] for span in line['spans'])
+                if any(label in value for label in ('Production time:','Delivery and installation are excluded','זמן ייצור','הובלה')):
+                    rows.append((value,line['spans'][0]['origin'][1]))
+    assert len(rows)==4
+    pitches=[rows[i+1][1]-rows[i][1] for i in range(3)]
+    assert max(pitches)-min(pitches)<.2,pitches
+    assert all(abs(pitch-18)<.2 for pitch in pitches),pitches

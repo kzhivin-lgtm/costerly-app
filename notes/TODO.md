@@ -904,6 +904,15 @@ remains open. One-page control from actual immutable owner snapshot,185342 bytes
 English-only heading and EN/EN/HE/HE terms verified visually. Old issued PDF is
 unchanged; template applies to new generation. Validated883-file/5,140,347-byte
 archive, exact-SHA remote gate/publication remain pending.
+Owner then reported uneven English/Hebrew line leading before publication.
+Measured15.36/15.04/20.36pt baseline gaps: the old terms loop included Hebrew's
+HTML-box5pt safety padding, plus native/Story baseline offset. Both languages
+now use the same existing shaping path, original faces and18pt grid; measured
+18/18/18pt. New PDF regression passes, revised52 focused and1124 full Python
+checks pass. Actual saved-snapshot control186939 bytes/one page, no write.
+Candidate21a0b36f full local1123/ten481.849s and remote46005952467 pass are
+superseded, never published. UI source is unchanged; exact revised full remote
+gate is required. Current build labor-v3.2-b20261127132831-pdf-download-spacing-detection-v8.4.29.
 Acceptance cases: Ada, many/long rows and multiple A4 pages, absent optional data/
 logo/preview, Hebrew and mixed scripts, manual prices/quantities/zero service values,
 VAT and rounding, advanceNULL/0/70/100, missing production days, retry after storage
