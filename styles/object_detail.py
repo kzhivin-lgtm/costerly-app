@@ -937,13 +937,12 @@ def apply_object_detail_css() -> None:
             --object-detail-action-gap: 24px;
         }
 
-        /* Use the shared 72px reserve: fixed Privacy footer plus a 26px gap.
-           On short cards, place the summary/actions together at the page end. */
+        /* Keep the shared fixed-Privacy reserve without stretching short cards. */
         .stApp:has(.object-detail-page-end) [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {
-            min-height: calc(100dvh - var(--post-upload-screen-top) - var(--post-upload-bottom));
+            min-height: 0;
         }
         [data-testid="stElementContainer"]:has(.object-detail-page-end) {
-            margin-top: auto;
+            margin-top: 0;
         }
         /* Collapsed cost bands use natural flow; do not fill the viewport before Self Cost. */
         .stApp:not(:has(.object-detail-materials-band[open], [data-cost-band="labor"][open], .object-detail-overhead-band[open]))

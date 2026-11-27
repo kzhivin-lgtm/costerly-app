@@ -440,3 +440,24 @@ operator SQL checker tools/verify_proposal_finalization_sql.py executes the actu
 migration against pg_temp table copies with original constraints, then rolls back;
 it covers nullable metadata, grouping, retry immutability, ownership and approval.
 Its database receipt is distinct from stubbed UI tests and owner browser acceptance.
+
+Labor V3.2 extends Objects with real attachment downloads: first Generate,
+completed green Download action and existing red secondary PDF must produce
+identical bytes with one generation. Completed Set Prices returns to its normal
+color; pending/failure/retry and every earlier financial/navigation check stay.
+The existing fixture now serves a local HTTP PDF attachment, matching signed
+storage behavior, rather than using a data URL for the native link action.
+
+Calculation reproduces the owner File Review50% screenshot at2635x1398 CSS px,
+plus3840x2100 and5120x2800. Before:248.40625px forced gap. After:28px at all three.
+Closing-gap checks require natural content spacing, fixed-Privacy clearance and
+exact26±2px at the scroll end; short pages retain at least24px without forcing
+unused viewport above actions. File Review additionally requires28±2px from its
+last card. All previous x/width/height/input/navigation checks remain unchanged.
+Native Chrome app control was unavailable, so these are real Streamlit/wrapper
+CSS viewport witnesses, not a claim of changing the owner's Chrome zoom setting.
+
+PDF checks require English heading only, EN/EN/HE/HE terms order/right edges,
+no duplicate Payment terms, and normalized Profile logo shapes at one71pt height
+with original aspect/left/top anchors and no contact overlap. Profile upload
+validation/storage implementation itself is unchanged.

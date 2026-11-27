@@ -440,15 +440,15 @@ def apply_base_css() -> None:
             background: var(--color-bg) !important;
         }
 
-        /* Terminal actions share Object Detail's fixed-Privacy reserve.
-           Zero-height bridge frames stay mounted but occupy no layout rows. */
+        /* Closing actions follow content at every zoom. Keep the fixed-Privacy
+           reserve; unused viewport space belongs below the complete content. */
         .stApp:is(:has(.st-key-objects_actions), :has(.st-key-file_review_actions))
         [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {
-            min-height: calc(100dvh - var(--post-upload-screen-top) - var(--post-upload-bottom));
+            min-height: 0;
         }
         [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] >
         [data-testid="stLayoutWrapper"]:is(:has(.st-key-objects_actions), :has(.st-key-file_review_actions)) {
-            margin-top: auto;
+            margin-top: 0;
         }
         [data-testid="stLayoutWrapper"]:is(:has(.st-key-objects_actions), :has(.st-key-file_review_actions)) ~
         [data-testid="stElementContainer"]:is(:has(iframe), :has([data-costerly-screen])) {
@@ -461,20 +461,6 @@ def apply_base_css() -> None:
             margin: 0;
             padding: 0;
             background: var(--color-bg);
-        }
-
-        /* Avoid viewport-stretched gaps at 25/33 percent browser zoom.
-           Ordinary viewport geometry and fixed Privacy stay unchanged. */
-        @media (min-height: 1500px) {
-            .stApp:is(:has(.st-key-objects_actions), :has(.object-detail-page-end))
-            [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {
-                min-height: 0 !important;
-            }
-            [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] >
-            [data-testid="stLayoutWrapper"]:has(.st-key-objects_actions),
-            .stApp:has(.object-detail-page-end) [data-testid="stElementContainer"]:has(.object-detail-page-end) {
-                margin-top: 0 !important;
-            }
         }
 
         .post-upload-stage {

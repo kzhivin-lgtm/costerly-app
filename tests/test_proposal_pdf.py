@@ -61,9 +61,9 @@ def test_proposal_production_time_uses_saved_working_days_without_changing_total
                                partner_name='',client_name='',snapshot=snapshot)
     with pymupdf.open(stream=payload,filetype='pdf') as document:
         text='\n'.join(page.get_text() for page in document)
-    assert 'Production time: 15 working days after payment' in text
-    assert 'delivery and installation excluded' in text.lower()
-    assert 'Production time: 15 working days after payment.' not in text
+    assert 'Production time: 15 working days' in text
+    assert 'Delivery and installation are excluded from the production time' in text
+    assert 'Production lead time' not in text and 'Payment terms:' not in text
     assert snapshot['summary']['total']==3200.16
 
 
@@ -143,8 +143,9 @@ def test_optional_payment_terms_preserve_financial_totals(advance):
     payload=build_proposal_pdf(profile={'company_name':'Workshop'},project_name='ADA',partner_name='',client_name='',snapshot=snapshot)
     with pymupdf.open(stream=payload,filetype='pdf') as pdf:
         text='\n'.join(page.get_text() for page in pdf)
-    if advance is None:assert 'Payment terms:' not in text
-    else:assert f'Payment terms: {advance}% advance payment, {100-advance}% on completion' in text
+    assert 'Payment terms:' not in text
+    if advance is None:assert 'Advance payment:' not in text
+    else:assert f'Advance payment: {advance}%' in text
     assert snapshot['summary']['total']==3200.16
 
 @pytest.mark.parametrize('advance',[-1,101,70.5,True])
@@ -245,15 +246,19 @@ def test_owner_footer_revision_aligns_both_languages_and_omits_legal_name():
                for line in block['lines'] for span in line['spans']]
         text=page.get_text()
         assert 'Do not print legal name' not in text and 'לא להציג' not in text
-        terms=[span for span in spans if span['text'].startswith(('Production lead time:','Payment terms:','Delivery and installation excluded'))]
-        assert len(terms)==3
+        terms=[span for span in spans if span['text'].startswith(('Production time:','Delivery and installation are excluded'))]
+        assert len(terms)==2
         assert all(abs(span['bbox'][2]-544)<1.5 for span in terms)
         hebrew=[span for span in spans if 'ייצור' in span['text']]
         assert hebrew
         same_line=[span for span in spans if abs(span['bbox'][1]-hebrew[0]['bbox'][1])<1]
         assert abs(max(span['bbox'][2] for span in same_line)-544)<2
         heading=[span for span in spans if 'הצעת' in span['text']]
-        assert heading and abs(max(span['bbox'][2] for span in heading)-544)<2
+        assert not heading
+        english_bottom=max(span['bbox'][3] for span in terms)
+        assert min(span['bbox'][1] for span in hebrew)>english_bottom
+        assert 'הובלה' in text and 'התקנה' in text
+        assert 'Production lead time' not in text and 'Payment terms:' not in text
         lines=[item[1].y for path in page.get_drawings() for item in path['items']
                if item[0]=='l' and abs(item[1].x-51)<.01 and abs(item[2].x-544)<.01]
         footer=max(lines)
@@ -262,3 +267,20 @@ def test_owner_footer_revision_aligns_both_languages_and_omits_legal_name():
         credit=next(span for span in spans if span['text']=='estimated with')
         assert abs(credit['bbox'][2]-544)<1.5
         assert credit['bbox'][3]<footer+18
+
+
+@pytest.mark.parametrize('width,height',[(600,600),(1800,600),(3000,600),(600,1500)])
+def test_profile_normalized_logos_use_one_pdf_height_without_contact_overlap(width,height):
+    from use_cases.company_logo import normalize_company_logo
+    from use_cases.proposal_document import logo_image
+    svg=f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}"><rect width="{width}" height="{height}" fill="#8049c6"/></svg>'.encode()
+    normalized=normalize_company_logo(svg)
+    _,size=logo_image(normalized.png_bytes)
+    result=build_proposal_pdf(profile={'public_email':'contact@fixture.invalid'},project_name='A3',
+        partner_name='',client_name='',snapshot=_snapshot(),logo_bytes=normalized.png_bytes)
+    with pymupdf.open(stream=result,filetype='pdf') as pdf:
+        page=pdf[0];rect=page.get_image_rects(page.get_images()[0][0])[0]
+        assert abs(rect.height-71)<.01 and abs(rect.y0-48)<.01 and abs(rect.x0-51)<.01
+        assert abs(rect.width/rect.height-size[0]/size[1])<.001
+        contacts=page.search_for('contact@fixture.invalid')
+        assert contacts and all((rect & box).is_empty for box in contacts)

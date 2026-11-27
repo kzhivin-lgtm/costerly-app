@@ -176,19 +176,27 @@ class ProposalDocument:
     def new_page(self, *, table_header=True):
         self.page = self.doc.new_page(width=595, height=842)
         self.page.draw_rect(self.page.rect, color=None, fill=(1,1,1))
+        logo_right = LEFT
+        logo_bottom = 48.
         if self.logo:
             payload, (width,height) = logo_image(self.logo)
-            scale = min(161/width,71/height)
-            self.page.insert_image(pymupdf.Rect(LEFT,48,LEFT+width*scale,48+height*scale), stream=payload, keep_proportion=True)
+            # Profile already normalizes the artwork. Keep one visible height;
+            # only exceptionally wide artwork is bounded by the A4 paper width.
+            scale = min(71/height,(RIGHT-LEFT)/width)
+            logo_right,logo_bottom = LEFT+width*scale,48+height*scale
+            self.page.insert_image(pymupdf.Rect(LEFT,48,logo_right,logo_bottom), stream=payload, keep_proportion=True)
         p = self.profile
         street = ' '.join(clean(p.get(k)) for k in ['address_street','address_house_number'] if clean(p.get(k)))
         city = ', '.join(clean(p.get(k)) for k in ['address_city','address_postal_code'] if clean(p.get(k)))
         contacts = [street,city,clean(p.get('address_country')),clean(p.get('public_phone')),
                     clean(p.get('public_email')),clean(p.get('website_url'))]
+        contact_x = max(310.,logo_right+24)
         y = 51.
+        if RIGHT-contact_x < 120:
+            contact_x,y = 310.,logo_bottom+14
         for line in filter(None,contacts):
-            y += self.text(line,310,y,RIGHT-310,8.5,color=MUTED,align='right')
-        self.header_y = max(148., y + 20)
+            y += self.text(line,contact_x,y,RIGHT-contact_x,8.5,color=MUTED,align='right')
+        self.header_y = max(148., y + 20,logo_bottom+20)
         self.rule(self.header_y)
         self.y = self.header_y + 24
         self._footer()
@@ -220,7 +228,6 @@ class ProposalDocument:
 
     def heading(self, partner, client, date):
         self.text('Commercial Proposal:' if self.project else 'Commercial Proposal',LEFT,self.y,360,21.5,'mono')
-        self.text('הצעת מחיר',420,self.y,RIGHT-420,18,align='right')
         self.y += 31
         if self.project:
             self.y += self.text(self.project,LEFT,self.y,RIGHT-LEFT,21.5,'mono')
@@ -287,15 +294,19 @@ class ProposalDocument:
         days=self.snapshot.get('production_time_working_days')
         terms=[]
         if days is not None:
+            english=f'Production time: {int(days)} working days'
+            hebrew=f'זמן ייצור: {int(days)} ימי עבודה'
             if advance is not None and advance>0:
-                terms.append(f'Production lead time: {int(days)} working days from receipt of a {int(advance)}% advance payment.')
-                terms.append(f'זמן ייצור: {int(days)} ימי עבודה ממועד קבלת מקדמה בשיעור {int(advance)}%.')
-            else:
-                terms.append(f'Production time: {int(days)} working days after payment')
-            terms.append('Delivery and installation excluded')
-        if advance is not None:
-            terms.append(f'Payment terms: {int(advance)}% advance payment, {100-int(advance)}% on completion')
-        terms_height=sum(max(15,len(self.wrap(t,RIGHT-LEFT,8))*12+4) for t in terms)
+                english+=f' from receipt of a {int(advance)}% advance payment'
+                hebrew+=f' ממועד קבלת מקדמה בשיעור {int(advance)}%'
+            elif advance == 0:
+                english+=' with no advance payment required'
+                hebrew+=', ללא מקדמה'
+            terms=[english,'Delivery and installation are excluded from the production time',
+                   hebrew,'הובלה והתקנה אינן כלולות בתקופת הייצור']
+        elif advance is not None:
+            terms=[f'Advance payment: {int(advance)}%',f'מקדמה: {int(advance)}%']
+        terms_height=sum(len(self.wrap(t,RIGHT-LEFT,8))*8*1.42+(5 if _hebrew(t) else 0)+4 for t in terms)
         self.ensure(107+terms_height, table_header=False)
         self.y+=11
         self.text('Prices in ILS, excluding VAT',LEFT,self.y,RIGHT-LEFT,8,color=MUTED)

@@ -441,11 +441,24 @@ def apply_objects_css() -> None:
         }
 
         .stApp:has(.objects-estimation-header)
-        .st-key-final_approval_approved button:disabled {
-            opacity: 1 !important;
+        .st-key-final_approval_approved a {
+            min-height: var(--button-height-lg) !important;
+            width: 100%;
+            box-sizing: border-box;
+            border-radius: var(--button-radius) !important;
+            font-family: var(--font-mono) !important;
+            font-size: var(--button-font-size) !important;
+            font-weight: var(--button-font-weight) !important;
+            text-transform: uppercase !important;
+            text-decoration: none !important;
             background: rgba(52, 168, 83, 0.12) !important;
             border-color: rgba(52, 168, 83, 0.32) !important;
             color: #2F8D48 !important;
+        }
+        .stApp:has(.objects-estimation-header) .st-key-final_approval_approved a:hover {
+            background: rgba(52, 168, 83, 0.18) !important;
+            border-color: rgba(52, 168, 83, 0.48) !important;
+            color: #26763B !important;
         }
 
         .objects-pricing-summary {
@@ -646,12 +659,12 @@ def apply_objects_css() -> None:
             border-bottom: 2px solid currentColor;
             transform: translateY(-2px) rotate(45deg);
         }
-        .stApp:has(.objects-workflow-stages [data-stage="2"][data-state="complete"]) .st-key-objects_set_prices button {
+        .stApp:has(.objects-workflow-stages [data-stage="2"][data-state="complete"]):not(:has(.objects-workflow-stages [data-stage="3"][data-state="complete"])) .st-key-objects_set_prices button {
             background: rgba(52, 168, 83, 0.10) !important;
             border-color: rgba(52, 168, 83, 0.34) !important;
             color: #2F8D48 !important;
         }
-        .stApp:has(.objects-workflow-stages [data-stage="2"][data-state="complete"]) .st-key-objects_set_prices button:hover {
+        .stApp:has(.objects-workflow-stages [data-stage="2"][data-state="complete"]):not(:has(.objects-workflow-stages [data-stage="3"][data-state="complete"])) .st-key-objects_set_prices button:hover {
             background: rgba(52, 168, 83, 0.16) !important;
             border-color: rgba(52, 168, 83, 0.48) !important;
             color: #26763B !important;

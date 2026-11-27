@@ -359,9 +359,9 @@ if scenario().get('objects_v2'):
   if (STATE / 'proposal-delay').exists():sleep(float((STATE / 'proposal-delay').read_text()))
   record('proposal generated')
   (STATE / 'generated-proposal.json').write_text(json.dumps(current,default=str))
-  return {'project_id':'project-one','version_id':'version-one','proposal_pdf_url':'data:application/pdf;base64,JVBERi0xLjQ='}
+  return {'project_id':'project-one','version_id':'version-one','proposal_pdf_url':'http://127.0.0.1:8798/generated-proposal.pdf'}
  objects.final_approval=generate_proposal
- objects.load_estimate_proposal_url=lambda **_:('data:application/pdf;base64,JVBERi0xLjQ=' if (STATE / 'generated-proposal.json').exists() else None)
+ objects.load_estimate_proposal_url=lambda **_:('http://127.0.0.1:8798/generated-proposal.pdf' if (STATE / 'generated-proposal.json').exists() else None)
 def guarded_load(screen, data):
  settings=scenario()
  record('load '+screen)

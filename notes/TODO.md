@@ -744,7 +744,7 @@ No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation was outside the earlier local artifact request.
 Owner activated production-generator planning below on27November2026.
 
-DEPLOYED REPAIR, OWNER RETEST PENDING, P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
+ACTIVE LABOR V3.2, V3.1 OWNER-ACCEPTED, P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
 Outcome: existing Set Prices -> Generate Proposal produces a customer proposal
 matching the approved Ada A4 visual style, with every variable element supplied
 by saved Company Profile and the particular estimate. Owner approved implementation after the plan and clarified the first-download behavior.
@@ -869,9 +869,41 @@ Actual main ruleset27499066 active/strict/trusted gate/no bypass. Railway
 8110139191 success, Core health200; real browser Core/executed wrapper/meta and
 uncached version.json all equal the V3.1 build above, zero exceptions. CI artifact
 15197519625 SHA2561f9bb2c7c792d98a10cd4676be9093b8feb92575fd3d065a2611db60cf064f57
-verified. Durable receipts/control in outputs/labor-v3.1-20261127/. Owner must
-retest Generate/first download on the same saved estimate. No accepted new
-checkpoint exists; all earlier checkpoints remain unchanged.
+verified. Durable receipts/control in outputs/labor-v3.1-20261127/. Owner subsequently confirmed all worked on27November2026. This accepts the V3.1
+Generate/download repair; earlier checkpoints remain unchanged. No new archive/tag
+checkpoint was requested.
+
+ACTIVE V3.2, owner request27November2026, continuation3.17.4.6:
+P1 PDF: one terms block, English production time/payment-start and exclusion of
+delivery/installation from that time, then both matching Hebrew translations.
+Remove lead, duplicate Payment terms/remainder text and fixed Hebrew proposal
+heading. Retain saved values/nullable settings/zero distinction, prices and old
+issued PDFs. Normalize PDF logo height while reusing Profile upload normalization,
+retaining full artwork/aspect/left anchor and adapting adjacent contacts to width.
+P1 flow: after durable Generate success the same action becomes an enabled green
+Download Proposal for the saved file, Set Prices loses confirmed green. First
+automatic download, red secondary PDF, pending/error/retry, no regeneration and
+ownership/snapshot/price invalidation remain. No new UI control/notice is added.
+P1 spacing: owner screenshot14.57.28 shows File Review at50% with forced empty
+space before closing actions. Existing viewport-fill/min-height:auto causes it;
+old1500px exception omits File Review and misses the50% viewport. Closing actions
+must follow content at every scale, fixed Privacy retained; free viewport may
+remain below short content. This supersedes only short-page bottom pinning.
+Protect all x/width/height, scroll-end26px footer clearance, inputs/nav/auth and
+saved data. Verify normal/mobile and zoom-equivalent50/33/25% CSS viewports,
+including the actual screenshot-size File Review, mounted invisible bridges,
+Project/Object and old-wrapper scenarios. No new timer/observer/request/rerun.
+Runtime label Labor V3.2, build labor-v3.2-b20261127131519-pdf-download-spacing-detection-v8.4.29.
+Deploy title Labor V3.2: PDF, Download Proposal и отступы при масштабировании.
+61 focused Python checks and Objects33.583s/Calculation105.629s pass. New
+File Review gap28px at all three zoom-equivalent heights (before248.40625px),
+all three downloads identical/one generation, ordinary Set Prices after success.
+Full local1123 Python checks passed, browser gate running. Native Chrome control
+unavailable; actual Streamlit/wrapper CSS viewports verified, owner50% acceptance
+remains open. One-page control from actual immutable owner snapshot,185342 bytes,
+English-only heading and EN/EN/HE/HE terms verified visually. Old issued PDF is
+unchanged; template applies to new generation. Validated883-file/5,140,347-byte
+archive, exact-SHA remote gate/publication remain pending.
 Acceptance cases: Ada, many/long rows and multiple A4 pages, absent optional data/
 logo/preview, Hebrew and mixed scripts, manual prices/quantities/zero service values,
 VAT and rounding, advanceNULL/0/70/100, missing production days, retry after storage

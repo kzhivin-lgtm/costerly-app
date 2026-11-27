@@ -950,3 +950,29 @@ placeholder. Preserve IDs, immutable versions, company ownership and object
 approval. Long Project text must clear the menu and technical dashboard with
 admin metrics visible or collapsed, without changing the accepted short-title
 axes or mobile flow. Reuse the existing alignment callback, no new observers.
+
+## Labor V3.2, owner approved27November2026
+
+Owner accepted the V3.1 Generate/download result, then requested V3.2:
+- Proposal: English-only Commercial Proposal heading. Production time is one
+  right-aligned block: English production-days/advance-start line and exclusion
+  of delivery/installation from that period, then both Hebrew translations.
+  No lead, separate Payment terms or inferred balance-on-completion statement.
+  Saved NULL/zero are distinct, no illustrative days/percentage default.
+- Reuse existing Profile logo normalization. Proposal artwork targets71pt visible
+  height/48pt top/51pt left, width follows aspect. Contacts adapt if needed.
+  Extremely wide art is bounded by A4 width rather than cropped or distorted.
+- After durable Generate success and first download, the same footer action is
+  an enabled green Download Proposal to the saved URL; Set Prices is ordinary.
+  Keep the red secondary download, failed-generation retry, immediate pending,
+  confirmed data/price invalidation, old PDFs and no regeneration on download.
+- Closing actions follow content on File Review, Project and Object at every
+  scale. This explicitly supersedes prior short-page viewport-fill/bottom pinning
+  and the1500px-only exception. Keep fixed Privacy,72px bottom reserve and26px
+  clearance at the scroll end. Short content may leave unused viewport below
+  the completed content/actions, never a stretched gap before actions. Retain
+  all other frozen axes/dimensions and mounted zero-layout runtime bridges.
+
+No new callback, timer, observer, polling, request, schema or notification is
+introduced. Native Download uses the existing browser URL operation without a
+Python rerun. No already issued PDF is overwritten by a template update.

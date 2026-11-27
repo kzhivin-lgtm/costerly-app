@@ -244,6 +244,26 @@ async function detailSaveChecks(){
   for(const name of ['front-choice','object-quantities.json','full-cost-totals.json','full-cost-lines.json','labor-hours.json','object-approvals.json'])rmSync(statePath(name),{force:true});
   const {page,core,frame}=await boot({front_panels:true,labor_ready:true},width,933);
   await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
+  if(width===1758){
+   await core.locator('.st-key-file_review_actions').waitFor();
+   await core.locator('.file-review-missing-card').waitFor();
+   report.fileReviewZoom=[];
+   for(const viewport of [{width:2635,height:1398},{width:3840,height:2100},{width:5120,height:2800}]){
+    await page.setViewportSize(viewport);
+    const geometry=await frame.evaluate(async()=>{
+     await new Promise(requestAnimationFrame);
+     const main=document.querySelector('[data-testid="stMain"]');main.scrollTop=main.scrollHeight;await new Promise(requestAnimationFrame);
+     const actions=document.querySelector('.st-key-file_review_actions').getBoundingClientRect();
+     const content=document.querySelector('.file-review-missing-card').getBoundingClientRect();
+     const result={gap:actions.top-content.bottom,actionHeight:actions.height,viewport:innerHeight};
+     main.scrollTop=0;await new Promise(requestAnimationFrame);return result;
+    });
+    assert(Math.abs(geometry.gap-28)<2,'File Review must retain its normal28px gap before actions at every scale: '+JSON.stringify({viewport,...geometry}));
+    report.fileReviewZoom.push({viewport,...geometry});
+    if(viewport.height===1398)await page.screenshot({path:reportPath('file-review-50-percent.png'),fullPage:true});
+   }
+   await page.setViewportSize({width,height:933});
+  }
   report['fileReviewFooter'+width]=await checkClosingGap(frame,'.st-key-file_review_actions');
   await core.getByRole('button',{name:/^continue to project$/i}).click();
   report['objectsFooter'+width]=await checkClosingGap(frame,'.st-key-objects_actions');
@@ -335,8 +355,8 @@ async function detailSaveChecks(){
   await save.scrollIntoViewIfNeeded();
   // New business rows can make this card scroll. Check the same closing edge
   // at the actual page bottom, using the shared existing geometry probe.
-  const expandedGap=(await checkClosingGap(frame,'.object-detail-footer-actions')).gap;
-  assert.ok(Math.abs(expandedGap-26)<2,JSON.stringify({width,expandedGap}));
+  const expandedFooter=await checkClosingGap(frame,'.object-detail-footer-actions');
+  assert.ok(expandedFooter.scrollable?Math.abs(expandedFooter.gap-26)<2:expandedFooter.gap>=24,JSON.stringify({width,...expandedFooter}));
   await picker.selectOption('plywood');
   await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
   assert.equal(await save.evaluate(n=>n.classList.contains('object-detail-material-save--saved')),false);

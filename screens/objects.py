@@ -797,9 +797,8 @@ def _render_objects_actions(
     data: dict[str, object],
 ) -> None:
     """Render bottom navigation actions for Project."""
-    proposal_ready = bool(
-        st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id))
-    )
+    proposal_url = st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id))
+    proposal_ready = bool(proposal_url)
 
     prices_set = objects_workflow.prices_are_set(estimate_id, data)
     ready = bool(run_id and estimate_id and _final_approval_ready(data))
@@ -818,19 +817,17 @@ def _render_objects_actions(
         use_container_width=True, disabled=proposal_ready or not ready,
         on_click=_set_objects_prices, kwargs={"estimate_id": str(estimate_id or "")},
     )
-    col_generate.button(
-        "GENERATE PROPOSAL",
-        key="final_approval_approved" if proposal_ready else f"objects_generate_proposal_{st.session_state.get('objects_price_confirmation_id', 0)}",
-        type="primary",
-        use_container_width=True,
-        disabled=proposal_ready or not ready or not prices_set,
-        on_click=_complete_final_approval,
-        kwargs={
-            "company_id": company_id,
-            "run_id": str(run_id or ""),
-            "estimate_id": str(estimate_id or ""),
-        },
-    )
+    if proposal_ready:
+        col_generate.link_button("Download Proposal",str(proposal_url),key="final_approval_approved",
+                                 type="primary",use_container_width=True)
+    else:
+        col_generate.button(
+            "GENERATE PROPOSAL",
+            key=f"objects_generate_proposal_{st.session_state.get('objects_price_confirmation_id', 0)}",
+            type="primary",use_container_width=True,disabled=not ready or not prices_set,
+            on_click=_complete_final_approval,
+            kwargs={"company_id":company_id,"run_id":str(run_id or ""),"estimate_id":str(estimate_id or "")},
+        )
 
 
 def _install_objects_price_input_runtime(

@@ -9,6 +9,7 @@ for(const file of ['object-approvals.json','objects-prices.json','object-quantit
 writeFileSync(config,JSON.stringify({objects_v2:true,detail_prefetch:true}));
 
 const server=createServer(async(req,res)=>{
+ if(req.url==='/generated-proposal.pdf')return res.writeHead(200,{'Content-Type':'application/pdf','Content-Disposition':'attachment; filename="Proposal.pdf"'}).end('%PDF-1.4\nfixture proposal\n');
  if(req.url.startsWith('/rest/v1/')){
   const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,apikey,content-type,prefer','Access-Control-Allow-Methods':'POST,OPTIONS'};
   if(req.method==='OPTIONS')return res.writeHead(204,headers).end();
@@ -409,11 +410,17 @@ try{
  await frame.waitForFunction(()=>document.querySelector('.objects-workflow-stages [data-stage="3"]')?.dataset.state==='complete');
  // The stage table is emitted before native footer actions. Assert the
  // completed native render, not the outgoing button between Streamlit deltas.
- await core.locator('.st-key-final_approval_approved button').waitFor({state:'attached',timeout:1000});
- assert(await generate().isDisabled());
+ const completedDownload=core.locator('.st-key-final_approval_approved').getByRole('link',{name:'Download Proposal',exact:true});
+ await completedDownload.waitFor({timeout:1000});
+ assert.equal(await generate().count(),0,'Successful Generate becomes Download');
+ await frame.waitForFunction(expected=>getComputedStyle(document.querySelector('.st-key-objects_set_prices button')).backgroundColor===expected,unconfirmedColor,{timeout:1000});
+ assert.equal(await set().evaluate(n=>getComputedStyle(n).backgroundColor),unconfirmedColor,'After success Set Prices returns to its ordinary appearance');
+ await page.mouse.move(0,0);
+ await frame.waitForFunction(()=>getComputedStyle(document.querySelector('.st-key-final_approval_approved a')).color==='rgb(47, 141, 72)',{},{timeout:1000});
+ assert.equal(await completedDownload.evaluate(n=>getComputedStyle(n).color),'rgb(47, 141, 72)','Completed Download uses accepted green');
  const proposal=JSON.parse(readFileSync(statePath('generated-proposal.json')));assert.equal(proposal.rows[0].sale_price_unit,1850);assert.equal(proposal.production_time_working_days,15);
  assert.equal((readFileSync(statePath('browser-journal'),'utf8').match(/proposal generated/g)||[]).length,1);
- const download=core.getByRole('link',{name:'Download Proposal',exact:true});await download.waitFor();
+ const download=core.locator('.objects-pricing-downloads').getByRole('link',{name:'Download Proposal',exact:true});await download.waitFor();
  const availableIcons=await iconState();report.documentIcons.available=availableIcons;
  assert.equal(availableIcons[0].x,availableIcons[1].x);
  assert.equal(availableIcons[0].color,initialIcons[0].color,'Project Summary remains disabled and grey');
@@ -425,7 +432,11 @@ try{
   finally{n.disabled=true;}
  });
  assert.equal(futureExcelColor,'rgb(40, 121, 76)','Available Excel appearance is green; no export is enabled');
- assert.equal(await download.getAttribute('href'),proposal.proposal_pdf_url||'data:application/pdf;base64,JVBERi0xLjQ=');
+ assert.equal(await download.getAttribute('href'),'http://127.0.0.1:8798/generated-proposal.pdf');
+ assert.equal(await completedDownload.getAttribute('href'),await download.getAttribute('href'));
+ const greenDownloadPromise=page.waitForEvent('download',{timeout:10000});await completedDownload.click();
+ const greenDownload=await greenDownloadPromise;assert.equal(await greenDownload.failure(),null);
+ assert.equal(readFileSync(await firstDownload.path(),'utf8'),readFileSync(await greenDownload.path(),'utf8'));
  const repeatDownloadPromise=page.waitForEvent('download',{timeout:10000});
  await download.click();
  const repeatedDownload=await repeatDownloadPromise;

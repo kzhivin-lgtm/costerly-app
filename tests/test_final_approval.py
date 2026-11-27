@@ -111,10 +111,11 @@ def test_objects_v2_generates_via_the_existing_final_approval():
     assert 'st.columns(3, gap="small")' in source
     assert "final_approval(" in source
     assert 'st.session_state.screen = "projects"' not in source
-    assert 'key="final_approval_approved" if proposal_ready else f"objects_generate_proposal_' in source
+    assert 'col_generate.link_button("Download Proposal"' in source
+    assert 'key="final_approval_approved"' in source
 
     css = Path("styles/objects.py").read_text()
-    assert ".st-key-final_approval_approved button:disabled" in css
+    assert ".st-key-final_approval_approved a" in css
     assert "background: rgba(52, 168, 83, 0.12)" in css
 
 
