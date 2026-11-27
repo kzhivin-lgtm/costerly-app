@@ -744,11 +744,11 @@ No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation was outside the earlier local artifact request.
 Owner activated production-generator planning below on27November2026.
 
-PENDING PUBLICATION, P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
+DEPLOYED, OWNER ACCEPTANCE PENDING, P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
 Outcome: existing Set Prices -> Generate Proposal produces a customer proposal
 matching the approved Ada A4 visual style, with every variable element supplied
 by saved Company Profile and the particular estimate. Owner approved implementation after the plan and clarified the first-download behavior.
-Implementation is underway; publication and owner production acceptance remain pending.
+Implementation and publication are verified; owner production acceptance remains pending.
 Railway commit/release/deploy title must be human readable, proposed exact title:
 Labor V3: генерация и скачивание PDF коммерческого предложения.
 Release label is owner-approved; no new hierarchical work number assigned.
@@ -776,9 +776,9 @@ publish through exact release gate and verify matching Core/wrapper then owner
 production acceptance. Existing PDFs/versions remain untouched. No new AI/OCR,
 pricing calculation, workflow redesign, background worker or polling is proposed.
 On retry, use the stored version snapshot and existing finished PDF, not new live
-Profile values or a newly loaded snapshot. Current publish path reads Profile/run
-live and upserts the version PDF, so it does not yet meet this full document-freeze
-criterion. Logo replacement deletes the previous company-logo file: freeze its
+Profile values or a newly loaded snapshot. The legacy publish path read Profile/run
+live and upserted the version PDF at initial inspection, so it did not yet meet
+the full document-freeze criterion; V3 below implements that freeze. Logo replacement deletes the previous company-logo file: freeze its
 bytes/stable copy for the proposal. Detection preview artifacts are content-hashed;
 freeze their existing refs instead of making new recognition/crops. Detailed asset
 persistence is an implementation choice to resolve within the approved existing
@@ -822,11 +822,21 @@ repeat/pending/error cases. Local candidate8ff9203f is committed with a validate
 backup. Owner explicitly approved GitHub source/test transfer to kzhivin-lgtm/costerly-app
 (codex/labor-v3-pdf) and gated main publication on27November2026 after the earlier
 automatic approval rejection. That approval blocker is resolved. Exact-SHA remote
-gate, publication/parity and owner production acceptance remain pending.
+gate/publication/parity were pending at that stage.
+Published runtime07a2f7d82bf6088a6c6fef407df18dba642f17a1 passed exact-SHA
+UI gate45993203681/job140485978440:1107 Python and all ten browser suites in
+418.380s, clean source. Publisher verified trusted gate and real active/strict
+main ruleset27499066 with no bypass. Railway deployment8109119607 succeeded,
+Core health200; rendered Core/executed wrapper/meta/uncached version.json all
+match labor-v3-b20261127113432-proposal-pdf-detection-v8.4.29, zero exceptions.
+CI artifact15194837776 SHA256826723ededc28dc35e6c70c6dff23ea4f684013f1b4c45c1f6f61ee11af8422b
+verified and retained with browser/rollout receipts under outputs/labor-v3-pdf-20261127/
+published-release. Anonymous parity is not owner authenticated acceptance.
 The superseded8ff remote gate45991172599 failed at Profile logo after reload;
 historical cause is unknown, artifacts retained. The unchanged current Profile
 suite passed in76.230s. Owner footer revision passed44 focused Python checks
-and native-coordinate/visual checks; a fresh exact-SHA full gate is required.
+and native-coordinate/visual checks; the exact-SHA full gate above passed.
+Only owner new-proposal acceptance remains open; no new checkpoint declared.
 Acceptance cases: Ada, many/long rows and multiple A4 pages, absent optional data/
 logo/preview, Hebrew and mixed scripts, manual prices/quantities/zero service values,
 VAT and rounding, advanceNULL/0/70/100, missing production days, retry after storage
