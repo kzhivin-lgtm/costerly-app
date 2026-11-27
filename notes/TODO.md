@@ -744,7 +744,7 @@ No runtime/PDF-generator implementation, database changes or Canva edits.
 Future client-PDF generation was outside the earlier local artifact request.
 Owner activated production-generator planning below on27November2026.
 
-ACTIVE REPAIR, P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
+DEPLOYED REPAIR, OWNER RETEST PENDING, P1, USER REQUEST, 27November2026, release name Labor V3 PDF.
 Outcome: existing Set Prices -> Generate Proposal produces a customer proposal
 matching the approved Ada A4 visual style, with every variable element supplied
 by saved Company Profile and the particular estimate. Owner approved implementation after the plan and clarified the first-download behavior.
@@ -862,7 +862,16 @@ or uploaded by replay. Title overlap reproduced with admin dashboard, corrected
 using existing alignment callback, no added observer/timer/request. Original
 Objects checks and new1280/901/390/1440 clearance pass. Labor V3.1 build
 labor-v3.1-b20261127123416-proposal-optional-metadata-detection-v8.4.29 is preparing
-for full local/remote gate and publication. No accepted new checkpoint exists.
+for publication at that point. Now published runtime2faed17f57f2e9f4b921a292f9658f5a9c02cc6c
+passed1119 Python/ten browser suites locally472.370s and exact-SHA GitHub gate
+46000265646/job140509814086 in440.321s, clean remote source. No checks weakened.
+Actual main ruleset27499066 active/strict/trusted gate/no bypass. Railway
+8110139191 success, Core health200; real browser Core/executed wrapper/meta and
+uncached version.json all equal the V3.1 build above, zero exceptions. CI artifact
+15197519625 SHA2561f9bb2c7c792d98a10cd4676be9093b8feb92575fd3d065a2611db60cf064f57
+verified. Durable receipts/control in outputs/labor-v3.1-20261127/. Owner must
+retest Generate/first download on the same saved estimate. No accepted new
+checkpoint exists; all earlier checkpoints remain unchanged.
 Acceptance cases: Ada, many/long rows and multiple A4 pages, absent optional data/
 logo/preview, Hebrew and mixed scripts, manual prices/quantities/zero service values,
 VAT and rounding, advanceNULL/0/70/100, missing production days, retry after storage
