@@ -995,7 +995,7 @@ and four network-blocked material controls passed. Source/records tags, bundle,
 migration/release/CI/PDF evidence and verifier/manifest preserved separately.
 Owner reports mechanism works; no claim of exhaustive manual UI acceptance.
 Guide notes/LABOR_V3_3_PRODUCTION_CHECKPOINT_2026_11_27.md.
-LOCAL VERIFIED VISUAL REFINEMENT, P1, REMOTE GATE/PUBLICATION PENDING,
+PUBLISHED VISUAL REFINEMENT, P1, OWNER NEW-PDF ACCEPTANCE PENDING,
 OWNER REQUEST27November2026, same PDF objective:
 After preserving baseline, three explicit rows in each EN/HE production block:
 Preliminary production time estimate:, approximatelyX working days/payment,
@@ -1005,6 +1005,14 @@ NULL/zero handling,18pt leading/right alignment and no final full stop.
 Offline saved-owner control1A4/188660bytes, three rows per language,18pt pitch
 and63.79pt footer clearance. Full local1163/all10 passed550.498s; one earlier
 10s recovery boot timeout retained, unchanged focused/full retries passed.
+Exact final3136a583 passed GitHub1163/6subtests/all10 in461.836s, normal publisher
+and actual strict/trusted/no-bypass main verified. Railway/target Pages success,
+Core/executed wrapper/meta/version.json parity23:24:33UTC, health200/ok. New
+format applies to next Generate, existing PDF bytes unchanged. First remote
+002695e7 failed and masked its primary error while capturing a second-page
+screenshot; original-preserving diagnostics added, final full gate passed.
+All failed/passed evidence retained, no assertion/deadline weakened. Baseline
+a077dd84 remains accepted/immutable; later visual acceptance pending.
 DIAGNOSED, P1, IMPLEMENTATION PROPOSAL READY, OWNER REQUEST27November2026:
 Cycle progress should advance through more real completed stages, reducing long
 plateaus. First inspect actual stage/callback/durable-write timeline and existing

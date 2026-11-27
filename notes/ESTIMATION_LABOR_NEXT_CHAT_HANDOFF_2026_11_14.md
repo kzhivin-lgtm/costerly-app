@@ -1,3 +1,18 @@
+[verified] Labor V3.3 three-line production terms published28November2026
+Israel, work3.17.4.6, runtime3136a583. Owner retained Installation in row3,
+no final full stop; three EN/three HE rows share18pt pitch/right edge. Existing
+proposal version/source/history/metadata and all accepted UI/costing remain.
+Exact GitHub1163checks/6subtests/ten suites461.836s and local full550.498s pass.
+Artifact digest, trusted gate, real main/ruleset and normal publisher verified.
+Railway/Pages success; served Core/executed wrapper/meta/version/health match.
+Original masked CI failure retained; diagnostics preserve primary errors, no
+assertion or timeout weakened. Baselinea077dd84/25dd8bcf full checkpoint remains
+immutable, owner new-format acceptance pending. No paid run/DB migration/new
+quote or old PDF rewrite. Performance audit reads526 historical transitions,
+with106 path/classes and281 distinct Core/wrapper cohorts. Counter90/stage and
+latency optimizations are proposals, no progress/navigation implementation.
+[Release](LABOR_V3_PDF_2026_11_27.md), [audit](LABOR_V3_3_PERFORMANCE_AUDIT.md).
+
 [verified] Full Labor V3.3 checkpoint requested27November2026, work3.17.4.6.
 Owner reports proposal/version mechanism working and other layout acceptable,
 with three-line EN/HE terms explicitly requested as the next isolated revision.
@@ -9,7 +24,9 @@ Exact source/records tags, bundle, migration/release/CI/PDF evidence, inventorie
 verifier/replay and SHA256 manifest are preserved. No runtime deploy or paid call
 is added by checkpoint records. [Restore guide](LABOR_V3_3_PRODUCTION_CHECKPOINT_2026_11_27.md).
 
-Current production is Labor V3.3. Proposal source/version model, metadata,
+Current production is Labor V3.3 three-line refinement3136a583. The accepted
+pre-refinement checkpoint remainsa077dd84/25dd8bcf, do not move its tags.
+Proposal source/version model, metadata,
 copy, migration and served-build evidence: [release record](LABOR_V3_PDF_2026_11_27.md).
 Do not use the following historical2.21 current-runtime paragraph as the latest
 pointer. Three-line terms refinement, cycle progress and full navigation audit

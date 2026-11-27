@@ -1,5 +1,20 @@
 # Done Log
 
+[verified] Labor V3.3 three-line production terms published28November2026
+Israel, work3.17.4.6, runtime3136a583. Owner retained Installation in row3,
+no final full stop; three EN/three HE rows share18pt pitch/right edge. Existing
+proposal version/source/history/metadata and all accepted UI/costing remain.
+Exact GitHub1163checks/6subtests/ten suites461.836s and local full550.498s pass.
+Artifact digest, trusted gate, real main/ruleset and normal publisher verified.
+Railway/Pages success; served Core/executed wrapper/meta/version/health match.
+Original masked CI failure retained; diagnostics preserve primary errors, no
+assertion or timeout weakened. Baselinea077dd84/25dd8bcf full checkpoint remains
+immutable, owner new-format acceptance pending. No paid run/DB migration/new
+quote or old PDF rewrite. Performance audit reads526 historical transitions,
+with106 path/classes and281 distinct Core/wrapper cohorts. Counter90/stage and
+latency optimizations are proposals, no progress/navigation implementation.
+[Release](LABOR_V3_PDF_2026_11_27.md), [audit](LABOR_V3_3_PERFORMANCE_AUDIT.md).
+
 [verified] Full Labor V3.3 checkpoint requested27November2026, work3.17.4.6.
 Owner reports proposal/version mechanism working and other layout acceptable,
 with three-line EN/HE terms explicitly requested as the next isolated revision.

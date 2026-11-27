@@ -9,8 +9,9 @@ The three-line PDF refinement is a separate verified candidate.
 
 [verified] Existing production app_runtime_events were read directly. The first
 seven-day extraction contained287 completed transitions; November history was then
-included,526 completed transitions in total. Event builds/dates stay separate. Statistics use the most recent build
-per route, not a mixture of old releases. One observation is not a p95 or SLA.
+included,526 completed events in total. Event builds/dates stay separate. Statistics use the most recent Core/wrapper build pair
+per route, not a mixture of old releases.88 historical completed events have
+different Core/wrapper builds, so grouping by wrapper alone would be misleading. One observation is not a p95 or SLA.
 There were no duplicate trace/transition keys in the seven-day287-row sample.
 V3.3 contained no completed ordinary navigation transitions at initial extraction,
 but did retain startup/Project render and successful Generate metrics. Most last
@@ -153,3 +154,119 @@ pending inputs and current saved-estimate reuse. Preserve full release gate,
 exact Core/wrapper builds, existing checkpoints and an isolated rollback.
 
 Authoritative request state remains in notes/TODO.md, not a second backlog here.
+
+## Full route inventory
+
+Blank timing means no attributable sample. Every numeric observation retains its
+Core/wrapper build pair in all-route-inventory.csv. Historical values do not
+claim a fresh measurement of V3.3. Profile pair timings cannot be reconstructed
+from redacted target-tab metadata.
+
+| From | Action | To | Last median seconds | n |
+|---|---|---|---:|---:|
+|Upload|Profile|Profile|0.964|2|
+|Upload|Admin|Admin|8.345|1|
+|Upload|All Projects|All Projects|n/a|0|
+|Upload|Last Estimate|File Review|14.45|1|
+|Upload|Sign out|Login|n/a|0|
+|File Review|Profile|Profile|n/a|0|
+|File Review|Admin|Admin|n/a|0|
+|File Review|All Projects|All Projects|n/a|0|
+|File Review|New Estimate|Upload|0.613|1|
+|File Review|Sign out|Login|n/a|0|
+|Project|Profile|Profile|1.617|1|
+|Project|Admin|Admin|n/a|0|
+|Project|All Projects|All Projects|1.363|1|
+|Project|New Estimate|Upload|0.877|1|
+|Project|Sign out|Login|n/a|0|
+|Object Detail|Profile|Profile|1.507|1|
+|Object Detail|Admin|Admin|n/a|0|
+|Object Detail|All Projects|All Projects|1.07|1|
+|Object Detail|New Estimate|Upload|5.181|1|
+|Object Detail|Sign out|Login|n/a|0|
+|All Projects|Profile|Profile|0.719|1|
+|All Projects|Admin|Admin|n/a|0|
+|All Projects|New Estimate|Upload|n/a|0|
+|All Projects|Last Estimate|File Review|4.602|1|
+|All Projects|Sign out|Login|n/a|0|
+|Profile|Admin|Admin|6.395|1|
+|Profile|All Projects|All Projects|2.411|1|
+|Profile|New Estimate|Upload|3.062|1|
+|Profile|Last Estimate|File Review|11.688|1|
+|Profile|Sign out|Login|n/a|0|
+|Admin|Profile|Profile|0.864|1|
+|Admin|Admin|Admin|n/a|0|
+|Admin|All Projects|All Projects|1.048|1|
+|Admin|New Estimate|Upload|n/a|0|
+|Admin|Last Estimate|File Review|n/a|0|
+|Admin|Sign out|Login|n/a|0|
+|Upload|Upload file|Processing|0.001|2|
+|Processing|Detection finished, open File Review|File Review|8.706|1|
+|File Review|Continue to Project|Project|0.627|2|
+|Project|Review|Object Detail|3.969|1|
+|Object Detail|Back to Project|Project|1.319|1|
+|Object Detail|APPROVE|Project|3.346|1|
+|Project|Back to File Review|File Review|4.729|1|
+|File Review|Back to Upload|Upload|0.618|3|
+|Profile / Overhead Expenses|Select Labor Costs|Profile / Labor Costs|n/a|0|
+|Profile / Overhead Expenses|Select Pricing Cost|Profile / Pricing Cost|n/a|0|
+|Profile / Overhead Expenses|Select Machinery|Profile / Machinery|n/a|0|
+|Profile / Overhead Expenses|Select Price Lists|Profile / Price Lists|n/a|0|
+|Profile / Overhead Expenses|Select Contacts|Profile / Contacts|n/a|0|
+|Profile / Overhead Expenses|Select Bank Details|Profile / Bank Details|n/a|0|
+|Profile / Overhead Expenses|Select Users|Profile / Users|n/a|0|
+|Profile / Labor Costs|Select Overhead Expenses|Profile / Overhead Expenses|n/a|0|
+|Profile / Labor Costs|Select Pricing Cost|Profile / Pricing Cost|n/a|0|
+|Profile / Labor Costs|Select Machinery|Profile / Machinery|n/a|0|
+|Profile / Labor Costs|Select Price Lists|Profile / Price Lists|n/a|0|
+|Profile / Labor Costs|Select Contacts|Profile / Contacts|n/a|0|
+|Profile / Labor Costs|Select Bank Details|Profile / Bank Details|n/a|0|
+|Profile / Labor Costs|Select Users|Profile / Users|n/a|0|
+|Profile / Pricing Cost|Select Overhead Expenses|Profile / Overhead Expenses|n/a|0|
+|Profile / Pricing Cost|Select Labor Costs|Profile / Labor Costs|n/a|0|
+|Profile / Pricing Cost|Select Machinery|Profile / Machinery|n/a|0|
+|Profile / Pricing Cost|Select Price Lists|Profile / Price Lists|n/a|0|
+|Profile / Pricing Cost|Select Contacts|Profile / Contacts|n/a|0|
+|Profile / Pricing Cost|Select Bank Details|Profile / Bank Details|n/a|0|
+|Profile / Pricing Cost|Select Users|Profile / Users|n/a|0|
+|Profile / Machinery|Select Overhead Expenses|Profile / Overhead Expenses|n/a|0|
+|Profile / Machinery|Select Labor Costs|Profile / Labor Costs|n/a|0|
+|Profile / Machinery|Select Pricing Cost|Profile / Pricing Cost|n/a|0|
+|Profile / Machinery|Select Price Lists|Profile / Price Lists|n/a|0|
+|Profile / Machinery|Select Contacts|Profile / Contacts|n/a|0|
+|Profile / Machinery|Select Bank Details|Profile / Bank Details|n/a|0|
+|Profile / Machinery|Select Users|Profile / Users|n/a|0|
+|Profile / Price Lists|Select Overhead Expenses|Profile / Overhead Expenses|n/a|0|
+|Profile / Price Lists|Select Labor Costs|Profile / Labor Costs|n/a|0|
+|Profile / Price Lists|Select Pricing Cost|Profile / Pricing Cost|n/a|0|
+|Profile / Price Lists|Select Machinery|Profile / Machinery|n/a|0|
+|Profile / Price Lists|Select Contacts|Profile / Contacts|n/a|0|
+|Profile / Price Lists|Select Bank Details|Profile / Bank Details|n/a|0|
+|Profile / Price Lists|Select Users|Profile / Users|n/a|0|
+|Profile / Contacts|Select Overhead Expenses|Profile / Overhead Expenses|n/a|0|
+|Profile / Contacts|Select Labor Costs|Profile / Labor Costs|n/a|0|
+|Profile / Contacts|Select Pricing Cost|Profile / Pricing Cost|n/a|0|
+|Profile / Contacts|Select Machinery|Profile / Machinery|n/a|0|
+|Profile / Contacts|Select Price Lists|Profile / Price Lists|n/a|0|
+|Profile / Contacts|Select Bank Details|Profile / Bank Details|n/a|0|
+|Profile / Contacts|Select Users|Profile / Users|n/a|0|
+|Profile / Bank Details|Select Overhead Expenses|Profile / Overhead Expenses|n/a|0|
+|Profile / Bank Details|Select Labor Costs|Profile / Labor Costs|n/a|0|
+|Profile / Bank Details|Select Pricing Cost|Profile / Pricing Cost|n/a|0|
+|Profile / Bank Details|Select Machinery|Profile / Machinery|n/a|0|
+|Profile / Bank Details|Select Price Lists|Profile / Price Lists|n/a|0|
+|Profile / Bank Details|Select Contacts|Profile / Contacts|n/a|0|
+|Profile / Bank Details|Select Users|Profile / Users|n/a|0|
+|Profile / Users|Select Overhead Expenses|Profile / Overhead Expenses|n/a|0|
+|Profile / Users|Select Labor Costs|Profile / Labor Costs|n/a|0|
+|Profile / Users|Select Pricing Cost|Profile / Pricing Cost|n/a|0|
+|Profile / Users|Select Machinery|Profile / Machinery|n/a|0|
+|Profile / Users|Select Price Lists|Profile / Price Lists|n/a|0|
+|Profile / Users|Select Contacts|Profile / Contacts|n/a|0|
+|Profile / Users|Select Bank Details|Profile / Bank Details|n/a|0|
+|Login|Sign in|Upload|4.58|1|
+|outside app|Initial load / deep link|resolved page|n/a|0|
+|current page|Version refresh|restored page|n/a|0|
+|offline page|Network recovery|restored page|n/a|0|
+|current page|Session expired / revoked|Login|n/a|0|
+|current page|Read failure / retry|same target or recovery|n/a|0|
