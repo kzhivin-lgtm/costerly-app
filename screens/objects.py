@@ -294,14 +294,21 @@ def _data_with_progress(data: dict[str, object], estimate_id: str | None) -> dic
 
     progress = get_estimate_progress(estimate_id)
     rows = [dict(row) for row in rows_source]
-    if progress:
-        active_object_id = str(progress.get("object_id") or "")
+    if progress and not (st.session_state.get("estimation_terminal_failures") or {}).get(str(estimate_id)):
+        active_worker = (
+            isinstance(st.session_state.get("estimation_batch_future"), Future)
+            and st.session_state.get("objects_estimation_future_id") == estimate_id
+        )
+        per_object = progress.get("objects") or {str(progress.get("object_id") or ""): progress}
         for row in rows:
-            if str(row.get("object_key") or "") == active_object_id:
-                row["status"] = str(progress.get("status") or "running")
-                row["progress_percent"] = progress.get("percent")
-                row["progress_updated_at"] = progress.get("updated_at")
-                break
+            current = per_object.get(str(row.get("object_key") or ""))
+            if current and (active_worker or progress.get("active")
+                            or objects_pricing.row_status(row) in {"pending", "running"}):
+                # Allocations can be durable before the final plan save. Keep
+                # the active batch below100 until its terminal result is consumed.
+                row["status"] = str(current.get("status") or "running")
+                row["progress_percent"] = current.get("percent")
+                row["progress_updated_at"] = current.get("updated_at")
 
     # A worker can fail after its first optimistic progress update. Preserve
     # that terminal state in this session even if the same infrastructure

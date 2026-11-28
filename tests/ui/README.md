@@ -1,5 +1,13 @@
 # Persistent UI release contract
 
+Labor V3.3 Project progress adds controlled real-worker stage receipts in the
+existing Calculation browser suite:20/45/60/75/85/90/98/99, monotonic visible
+percentages, no premature100 or Review, and allocations already durable before
+final readiness. Existing completion-away, rerenders, cost and all other
+scenarios remain. Python additionally checks actual pipeline phase ordering,
+failed final save, batch/old-generation/duplicate/late receipts, bounded
+interpolation and completed reopen. The progress suite is mandatory in the gate.
+
 Labor V3.3 adds V1 -> price edit -> confirmation -> V2 -> production-time edit
 -> confirmation -> V3 -> reverted edit -> confirmation -> V4. Both download actions
 revoke immediately, unchanged card viewing retains a valid issued file, filenames

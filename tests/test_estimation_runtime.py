@@ -260,6 +260,7 @@ def test_estimation_prices_the_saved_parts_check_and_reports_stage_failures(monk
     events = []
     report = {"stage": "Parts Check", "objects": {"object-1": {"parts": []}}}
     rows = [{"input_id": "input-1", "input_payload": {"object": {"object_id": "object-1"}}}]
+    checkpoints = []
     monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
     monkeypatch.setattr(runtime, "fetch_rfq_run", lambda *_: _Frame([{}]))
     monkeypatch.setattr(runtime, "fetch_rfq_detected_objects", lambda *_: _Frame([{}]))
@@ -267,7 +268,7 @@ def test_estimation_prices_the_saved_parts_check_and_reports_stage_failures(monk
                         lambda *_: {"ocr_event_id": "ocr-1", "ocr_result": {}})
     monkeypatch.setattr(runtime, "persist_estimation_inputs", lambda **_: {"created_inputs": rows})
     monkeypatch.setattr(runtime, "describe_estimation_original", lambda **_: {})
-    monkeypatch.setattr(runtime, "_set_object_progress", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(runtime, "_set_object_progress", lambda *_args, **kw: checkpoints.append(kw["percent"]))
     monkeypatch.setattr(runtime, "_mark_material_plan_failed", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(runtime, "update_rfq_object_estimate_totals", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(runtime, "_set_object_technical_failure",
@@ -276,6 +277,7 @@ def test_estimation_prices_the_saved_parts_check_and_reports_stage_failures(monk
     def check(**kwargs):
         assert kwargs["inputs"] is rows
         events.append("parts_check")
+        kwargs["on_stage"]("geometry_ready")
         kwargs["record_cost"](0.0789)
         return None if stage == "parts_check" else report
 
@@ -284,6 +286,7 @@ def test_estimation_prices_the_saved_parts_check_and_reports_stage_failures(monk
         events.append("material_plan")
         if stage == "material_plan":
             raise ConnectionError("catalog unavailable")
+        kwargs["on_stage"]("plan_published")
         return {"status": "planned"}
 
     monkeypatch.setattr(runtime, "run_parts_check_for_estimate", check)
@@ -295,6 +298,7 @@ def test_estimation_prices_the_saved_parts_check_and_reports_stage_failures(monk
     )
 
     assert result["cost_usd"] == 0.0789
+    assert checkpoints == ([15] if stage == "parts_check" else [15, 90])
     if stage == "planned":
         assert events == ["parts_check", "material_plan"]
         assert result["estimation"]["status"] == "completed"
@@ -302,6 +306,32 @@ def test_estimation_prices_the_saved_parts_check_and_reports_stage_failures(monk
         assert events == (["parts_check", "parts_check_technical_failure"] if stage == "parts_check" else
                           ["parts_check", "material_plan", "material_plan_technical_failure"])
         assert result["estimation"]["failed_objects"] == {"input-1": f"{stage}_technical_failure"}
+
+
+@pytest.mark.parametrize("save_fails", [False, True])
+def test_material_publish_reports_only_completed_writes_and_never_100(monkeypatch, save_fails):
+    import use_cases.estimation as estimation
+    events = []
+    snapshot = {"status": "planned", "input_fingerprint": "exact-input"}
+    monkeypatch.setattr(runtime, "_publish_material_demand_lines", lambda *_, **kw: events.append("lines"))
+    monkeypatch.setattr(runtime, "persist_material_assumption_fallbacks", lambda **kw: events.append("assumptions") or 0)
+    monkeypatch.setattr(estimation, "apply_material_plan_allocations", lambda *_, **kw: events.append("allocations"))
+    def save(*_, **kw):
+        events.append("save")
+        if save_fails:
+            raise ConnectionError("final plan save failed")
+    monkeypatch.setattr(runtime, "upsert_rfq_estimate_material_plan", save)
+    def publish():
+        return runtime._build_and_persist_material_plan(
+            client=object(), estimate_id="e", company_id="c", parts_report={}, input_rows=[],
+            calculation={"material_plan": snapshot, "facts_by_object": {}}, on_stage=events.append)
+    if save_fails:
+        with pytest.raises(ConnectionError):
+            publish()
+    else:
+        assert publish() is snapshot
+    assert events == ["lines", "demand_published", "assumptions", "assumptions_checked",
+                      "allocations", "allocations_published", "save"] + ([] if save_fails else ["plan_published"])
 
 
 def test_handoff_failure_ends_known_objects_instead_of_leaving_progress_running(monkeypatch):

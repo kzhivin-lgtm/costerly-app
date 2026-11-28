@@ -9,6 +9,76 @@ from use_cases import estimation_parts_check_runtime as runtime
 from use_cases.estimation_detection_context_v7 import build_context
 
 
+@pytest.mark.parametrize("fail_understanding", [False, True])
+def test_real_pipeline_emits_only_completed_stage_boundaries(monkeypatch, tmp_path, fail_understanding):
+    """Run pipeline orchestration offline, including its real artifact writes."""
+    from argparse import Namespace
+    import pymupdf
+    from tools import probe_estimation_v8_3 as pipeline, estimation_block_geometry as geometry
+    from tools import estimation_geometry_parts as parts_engine, estimation_v9_source_review as review
+    from use_cases import estimation_v9_inventory as inventory, estimation_object_inventory as objects
+    from use_cases import estimation_lighting_ownership as lighting
+    from use_cases import estimation_display_parts as display, estimation_door_hardware as hardware
+    from use_cases import estimation_cb_geometry_parts as layups
+
+    pdf = tmp_path / "source.pdf"
+    with pymupdf.open() as doc:
+        doc.new_page()
+        doc.save(pdf)
+    out = tmp_path / "output"
+    events = []
+    def extract(pdf, detection, folder, key):
+        folder.mkdir()
+        (folder / "estimation-offline-all-islands-evidence.json").write_text(json.dumps({
+            "source_sha256": {key: hashlib.sha256(pdf.read_bytes()).hexdigest()}}))
+        events.append("geometry")
+    monkeypatch.setattr(pipeline, "extract_islands", extract)
+    def initial(*_, **kw):
+        if fail_understanding:
+            raise ValueError("understanding failed")
+        events.append("understanding")
+        return {}, {}, {}, None, {"islands": [], "understanding": {}}, {}, "hash", {}, {}
+    monkeypatch.setattr(pipeline, "run_initial", initial)
+    monkeypatch.setattr(pipeline, "find_front_and_blocks", lambda *_, **kw: {})
+    monkeypatch.setattr(pipeline, "native_locator", lambda *_: None)
+    monkeypatch.setattr(pipeline, "raster_locator", lambda *_: events.append("locators"))
+    monkeypatch.setattr(pipeline, "write_finish_overlays", lambda *_: None)
+    monkeypatch.setattr(objects, "build_object_inventory", lambda *_, **kw: {"objects": {}})
+    monkeypatch.setattr(objects, "reconcile_object_inventory", lambda *_: {})
+    monkeypatch.setattr(inventory, "bind_native_components", lambda *_: None)
+    monkeypatch.setattr(inventory, "apply_source_findings", lambda *_: None)
+    monkeypatch.setattr(review, "review_original_sheets", lambda *_: [])
+    monkeypatch.setattr(inventory, "check_inventory", lambda *_: events.append("inventory") or {"objects": {}})
+    monkeypatch.setattr(pipeline, "_write_inventory_check", lambda *_: None)
+    monkeypatch.setattr(geometry, "run_block_geometry", lambda *_, **kw: events.append("blocks") or {"objects": {}})
+    monkeypatch.setattr(lighting, "resolve_lighting_ownership", lambda *_: None)
+    monkeypatch.setattr(inventory, "refresh_source_coverage", lambda *_: None)
+    monkeypatch.setattr(inventory, "add_inventory_geometry", lambda *_: None)
+    monkeypatch.setattr(parts_engine, "run_geometry_parts", lambda *_, **kw: {"objects": {}})
+    monkeypatch.setattr(inventory, "include_standalone_parts_scopes", lambda *_: None)
+    monkeypatch.setattr(display, "add_source_casework_parts", lambda *_, **kw: None)
+    monkeypatch.setattr(display, "add_source_display_glass_parts", lambda *_: None)
+    monkeypatch.setattr(hardware, "add_push_latches", lambda *_: None)
+    monkeypatch.setattr(layups, "apply_sheet_layups", lambda *_: None)
+    monkeypatch.setattr(inventory, "check_parts", lambda *_: {"objects": {}, "source_coverage": "reviewed"})
+    args = Namespace(pdf=pdf, key="doc", output=out, geometry=None, resume=False, block_geometry=True,
+                     cb_parts=True, parts_profile=None, saved_dimension_inventory=None, material_context=None,
+                     dimension_reader=None, dimension_unit=None)
+    def run():
+        return pipeline.run_pipeline(args, {"detection_context": {"objects": []}}, version="9", on_stage=events.append)
+    if fail_understanding:
+        with pytest.raises(ValueError, match="understanding failed"):
+            run()
+        assert events == ["geometry", "geometry_ready"]
+        assert not (out / "parts-check.json").exists()
+    else:
+        run()
+        assert events == ["geometry", "geometry_ready", "understanding", "understanding_ready",
+                          "locators", "locators_ready", "inventory", "inventory_ready",
+                          "blocks", "block_geometry_ready", "parts_ready"]
+        assert json.loads((out / "parts-check.json").read_text())["source_coverage"] == "reviewed"
+
+
 def test_published_partition_accepts_singletons_and_keeps_only_bound_dimensions():
     box = dict(top_left_x=10, top_left_y=10, bottom_right_x=70, bottom_right_y=70)
     inputs = [{"input_id": "input", "input_payload": {

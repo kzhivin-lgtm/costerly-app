@@ -23,6 +23,7 @@ UNIT_TESTS = [
     "tests/test_navigation_routes.py", "tests/test_workflow_header.py",
     "tests/test_objects_workflow.py", "tests/test_final_approval.py", "tests/test_proposal_pdf.py", "tests/test_project_history.py", "tests/test_file_review_name_concurrency.py",
     "tests/test_estimation_cycle_metrics.py",
+    "tests/test_objects_pricing_progress.py",
     "tests/test_runtime_observability.py", "tests/test_ui_release_gate.py",
     "tests/test_presentation_previews.py",
     "tests/test_object_cost_hierarchy.py", "tests/test_object_detail_cache.py",

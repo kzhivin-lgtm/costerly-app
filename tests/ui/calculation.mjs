@@ -410,15 +410,19 @@ await frontPanelChecks();
 await coatingChecks();
 await materialRowGeometry();
 try{
- for(const name of ['fresh-active','fresh-done','fresh-shell-ready','labor-hours.json','full-cost-totals.json','full-cost-lines.json','auth-expired'])rmSync(statePath(name),{force:true});
- const fresh=await boot({fresh_calculation:true,objects_refresh_delay:1.2});
+ const progressStages={geometry_ready:20,understanding_ready:45,locators_ready:60,inventory_ready:75,
+  parts_ready:85,parts_check_ready:90,allocations_published:98,plan_published:99};
+ for(const name of ['fresh-active','fresh-done','fresh-shell-ready','fresh-allocated',...Object.keys(progressStages).map(stage=>'fresh-stage-'+stage),'labor-hours.json','full-cost-totals.json','full-cost-lines.json','auth-expired'])rmSync(statePath(name),{force:true});
+ const fresh=await boot({fresh_calculation:true,fresh_progress:true,objects_refresh_delay:1.2});
  await fresh.core.locator('.objects-pricing-table').waitFor();
  await fresh.frame.evaluate(()=>{
   window.calculationFrames=[];window.calculationSample=true;
   const sample=()=>{
    if(!window.calculationSample)return;
    const opacity=selector=>{let node=document.querySelector(selector),value=1;if(!node)return null;for(;node;node=node.parentElement)value*=Number(getComputedStyle(node).opacity);return value;};
-   calculationFrames.push({tables:document.querySelectorAll('.objects-pricing-table').length,
+   const percent=document.querySelector('.objects-progress-percent');
+   calculationFrames.push({percent:percent?Number(percent.textContent.replace('%','')):null,
+    tables:document.querySelectorAll('.objects-pricing-table').length,
     headerOpacity:opacity('.st-key-costerly_screen_header'),
     metricsOpacity:opacity('.objects-cycle-metrics'),
     stagesOpacity:opacity('.objects-workflow-stages'),
@@ -428,11 +432,22 @@ try{
   };sample();
  });
  await fresh.core.getByRole('button',{name:'Fixture rerender',exact:true}).click();
+ report.progressStages=[];
+ for(const [stage,percent] of Object.entries(progressStages)){
+  await fresh.frame.waitForFunction(percent=>Number(document.querySelector('.objects-progress-percent')?.dataset.start)===percent,percent,{timeout:16000});
+  assert.equal(await fresh.core.getByRole('link',{name:/^(Done|Review)$/i}).count(),0,'No actionable result before final plan readiness');
+  assert.ok(!existsSync(statePath('fresh-done')));
+  report.progressStages.push({stage,percent});
+  writeFileSync(statePath('fresh-stage-'+stage),'release');
+ }
  await fresh.frame.waitForFunction(()=>document.querySelector('.objects-pricing-table')?.innerText.includes('₪1\u202f000'),null,{timeout:16000});
  await fresh.core.getByRole('button',{name:'Fixture rerender',exact:true}).click();
  await fresh.core.getByRole('link',{name:/^(Done|Review)$/i}).waitFor();
  report.fresh=await fresh.frame.evaluate(()=>{window.calculationSample=false;return calculationFrames;});
  assert.ok(report.fresh.every(row=>row.tables<=1&&!row.error));
+ const displayed=report.fresh.map(row=>row.percent).filter(value=>value!==null);
+ assert.ok(displayed.length>0&&displayed.every(value=>value<100));
+ assert.ok(displayed.every((value,index)=>index===0||value>=displayed[index-1]),'Progress must never decrease across fragment rerenders');
  assert.ok(report.fresh.every(row=>['headerOpacity','metricsOpacity','stagesOpacity','footerOpacity'].every(key=>row[key]===null||row[key]===1)),JSON.stringify(report.fresh.filter(row=>Object.keys(row).some(key=>key.endsWith('Opacity')&&row[key]!==null&&row[key]<1)).slice(0,4)));
  assert.equal((readFileSync(journal,'utf8').match(/fresh worker started/g)||[]).length,1);
  assert.ok(!readFileSync(journal,'utf8').includes('ERROR ownership read before shell'));
@@ -440,7 +455,7 @@ try{
  await fresh.page.close();
  // Complete the same worker while File Review is mounted. Returning must
  // discard its prepared progress snapshot and reveal the persisted result.
- for(const name of ['fresh-active','fresh-done','fresh-shell-ready','fresh-release'])rmSync(statePath(name),{force:true});
+ for(const name of ['fresh-active','fresh-done','fresh-shell-ready','fresh-release','fresh-allocated'])rmSync(statePath(name),{force:true});
  const starts=(readFileSync(journal,'utf8').match(/fresh worker started/g)||[]).length;
  const away=await boot({fresh_calculation:true,fresh_finish_away:true});
  await away.core.locator('.objects-pricing-table').waitFor();

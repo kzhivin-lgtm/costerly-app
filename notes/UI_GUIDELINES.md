@@ -1016,3 +1016,19 @@ RPC into the canonical record and working estimate mirrors. Late worker writes
 retain the canonical name. Successful changed names revoke draft confirmation,
 refresh affected cached/prepared names and require Set Prices for the next Vn.
 A failed name write retains the current actionable state; old issued names stay.
+
+## Labor V3.3 Project progress, owner approved28November2026
+
+Replace the former post-Parts-Check70% checkpoint with90%. Real completed
+boundaries are geometry20, parallel understanding45, locators60, original-sheet
+inventory75, block geometry80, Parts85, materials/layout88, saved Parts Check90,
+demand94, assumption check96, allocations98 and final plan99. The existing
+elapsed-time interpolation and fragment stay below the next unconfirmed
+boundary and never show100 for a running calculation. A usable terminal result replaces
+the percentage with the existing self cost/Review action. Failure remains Failed.
+The batch overlay must hold all active objects until the final plan has been
+persisted, even if individual allocations already look completed in storage.
+Reject old-generation, duplicate and backwards stage receipts. Retain saved
+reuse, calculation completion during navigation, tenant isolation, pricing,
+proposal versions, layout and every prior protected workflow. No new timer,
+poll, model request, durable progress write or visible control is authorized.

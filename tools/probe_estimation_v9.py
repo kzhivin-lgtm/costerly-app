@@ -7,13 +7,13 @@ import logging
 from tools.probe_estimation_v8_3 import main, read_json, run_pipeline
 
 
-def run_parts_check(*, pdf, detection_context, output, inputs=(), request_provider=None):
+def run_parts_check(*, pdf, detection_context, output, inputs=(), request_provider=None, on_stage=None):
     """Run from original PDF and Detection evidence, with no replay inputs."""
     args = Namespace(pdf=pdf, key="document", output=output, geometry=None, resume=False,
                      block_geometry=True, cb_parts=True, parts_profile=None, saved_dimension_inventory=None,
                      material_context=None, dimension_reader=None, dimension_unit=None)
     run_pipeline(args, {"detection_context": detection_context, "inputs": inputs}, version="9",
-                 request_provider=request_provider)
+                 request_provider=request_provider, on_stage=on_stage)
     report = read_json(output / "parts-check.json")
     from use_cases.estimation_preparation_evidence import attach_preparation_evidence
     from tools.estimation_block_geometry import AUDIT_FILE

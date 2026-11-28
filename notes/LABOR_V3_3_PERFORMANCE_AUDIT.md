@@ -1,9 +1,10 @@
 # Labor V3.3: cycle progress, downloads and navigation timing audit
 
-Scope: owner request after the full accepted V3.3 checkpoint. Diagnostic/proposal,
-not an implemented change to progress, navigation, caching, security or costing.
+Scope: owner request after the full accepted V3.3 checkpoint. Historical timing
+evidence and optimization proposals. Project-progress implementation was approved
+28November2026 and is tracked below; navigation/caching/costing remain unchanged.
 Exact accepted runtimea077dd84 and records25dd8bcf have independent immutable tags.
-The three-line PDF refinement is a separate verified candidate.
+The three-line PDF refinement3136a583 is separately published and verified.
 
 ## Evidence and limits
 
@@ -92,17 +93,46 @@ then11.1-21.8s remain. First plan created_at is immutable on ordinary upsert;
 updated_at was not used because later edits can move it. These are proxy phase
 boundaries, not a captured exact70%-paint timestamp or complete UI-ready time.
 
-Proposal: move the current70 boundary to approximately90, not95. Add real stage
-receipts around geometry/evidence preparation, parallel understanding, front/
-locator resolution, original-sheet inventory checks, deterministic Parts,
-material/nesting readiness, result persistence and final UI-ready. Suggested
-bands:0-10,10-40,40-60,60-80,80-90,90-97,97-99,100.
-Percent is an estimate of progress, not a guaranteed remaining duration.
-Use existing progress transport/refresh, not new timers/polls/extra model calls.
-Bound display interpolation by the next phase; reject stale/out-of-order updates,
-never regress, never show100 before a usable terminal result. Preserve failures,
-cache reuse, parallel requests, multi-object runs and navigation-away recovery.
-Weights and milestones are proposals pending a concrete implementation iteration.
+Owner approved28November2026: move the current70 boundary to90, not95,
+and add completed internal-stage receipts. Continuing work3.17.4.6 within Labor
+V3.3, no new product/work block. Candidate build:
+labor-v3.3-b20261128070926-project-progress-detection-v8.4.29.
+
+Implementation: existing Parts Check/pipeline/material publisher receive an
+optional synchronous callback. It only updates the existing process-local progress
+store. Initial15 and post-report90 retain the same durable-write count and path.
+Existing1.5s fragment and percentage interpolation are unchanged, no requests/timers/
+workers/model calls added. Provider concurrency, requests/prompts/schema, model
+cost, cost math, cache identity, layouts and proposal bytes are unchanged.
+
+Completed milestones: inputs15, source geometry20, parallel understanding45,
+front/locators60, checked original-sheet inventory75, deterministic block
+geometry80, checked Parts85, material selection/layout88, published Parts Check90,
+demand lines94, assumption follow-up96 (including its existing isolated failure),
+allocated object costs98, final persisted project plan99. Percent remains an
+estimate of work, not a guaranteed remaining duration. Existing interpolation is
+bounded below the next milestone. Running values are clamped to99 even with
+malformed/missing timestamps; final usable costs/Review replace the indicator.
+
+A generation token rejects late old-worker receipts. Monotonic per-object state
+rejects duplicate/backwards updates without resetting the interpolation timestamp.
+All objects in the active batch share stage receipts, not only the last object.
+The active overlay holds prematurely terminal allocation rows until final plan
+persistence, including another tab in the same process. Finishing closes stage
+receipts; consuming the Future retains existing cache invalidation/overlay cleanup.
+Old in-process snapshots cannot replace a completed saved result after finish.
+Errors retain Failed and technical-failure behavior, never a false success.
+Cache-hit reports skip completed extraction phases rather than replaying them.
+
+Candidate checks:1188 Python checks passed22.660s; four frozen material controls
+Lev1/Lev2/Adda/Fresh Lev2 V3.3 passed with network blocked and identical purchase
+signatures, unresolved requirements and immutable input reports. Existing browser
+Calculation now drives20/45/60/75/85/90/98/99 through a real local worker, checks
+monotonic painted frames, no premature100/Review and final saved readiness. The
+fixture intentionally makes allocations durable while holding the final result.
+Full local/remote UI gate and actual rollout are still pending. No paid model run,
+production calculation or schema mutation has been made. Owner acceptance on
+an actual next calculation remains separate from fixture evidence.
 
 ## Download observation
 

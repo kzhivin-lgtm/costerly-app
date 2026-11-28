@@ -176,13 +176,13 @@ def _write_source_pdf(path, file_name, file_bytes):
 
 
 def run_parts_check_for_estimate(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_package,
-                                 prepare_sheet_layout=None, record_cost=None):
+                                 prepare_sheet_layout=None, record_cost=None, on_stage=None):
     """Return the saved report to the same estimate worker that will price it."""
     key = (company_id, run_id, estimate_id)
     with _running_report(key):
         return _run(client=client, estimate_id=estimate_id, run_id=run_id, company_id=company_id,
                     file_name=file_name, file_bytes=file_bytes, inputs=inputs, ocr_package=ocr_package,
-                    prepare_sheet_layout=prepare_sheet_layout, record_cost=record_cost)
+                    prepare_sheet_layout=prepare_sheet_layout, record_cost=record_cost, on_stage=on_stage)
 
 
 def _store_report(client, *, report, company_id, run_id, estimate_id):
@@ -195,7 +195,7 @@ def _store_report(client, *, report, company_id, run_id, estimate_id):
 
 
 def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_package,
-         prepare_sheet_layout=None, record_cost=None):
+         prepare_sheet_layout=None, record_cost=None, on_stage=None):
     usage_events = []
     usage_unavailable = False
     status = "failed"
@@ -229,7 +229,7 @@ def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inpu
         pdf = folder / "source.pdf"
         _write_source_pdf(pdf, file_name, file_bytes)
         report = run_parts_check(pdf=pdf, detection_context=context, output=folder / "output",
-                                 inputs=inputs, request_provider=_request_provider(
+                                 inputs=inputs, on_stage=on_stage, request_provider=_request_provider(
                                      company_id, run_id, estimate_id, file_name, usage_events))
         expected_objects = {row["input_payload"]["object"]["object_id"] for row in inputs}
         if report["stage"] != "Parts Check" or set(report["objects"]) != expected_objects:

@@ -44,7 +44,9 @@ from use_cases.material_engine_adapter import (
 from use_cases.estimation_material_context import build_estimation_material_context
 from use_cases.estimation_assumption_fallbacks import persist_material_assumption_fallbacks
 from db.repositories import update_rfq_object_estimate_progress
-from use_cases.estimation_progress import set_object_progress
+from use_cases.estimation_progress import (
+    begin_estimate_progress, finish_estimate_progress, report_estimation_stage, set_estimate_stage, set_object_progress,
+)
 
 
 _LOG = logging.getLogger(__name__)
@@ -132,7 +134,8 @@ def _calculate_material_plan(*, client, estimate_id, company_id, parts_report, i
 
 
 def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_report, input_rows,
-                                     rebuild=False, review_order=(), calculation=None, protected_approval_objects=None):
+                                     rebuild=False, review_order=(), calculation=None, protected_approval_objects=None,
+                                     on_stage=None):
     """Price the checked document through the shared estimate-wide engine."""
     if calculation is None:
         calculation = _calculate_material_plan(
@@ -144,6 +147,7 @@ def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_r
     _publish_material_demand_lines(
         client, estimate_id=estimate_id, facts_by_object=facts_by_object, replace_object_lines=not rebuild,
     )
+    report_estimation_stage(on_stage, "demand_published")
 
     from use_cases.estimation import apply_material_plan_allocations
 
@@ -158,14 +162,17 @@ def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_r
     except Exception as exc:
         snapshot["assumption_job_sync"] = {"status": "failed", "error": type(exc).__name__}
         _LOG.warning("Assumption follow-up failed for estimate %s", estimate_id, exc_info=True)
+    report_estimation_stage(on_stage, "assumptions_checked")
 
     apply_material_plan_allocations(client, estimate_id=estimate_id, plan_snapshot=snapshot,
                                     **({"protected_approval_objects": protected_approval_objects}
                                        if protected_approval_objects is not None else {}))
+    report_estimation_stage(on_stage, "allocations_published")
     upsert_rfq_estimate_material_plan(
         client, estimate_id=estimate_id, company_id=company_id, plan_payload=snapshot,
         plan_status=snapshot["status"], input_fingerprint=snapshot["input_fingerprint"],
     )
+    report_estimation_stage(on_stage, "plan_published")
     return snapshot
 
 
@@ -941,27 +948,37 @@ def _run_estimation_job(
                 client=client, estimate_id=estimate_id, company_id=company_id, parts_report=parts,
                 input_rows=created_inputs, review_order=(),
             )
-            return build_sheet_layout(parts, prepared_calculation["material_plan"])
+            layout = build_sheet_layout(parts, prepared_calculation["material_plan"])
+            on_stage("materials_ready")
+            return layout
 
         stage = "parts_check"
+        progress_token = None
         try:
             for object_id in object_ids:
                 _set_object_progress(client, estimate_id=estimate_id, object_id=object_id,
                                      percent=15, label="building_parts_check")
+            progress_token = begin_estimate_progress(estimate_id, object_ids)
+
+            def on_stage(completed_stage):
+                set_estimate_stage(estimate_id, progress_token, completed_stage)
+
             report = run_parts_check_for_estimate(
                 client=client, estimate_id=estimate_id, run_id=run_id, company_id=company_id,
                 file_name=file_name, file_bytes=file_bytes, inputs=created_inputs, ocr_package=ocr["ocr_result"],
                 prepare_sheet_layout=prepare_sheet_layout, record_cost=record_parts_cost,
+                on_stage=on_stage,
             )
             if report is None:
                 raise RuntimeError("Parts Check did not produce a checked report")
             stage = "material_plan"
             for object_id in object_ids:
                 _set_object_progress(client, estimate_id=estimate_id, object_id=object_id,
-                                     percent=70, label="building_project_material_plan")
+                                     percent=90, label="building_project_material_plan")
             snapshot = _build_and_persist_material_plan(
                 client=client, estimate_id=estimate_id, company_id=company_id,
                 parts_report=report, input_rows=created_inputs, calculation=prepared_calculation,
+                on_stage=on_stage,
             )
         except Exception as exc:
             report_runtime_failure(f"estimation.{stage}", exc, rfq_run_id=run_id, estimate_id=estimate_id)
@@ -982,6 +999,9 @@ def _run_estimation_job(
                 "estimation_version": VERSION,
                 "cost_usd": cost_usd,
             }
+        finally:
+            if progress_token is not None:
+                finish_estimate_progress(estimate_id, progress_token)
         return {
             "estimate_id": estimate_id, "run_id": run_id, "shell": shell,
             "estimation": {"status": "completed" if snapshot["status"] == "planned" else "review_required",

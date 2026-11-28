@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 import pymupdf
+from use_cases.estimation_progress import report_estimation_stage
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -897,7 +898,7 @@ def _write_inventory_check(output, inventory, page_reviews):
                    ensure_ascii=False, indent=2) + "\n")
 
 
-def run_pipeline(args, source, *, version, request_provider=None):
+def run_pipeline(args, source, *, version, request_provider=None, on_stage=None):
     v9 = version == "9"
     saved_dimensions = args.saved_dimension_inventory if v9 else None
     if v9:
@@ -916,16 +917,19 @@ def run_pipeline(args, source, *, version, request_provider=None):
     packet = read_json(geometry / "estimation-offline-all-islands-evidence.json")
     if packet["source_sha256"][args.key] != sha256(args.pdf.read_bytes()).hexdigest():
         raise ValueError("Geometry packet belongs to a different PDF")
+    report_estimation_stage(on_stage, "geometry_ready")
     views, frames, images, invoke, island_map, front, source_hash, component_observations, front_review = run_initial(
         geometry, args.key, {"detection_context": detection, "inputs": source.get("inputs", ())},
         args.output, resume=args.resume,
         request_provider=request_provider, component_pdf=args.pdf if v9 else None)
+    report_estimation_stage(on_stage, "understanding_ready")
     with pymupdf.open(args.pdf) as pdf:
         page_count = len(pdf)
         objects = find_front_and_blocks(pdf, views, frames, images, invoke, island_map, front, detection,
                                        component_observations=component_observations)
     native_locator(objects, views, images, frames, invoke, provider_request, payload)
     raster_locator(objects, views, island_map["islands"], images, invoke, provider_request, payload)
+    report_estimation_stage(on_stage, "locators_ready")
     result = {**island_map, "version": version, "objects": objects, "source_audit_sha256": source_hash}
     if v9:
         write_finish_overlays(result["understanding"], images, args.output)
@@ -944,6 +948,7 @@ def run_pipeline(args, source, *, version, request_provider=None):
         inventory = check_inventory(inventory, views.values(), page_reviews)
         _write_inventory_check(args.output, inventory, page_reviews)
     (args.output / "object-inventory.json").write_text(json.dumps(inventory, ensure_ascii=False, indent=2) + "\n")
+    report_estimation_stage(on_stage, "inventory_ready")
     (args.output / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
     if args.block_geometry:
         from tools.estimation_block_geometry import AUDIT_FILE, run_block_geometry
@@ -981,6 +986,7 @@ def run_pipeline(args, source, *, version, request_provider=None):
                 _write_inventory_check(args.output, inventory, page_reviews)
             add_inventory_geometry(measurements, inventory)
         (args.output / "block-geometry.json").write_text(json.dumps(measurements, ensure_ascii=False, indent=2) + "\n")
+        report_estimation_stage(on_stage, "block_geometry_ready")
         if args.cb_parts:
             from tools.estimation_geometry_parts import run_geometry_parts
             from use_cases.estimation_cb_geometry_parts import apply_sheet_layups
@@ -1035,6 +1041,7 @@ def run_pipeline(args, source, *, version, request_provider=None):
             check_filename = "parts-check.json" if v9 else "cb-parts-coverage.json"
             (args.output / parts_filename).write_text(json.dumps(parts, ensure_ascii=False, indent=2) + "\n")
             (args.output / check_filename).write_text(json.dumps(coverage, ensure_ascii=False, indent=2) + "\n")
+            report_estimation_stage(on_stage, "parts_ready")
             if args.material_context:
                 from use_cases.estimation_cb_material_demand import calculate_cb_materials
 

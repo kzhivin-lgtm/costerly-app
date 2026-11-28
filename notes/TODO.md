@@ -1013,17 +1013,19 @@ format applies to next Generate, existing PDF bytes unchanged. First remote
 screenshot; original-preserving diagnostics added, final full gate passed.
 All failed/passed evidence retained, no assertion/deadline weakened. Baseline
 a077dd84 remains accepted/immutable; later visual acceptance pending.
-DIAGNOSED, P1, IMPLEMENTATION PROPOSAL READY, OWNER REQUEST27November2026:
-Cycle progress should advance through more real completed stages, reducing long
-plateaus. First inspect actual stage/callback/durable-write timeline and existing
-versioned controllers. Propose truthful monotonic weighting/stage mapping before
-any changed timer/poll/worker behavior. Preserve terminal/recovery/multi-object
-semantics and avoid unrelated client/server work. Work number unassigned.
-Owner clarified Project indicator. Source persists15/70; material/nesting is
-already calculated before70.13 saved cycles put Parts Check completion at
-84.87-88.45% of seed-to-first-plan time, with11.1-21.8s tail. Recommend90 rather
-than95, plus real internal-stage receipts; no progress implementation yet.
-Evidence and complete route inventory: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md.
+ACTIVE, P1, OWNER APPROVED28November2026, continuation3.17.4.6:
+Project calculation counter: move the former post-Parts-Check70 checkpoint to90.
+Add actual geometry20/parallel-understanding45/locator60/inventory75/geometry80/
+Parts85/material-layout88 milestones, then demand94/assumption-check96/
+allocations98/final-plan99. Existing interpolation stays below the next real
+milestone and never reaches100 while running. Use the existing fragment and
+percentage interpolation, no added polling, timers, model calls or durable writes.
+Batch overlay covers every active object, including allocations persisted before
+final plan readiness. Duplicate/out-of-order/old-worker receipts cannot regress
+or revive progress. Preserve failures, saved reuse, navigation-away completion,
+pricing/approval/PDF/history and all accepted checkpoints. Full gate and actual
+rollout verification pending; no new production calculation or DB schema change.
+Evidence: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md. Current build labor-v3.3-b20261128070926-project-progress-detection-v8.4.29.
 DIAGNOSED OBSERVATION, P1, OWNER OBSERVATION27November2026:
 Repeat Download Proposal briefly appeared slow/strange, then fast. Distinguish
 signed-link expiry/redirect/network/storage/browser opening from Generate freeze,

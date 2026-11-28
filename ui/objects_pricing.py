@@ -307,20 +307,15 @@ def _parse_datetime(value: object) -> datetime | None:
 
 def _smooth_progress_curve(base: int) -> tuple[int, float]:
     """Return the display cap and seconds per visual progress point."""
-    if base >= 95:
-        return 99, 6.0
-    if base >= 70:
-        return 95, 3.0
-    if base >= 35:
-        return 85, 1.8
-    # Geometry has not completed yet. A visual timer must never present its
-    # eventual 70% BOM checkpoint as a server-confirmed state.
-    return 45, 1.2
+    from use_cases.estimation_progress import ESTIMATION_STAGES
+
+    cap = next((mark - 1 for mark in ESTIMATION_STAGES.values() if mark > base), 99)
+    return cap, 6.0 if base >= 98 else 3.0 if base >= 90 else 1.2
 
 
 def _smooth_progress_percent(row: dict[str, object]) -> int:
     """Smooth a running estimate percent between backend updates."""
-    base = _safe_int(row.get("progress_percent"), default=25)
+    base = max(0, min(99, _safe_int(row.get("progress_percent"), default=25)))
     updated_at = _parse_datetime(row.get("progress_updated_at"))
     if updated_at is None:
         return base
@@ -344,7 +339,7 @@ def _self_cost_unit_html(row: dict[str, object]) -> str:
 
     updated_at = _parse_datetime(row.get("progress_updated_at"))
     if updated_at is None:
-        percent = _escape(row.get("self_cost_unit") or f'{_safe_int(row.get("progress_percent"), default=25)}%')
+        percent = _escape(f'{_smooth_progress_percent(row)}%')
         return (
             '<span class="objects-progress-status" aria-label="Estimating self cost">'
             '<span class="objects-progress-spinner" aria-hidden="true"></span>'
@@ -352,7 +347,7 @@ def _self_cost_unit_html(row: dict[str, object]) -> str:
             '</span>'
         )
 
-    base = _safe_int(row.get("progress_percent"), default=25)
+    base = max(0, min(99, _safe_int(row.get("progress_percent"), default=25)))
     cap, seconds_per_percent = _smooth_progress_curve(base)
     current = _smooth_progress_percent(row)
     return (

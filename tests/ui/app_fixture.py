@@ -75,9 +75,10 @@ class Client:
   record('lookup saved estimate')
   return SimpleNamespace(data=sample['routes'])
 def read_objects(_client, estimate_id):
- if (STATE / 'fresh-active').exists() and not (STATE / 'fresh-done').exists():
+ if ((STATE / 'fresh-active').exists() and not (STATE / 'fresh-done').exists()
+     and not (STATE / 'fresh-allocated').exists()):
   return pd.DataFrame([{**row, 'status':'running', 'self_cost_ex_vat':None,
-   'progress_percent':35, 'progress_label':'Estimating'} for row in sample['objects']])
+   'progress_percent':15 if scenario().get('fresh_progress') else 35, 'progress_label':'Estimating'} for row in sample['objects']])
  if st.session_state.get('screen')=='file_review':
   lag_file=(STATE / 'slow-objects-read')
   if lag_file.exists():
@@ -602,7 +603,19 @@ if scenario().get('fresh_calculation'):
    return {'estimate_id':estimate_id}
   def calculate(**kwargs):
    record('fresh worker started')
-   if scenario().get('fresh_finish_away'):
+   if scenario().get('fresh_progress'):
+    from use_cases.estimation_progress import begin_estimate_progress, set_estimate_stage, finish_estimate_progress
+    token=begin_estimate_progress(estimate_id,['object-001'])
+    for stage in ['geometry_ready','understanding_ready','locators_ready','inventory_ready',
+                  'parts_ready','parts_check_ready','allocations_published','plan_published']:
+     if stage=='plan_published':(STATE / 'fresh-allocated').touch()
+     set_estimate_stage(estimate_id,token,stage)
+     for _ in range(300):
+      if (STATE / ('fresh-stage-'+stage)).exists():break
+      sleep(.1)
+     else:raise AssertionError('Fixture stage was not released: '+stage)
+    finish_estimate_progress(estimate_id,token)
+   elif scenario().get('fresh_finish_away'):
     for _ in range(300):
      if (STATE / 'fresh-release').exists():break
      sleep(.1)
