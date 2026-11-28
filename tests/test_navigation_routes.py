@@ -919,6 +919,52 @@ def test_file_review_metadata_commit_updates_cache_and_preserves_empty_transient
     assert st.session_state[widget_key] == "Studio Oak"
 
 
+@pytest.mark.parametrize("kind,outcome", [
+    ("metadata", "empty"), ("metadata", "saved"), ("metadata", "failed"),
+    ("name", "empty"), ("name", "saved"), ("name", "failed"), ("name", "echo"),
+])
+def test_late_file_review_field_callback_preserves_project_navigation(monkeypatch, kind, outcome):
+    """Unmounted widget ACKs can arrive with Project's fragment-only rerun."""
+    st.session_state.clear()
+    st.session_state.screen = "objects"
+    st.session_state.file_review_run_metadata = {"partner": "Original"}
+    st.session_state.file_review_object_edits = {
+        "one": {"name": "Original", "expected_name": "Original"},
+    }
+    st.session_state.file_review_data_cache = {
+        "r": {"run": {"partner": "Original"}, "objects": [{"object_id": "one", "name": "Original"}]},
+    }
+    key = "file_review_run_metadata.partner" if kind == "metadata" else "file_review_object_edits.one.name"
+    st.session_state[key] = "" if outcome == "empty" else "Updated"
+    if outcome == "echo":
+        st.session_state[key] = "Previous placeholder"
+        st.session_state["file_review_deferred_name_echoes.r"] = {
+            "one": {"stale_name": "Previous placeholder", "published_name": "Original"},
+        }
+    writes = []
+    def save(**kwargs):
+        writes.append(kwargs)
+        if outcome == "failed":
+            raise RuntimeError("controlled field save failure")
+        return {"partner": "Updated"} if kind == "metadata" else "Updated"
+    monkeypatch.setattr(file_review, "save_file_review_run_metadata", save)
+    monkeypatch.setattr(file_review, "save_file_review_object_name", save)
+    if kind == "metadata":
+        file_review._commit_run_metadata("r", "partner", key)
+    else:
+        file_review._commit_object_name("r", "one", key)
+    assert st.session_state.screen == "objects", "Field callbacks must never navigate back to File Review"
+    assert len(writes) == (1 if outcome in {"saved", "failed"} else 0)
+    assert st.session_state[key] == ("Updated" if outcome == "saved" else "Original")
+    cache = st.session_state.file_review_data_cache["r"]
+    assert cache["run"]["partner"] == ("Updated" if kind == "metadata" and outcome == "saved" else "Original")
+    assert cache["objects"][0]["name"] == ("Updated" if kind == "name" and outcome == "saved" else "Original")
+    if outcome == "failed":
+        error_key = "file_review_metadata_save_error" if kind == "metadata" else "file_review_name_save_error"
+        assert st.session_state[error_key] == "controlled field save failure"
+    st.session_state.clear()
+
+
 def test_file_review_renders_all_three_editable_project_fields():
     source = Path("screens/file_review.py").read_text()
 

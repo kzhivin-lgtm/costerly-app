@@ -3,6 +3,17 @@
 These rules apply to every Costerly AI screen and workflow. A missing interaction
 state is a product defect, not optional polish.
 
+## Labor V3.8 blank Project regression repair
+
+File Review metadata/name field callbacks persist accepted changes and reject
+empty/deferred-name echoes without navigating. A late unmounted widget ACK may
+arrive during a Project fragment rerun; changing screen there clears Project's
+owned title/header/table while leaving its action buttons. Only existing
+navigation actions change screens. Preserve active-screen Enter/blur saves,
+concurrent-name CAS, failures, approval/proposal state and all earlier workflows.
+No new poll, timer, rerun, cache/router system or layout behavior is introduced.
+[Reproduction and verification](LABOR_V3_8_PROJECT_RENDER_2026_11_28.md).
+
 ## Labor V3.7 bounded owner-approved correction
 
 Owner approved28November2026: restore immediate APPROVING and green APPROVED

@@ -1102,6 +1102,32 @@ Accepted fast paths: File Review/Project, repeat Project/Object, ordinary Back,
 Profile/tabs and New Estimate. APPROVE and Last Estimate remain unaccepted.
 Read-only matching-build logs: APPROVE2.062/4.965/6.848s; Upload Last Estimate
 4.973/6.137s; Project/Object median1.381s(n7), not the synthetic0.2s result.
+ACTIVE REGRESSION, P0, OWNER REPORT28November2026, same work3.17.4.6:
+After editing, New Estimate -> Last Estimate -> File Review -> Project remains
+blank except navigation/actions (owner screenshot14:01:59 Israel). Owner confirms
+it persists and cannot scroll in either direction, not an off-screen table.
+Matching V3.7
+telemetry marked that last transition ready at14:01:53 in930.4ms; source/server
+errors were not logged. Ready receipt alone does not prove retained visible UI.
+Preserve saved calculations. Reproduce full sequence and idle fragment ticks,
+identify the first clearing/hiding event, then repair within the accepted UI
+contract. No new cache/router architecture, no speed claim or checkpoint.
+Separate live-speed review: APPROVE4.68-7.00s includes3.35-3.61s return preparation;
+Back4.16-5.12s, Last Estimate2.48-5.37s after more interactions. Performance remains
+unaccepted. Diagnosis and sample limits: notes/LABOR_V3_7_APPROVAL_2026_11_28.md,
+Owner real-cycle review. Short synthetic saved/unsaved, held/fast preparation and
+deferred File Review publication replays did not reproduce the blank state.
+Owner explicitly requires autonomous code/log diagnosis, no owner DOM work.
+CONFIRMED REPRODUCTION AND BOUNDED REPAIR, Labor V3.8 candidate: a late empty
+File Review widget acknowledgement carried by the real Project auto-rerun runs
+its old field callback. That callback sets screen=file_review; the Project-only
+fragment guard returns, clearing its header/title/table while outside actions
+remain. Before repair the same blank screenshot is reproduced. Field save/name
+callbacks no longer navigate; accepted writes, CAS, empty/echo rejection and
+button navigation remain. Focused before/after browser evidence exists. Exact
+historical browser payload was not logged, so do not claim it was recovered.
+Permanent two-field New/Last Estimate regression and full gates/publication are
+required. Evidence/verification: notes/LABOR_V3_8_PROJECT_RENDER_2026_11_28.md.
 PUBLISHED, OWNER REAL-CYCLE ACCEPTANCE PENDING, P1, LABOR V3.7, work3.17.4.6:
 Runtime d9177eb2 restores APPROVING/green unchanged APPROVED/no repeat write;
 acknowledged receipts, canonical prices/PDF input revision and complete current

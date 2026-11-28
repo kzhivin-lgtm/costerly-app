@@ -138,14 +138,17 @@ def _sync_run_metadata_state(run_id: str, run: dict[str, object]) -> None:
 
 
 def _commit_run_metadata(run_id: str, field: str, widget_key: str) -> None:
-    """Persist one Project, Partner, or Client edit on Enter or blur."""
+    """Persist an edit without navigating on a late widget acknowledgement.
+
+    Streamlit can deliver an unmounted field's value with a Project fragment
+    refresh. Navigation belongs to the action buttons, not field callbacks.
+    """
     edits = st.session_state.setdefault("file_review_run_metadata", {})
     previous_value = str(edits.get(field) or "unknown")
     submitted_value = str(st.session_state.get(widget_key) or "").strip()
     if not submitted_value:
         st.session_state[widget_key] = previous_value
         st.session_state.file_review_metadata_save_error = None
-        st.session_state.screen = "file_review"
         return
 
     try:
@@ -183,7 +186,6 @@ def _commit_run_metadata(run_id: str, field: str, widget_key: str) -> None:
                 if estimate_id:
                     invalidate_proposal(estimate_id)
         st.session_state.file_review_metadata_save_error = None
-    st.session_state.screen = "file_review"
 
 
 def _run_metadata_snapshot() -> dict[str, str]:
@@ -226,7 +228,7 @@ def _accept_object_name_projection(run_id: str, object_id: str, name: str) -> No
 
 
 def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
-    """Save a name committed with Enter or by leaving its input field."""
+    """Save a name on Enter/blur without changing the active screen."""
     edits = st.session_state.setdefault("file_review_object_edits", {})
     edit = edits.setdefault(object_id, {})
     previous_name = str(edit.get("name") or "")
@@ -253,7 +255,6 @@ def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
         if not stale_echoes:
             st.session_state.pop(stale_echoes_key, None)
         st.session_state.file_review_name_save_error = None
-        st.session_state.screen = "file_review"
         return
     if isinstance(stale_echoes, dict) and stale_echo is not None:
         # The one protected echo has either been consumed above or the user has
@@ -268,7 +269,6 @@ def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
     if not submitted_name:
         st.session_state[widget_key] = previous_name
         st.session_state.file_review_name_save_error = None
-        st.session_state.screen = "file_review"
         return
 
     try:
@@ -312,7 +312,6 @@ def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
                     break
         st.session_state.file_review_name_save_error = None
 
-    st.session_state.screen = "file_review"
 
 
 def _timing_html(timings: dict[str, object] | None) -> str:

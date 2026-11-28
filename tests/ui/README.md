@@ -1,5 +1,14 @@
 # Persistent UI release contract
 
+Labor V3.8 adds a native late-widget ACK regression to Navigation. After
+Object -> New Estimate -> Last Estimate -> File Review -> Project, two real
+Project auto-reruns carry empty unmounted metadata/name widget values. Header,
+table and actions remain visible throughout, no empty write or compensating app
+rerun occurs, and Review becomes ready after the held preparation completes.
+The synthetic fixture records native widget IDs only for this opt-in scenario.
+Python covers empty/name-echo/success/failure callbacks retaining Project while
+preserving writes, cache projections and errors. Existing suites stay intact.
+
 Labor V3.7 extends Calculation with immediate APPROVING, acknowledged Done,
 unchanged green APPROVED reopening/no duplicate write, changed Save returning
 Review, zero focus/untouched blur without a draft, LDSP coating hidden and

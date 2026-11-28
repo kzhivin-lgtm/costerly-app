@@ -681,4 +681,9 @@ if scenario().get('front_panels') and not derived_path.exists():
   lines=read_lines(Client(),estimate_id=estimate_id,object_id='object-001'),material_batch=0,
   context=full_cost_context(Client(),obj,plan))
 app.main()
+if scenario().get('late_review_ack'):
+ from streamlit.runtime.scriptrunner import get_script_run_ctx
+ for widget_id in get_script_run_ctx().session_state._state._new_widget_state.widget_metadata:
+  if widget_id.endswith(('-file_review_run_metadata.project_name', '-file_review_object_edits.object-001.name')):
+   record('review-field-widget-id '+widget_id)
 

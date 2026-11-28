@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { chromium } from 'playwright';
+import { checkLateFileReviewAcknowledgements } from './late_review_ack.mjs';
 const lag=statePath('slow-objects-read');
 const journal=statePath('browser-journal');
 const config=statePath('scenario.json');
@@ -375,6 +376,7 @@ try {
   report[cfg.name]=actions;
   await page.close();
  }
+ report.late_file_review_ack=await checkLateFileReviewAcknowledgements(browser,'http://127.0.0.1:8797/');
  const calls=readFileSync(journal,'utf8');
  assert.ok(calls.includes('objects '+expected));
  assert.ok(!calls.includes('ERROR'));

@@ -136,3 +136,62 @@ Both changes have focused Python coverage. Desktop/mobile explicit Save/approval
 reopen scenarios passed25.069s, gate26.173s. Candidatefcdb092a was not published;
 its local full run was stopped for this proven correction, not marked passing.
 This supersedes the earlier unknown Review-timeout diagnosis.
+
+## Owner real-cycle review, 28 November 2026, work3.17.4.6
+
+[verified] A subsequent owner cycle rejected V3.7 acceptance: after edits and
+New Estimate -> Last Estimate -> File Review -> Project, the page remains blank
+except navigation/footer actions. The owner confirms no scrolling in either
+direction and no eventual content. Screenshot14:01:59 Israel shows this state.
+The matching transition was marked ready at14:01:53.306 in930.4ms. That receipt
+establishes a readiness observation, not that visible content remained intact.
+Read-only route matching found one saved Object estimate and17 saved estimate
+lines for the affected estimate. This proves those rows remain, not that every
+value or saved artifact has been revalidated.
+
+The matching V3.7 sample, checked14:02:56 Israel, contains26 completed transition
+receipts. Small, noncontrolled samples differ in edits and cache state:
+
+| Transition | Samples | Observed seconds | Median seconds |
+| --- | ---: | ---: | ---: |
+| APPROVE -> Project | 3 | 4.676-7.002 | 6.877 |
+| Object Back -> Project | 2 | 4.155-5.124 | 4.640 |
+| Last Estimate -> File Review | 3 | 2.483-5.372 | 3.189 |
+| Project -> Object | 6 | 0.914-2.799 | 1.429 |
+| Project -> File Review | 2 | 1.031-1.066 | 1.049 |
+| File Review -> Project | 5 | 0.565-1.099 | 0.930 |
+| Processing -> File Review | 1 | 2.758 | 2.758 |
+| New Estimate, combined sources | 3 | 0.537-1.011 | 0.559 |
+| Profile -> Upload | 1 | 0.706 | 0.706 |
+
+APPROVE includes3.352-3.610s of return preparation. Back's Python render spans
+3.450-4.574s. Last Estimate remains variable and reached5.372s after further
+interactions, so the first2.483s sample did not establish a stable improvement.
+Initial wrapper start -> reveal was8.520s, with one app-ready timeout just before
+reveal. Upload -> Processing logged one15.002s timeout, followed by a successful
+Processing -> File Review transition. Its acknowledgement mechanism is not yet
+confirmed. No browser runtime-failure or server operation-failed event appeared
+in the inspected sample. Instrumented events are not a complete server stdout or
+React error log and do not rule out a frontend failure.
+
+[unknown] The first removal/hiding event and root cause of the blank Project
+are not established. Short production-screen synthetic replays tested saved and
+unsaved material changes, repeated New/Last Estimate cycles, held preparation,
+ordinary cached preparation and a controlled pending -> terminal File Review
+preview publication causing its real polling fragment's app rerun. Project
+remained visible through subsequent fragment ticks in those local replays.
+Their passing results do not invalidate the owner's failure or prove a repair.
+The temporary fixture injection and test driver were removed from the checkout;
+runtime files are unchanged. Diagnostic logs/screenshots are preserved privately.
+
+Native Chrome control failed to initialize. The owner subsequently required
+autonomous code/log diagnosis instead of owner DOM collection. Railway runtime
+stdout was unavailable through the current tools/credentials. Further targeted
+investigation reproduced the identical blank page using a late native File
+Review widget acknowledgement carried by the real Project auto-rerun. Its field
+callback changed screen to File Review, then Project's fragment guard returned
+and cleared its owned header/title/table. Removing field callback navigation
+passed the same controlled replay. This supersedes the earlier unknown mechanism;
+the exact historical payload was not logged. See the bounded V3.8 repair and
+required preservation evidence in LABOR_V3_8_PROJECT_RENDER_2026_11_28.md. Timing
+optimization remains unaccepted and outside this repair.
