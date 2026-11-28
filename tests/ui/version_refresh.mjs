@@ -165,6 +165,9 @@ try{
  assert.ok(updateStyle.family.includes('IBM Plex Mono'));assert.equal(updateStyle.color,'rgb(59, 46, 72)');
  await page.screenshot({path:reportPath('updating-app-shared.png')});
  passed('Unavailable reload-guard storage offered manual retry without a loop');
+ const beforeFade=await page.locator('#app-loading-mask .costerly-workflow-status').evaluate(n=>{
+  const r=n.getBoundingClientRect();return {centerX:r.x+r.width/2,centerY:r.y+r.height/2};
+ });
  frame=await coreFrame(page);await frame.evaluate(()=>render('processing'));
  await page.waitForFunction(()=>document.querySelector('#app-loading-mask').classList.contains('is-hidden'));
  const fading=await page.locator('#app-loading-mask .costerly-workflow-status').evaluate(n=>{
@@ -173,7 +176,8 @@ try{
    display:getComputedStyle(mask).display,pointerEvents:getComputedStyle(mask).pointerEvents};
  });
  assert.equal(fading.display,'flex');assert.equal(fading.pointerEvents,'none');
- assert(Math.abs(fading.centerX-fading.width/2)<1&&Math.abs(fading.centerY-fading.height/2)<1,JSON.stringify(fading));
+ assert(Math.abs(fading.centerX-fading.width/2)<1&&Math.abs(fading.centerX-beforeFade.centerX)<1&&
+        Math.abs(fading.centerY-beforeFade.centerY)<1,JSON.stringify({beforeFade,fading}));
  passed('Deploy-cover label stays centered through fade and hidden cover cannot intercept input');await page.close();
  assert.equal(versionReads,0,'No periodic or startup version-file request');
  writeFileSync(reportPath('version-refresh.json'),JSON.stringify(results,null,2));console.log(JSON.stringify(results));
