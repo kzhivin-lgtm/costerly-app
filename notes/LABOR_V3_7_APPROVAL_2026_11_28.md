@@ -26,7 +26,7 @@ material controls remain required. Publish only the exact successful SHA through
 the normal publisher, then verify actual Core/wrapper versions and main ruleset.
 Rollback is a newly stamped, gated forward revert, never rewriting old checkpoints.
 
-Implementation prepared. Build: labor-v3.7-b20261128105642-approval-last-estimate-detection-v8.4.29.
+Implementation prepared. Build: labor-v3.7-b20261128111248-approval-last-estimate-detection-v8.4.29.
 Verification/publishing are pending. Earlier focused cases confirmed approval
 pending/reopen/changed Save, committed receipt preservation and cache/access
 boundaries. The retained LDSP all-work edit scenario now omits coating, with
@@ -54,3 +54,15 @@ run also observed one Review-wait timeout after completion-away; cause is not
 established from its old logs. Calculation now captures DOM/route/readiness on
 failure, without changing application behavior, waits, retries or thresholds.
 The failed candidate is not published or recorded as passing.
+
+
+The separate Calculation run reached both desktop/mobile geometry with no
+repeated Review timeout, then caught a real zero-focus edge: Delete on the
+already visually empty field did not emit input, so focus-only restoration
+incorrectly retained a pending0 instead of returning unknown/NULL. Existing
+keydown handlers now clear the focus-only marker on explicit Delete/Backspace.
+No new callback or editor was added. The original unknown ->0 ->clear invariant
+and Profile optional0 ->NULL scenario stay unchanged. A focused production-screen
+replay passed12.901s, and complete Profile Save suite passed91.708s, total107.167s.
+The isolated earlier Review timeout remains unexplained, not claimed repaired;
+final complete gates and failure captures remain required.

@@ -478,6 +478,7 @@ def install_company_metrics_input_guard() -> None:
                 }
                 const input = metricsInput(event.target) || metricsTotalInput(event.target) || pricingInput(event.target);
                 if (!input) return;
+                if (event.key === "Backspace" || event.key === "Delete") delete input.dataset.focusZero;
                 if (input.dataset.optionalPercent && event.key === ".") {event.preventDefault();return;}
                 const allowed = new Set([
                     "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End",
@@ -3337,6 +3338,10 @@ def install_object_detail_input_guard(
                 }
                 const ctx = inputContext(event);
                 if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
+                if ((event.key === "Backspace" || event.key === "Delete") && ctx.input.dataset.focusZero != null) {
+                    delete ctx.input.dataset.focusZero;
+                    if (materialField(ctx.field)) stageMaterialEdit(ctx);
+                }
                 if (event.key === "Enter") {
                     event.preventDefault();
                     ctx.input.blur();
