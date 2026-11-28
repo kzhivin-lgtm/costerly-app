@@ -55,3 +55,19 @@ Full local gate, exact-commit GitHub gate, remote main enforcement, normal
 publisher and served/executed Core/wrapper parity remain required. Publication
 and owner real-cycle acceptance are not yet claimed. Independent APPROVE/Back/
 Last Estimate timing work stays in the authoritative TODO, outside this repair.
+
+Candidate12de4a37 was not published. GitHub run46157860473/job141018368915
+passed1231 Python checks, Navigation (including both late ACKs), Calculation
+and Project, then failed Profile Save after the390px stored-logo reload: the
+preview did not appear within the unchanged10s wait. Official artifact15268516918
+(1492077bytes, SHA2568415ac12c1ba67937f3cd1a655f3e5a53b81162e9373a1ba7048f0790d4f360a)
+was downloaded and digest/CRC verified. The screenshot is the startup Loading
+surface; no server exception was found (the displayed stack is a pre-existing
+widget-default warning). The identical clean candidate's complete local Profile
+Save passed83.828s, including the reload. Profile code/test assertions and waits
+were not changed. The underlying reload-timeout cause remains unknown.
+
+Actions retry is forbidden to both configured GitHub credentials (403), so this
+documentation-only evidence commit starts one new cumulative full gate. Runtime
+and all tests remain byte-for-byte identical to12de4a37, including the build.
+This does not bypass the remote gate or permit publishing the failed candidate.
