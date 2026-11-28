@@ -1092,6 +1092,27 @@ in the next deployment, not a separate speculative release or further hunt now.
 V3.6 preserves centering through deploy-cover fade and verifies it in browser
 tests. The exact rare surface described by owner is still unidentified; do not
 claim that this proves the identity of the earlier top-left message.
+OWNER REAL-CYCLE FEEDBACK28November2026, PARTIAL ACCEPTANCE, P1:
+Accepted fast paths: File Review/Project, repeat Project/Object, ordinary Back,
+Profile/tabs and New Estimate. APPROVE and Last Estimate remain unaccepted.
+Read-only matching-build logs: APPROVE2.062/4.965/6.848s; Upload Last Estimate
+4.973/6.137s; Project/Object median1.381s(n7), not the synthetic0.2s result.
+ACTIVE DIAGNOSIS COMPLETED, REPAIR PROPOSAL PENDING DISCUSSION, P1: preserve
+button behavior/status. No edits -> green APPROVED inside approved Object;
+real pending approval -> APPROVING; saved changed inputs -> Review; successful
+approval -> green Done without misleading Estimating or repeated presentation
+load. Current gate can label a reviewed row Estimating after cache invalidation;
+simple approval keeps a stale approved flag, and footer always emits APPROVE.
+Do not claim its historical text change was introduced by V3.6 without evidence.
+Second priorityP1: Last Estimate after New Estimate retains File Review but
+rebuilds cleared Project readiness,4.034-4.370s File Review render. Proposed
+read-only last-view reuse must preserve new-upload identity and access checks.
+Separate P2 owner requests, pending implementation: clear numeric0 on focus;
+untouched blur restores0 without writes or proposal invalidation. Hide Part
+Coating where effective LDSP entails no coating work, preserve other eligible
+parts in mixed Objects. Current turn changes records only, no runtime/deploy.
+Evidence and before/after proposal: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md,
+Owner real-cycle review. Full V3.6 acceptance/checkpoint is not established.
 V3.4 PUBLISHED EVIDENCE (owner accepts improvement, long-pause refinement active):
 Labor V3.4, continuation3.17.4.6. Project calculation counter replaces the old
 post-Parts-Check70 with90; real geometry20/understanding45/locator60/inventory75/

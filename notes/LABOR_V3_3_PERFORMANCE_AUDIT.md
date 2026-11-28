@@ -8,6 +8,66 @@ The three-line PDF refinement3136a583 is separately published and verified.
 
 ## Labor V3.6 published,28November2026
 
+### Owner real-cycle review after rollout,28November2026
+
+Owner accepts faster File Review/Project, repeat Project/Object, ordinary Back,
+Profile/tabs and New Estimate. APPROVE return and Last Estimate after New
+Estimate remain unacceptable. Approved -> Estimating -> Done, unchanged Object
+still showing APPROVE and missing approving feedback are reported regressions.
+Current turn is diagnostic only; no runtime repair or deployment is performed.
+
+[verified] Read-only technical aggregates, matching V3.6 Core/wrapper, observed
+28November10:10-10:19UTC (12:10-12:19 Israel):
+
+|Route|n|Measured seconds|
+|---|---:|---|
+|APPROVE -> Project|3|6.848,4.965,2.062|
+|Upload Last Estimate -> File Review|2|4.973,6.137|
+|Profile Last Estimate -> File Review|1|1.774|
+|Project -> Object|7|median1.381,range1.014-3.549|
+|Object Back -> Project|3|median2.010,range1.377-2.232|
+|Project -> File Review|2|1.161,1.200|
+|File Review -> Project|4|median0.683,range0.599-1.264|
+|Processing -> File Review|1|3.692|
+|Profile tabs (aggregate)|3|0.587-0.715|
+|New Estimate from Object/File Review|2|1.002,1.298|
+
+Small observations, not p95/SLA. Earlier0.2s remains synthetic, not production
+acceptance. Transition-ready excludes the owner's further wait for Done;
+no dedicated Done-paint event exists, so that additional lag is not quantified.
+APPROVE6.848s splits approximately2.741s before main rerun,3.451s server and
+0.655s after;4.965s is0.972/3.609/0.384s and2.062s is0.981/0.731/0.351s.
+Pre/post spans compare client/server clocks and are approximate. Callback draft/
+save/allocation substeps are not separately instrumented. Last Estimate4.973/
+6.137s includes4.238/4.546s server,4.034/4.370s File Review rendering.
+
+[verified] V3.6 labels even a terminal reviewed row Estimating when its Object
+cache is absent. Changed-cost/draft approval invalidates it and repeats card
+preparation. This explains the status sequence without proving recalculation.
+Simple approval retains the old Object snapshot without setting approved=True.
+Separately, the Object footer hardcodes APPROVE in both V3.5 and V3.6; renderer
+and JS guards were unchanged by V3.6. The historical disappearance of APPROVED/
+Approving is unknown, not established as a V3.6 text change. Required state:
+unchanged approved Object -> green APPROVED, pending approval -> APPROVING,
+saved changed data -> Review, acknowledged approval -> Done without misleading
+Estimating. Keep existing Save/Back/discard and authoritative write semantics.
+
+[verified] New Estimate retains File Review data, but clears prepared Project,
+Object caches and Naming-sync receipts. Last Estimate prepares Project again
+inside File Review rendering before ready. Proposal: retain valid read-only
+last-view readiness separately from active upload state, preserving new upload
+identity, tenant checks and canonical names. Exact restore substep costs remain
+unmeasured. First fix approval state/acknowledged cache handoff, then Last Estimate;
+keep accepted fast paths. No new broad cache/router implementation is approved.
+
+Other owner requests: zero clears on numeric focus, untouched blur restores0
+without saving/revoking proposal; no Part Coating for LDSP without coating work.
+The current renderer unconditionally prints that stage. Actual charged coating
+for the owner's Object was not queried. This is a pending UI requirement, not
+a new coating formula or blanket exclusion of other unfinished mixed parts.
+Evidence: /private/tmp/labor36-owner-review/{timings,approval-splits}.json,
+persisted in the existing V3.6 release output's owner-review directory.
+
 Owner approved the complete selected customer-loop package. Published runtime9ce04226 builds on
 the V3.5 checkpoint; detailed scope, before/after, tests and rollback are in
 [V3.6 release record](LABOR_V3_6_TRANSITIONS_2026_11_28.md). Later triage/proposal

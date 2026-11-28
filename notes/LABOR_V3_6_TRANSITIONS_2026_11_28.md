@@ -7,6 +7,15 @@ the accepted V3.5 runtime4f11834c and immutable full checkpoint. Implementation,
 full release checks and deployment are verified below. Production speed and owner
 real-cycle acceptance remain pending.
 
+Owner later tested the real cycle: accepts most navigation improvement, rejects
+APPROVE latency/status and Upload Last Estimate delay. This supersedes blanket
+speed acceptance: APPROVE2.062-6.848s, Upload Last Estimate4.973-6.137s, Project/
+Object median1.381s(n7). Approved -> Estimating -> Done and missing Object
+APPROVED require correction before full acceptance. No repair was applied during
+the requested timing discussion. See the current owner-review section in
+LABOR_V3_3_PERFORMANCE_AUDIT.md and the authoritative TODO. V3.5 remains the last
+accepted full checkpoint.
+
 | Scenario | Accepted change and protected behavior |
 |---|---|
 |Calculation terminal, Object not prepared|Keep Review unavailable until its own snapshot exists; other Objects do not wait for this Object.|
