@@ -1,10 +1,37 @@
-# Labor V3.3 timing audit and V3.4/V3.5 Project progress
+# Labor timing audit, Project progress and navigation
 
 Scope: owner request after the full accepted V3.3 checkpoint. Historical timing
 evidence and optimization proposals. Project-progress implementation was approved
-28November2026 and is tracked below; navigation/caching/costing remain unchanged.
+28November2026 and is tracked below. Later V3.6/V3.7 navigation/cache changes
+are recorded separately below; costing formulas remain unchanged.
 Exact accepted runtimea077dd84 and records25dd8bcf have independent immutable tags.
 The three-line PDF refinement3136a583 is separately published and verified.
+
+## Labor V3.7 published28November2026
+
+[verified] Runtime d9177eb2, exact clean1224 checks/6subtests/all10 gate496.556s,
+full local1224/all10 gate495.473s, four frozen controls and actual deployed
+Core/wrapper/Pages/Railway parity passed. [Publication/scenarios](LABOR_V3_7_APPROVAL_2026_11_28.md).
+Approval now merges committed allocation receipts, refreshes canonical prices
+and proposal input revision without rebuilding full costs, marks the cached
+Object approved and restores missing post-Save Labor/Overhead before Done.
+New Estimate retains only one valid last Project read snapshot; active run,
+workers, uploader and proposal confirmation identities still clear. Existing
+ownership, Naming and canonical quantity checks remain.
+
+[verified] The rare stranded Estimating cause is the order of Future harvest,
+paint and interval cancellation. Before: paint pending, harvest ready, stop,
+leaving no ready frame. A deterministic test failed before and passed after
+harvest moved before paint. Same scoped interval, no new poll or app rerun.
+Unchanged snapshots stay cached. APPROVING and green APPROVED/no duplicate write,
+changed Save -> Review, zero focus/explicit-clear and LDSP visibility are covered.
+Existing completed-action telemetry now separates draft/write/return preparation.
+
+[unknown] New authenticated owner-cycle timings have not yet been measured.
+Earlier V3.6 samples below remain baseline evidence, not V3.7 measurements.
+Next: owner repeats APPROVE and New Estimate -> Last Estimate; correlate those
+existing navigation/action events. No additional scope or infrastructure work
+is approved. Last full accepted checkpoint remains V3.5.
 
 ## Labor V3.6 published,28November2026
 

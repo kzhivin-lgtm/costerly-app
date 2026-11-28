@@ -1,5 +1,50 @@
 # Labor V3.7: approval state and last-view reuse
 
+## Verified publication
+
+[verified] Labor V3.7 published28November2026, continuation work3.17.4.6.
+Runtimed9177eb2ffda4adaca00a6c57e7499a4d25935b2, build
+labor-v3.7-b20261128113121-approval-last-estimate-detection-v8.4.29.
+APPROVING and green unchanged APPROVED restored; acknowledged approval reuses
+committed receipts and canonical commercial/PDF input identity. Missing post-Save
+Labor/Overhead is prepared before returning Done. The proven render/harvest race
+is fixed by harvesting before paint, then cancelling only after ready is shown.
+One valid last Project read snapshot survives New Estimate; fresh upload/access/
+confirmation identities still clear. Numeric0 focus/untouched blur and explicit
+Delete/NULL remain distinct. Inapplicable LDSP Part Coating is hidden, eligible
+finishes and all cost formulas retained. No AI, schema or infrastructure change.
+Exact clean GitHub1224 checks/6subtests/all10 passed496.556s,
+run46140280676/job140964462957. Official artifact15261204869 ZIP1628246bytes,
+SHA256a241901cb2fb60b3c8fa8bb39057f0d768eddda713f1232e796688baef3870cb,
+digest/CRC/clean SHA/suite exits verified. Final full local1224/all10 passed
+495.473s; four frozen network-blocked material controls unchanged, no paid calls.
+Normal publisher and actual strict/trusted/no-bypass ruleset27499066 verified.
+Railway e5c37807-8540-4b8f-b86d-c4e716fae24f / GitHub deployment8128841266
+succeeded, target Cloudflare Pages succeeded. Actual fresh anonymous browser
+showed Loading then Sign in; Core DOM/wrapper metadata/executed browser telemetry,
+version.json and health200 agree. Authenticated owner speed acceptance is pending;
+these checks do not establish new production latency numbers or a full checkpoint.
+Last accepted V3.5 checkpoint remains immutable. Protected71 unrelated TODO lines
+and node_modules link remain uncommitted.
+
+Evidence: /Users/qb/Documents/ChatGPT/Costerly/outputs/labor-v3.7-approval-20261128/.
+The official report includes forced server cleanup after successful screen_recovery
+and prices suites; all required test exits are0. This is cleanup metadata, not a
+skipped or failed suite. Required remote enforcement is the actual strict
+Actions15368-only UI release gate with no bypass, separately verified from files.
+
+The pre-existing separate Workers Builds integration has a source-branch failure
+and a subsequent main-triggered pending check. Its role/cause are unknown from
+available output; the existing deferred TODO is updated, not reactivated. Target
+Cloudflare Pages and actual executed Core/wrapper all pass. Do not describe all
+external integrations as green. No infrastructure configuration changed.
+
+Rollback: a newly stamped, fully gated forward revert, preserving all issued
+PDFs and records. No existing immutable checkpoint is rewritten. Owner must
+accept the real cycle before establishing a full V3.7 preservation checkpoint.
+
+## Approved scope and candidate history
+
 Owner approved28November2026, continuing reference3.17.4.6. Published baseline
 V3.6 runtime9ce04226; last fully accepted checkpoint remains V3.5/4f11834c.
 Keep all accepted fast paths and protection. Only the following package changes.

@@ -13,6 +13,16 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
+- Published Labor V3.7 runtime d9177eb2: [approval and Last Estimate](LABOR_V3_7_APPROVAL_2026_11_28.md).
+  APPROVING/green APPROVED, canonical committed-cost/PDF identity handoff and
+  missing post-Save Labor readiness. Harvest precedes readiness paint and scoped
+  timer cancellation, fixing the deterministic stranded-Estimating race.
+  Existing last Project read cache survives New Estimate, active identities clear.
+  Zero focus preserves untouched blur versus explicit Delete; inapplicable LDSP
+  coating is hidden without changing costs. Exact clean1224/6subtests/all10 gate,
+  full local1224/all10, four frozen controls and actual Railway/Pages/Core/wrapper
+  parity passed. Owner real-cycle acceptance pending; V3.5 checkpoint preserved.
+
 - Published Labor V3.6 runtime9ce04226: [prepared Project/Object navigation](LABOR_V3_6_TRANSITIONS_2026_11_28.md).
   Object/Labor/Overhead preloads gate Review per Object; selected Future reused,
   owned File Review reads overlap, local pending publication reads are skipped,

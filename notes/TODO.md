@@ -325,6 +325,11 @@ outputs/estimation-v9.46/external-checks.json. Reconfirmed 25 November on Labor
 2.14/fc3e5827 and 2.15/bae0e899: the separate Workers check fails on both,
 while target Pages, Core deployment and exact served builds pass for 2.15.
 Evidence: outputs/labor-v2.15-20261125/auxiliary-check-diagnosis.json.
+Reconfirmed28November for V3.7: source-branch check140965117881 failed;
+main-triggered check140967083454 was pending while target Pages, Core and actual
+executed builds passed. Available check output supplies no failure reason;
+no infrastructure investigation or change is included in V3.7. Evidence:
+outputs/labor-v3.7-approval-20261128/release/secondary-workers-checks.json.
 Status stays deferred, not reactivated.
 This follow-up does not authorize infrastructure changes.
 
@@ -1097,23 +1102,24 @@ Accepted fast paths: File Review/Project, repeat Project/Object, ordinary Back,
 Profile/tabs and New Estimate. APPROVE and Last Estimate remain unaccepted.
 Read-only matching-build logs: APPROVE2.062/4.965/6.848s; Upload Last Estimate
 4.973/6.137s; Project/Object median1.381s(n7), not the synthetic0.2s result.
-ACTIVE, OWNER APPROVED28November2026, LABOR V3.7 PACKAGE, P1: preserve
-button behavior/status. No edits -> green APPROVED inside approved Object;
-real pending approval -> APPROVING; saved changed inputs -> Review; successful
-approval -> green Done without misleading Estimating or repeated presentation
-load. Current gate can label a reviewed row Estimating after cache invalidation;
-simple approval keeps a stale approved flag, and footer always emits APPROVE.
-Do not claim its historical text change was introduced by V3.6 without evidence.
-Second priorityP1: Last Estimate after New Estimate retains File Review but
-rebuilds cleared Project readiness,4.034-4.370s File Review render. Proposed
-read-only last-view reuse must preserve new-upload identity and access checks.
-Included owner-approved P2 requirements: clear numeric0 on focus;
-untouched blur restores0 without writes or proposal invalidation. Hide Part
-Coating where effective LDSP entails no coating work, preserve other eligible
-parts in mixed Objects. V3.7 implements this bounded package, verification and
-publication pending. Scope/scenarios: notes/LABOR_V3_7_APPROVAL_2026_11_28.md.
-Evidence and before/after proposal: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md,
-Owner real-cycle review. Full V3.6 acceptance/checkpoint is not established.
+PUBLISHED, OWNER REAL-CYCLE ACCEPTANCE PENDING, P1, LABOR V3.7, work3.17.4.6:
+Runtime d9177eb2 restores APPROVING/green unchanged APPROVED/no repeat write;
+acknowledged receipts, canonical prices/PDF input revision and complete current
+Object/Labor/Overhead state precede Project Done. The deterministic Future/paint/
+stop race is fixed by harvest-before-paint, with the existing scoped interval.
+Last Estimate reuses one valid last Project read snapshot across New Estimate;
+new upload/worker/access/confirmation identities and canonical Naming/qty checks
+are preserved. Included P2 requirements verified: numeric0 clears visually,
+untouched blur restores it without a write, explicit Delete still clears nullable
+values. LDSP without coating demand hides Part Coating; eligible mixed/wood work
+and cost formulas remain. No unrelated UI, model, schema or infrastructure edits.
+Exact clean1224 checks/6subtests/all10 GitHub gate496.556s and full local1224/all10
+495.473s passed; four frozen controls unchanged. Normal publisher, actual strict/
+trusted/no-bypass main rule, Railway/Pages and served/executed Core/wrapper parity
+verified. No new authenticated production speed claim; owner should repeat the
+APPROVE and New Estimate -> Last Estimate cycles before full acceptance.
+Last fully accepted checkpoint stays V3.5. Source/scenarios/receipts/rollback:
+notes/LABOR_V3_7_APPROVAL_2026_11_28.md. V3.6 timings above are baseline only.
 V3.4 PUBLISHED EVIDENCE (owner accepts improvement, long-pause refinement active):
 Labor V3.4, continuation3.17.4.6. Project calculation counter replaces the old
 post-Parts-Check70 with90; real geometry20/understanding45/locator60/inventory75/
