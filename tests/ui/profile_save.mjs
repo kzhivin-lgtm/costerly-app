@@ -223,6 +223,11 @@ try{
   await stored.page.screenshot({path:reportPath('contacts-stored-logo-'+width+'.png')});
   results.push({storedLogo:true,width,times,exceptions:0,picker:'opened'});
   await stored.page.reload();
+  // Reload has the same startup preconditions as boot(): wait for the host's
+  // ready reveal and Core protocol before interacting with the restored tabs.
+  await stored.page.locator('iframe.is-ready').waitFor();
+  const restoredFrame=await(await stored.page.locator('#costerly-app-frame').elementHandle()).contentFrame();
+  await restoredFrame.waitForFunction(()=>window.__costerlyWorkflowTransition?.enabled());
   await stored.core.getByRole('tab',{name:'Contacts',exact:true}).click();
   await stored.core.locator('.company-logo-preview img').waitFor();
   await stored.core.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
