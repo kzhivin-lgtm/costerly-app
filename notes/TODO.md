@@ -331,6 +331,9 @@ executed builds passed. Available check output supplies no failure reason;
 no infrastructure investigation or change is included in V3.7. Evidence:
 outputs/labor-v3.7-approval-20261128/release/secondary-workers-checks.json.
 Status stays deferred, not reactivated.
+V3.8/cb70b113: source check141026325169 failed; main check141028457284 was
+pending at final observation. Target Pages, Railway and executed Core/wrapper
+versions passed. No Workers integration change or new investigation is included.
 This follow-up does not authorize infrastructure changes.
 
 PENDING, P0, DIAGNOSTIC FOLLOW-UP, 2026-11-19. Bind upload completion to the
@@ -1102,7 +1105,7 @@ Accepted fast paths: File Review/Project, repeat Project/Object, ordinary Back,
 Profile/tabs and New Estimate. APPROVE and Last Estimate remain unaccepted.
 Read-only matching-build logs: APPROVE2.062/4.965/6.848s; Upload Last Estimate
 4.973/6.137s; Project/Object median1.381s(n7), not the synthetic0.2s result.
-ACTIVE REGRESSION, P0, OWNER REPORT28November2026, same work3.17.4.6:
+PUBLISHED REPAIR, P0, OWNER REAL-CYCLE ACCEPTANCE PENDING, work3.17.4.6:
 After editing, New Estimate -> Last Estimate -> File Review -> Project remains
 blank except navigation/actions (owner screenshot14:01:59 Israel). Owner confirms
 it persists and cannot scroll in either direction, not an off-screen table.
@@ -1118,7 +1121,7 @@ unaccepted. Diagnosis and sample limits: notes/LABOR_V3_7_APPROVAL_2026_11_28.md
 Owner real-cycle review. Short synthetic saved/unsaved, held/fast preparation and
 deferred File Review publication replays did not reproduce the blank state.
 Owner explicitly requires autonomous code/log diagnosis, no owner DOM work.
-CONFIRMED REPRODUCTION AND BOUNDED REPAIR, Labor V3.8 candidate: a late empty
+CONFIRMED REPRODUCTION AND BOUNDED REPAIR, published Labor V3.8: a late empty
 File Review widget acknowledgement carried by the real Project auto-rerun runs
 its old field callback. That callback sets screen=file_review; the Project-only
 fragment guard returns, clearing its header/title/table while outside actions
@@ -1126,8 +1129,15 @@ remain. Before repair the same blank screenshot is reproduced. Field save/name
 callbacks no longer navigate; accepted writes, CAS, empty/echo rejection and
 button navigation remain. Focused before/after browser evidence exists. Exact
 historical browser payload was not logged, so do not claim it was recovered.
-Permanent two-field New/Last Estimate regression and full gates/publication are
-required. Evidence/verification: notes/LABOR_V3_8_PROJECT_RENDER_2026_11_28.md.
+Permanent two-field New/Last Estimate regression passes. Exact clean cb70b113:
+1231 Python/all10 browser suites passed locally601.522s and remotely576.231s;
+official artifact digest/CRC/SHA/clean tree verified. Normal publisher, actual
+strict/trusted/no-bypass main rule, Railway/Pages and actual executed V3.8
+Core/wrapper/version/health parity verified. Profile runtime is unchanged; only
+the existing reload test now awaits its normal startup-ready prerequisites.
+Owner will repeat edits -> New/Last Estimate -> File Review -> Project and wait
+through subsequent ticks. This is pending owner acceptance, not a full checkpoint.
+Evidence/verification: notes/LABOR_V3_8_PROJECT_RENDER_2026_11_28.md.
 PUBLISHED, OWNER REAL-CYCLE ACCEPTANCE PENDING, P1, LABOR V3.7, work3.17.4.6:
 Runtime d9177eb2 restores APPROVING/green unchanged APPROVED/no repeat write;
 acknowledged receipts, canonical prices/PDF input revision and complete current

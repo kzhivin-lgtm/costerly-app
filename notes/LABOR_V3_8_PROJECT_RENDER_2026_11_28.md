@@ -1,5 +1,26 @@
 # Labor V3.8: retain Project after late File Review field acknowledgements
 
+## Verified publication
+
+[verified] Published28November2026, runtimecb70b113431908b166c47b1e4adb9266b01c2a4b,
+build labor-v3.8-b20261128150031-project-render-state-detection-v8.4.29.
+Exact clean full local gate passed601.522s; exact clean GitHub gate passed576.231s,
+1231 Python checks and all10 browser suites, run46160075704/job141025231252.
+Official artifact15270075206,1689095bytes, SHA256
+91a59c5ea2a2e3f06f9f72c9a96e3aa84e480c7d30d79adb086d195ecc41ab36:
+API digest/ZIP CRC/exact SHA/clean tree/all required exits verified. Normal
+publisher accepted main; actual strict Actions15368-only/no-bypass main ruleset
+27499066 verified independently. Railway8b425404-64bf-439d-b97a-7cf974d8482b
+(GitHub deployment8131699083) and target Pages check141028394158 succeeded.
+Fresh anonymous browser confirmed executed wrapper telemetry, Core DOM,
+version.json and health200/ok all match V3.8. Authenticated owner reproduction
+acceptance is pending; no new production speed or full owner checkpoint claim.
+The earlier accepted V3.5 checkpoint is preserved. The separate Workers Builds
+failure/pending check remains the existing deferred P2, outside this repair.
+
+Evidence: /Users/qb/Documents/ChatGPT/Costerly/outputs/labor-v3.8-project-render-20261128/.
+Protected71 unrelated TODO lines and the node_modules symlink remain uncommitted.
+
 Continuation work3.17.4.6. Scope: repair the owner's persistent blank Project
 after editing and New Estimate -> Last Estimate -> File Review -> Project.
 Preserve V3.5 accepted checkpoint, V3.7 approval/zero/LDSP corrections, saved
