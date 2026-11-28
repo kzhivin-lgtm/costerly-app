@@ -1025,7 +1025,7 @@ final plan readiness. Duplicate/out-of-order/old-worker receipts cannot regress
 or revive progress. Preserve failures, saved reuse, navigation-away completion,
 pricing/approval/PDF/history and all accepted checkpoints. Full gate and actual
 rollout verification pending; no new production calculation or DB schema change.
-Evidence: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md. Current build labor-v3.3-b20261128070926-project-progress-detection-v8.4.29.
+Evidence: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md. Current build labor-v3.4-b20261128072035-project-progress-detection-v8.4.29.
 DIAGNOSED OBSERVATION, P1, OWNER OBSERVATION27November2026:
 Repeat Download Proposal briefly appeared slow/strange, then fast. Distinguish
 signed-link expiry/redirect/network/storage/browser opening from Generate freeze,

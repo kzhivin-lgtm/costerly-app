@@ -95,8 +95,8 @@ boundaries, not a captured exact70%-paint timestamp or complete UI-ready time.
 
 Owner approved28November2026: move the current70 boundary to90, not95,
 and add completed internal-stage receipts. Continuing work3.17.4.6 within Labor
-V3.3, no new product/work block. Candidate build:
-labor-v3.3-b20261128070926-project-progress-detection-v8.4.29.
+V3.4 (owner requested version increment), no new hierarchical work block. Candidate build:
+labor-v3.4-b20261128072035-project-progress-detection-v8.4.29.
 
 Implementation: existing Parts Check/pipeline/material publisher receive an
 optional synchronous callback. It only updates the existing process-local progress

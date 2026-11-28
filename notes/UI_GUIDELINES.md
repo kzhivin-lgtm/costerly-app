@@ -1017,7 +1017,7 @@ retain the canonical name. Successful changed names revoke draft confirmation,
 refresh affected cached/prepared names and require Set Prices for the next Vn.
 A failed name write retains the current actionable state; old issued names stay.
 
-## Labor V3.3 Project progress, owner approved28November2026
+## Labor V3.4 Project progress, owner approved28November2026
 
 Replace the former post-Parts-Check70% checkpoint with90%. Real completed
 boundaries are geometry20, parallel understanding45, locators60, original-sheet
