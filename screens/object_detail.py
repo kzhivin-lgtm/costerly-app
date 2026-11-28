@@ -456,6 +456,7 @@ def _prepare_approved_return(estimate_id: str, object_id: str, approval: dict) -
     identity = next((identity for identity in comparisons if identity[2:] == key), None)
     previous_labor = comparisons.get(identity) if identity else None
     changed = approval.get("costs_changed") is not False
+    refresh_inputs = changed or estimate_id in st.session_state.get("objects_estimation_cache_dirty", set())
     plan = approval.get("material_plan") or {}
     if changed:
         _mark_objects_estimation_dirty(estimate_id)
@@ -477,9 +478,8 @@ def _prepare_approved_return(estimate_id: str, object_id: str, approval: dict) -
         st.session_state.setdefault("object_detail_data_cache_dirty", set()).discard(estimate_id)
     project = st.session_state.get("objects_estimation_data_cache", {}).get(estimate_id)
     if project:
-        project = refresh_objects_estimation_prices(estimate_id, project)
-        if plan:
-            project = {**project, "material_plan": {k: v for k, v in plan.items() if k != "_object_detail_receipts"}}
+        project = refresh_objects_estimation_prices(estimate_id, project,
+                    **({"refresh_inputs": True} if refresh_inputs else {}))
         st.session_state.objects_estimation_data_cache[estimate_id] = project
         st.session_state.setdefault("objects_estimation_cache_dirty", set()).discard(estimate_id)
         st.session_state.setdefault("objects_estimation_pricing_dirty", set()).discard(estimate_id)

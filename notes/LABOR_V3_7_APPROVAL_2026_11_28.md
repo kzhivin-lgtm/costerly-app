@@ -26,7 +26,7 @@ material controls remain required. Publish only the exact successful SHA through
 the normal publisher, then verify actual Core/wrapper versions and main ruleset.
 Rollback is a newly stamped, gated forward revert, never rewriting old checkpoints.
 
-Implementation prepared. Build: labor-v3.7-b20261128104923-approval-last-estimate-detection-v8.4.29.
+Implementation prepared. Build: labor-v3.7-b20261128105642-approval-last-estimate-detection-v8.4.29.
 Verification/publishing are pending. Earlier focused cases confirmed approval
 pending/reopen/changed Save, committed receipt preservation and cache/access
 boundaries. The retained LDSP all-work edit scenario now omits coating, with
@@ -34,3 +34,12 @@ its expected totals reduced by the same existing150ILS labor/12ILS overhead;
 separate eligible-finish coating override/payroll/reopen checks stay mandatory.
 No existing gate/check was removed or weakened. Production speed/owner acceptance
 remain unverified until the owner repeats the real cycle.
+
+
+Final inspection found that a dirty Project must refresh durable cost basis,
+material labels/partial flags and the plan revision as well as amounts, otherwise
+Set Prices/Generate would compare an obsolete proposal identity. The existing
+commercial refresher now has an approval-only durable-input projection, without
+rerunning costs. Same-price changed-input regression coverage is mandatory.
+Candidate35d62744 was not published; its local full run was intentionally stopped
+for this correction. It is not recorded as passing or as a checkpoint.

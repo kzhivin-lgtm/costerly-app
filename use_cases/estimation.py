@@ -496,7 +496,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     }
 
 
-def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any]) -> dict[str, Any]:
+def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any], *, refresh_inputs: bool = False) -> dict[str, Any]:
     """Refresh saved commercial inputs without rebuilding costs or materials."""
     client = get_supabase_client()
     _assert_screen_estimate_access(client, estimate_id)
@@ -507,6 +507,15 @@ def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any]) 
         raise ValueError("The saved estimate is unavailable")
     settings = _first_row(fetch_company_overhead_settings(client, str(objects.iloc[0]["company_id"])))
     saved = {str(row["object_id"]): row for row in objects.to_dict("records")}
+    plan_row = _first_row(fetch_rfq_estimate_material_plan(client, estimate_id)) if refresh_inputs else None
+    plan = (plan_row or {}).get("plan_payload") or {}
+    summaries = {}
+    if refresh_inputs:
+        # Reuse durable cost receipts; do not run the cost engine again simply
+        # to reconstruct the proposal's input identity after an acknowledged edit.
+        for line in fetch_rfq_estimate_lines(client, estimate_id).to_dict("records"):
+            if line.get("source") == _FULL_COST_SOURCE:
+                summaries[str(line["object_id"])] = line.get("raw_agent_json") or {}
     rows = []
     for original in cached.get("rows", ()):
         oid = str(original.get("object_key") or "")
@@ -516,7 +525,13 @@ def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any]) 
         quantity = _number(obj.get("quantity"), 1)
         cost = obj.get("self_cost_ex_vat")
         price = overrides.get(oid, _suggested_sale_price(cost, _number(settings.get("sale_price_markup_percent"), 30)))
-        rows.append({**original, "quantity": quantity, "self_cost_unit": cost,
+        inputs = {}
+        if refresh_inputs:
+            checked = (plan.get("parts_check") or {}).get(oid) or {}
+            inputs = {"proposal_input_basis": summaries.get(oid, {}).get("basis_sha256"),
+                      "cost_partial": bool(summaries.get(oid, {}).get("partial")),
+                      "materials": _object_visible_materials(plan, checked, oid)}
+        rows.append({**original, **inputs, "quantity": quantity, "self_cost_unit": cost,
                      "name": obj.get('object_name',original.get('name')),
                      "sale_price_unit": price, "sale_price_total": _line_total(price, quantity),
                      "sale_price_overridden": oid in overrides, "reviewed": bool(obj.get("approved")),
@@ -527,7 +542,9 @@ def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any]) 
         installation_percent=_number(settings.get("installation_percent"), 10))
     source = dict(cached.get('proposal_source') or {})
     source['settings'] = {k: v for k, v in settings.items() if k not in {'updated_at', 'created_at'}}
-    return {**cached, "rows": rows, "project_costs": project, "summary": summary,
+    if refresh_inputs:
+        source['material_plan_updated_at'] = (plan_row or {}).get('updated_at')
+    return {**cached, **({'material_plan': plan, 'material_plan_ready': _material_plan_status(plan_row) == 'planned'} if refresh_inputs else {}), "rows": rows, "project_costs": project, "summary": summary,
             "proposal_source": source,
             "advance_payment_percent": _optional_advance_payment(settings),
             "production_time_working_days": production_time_from_overrides(saved_overrides)}

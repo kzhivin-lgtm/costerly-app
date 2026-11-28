@@ -127,7 +127,7 @@ def test_approval_handoff_uses_committed_receipt_and_canonical_commercial_projec
     monkeypatch.setattr(object_detail, "load_object_detail_material_receipt", lambda **_: pytest.fail("Receipt was already returned"))
     monkeypatch.setattr(object_detail, "get_supabase_client", object)
     monkeypatch.setattr(labor, "_calculate", lambda *a, **kw: {"status": "ready", "assembly": {}, "preparation": {}})
-    monkeypatch.setattr(object_detail, "refresh_objects_estimation_prices", lambda e, cached: {**cached, "rows": [
+    monkeypatch.setattr(object_detail, "refresh_objects_estimation_prices", lambda e, cached, **kw: {**cached, **({"material_plan": {"revision": "new"}} if kw.get("refresh_inputs") else {}), "rows": [
         {"object_key": "one", "quantity": 3, "status": "completed", "reviewed": True},
         {"object_key": "two", "status": "completed", "reviewed": not costs_changed}]})
     object_detail._approve_current_object_and_return(estimate_id="e", object_id="one")
@@ -245,3 +245,28 @@ def test_first_approval_returns_committed_allocation_receipts(monkeypatch):
     assert result == {"costs_changed": True, "material_plan": committed}
     assert calls == [{"estimate_id": "e", "run_id": "r", "company_id": "c",
                      "purchase_keys": frozenset(), "approve_objects": ("one",)}]
+
+
+def test_approval_refresh_preserves_pdf_input_identity_even_when_prices_are_unchanged(monkeypatch):
+    from use_cases import estimation
+    from use_cases.proposal_basis import pricing_signature
+    monkeypatch.setattr(estimation, "get_supabase_client", object)
+    monkeypatch.setattr(estimation, "_assert_screen_estimate_access", lambda *a: None)
+    monkeypatch.setattr(estimation, "fetch_rfq_object_estimates", lambda *a: pd.DataFrame([
+        {"object_id": "one", "company_id": "c", "quantity": 1, "status": "completed", "approved": True, "self_cost_ex_vat": 100}]))
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_pricing_overrides", lambda *a: pd.DataFrame())
+    monkeypatch.setattr(estimation, "fetch_company_overhead_settings", lambda *a: pd.DataFrame([{"vat_percent": 18}]))
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_material_plan", lambda *a: pd.DataFrame([
+        {"updated_at": "new-revision", "plan_status": "planned", "plan_payload": {"status": "planned"}}]))
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines", lambda *a: pd.DataFrame([
+        {"object_id": "one", "source": estimation._FULL_COST_SOURCE, "raw_agent_json": {"basis_sha256": "new-inputs", "partial": False}}]))
+    monkeypatch.setattr(estimation, "_ensure_full_object_costs", lambda *a, **kw: pytest.fail("Approval rebuilt full costs"))
+    cached = {"rows": [{"object_key": "one", "proposal_input_basis": "old-inputs"}],
+              "proposal_source": {"material_plan_updated_at": "old-revision"}}
+    fresh = estimation.refresh_objects_estimation_prices("e", cached, refresh_inputs=True)
+    assert fresh["rows"][0]["proposal_input_basis"] == "new-inputs"
+    assert fresh["proposal_source"]["material_plan_updated_at"] == "new-revision"
+    assert fresh["material_plan"] == {"status": "planned"}
+    old_identity = {**fresh, "rows": [{**fresh["rows"][0], "proposal_input_basis": "old-inputs"}],
+                    "proposal_source": {**fresh["proposal_source"], "material_plan_updated_at": "old-revision"}}
+    assert pricing_signature(fresh) != pricing_signature(old_identity)
