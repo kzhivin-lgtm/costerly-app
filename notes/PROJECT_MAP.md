@@ -13,7 +13,13 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
-- Published Labor V3.4 runtime997a4a33 replaces the Project counter's70 boundary
+- Current Labor V3.5 runtime4f11834c refines the Project counter: owned pending
+  refresh uses accepted seeds, then normal scoped terminal reload. Shared
+  interpolation catches up gradually and real catalog/material-plan receipts
+  widen late bands. Quantity receipts require server-rendered agreement before
+  clearing. No new polling/writes/models; [timing, gates and acceptance limits](LABOR_V3_3_PERFORMANCE_AUDIT.md).
+
+- Preserved Labor V3.4 runtime997a4a33 replaces the Project counter's70 boundary
   with90 and adds completed stage receipts. `use_cases/estimation_progress.py`
   owns bounded batch/generation state; optional pipeline/material callbacks do
   no extra durable I/O. Existing fragment/elapsed interpolation hold all active

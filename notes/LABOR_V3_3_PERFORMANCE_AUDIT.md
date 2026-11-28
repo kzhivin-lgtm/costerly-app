@@ -1,4 +1,4 @@
-# Labor V3.3 timing audit and Labor V3.4 Project progress
+# Labor V3.3 timing audit and V3.4/V3.5 Project progress
 
 Scope: owner request after the full accepted V3.3 checkpoint. Historical timing
 evidence and optimization proposals. Project-progress implementation was approved
@@ -325,10 +325,10 @@ forward jumps are less harmful. Existing work3.17.4.6 continues, public V3.5.
 [verified] Read-only latest persisted cycle at07:46UTC:
 run_de1804c81e2a4a39bc1def6e222a4f56_estimate_20261128073548,
 object seed07:40:07.695468UTC, first plan07:41:28.041999UTC,80.346531s.
-Parts aggregate starts07:40:10.777644UTC, lasts66.252232s; provider island-map
+Parts aggregate starts07:40:10.777644UTC, lasts66.252252s; provider island-map
 25.551s, front21.087s and front-components16.336s run in parallel, then front-role
 review7.810s and original-page review11.673s. Last provider finishes07:40:57.266UTC,
-about19.763s before aggregate completion, then11.012s to first plan creation.
+about19.764s before aggregate completion, then11.012s to first plan creation.
 Source: private latest-cycle.json, no new paid model or production calculation.
 [likely] This is the owner's reported cycle based on timing; source/paint were
 not independently correlated. [unknown] Exact duration/phase of83: V3.4 keeps
@@ -364,15 +364,28 @@ observer, writer, RPC, price math or business persistence is added. Tests retain
 all earlier quantity/failure/latest-write/reopen scenarios and add an actual
 accepted quantity during held progress, multiple seed renders and final reload.
 
-Checks in progress:1198 Python checks passed22.81s. The browser fixture rejects
+[verified] Local1198/all10 passed563.632s (unit22.81s). The browser fixture rejects
 any result read while its owned worker is active, holds a real material stage,
 requires its visible count to advance and retains quantity2 to terminal reload.
 Four frozen material controls passed with network blocked, unchanged purchase
 signatures, unresolved requirements and immutable report inputs. An illustrative
 80s profile using observed provider times and assumed internal splits displayed
 1,2,4,5,8,...99 with largest3-point change per1.5s sample. This simulation is not
-a fresh production measurement. Full local/remote gates and rollout pending.
-Candidate build labor-v3.5-b20261128075537-progress-continuity-detection-v8.4.29.
+a fresh production measurement. Exact clean remote run46124285714/job140915298618
+passed1198/6subtests/all10 in437.451s. Artifact15254968877 digest
+dca327771ffcb9176cf1d6abcf048938c3192ec71768ead86315b75977285877 verified by ZIP
+bytes/CRC/exact SHA/clean report/all suite exits. Remote Chrome1353 frames,
+no backwards or premature100, largest3-point painted step; held material moves
+22-to25, accepted quantity2 remains through progress and terminal reload.
+Runtime4f11834c10280cded4c164e60ba06cfca397df1b published normally; actual active
+strict/trusted/no-bypass main rule27499066 independently checked. Railway874568b2/
+deployment8126700154 and target Pages140917696180 success. Real Chrome
+08:18:57UTC Core/executed wrapper/meta/version.json parity, health200/ok and zero
+exceptions. Separate legacy Workers Builds was still in_progress08:18:22UTC,
+not a repair claim. Working-source882files/5172711bytes backup CRC/every byte/
+unchanged5MiB cap verified (71 unrelated TODO lines excluded from commits).
+All evidence: /Users/qb/Documents/ChatGPT/Costerly/outputs/labor-v3.5-progress-continuity-20261128/.
+Published build labor-v3.5-b20261128075537-progress-continuity-detection-v8.4.29.
 Owner acceptance on the next real cycle remains required. V3.4 runtime997a4a33
 and the earlier PDF/checkpoint remain valid preserved baselines. Rollback is a
 forward gated revert of only this refinement with a fresh build, preserving

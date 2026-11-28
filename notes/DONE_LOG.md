@@ -1,5 +1,48 @@
 # Done Log
 
+[verified] Labor V3.5 Project continuity published28November2026, continuing
+work3.17.4.6. Runtime4f11834c10280cded4c164e60ba06cfca397df1b, build
+labor-v3.5-b20261128075537-progress-continuity-detection-v8.4.29.
+Owner's V3.4 real-cycle feedback accepts overall improvement, reports1/2/3-to20+
+and50-to60 jumps and a long83 pause. Exact83 paint duration/phase is unknown;
+the latest saved cycle is80.347s, Parts Check66.252s and19.764s after the last
+provider response. Existing fragment result reads were a verified blocking
+render dependency, not a proved exact historical cause of the83 observation.
+V3.5 uses the same owned worker's accepted seeds during pending refresh, then
+normal scoped terminal reads/errors/invalidation. No added timer/poll/worker/
+model request/progress write. Weights5/8/40/50/65/66/67 add actual material
+context74 and selected plan82 before layout88/Parts90. Confirmed jumps catch up
+at2 points/s on the existing fragment; variable material bands spend their range
+gradually. The display never reaches100 while running and never delays a usable
+result for animation. Existing duplicate/late/old-worker protections remain.
+Accepted pending quantities survive seed renders until actual server-rendered
+value acknowledges the receipt; local restored text alone cannot discard it.
+No input event/observer/writer/RPC/price math was added or replaced.
+Local1198/all10 passed563.632s. Exact clean GitHub run46124285714/job140915298618
+passed1198checks/6subtests/all10 in437.451s. Artifact15254968877 SHA256
+dca327771ffcb9176cf1d6abcf048938c3192ec71768ead86315b75977285877 matched ZIP/CRC,
+exact SHA, clean tree and every suite.1353 browser frames have no backwards
+movement or premature100, largest3-point change; held material22-to25 advances
+while unrelated reads deliberately fail if attempted. Actual accepted quantity2
+survives progress and final reload, all prior price/failure/PDF/version/quantity/
+reopen/auth/navigation tests remain. Four frozen material controls are unchanged,
+network blocked, no paid model run/production calculation/quote/schema mutation.
+Normal publisher and actual strict/trusted/no-bypass ruleset27499066 verified;
+main remains exact runtime. Railway874568b2-01f2-4ee2-8225-a673537fdd7d and
+GitHub deployment8126700154 succeeded, target Pages140917696180 succeeded.
+Real Chrome08:18:57UTC Core/executed wrapper/meta/version.json match V3.5,
+health200/ok, zero exceptions. Anonymous deployed parity and synthetic browser
+liveness do not establish owner-authenticated real-cycle acceptance, still pending.
+Separate legacy Workers Builds integration remained in_progress08:18:22UTC,
+not a claimed repair. Source backup882files/5172711bytes passed unchanged5MiB
+cap, CRC and every-working-source-byte comparison, SHA256
+18e4c34c61af02a9f77a7e1af8ed8e49f252ce89bade4940016d744bfb1b3d4b.
+It includes71 protected unrelated TODO lines excluded from runtime/records commits.
+V3.4 runtime997a4a33 and earlier PDF/full checkpoints are retained. Rollback is a
+forward gated revert of only this refinement with a fresh build, not force-push.
+Evidence: /Users/qb/Documents/ChatGPT/Costerly/outputs/labor-v3.5-progress-continuity-20261128/.
+[Timing evidence and limits](LABOR_V3_3_PERFORMANCE_AUDIT.md).
+
 [verified] Labor V3.4 Project progress published28November2026, existing work
 3.17.4.6. Owner requested the public version increment before publication.
 Runtime997a4a33558dcd9aea809453e613ff6655b7b7ad, build
