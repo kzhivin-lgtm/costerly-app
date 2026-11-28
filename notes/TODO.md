@@ -1013,7 +1013,7 @@ format applies to next Generate, existing PDF bytes unchanged. First remote
 screenshot; original-preserving diagnostics added, final full gate passed.
 All failed/passed evidence retained, no assertion/deadline weakened. Baseline
 a077dd84 remains accepted/immutable; later visual acceptance pending.
-PUBLISHED, PENDING OWNER REAL-CYCLE ACCEPTANCE, P1, Labor V3.5,
+COMPLETED, OWNER-ACCEPTED REAL CYCLE, P1, Labor V3.5,
 OWNER REQUEST28November2026, continuation3.17.4.6. Owner accepted V3.4 improvement
 but reported early/50-to60 jumps and a long83 pause. Latest real cycle80.347s;
 exact83 phase/paint unknown. Pending refresh now uses the same owned worker's
@@ -1032,9 +1032,25 @@ quantity2 persists to completion. Normal publisher, real strict/trusted/no-bypas
 main verified. Railway874568b2/target Pages succeeded, served V3.5 Core/executed
 wrapper/meta/version match08:18:57UTC, health200/ok. No paid run/production
 calculation/quote/schema change. Source882files/5172711bytes backup validated.
-Real next-cycle perception remains pending; no claim that83 was independently
+Owner28November accepts the new real cycle as very smooth overall;70/71
+brief pauses and93-to-ready jump are nonblocking. Old83 paint was not independently
 captured or reproduced in production. Evidence and rollback:
 notes/LABOR_V3_3_PERFORMANCE_AUDIT.md. Previous V3.4/PDF checkpoints retained.
+COMPLETED FULL CHECKPOINT, P1, OWNER REQUEST28November2026, work3.17.4.6.
+Exact4f11834c and separate records pinned, source882files/5171097bytes,
+independent bundle restore1198 checks/four frozen controls passed. Official
+full gate/artifact, source/records ZIPs/inventories/tags, manifest/verifier,
+applied migration/current PDF evidence and protected unrelated TODO patch retained.
+No runtime deployment or new paid run; accepted70/71 and93-to-ready observations
+are not reopened as repairs. Guide notes/LABOR_V3_5_PRODUCTION_CHECKPOINT_2026_11_28.md.
+PENDING AUTHORIZED ANALYSIS, P1, OWNER REQUEST28November2026, after checkpoint:
+Classify the complete transition inventory into no-current-work and optimization
+candidates, give evidence/unknowns and concrete options. Include Command-Shift-R
+hard reload and automatic post-deploy refresh/grey startup as first-class paths.
+Admin is the lowest optimization priority. Reuse existing telemetry and inspect
+current startup/auth/render/ready flow before proposals. No runtime repair or
+new cache/auth/navigation architecture is approved by this analysis request;
+implementation work/block/public number remains unassigned.
 V3.4 PUBLISHED EVIDENCE (owner accepts improvement, long-pause refinement active):
 Labor V3.4, continuation3.17.4.6. Project calculation counter replaces the old
 post-Parts-Check70 with90; real geometry20/understanding45/locator60/inventory75/

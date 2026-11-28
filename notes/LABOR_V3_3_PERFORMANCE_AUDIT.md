@@ -390,3 +390,13 @@ Owner acceptance on the next real cycle remains required. V3.4 runtime997a4a33
 and the earlier PDF/checkpoint remain valid preserved baselines. Rollback is a
 forward gated revert of only this refinement with a fresh build, preserving
 issued versions, costing and all accepted behavior. No schema mutation.
+
+## Owner acceptance and preservation,28November2026
+
+Owner reports V3.5 real progress very smooth overall, accepts short70/71 pauses
+and93-to-ready jump as nonblocking, requests the full checkpoint first.
+[Accepted V3.5 preservation](LABOR_V3_5_PRODUCTION_CHECKPOINT_2026_11_28.md) freezes runtime4f11834c with882 exact
+files, independently restored1198 checks/four frozen controls and the complete
+release evidence. New authorized analysis must classify all transitions, include
+hard reload and post-deploy refresh/grey startup explicitly, and put Admin last.
+No new counter or navigation runtime change is made by these records.

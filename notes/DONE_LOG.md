@@ -1,5 +1,18 @@
 # Done Log
 
+[verified] Owner-accepted full Labor V3.5 checkpoint,28November2026,
+continuing work3.17.4.6. Owner's real Project cycle is very smooth overall;
+brief70/71 pauses and93-to100/ready jump are accepted residual observations.
+Exact runtime4f11834c10280cded4c164e60ba06cfca397df1b; source882files/
+5171097bytes. Independent bundle restore matched every source byte,
+1198 Python checks24.171s and four network-blocked material controls passed.
+Exact remote1198/6subtests/all10 gate437.451s, artifact digest, source/records
+archives/tags, bundle/manifest/verifier, current PDF and applied migration evidence
+retained. No runtime change/deploy/paid run/production data write for preservation.
+Next authorized work: classify/plan all transitions, including hard reload and
+deploy refresh/grey startup; Admin lowest priority. This does not accept those
+latencies or an unobserved exhaustive manual UI matrix. [Restore guide](LABOR_V3_5_PRODUCTION_CHECKPOINT_2026_11_28.md).
+
 [verified] Labor V3.5 Project continuity published28November2026, continuing
 work3.17.4.6. Runtime4f11834c10280cded4c164e60ba06cfca397df1b, build
 labor-v3.5-b20261128075537-progress-continuity-detection-v8.4.29.

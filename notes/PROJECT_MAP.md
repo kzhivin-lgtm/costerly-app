@@ -13,6 +13,10 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
+- Latest accepted full preservation: [Labor V3.5 checkpoint](LABOR_V3_5_PRODUCTION_CHECKPOINT_2026_11_28.md),
+  runtime4f11834c,882 exact files, restored1198 checks/four controls. Owner accepts
+  the real counter cycle; startup/navigation latency remains the next analysis.
+
 - Current Labor V3.5 runtime4f11834c refines the Project counter: owned pending
   refresh uses accepted seeds, then normal scoped terminal reload. Shared
   interpolation catches up gradually and real catalog/material-plan receipts
@@ -30,7 +34,7 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
   [Performance audit](LABOR_V3_3_PERFORMANCE_AUDIT.md) preserves historical timings,
   published V3.4 progress and separate unimplemented navigation proposals.
 
-- Latest full preservation: [Labor V3.3 checkpoint](LABOR_V3_3_PRODUCTION_CHECKPOINT_2026_11_27.md), exact
+- Previous full preservation: [Labor V3.3 checkpoint](LABOR_V3_3_PRODUCTION_CHECKPOINT_2026_11_27.md), exact
   runtimea077dd84. Owner accepts the working proposal/version mechanism; the
   requested three-line terms and performance audit are subsequent work. Restore
   source880files,1159 checks and four frozen controls passed. Earlier checkpoints
