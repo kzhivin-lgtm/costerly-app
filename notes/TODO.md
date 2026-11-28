@@ -1048,14 +1048,16 @@ Current grouped inventory, leave-alone/work candidates, timing provenance and
 bounded solutions: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md, Current transition triage.
 Owner explicitly requests immediate visible startup feedback in place of the
 empty grey mask, including initial entry, reload, hard reload and post-deploy
-refresh. IMPLEMENTED CANDIDATE, FULL GATE/PUBLICATION PENDING, P1: use the existing loading shell, show a
+refresh. PUBLISHED V3.6, OWNER REAL-CYCLE SPEED ACCEPTANCE PENDING, P1: use the existing loading shell, show a
 truthful loading message/indicator immediately and retain it until actual ready;
 do not fabricate percentages or expose incomplete screens. This broadens the
 previous deferred recovery-only3.15.26 request, which remains referenced below.
 Startup feedback remains pending alongside the owner-selected customer loop
 below; Admin is P3, lowest priority. Owner approved the whole packet28November.
-Candidate Labor V3.6 continues the existing3.17.4.6 reference, without allocating
-a new block/number. Published runtime remains V3.5 until the full exact gate passes.
+Published Labor V3.6 continues the existing3.17.4.6 reference, without allocating
+a new block/number. Runtime9ce04226 passed exact clean1212/6subtests/all10 remote
+502.571s and local full648.274s. Normal publisher/real strict/trusted/no-bypass
+main, Railway/Pages, served Core/executed wrapper/version/health verified.
 OWNER-REFINED PLAN28November2026, P1: prepare the selected object's authoritative
 Object Detail snapshot before exposing Review. Additional end-of-calculation
 presentation preparation is acceptable; an active Review that still requires a
@@ -1073,18 +1075,23 @@ APPROVE -> Project committed result reuse. Remove ordinary Back -> Project
 scope, retain as regression controls. Do not confuse1.32seconds with minutes.
 Processing handoff means the interval after the job result, not Detection
 duration. Current-code proposals and existing optimizations are distinguished
-in the audit. Candidate now adds full Object/Labor/Overhead preparation before
+in the audit. V3.6 adds full Object/Labor/Overhead preparation before
 Review, selected-Future reuse, same-slot Retry, the existing fragment's bounded
 presentation refresh, parallel owned File Review reads and pending-local-worker
 read avoidance. Simple approval preserves unchanged caches; shared-cost changes
 retain invalidation. Four frozen network-blocked material controls passed.
-Scoped cache/quantity/ownership/readiness checks passed; full gate in progress.
+Scoped cache/quantity/ownership/readiness checks and both full gates passed.
+Object preparation stops only its native fragment timer, without an app rerun.
+Local prepared Object clicks198-227ms; production target remains unaccepted.
 Scope/evidence: notes/LABOR_V3_6_TRANSITIONS_2026_11_28.md.
 Rare top-left Loading/Updating surface: DEFERRED pending owner screenshot/URL.
 Please wait is explicitly rejected by owner. Exact surface not identified;
 releaseDeployCover removes flex before160ms fade, a source-supported hypothesis,
 not a confirmed reproduction. Owner authorizes including a confirmed correction
 in the next deployment, not a separate speculative release or further hunt now.
+V3.6 preserves centering through deploy-cover fade and verifies it in browser
+tests. The exact rare surface described by owner is still unidentified; do not
+claim that this proves the identity of the earlier top-left message.
 V3.4 PUBLISHED EVIDENCE (owner accepts improvement, long-pause refinement active):
 Labor V3.4, continuation3.17.4.6. Project calculation counter replaces the old
 post-Parts-Check70 with90; real geometry20/understanding45/locator60/inventory75/

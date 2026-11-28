@@ -1,15 +1,22 @@
-[verified] Labor V3.6 implementation candidate,28November2026, continuation
-reference3.17.4.6. Owner approved all selected transitions in one packet; internal
-names Project/Object, stored routes unchanged. Full Object/Labor/Overhead
-preparation gates Review; selected Future reused, pending/quantity/access/retry
-guards retained. Existing fragment observes preparation and stops its interval
-after completion. Cold File Review overlaps owned reads; still-running local
-deferred jobs avoid redundant durable reads; terminal names remain canonical.
-Simple approval retains valid caches; startup Loading stays until actual ready.
-1208 local checks and four frozen controls passed. Browser/remote exact gate,
-publication and owner production-speed acceptance pending. Existing V3.5 baseline
-and unrelated71-line TODO changes remain protected.
-[Release record](LABOR_V3_6_TRANSITIONS_2026_11_28.md).
+[verified] Labor V3.6 published28November2026, continuation reference3.17.4.6.
+Runtime9ce042267df03a99e4f916e48c1a78c4e4fd0dcf, build
+labor-v3.6-b20261128095454-prepared-navigation-detection-v8.4.29.
+Prepared Object/Labor/Overhead gates Review per Object; selected Future reused,
+canonical quantity/access/write guards retained. Existing fragment preparation
+ends with scoped native cancellation, without an app rerun. Cold File Review
+reads overlap after ownership; local pending deferred jobs avoid futile reads,
+terminal names remain canonical. Simple approval preserves unchanged snapshots;
+startup immediately shows shared Loading until real ready. No AI/schema change.
+Exact clean GitHub1212 checks/6subtests/all10 passed502.571s, run46132681718/
+job140941105589; official artifact15257703924 digest/CRC/SHA verified. Final
+local1212/all10 passed648.274s; four network-blocked frozen controls unchanged.
+Normal publisher, actual strict/trusted/no-bypass main verified. Railway deployment
+c3a0fb19/Pages succeeded; actual anonymous browser Core/executed wrapper/metadata,
+version.json and health200/ok agree. Initial Loading visibly present, then hidden.
+Local prepared Object clicks198-227ms; one changed-input case1047ms. These are
+synthetic observations, not production speed acceptance. Owner real-cycle
+acceptance pending. V3.5 checkpoint remains immutable; unrelated71 TODO lines
+and node_modules link retained. [Release and limitations](LABOR_V3_6_TRANSITIONS_2026_11_28.md).
 
 [verified] Owner-accepted full Labor V3.5 checkpoint,28November2026,
 continuing work3.17.4.6. Owner's real Project cycle is very smooth overall;

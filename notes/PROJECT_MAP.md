@@ -13,18 +13,20 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
-- Candidate Labor V3.6: [prepared Project/Object navigation](LABOR_V3_6_TRANSITIONS_2026_11_28.md).
-  Owner approved the complete packet. Existing detail executor prepares the full
-  Object/Labor/Overhead snapshot; Review waits per Object. Cold File Review reads
-  overlap after ownership; pending local jobs avoid redundant publication reads.
-  Simple approval keeps valid snapshots; startup has visible shared feedback.
-  Full exact release gate/publication and production speed acceptance pending.
+- Published Labor V3.6 runtime9ce04226: [prepared Project/Object navigation](LABOR_V3_6_TRANSITIONS_2026_11_28.md).
+  Object/Labor/Overhead preloads gate Review per Object; selected Future reused,
+  owned File Review reads overlap, local pending publication reads are skipped,
+  simple approval preserves valid caches, startup has shared visible feedback.
+  Existing interval stops via a scoped native message, without app rerun.
+  Exact clean1212/6subtests/all10 gate502.571s and local full648.274s passed;
+  four frozen controls unchanged, Railway/Pages and actual served version verified.
+  Owner real-cycle speed acceptance pending; V3.5 checkpoint preserved.
 
 - Latest accepted full preservation: [Labor V3.5 checkpoint](LABOR_V3_5_PRODUCTION_CHECKPOINT_2026_11_28.md),
   runtime4f11834c,882 exact files, restored1198 checks/four controls. Owner accepts
   the real counter cycle; startup/navigation latency remains the next analysis.
 
-- Current Labor V3.5 runtime4f11834c refines the Project counter: owned pending
+- Preserved Labor V3.5 runtime4f11834c refines the Project counter: owned pending
   refresh uses accepted seeds, then normal scoped terminal reload. Shared
   interpolation catches up gradually and real catalog/material-plan receipts
   widen late bands. Quantity receipts require server-rendered agreement before

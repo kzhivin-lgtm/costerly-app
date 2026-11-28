@@ -3,8 +3,9 @@
 Owner approved the whole proposed transition package28November2026. Internal
 names are Project and Object; existing route/storage identifiers remain intact.
 Continuation reference3.17.4.6, no new hierarchical block allocated. Baseline is
-the accepted V3.5 runtime4f11834c and immutable full checkpoint. Implementation
-and production speed are pending verification, not established by this plan.
+the accepted V3.5 runtime4f11834c and immutable full checkpoint. Implementation,
+full release checks and deployment are verified below. Production speed and owner
+real-cycle acceptance remain pending.
 
 | Scenario | Accepted change and protected behavior |
 |---|---|
@@ -39,6 +40,39 @@ normal publisher; actual main enforcement and deployed Core/wrapper parity.
 Synthetic performance and owner real-cycle acceptance are reported separately.
 Rollback is a newly stamped, fully gated forward revert to V3.5, preserving all
 issued PDFs and database history. The original checkpoint is never rewritten.
+
+## Verified publication
+
+Runtime9ce042267df03a99e4f916e48c1a78c4e4fd0dcf. Build
+labor-v3.6-b20261128095454-prepared-navigation-detection-v8.4.29.
+Exact clean GitHub run46132681718/job140941105589 passed1212 Python checks,
+6 subtests and all10 browser suites in502.571s. Artifact15257703924 ZIP
+1638858bytes, SHA2569c2f912f529b85d54362deb950d3e4738707209bd11038604da2ce0896c6e626,
+its official digest, CRC, exact commit and each suite exit were verified.
+Final local full gate passed1212/all10 in648.274s. Its dirty marker is the
+protected unrelated71-line TODO addition and node_modules link, not runtime edits.
+Four frozen material controls passed with network blocked and no paid calls.
+
+Normal publisher fast-forwarded exact SHA to main only after the trusted check;
+active ruleset27499066 remains strict, Actions15368-only and without bypass.
+Railway c3a0fb19-2f72-4e11-bd52-abf9ae3e2d75 / deployment8127816926 and target
+Cloudflare Pages succeeded. Fresh actual anonymous browser showed Loading then
+Sign in; Core DOM, wrapper DOM, executed wrapper telemetry and version.json all
+match. Health200/ok. Own trace f4b6f054-f6d9-488c-b8f6-24ad3b7a0b82; no credentials
+or business inputs entered. Additional Cloudflare Workers Builds check is still
+in_progress, as is the corresponding earlier V3.5 check. It is separate from
+successful target Pages/Core and from the mandatory UI gate; do not report it
+as successful. No infrastructure repair is included here.
+
+Local synthetic Object clicks after preparation:1047ms for the changed-input
+case, then205/211/198/227/213/211/213ms. File Review -> Project and ordinary Back
+remain regression controls. No authenticated production0.5s acceptance or fresh
+real paid estimate is claimed. Next: assess the next owner cycle using existing
+technical timing logs, retaining actual query and ready boundaries.
+
+Evidence, including failed candidates:
+/Users/qb/Documents/ChatGPT/Costerly/outputs/labor-v3.6-transitions-20261128/.
+All earlier checkpoints and issued PDFs remain untouched.
 
 ## Intermediate verification and discarded experiment
 

@@ -6,9 +6,9 @@ evidence and optimization proposals. Project-progress implementation was approve
 Exact accepted runtimea077dd84 and records25dd8bcf have independent immutable tags.
 The three-line PDF refinement3136a583 is separately published and verified.
 
-## Labor V3.6 implementation candidate,28November2026
+## Labor V3.6 published,28November2026
 
-Owner approved the complete selected customer-loop package. Candidate builds on
+Owner approved the complete selected customer-loop package. Published runtime9ce04226 builds on
 the V3.5 checkpoint; detailed scope, before/after, tests and rollback are in
 [V3.6 release record](LABOR_V3_6_TRANSITIONS_2026_11_28.md). Later triage/proposal
 sections below retain the analysis history, not current publication status.
@@ -18,8 +18,10 @@ Project/File Review prepared paths remain; cold File Review reads overlap only
 after ownership. Local pending Naming/Preview/Identity skip futile durable reads;
 canonical terminal publication is preserved. Startup shows Loading until actual
 ready; simple approval retains valid caches. No new AI run/schema/costing policy.
-Local focused checks and four network-blocked frozen controls passed. Full gate,
-publication and owner real production speed acceptance are still pending.
+Exact clean1212/6subtests/all10 GitHub gate502.571s, local full648.274s and four
+network-blocked frozen controls passed. Normal publisher, actual main enforcement,
+Railway/Pages and served Core/executed-wrapper parity verified. Owner real
+production speed acceptance remains pending.
 
 ## Current transition triage, owner clarification28November2026
 
