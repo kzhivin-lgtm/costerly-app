@@ -716,10 +716,9 @@ def _prefetch_completed_object_details(
             continue
         cache_key = (estimate_key, object_id)
         if cache_key in cache and estimate_key not in dirty_estimates:
-            expected_quantity = row.get("quantity")
-            if expected_quantity is None or cache[cache_key].get("quantity") == expected_quantity:
-                continue
-            cache.pop(cache_key, None)
+            # Browser quantity writes may be newer than this render's Project
+            # rows. Keep the snapshot; Review validates canonical quantity.
+            continue
 
         prefetch = futures.get(cache_key)
         if prefetch is None:

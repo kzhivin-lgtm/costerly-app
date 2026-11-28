@@ -138,3 +138,13 @@ def test_completed_preparation_seeds_existing_labor_cache_once(monkeypatch):
     assert "_prepared_labor" not in st.session_state.object_detail_data_cache[("e", "one")]
     invalidate_object_detail_cache("e")
     assert not st.session_state.labor_v1_comparisons
+
+
+def test_newer_cached_quantity_is_not_replaced_from_an_older_project_render(monkeypatch):
+    st.session_state.clear()
+    st.session_state.object_detail_data_cache = {("e", "one"): {"quantity": 3}}
+    monkeypatch.setattr(objects, "submit_object_detail_prefetch", lambda **_: pytest.fail("Old Project row restarted preparation"))
+    objects._prefetch_completed_object_details(estimate_id="e", company_id="c", data={"rows": [
+        {"object_key": "one", "status": "completed", "quantity": 1},
+    ]})
+    assert st.session_state.object_detail_data_cache[("e", "one")]["quantity"] == 3
