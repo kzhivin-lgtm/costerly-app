@@ -306,7 +306,7 @@ def fixture_labor_loader(*args, **kwargs):
 labor.load_object_labor = fixture_labor_loader
 estimation.load_object_labor = fixture_labor_loader
 
-def read_overhead(_client, scoped_company, *, delay=True):
+def read_overhead(_client, scoped_company, *, delay=True, parallel_reads=False):
  assert scoped_company == company_id
  if delay:sleep(scenario().get('overhead_delay', 0))
  if scenario().get('overhead_read_failure'):raise RuntimeError('controlled overhead read failure')

@@ -252,9 +252,8 @@ def _render_object_detail(
 
 
 def _return_to_objects() -> None:
-    estimate_id = st.session_state.get("current_estimate_id")
-    if estimate_id and str(estimate_id) not in st.session_state.setdefault("objects_estimation_cache_dirty", set()):
-        st.session_state.setdefault("objects_estimation_pricing_dirty", set()).add(str(estimate_id))
+    # Successful edits already invalidate Project in their acknowledged Save
+    # handler. Navigation alone must not invalidate a still-current snapshot.
     st.session_state.current_object_id = None
     st.session_state.screen = "objects"
 
@@ -473,10 +472,11 @@ def _prepare_approved_return(estimate_id: str, object_id: str, approval: dict) -
                               {"assembly", "preparation", "overhead_context"}.issubset(previous_labor)):
         from screens.estimation_labor_v1 import _calculate, _load_overhead_context
         client = get_supabase_client()
-        labor = _calculate(client, identity=identity)
+        labor = _calculate(client, identity=identity, parallel_reads=True,
+                           **({"plan": plan} if plan else {}))
         labor["overhead_context"] = (previous_labor["overhead_context"]
             if previous_labor and "overhead_context" in previous_labor
-            else _load_overhead_context(client, identity[0]))
+            else _load_overhead_context(client, identity[0], parallel_reads=True))
         st.session_state.setdefault("labor_v1_comparisons", {})[identity] = labor
     if base:
         st.session_state.setdefault("object_detail_data_cache", {})[key] = {**base, "approved": True}
@@ -484,6 +484,7 @@ def _prepare_approved_return(estimate_id: str, object_id: str, approval: dict) -
     project = st.session_state.get("objects_estimation_data_cache", {}).get(estimate_id)
     if project:
         project = refresh_objects_estimation_prices(estimate_id, project,
+                    parallel_reads=True, company_id=(identity[0] if identity else project.get("company_id")),
                     **({"refresh_inputs": True} if refresh_inputs else {}))
         st.session_state.objects_estimation_data_cache[estimate_id] = project
         st.session_state.setdefault("objects_estimation_cache_dirty", set()).discard(estimate_id)

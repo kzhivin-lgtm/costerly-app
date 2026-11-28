@@ -534,13 +534,17 @@ def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any], 
     if parallel_reads:
         if company_id and cached.get("company_id") not in (None, "", company_id):
             raise PermissionError("The saved Project belongs to another company")
-        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="last-estimate-price-read") as pool:
+        with ThreadPoolExecutor(max_workers=5, thread_name_prefix="navigation-price-read") as pool:
             objects_future = pool.submit(fetch_rfq_object_estimates, client, estimate_id)
             overrides_future = pool.submit(fetch_rfq_estimate_pricing_overrides, client, estimate_id)
             settings_future = pool.submit(fetch_company_overhead_settings, client, company_id) if company_id else None
+            plan_future = pool.submit(fetch_rfq_estimate_material_plan, client, estimate_id) if refresh_inputs else None
+            lines_future = pool.submit(fetch_rfq_estimate_lines, client, estimate_id) if refresh_inputs else None
             objects, saved_overrides = objects_future.result(), overrides_future.result()
             if settings_future is not None:
                 settings = _first_row(settings_future.result())
+            plan_row = _first_row(plan_future.result()) if plan_future is not None else None
+            cost_lines = lines_future.result() if lines_future is not None else None
     else:
         objects = fetch_rfq_object_estimates(client, estimate_id)
         saved_overrides = fetch_rfq_estimate_pricing_overrides(client, estimate_id)
@@ -550,13 +554,14 @@ def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any], 
     if settings is None:
         settings = _first_row(fetch_company_overhead_settings(client, str(objects.iloc[0]["company_id"])))
     saved = {str(row["object_id"]): row for row in objects.to_dict("records")}
-    plan_row = _first_row(fetch_rfq_estimate_material_plan(client, estimate_id)) if refresh_inputs else None
+    if not parallel_reads:
+        plan_row = _first_row(fetch_rfq_estimate_material_plan(client, estimate_id)) if refresh_inputs else None
     plan = (plan_row or {}).get("plan_payload") or {}
     summaries = {}
     if refresh_inputs:
         # Reuse durable cost receipts; do not run the cost engine again simply
         # to reconstruct the proposal's input identity after an acknowledged edit.
-        for line in fetch_rfq_estimate_lines(client, estimate_id).to_dict("records"):
+        for line in (cost_lines if parallel_reads else fetch_rfq_estimate_lines(client, estimate_id)).to_dict("records"):
             if line.get("source") == _FULL_COST_SOURCE:
                 summaries[str(line["object_id"])] = line.get("raw_agent_json") or {}
     rows = []

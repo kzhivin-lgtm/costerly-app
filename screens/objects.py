@@ -1119,7 +1119,7 @@ def render_objects_screen(
         estimate_id=estimate_id,
     )
     if screen_state is None:
-        screen_state = _current_objects_state(estimate_id)
+        screen_state = _current_objects_state(estimate_id, parallel_reads=True, company_id=company_id)
         screen_state = ObjectsScreenState(
             data=_data_with_object_routes(
                 screen_state.data,

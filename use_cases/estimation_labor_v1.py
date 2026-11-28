@@ -1,6 +1,7 @@
 """Saved panel layouts and the two CNC routes in Labor V1."""
 
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, replace
 from decimal import Decimal, ROUND_HALF_UP
 import logging
@@ -638,7 +639,8 @@ def preparation_pay_metrics(state, *, quantity=1, overrides=None):
     return checking, packing, total
 
 
-def load_object_labor(client, *, identity, parts_loader=None, plan_loader=None, machinery_loader=None, plan=None, parts_result=None):
+def load_object_labor(client, *, identity, parts_loader=None, plan_loader=None, machinery_loader=None, plan=None, parts_result=None,
+                      parallel_reads=False):
     from use_cases.estimation_parts_check_runtime import load_parts_check
     from db.repositories import fetch_rfq_estimate_material_plan
     from use_cases.machinery import load_sheet_processing_machinery
@@ -650,6 +652,20 @@ def load_object_labor(client, *, identity, parts_loader=None, plan_loader=None, 
     machinery_loader = machinery_loader or load_sheet_processing_machinery
     company_id, run_id, estimate_id, object_id = identity
     params = {"client": client, "company_id": company_id, "run_id": run_id, "estimate_id": estimate_id}
+    if parallel_reads:
+        # Approval has passed its access/write gate. Join independent reads
+        # locally; calculations and session reconciliation remain on caller.
+        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="approval-labor-read") as pool:
+            parts_future = pool.submit(parts_loader, **params) if parts_result is None else None
+            plan_future = pool.submit(plan_loader, client, estimate_id) if plan is None else None
+            machinery_future = pool.submit(machinery_loader, client, company_id)
+            if parts_future is not None:
+                parts_result = parts_future.result()
+            if plan_future is not None:
+                rows = plan_future.result()
+                plan = (rows.iloc[0].get("plan_payload") or {}) if not rows.empty else {}
+            machinery = machinery_future.result()
+        machinery_loader = lambda *_args: machinery
     parts = parts_result if parts_result is not None else parts_loader(**params)
     if parts["status"] != "ready":
         return {"status": parts["status"]}

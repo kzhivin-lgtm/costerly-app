@@ -1296,7 +1296,7 @@ def test_projects_is_one_page_with_native_partner_disclosure_rows():
 
 def test_objects_initializes_action_state_before_live_fragment_branch():
     source = inspect.getsource(objects.render_objects_screen)
-    state_index = source.index("screen_state = _current_objects_state(estimate_id)")
+    state_index = source.index("screen_state = _current_objects_state(estimate_id,")
     live_index = source.index("st.fragment(_render_live_objects_content,")
 
     bridge_index = source.index("_render_object_detail_navigation_bridges(action_data)")

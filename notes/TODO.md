@@ -1101,6 +1101,15 @@ V3.6 preserves centering through deploy-cover fade and verifies it in browser
 tests. The exact rare surface described by owner is still unidentified; do not
 claim that this proves the identity of the earlier top-left message.
 CURRENT TRANSITION FOLLOW-UP, P1, 28 November 2026, work 3.17.4.6:
+ACTIVE, P1, OWNER-APPROVED Labor V3.10 package, same continuation work:
+full reload restoration, APPROVE -> Project and Object Back -> Project. Unchanged
+Back preserves valid Project cache; acknowledged Save retains canonical refresh.
+Reuse committed approval plan and overlap independent context/commercial reads,
+retaining writes, auth, readiness, APPROVING/green APPROVED/Done/PDF semantics.
+Project calculation percentages become shared-accent purple/700 weight without
+changing progress timing. Existing full gates and exact Core/wrapper publication
+checks remain. Scope/scenario matrix: notes/LABOR_V3_10_TRANSITIONS_2026_11_28.md.
+No speculative browser-ready guard change or timeout-specific hunt.
 IMPLEMENTATION/DEPLOYMENT VERIFIED, PRODUCTION SPEED ACCEPTANCE PENDING,
 LAST ESTIMATE ONLY, Labor V3.9 runtime a38d7278. Existing one-shot company/run
 receipt opts into bounded independent publication/Project/cost-input read joins.
@@ -1123,21 +1132,22 @@ the first entry after browser build update, followed by six successes. Owner
 prioritizes full reload instead. Trigger to reopen: failure repeats in ordinary
 use independent of a deployment. Deployment-only cause remains unknown; retain
 the witness and unchanged15s deadline, do not mark the defect fully resolved.
-PENDING IMPLEMENTATION PROPOSAL, P1, FULL RELOAD TO FILE REVIEW:19:15 reload
+ACTIVE IN APPROVED V3.10 PACKAGE, P1, FULL RELOAD TO FILE REVIEW:19:15 reload
 took11.517s; server8.441s includes File Review6.491s and auth0.714s. Next bounded
 scope should optimize owned canonical restore, preserving auth, current data and
 readiness. First after-update Upload reload12.456s instead had server1.470s plus
 8.923s browser ready-component delivery gap, exact cause unknown. Investigate
-that gap separately before changing browser guards. Runtime fix is not approved
-by this timing-review request. New/Last repeated paths stay unchanged for now.
+that gap separately before changing browser guards. The later owner-approved
+V3.10 package implements bounded restore/return fixes. New/Last repeated paths
+retain their accepted behavior.
 Navigation telemetry distinguishes reload/navigate, not hard/ordinary reload.
 Evidence: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md, V3.9 owner-cycle subsection.
-APPROVE/Back/startup remain proposals, no broader repair is approved:
-- P1, pending proposal: reduce APPROVE return preparation.7.067s(n1) includes
+The following APPROVE/Back outcomes are now active within the approved V3.10 package:
+- P1, active V3.10: reduce APPROVE return preparation.7.067s(n1) includes
   accepted write1.951s and4.085s after-write preparation. Existing allocation
   receipt reuse is implemented; locate remaining Labor/canonical refresh work
   before removing duplicates. Preserve APPROVING/green APPROVED and truthful Done.
-- P1, pending proposal: fast unchanged Object Back -> Project.4.578s(n1),3.406s
+- P1, active V3.10: fast unchanged Object Back -> Project.4.578s(n1),3.406s
   in Project preparation. Back currently marks pricing dirty even without edits.
   A safe correction depends on reliable browser-write acknowledgement, retaining
   canonical refresh after real Save/qty/price changes. No blind dirty-flag removal.

@@ -43,6 +43,25 @@ export async function checkLastEstimateRestore(browser,url){
   const result={clickToReadyMs:Math.round(ready.at-click.at),deadlineMs:15000,allCanonicalReadsCompleted:true};
   writeFileSync(reportPath('last-estimate-restore.json'),JSON.stringify(result,null,2));
   await page.screenshot({path:reportPath('last-estimate-restore.png'),fullPage:true});
+  // Real outer document reload destroys Python session caches. It must restore
+  // the same owned route/data with every canonical read, not start estimation.
+  const beforeReload=readFileSync(statePath('browser-journal'),'utf8');
+  const reloadStarted=Date.now();
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('iframe.is-ready').waitFor();
+  await core.getByRole('button',{name:/^continue to project$/i}).waitFor();
+  assert.ok(await core.getByRole('button',{name:/^continue to project$/i}).isEnabled());
+  const reloadMs=Date.now()-reloadStarted;
+  assert.ok(reloadMs<15000,'Full restore must complete the same delayed reads within15s');
+  const restoredCalls=readFileSync(statePath('browser-journal'),'utf8').slice(beforeReload.length);
+  for(const name of ['source','naming','identity','fetch_rfq_object_estimates','fetch_rfq_estimate_pricing_overrides','fetch_rfq_estimate_material_plan'])
+   assert.ok(restoredCalls.includes('restore-read-start '+name)&&restoredCalls.includes('restore-read-end '+name),name+' must complete on reload');
+  assert.ok(!restoredCalls.includes('ERROR tried to estimate'));
+  assert.equal(await core.locator('[data-testid="stException"]').count(),0);
+  assert.deepEqual(errors,[]);
+  result.fullReloadMs=reloadMs;
+  writeFileSync(reportPath('last-estimate-restore.json'),JSON.stringify(result,null,2));
+  await page.screenshot({path:reportPath('file-review-full-reload.png'),fullPage:true});
   return result;
  }catch(error){
   writeFileSync(reportPath('last-estimate-restore-failure.json'),JSON.stringify(await page.evaluate(()=>restoreMessages),null,2));

@@ -238,6 +238,8 @@ def apply_objects_css() -> None:
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            color: var(--color-accent);
+            font-weight: 700;
         }
 
         @keyframes objects-progress-spin {

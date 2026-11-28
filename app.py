@@ -858,6 +858,14 @@ def main() -> None:
         object_detail_snapshot = st.query_params.get("od_snapshot")
         if requested_run_id:
             st.session_state.current_run_id = requested_run_id
+            if requested_screen == "file_review":
+                # A real document restore has already passed route ownership.
+                # Reuse the existing single-use restore receipt, never cached
+                # data or an early-ready substitute for the restored route.
+                st.session_state.file_review_navigation_ready = {
+                    "company_id": company_id, "run_id": requested_run_id,
+                    "restore_reads": True,
+                }
         if requested_estimate_id:
             st.session_state.current_estimate_id = requested_estimate_id
             if requested_run_id:

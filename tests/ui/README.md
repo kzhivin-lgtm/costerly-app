@@ -1,5 +1,15 @@
 # Persistent UI release contract
 
+Labor V3.10 extends Navigation's fixed-latency restore case with a real full
+outer reload to the same saved File Review. Every canonical source/publication/
+Project read must complete, Continue remains gated and no Parts Check launches.
+Calculation retains APPROVING/green APPROVED/Done, changed Save -> Review and
+unsaved Stay/Leave, and checks actual percentage accent color/700 weight. Python
+checks read-free unchanged Back versus retained Save invalidation, exact
+sequential/parallel Labor/Overhead/commercial/PDF-basis equality and committed
+plan reuse. Only the owner-approved unconditional Back refresh expectation is
+superseded; all prior assertions, readiness/deadlines and gate remain.
+
 Labor V3.9 adds a Last Estimate restore case to Navigation. Required canonical
 source/publication/Project reads have controlled latency that takes unchanged
 V3.8 past the native15s deadline. The Last-only path must complete every read,

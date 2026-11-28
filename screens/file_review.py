@@ -813,9 +813,9 @@ def _sync_durable_naming_once(run_id: str) -> None:
 def _sync_last_estimate_publications(run_id: str, company_id: str) -> None:
     """Read independent restore publications together, then publish on this thread.
 
-    One accepted Last Estimate click owns this bounded two-read join. No worker
+    One accepted Last Estimate or owned document restore owns this read join. No worker
     touches session state or widgets; both reads retain their ownership checks.
-    Ordinary File Review, Processing and Back keep their existing read paths.
+    Processing and prepared Back keep their existing read paths.
     """
     reads = {}
     for kind, loader, prefix in (
@@ -1217,8 +1217,8 @@ def render_file_review_screen(
     navigation = st.session_state.get("file_review_navigation_ready") or {}
     if not isinstance(navigation, dict):
         navigation = {}
-    last_estimate = bool(
-        navigation.get("last_estimate")
+    restore_reads = bool(
+        (navigation.get("last_estimate") or navigation.get("restore_reads"))
         and str(navigation.get("company_id") or "") == str(company_id)
         and str(navigation.get("run_id") or "") == str(run_id)
     )
@@ -1247,7 +1247,7 @@ def render_file_review_screen(
     # narrow, durable name snapshot before object edits and widgets are
     # initialized, so a stale blank browser value cannot compete with the
     # canonical saved name on a later Last Estimate restore.
-    if last_estimate:
+    if restore_reads:
         _sync_last_estimate_publications(str(run_id), company_id)
     elif prepared_data is None:
         _sync_durable_naming_once(run_id)
@@ -1281,7 +1281,7 @@ def render_file_review_screen(
         run_id=str(run_id),
         objects=data["objects"],
         source=data.get("source"),
-        **({"parallel_reads": True} if last_estimate else {}),
+        **({"parallel_reads": True} if restore_reads else {}),
     ) if saved_estimate_checked else None
 
     with st.container(key="file_review_actions"):

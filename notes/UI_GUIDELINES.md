@@ -3,6 +3,22 @@
 These rules apply to every Costerly AI screen and workflow. A missing interaction
 state is a product defect, not optional polish.
 
+## Labor V3.10 reload and return package, owner approved 28 November 2026
+
+Owned File Review document restores reuse the existing single-use restore-read
+receipt, with all data joined before Continue/ready. Cold Project reads use the
+same bounded joins. Ordinary unchanged Object Back preserves the valid Project
+cache; this supersedes V3.6's unconditional commercial refresh on Back. Accepted
+Save/input/Profile/quantity invalidation still refreshes canonical values. Keep
+unsaved Stay/Leave, failed/pending Save and approval/proposal semantics.
+After acknowledged APPROVE, reuse its returned material plan for Labor and join
+independent canonical Labor/Overhead/commercial reads. All workers get captured
+client/tenant/input context, join locally and never mutate session/widgets or
+perform writes. Existing calculations, write ordering and truthful APPROVING/
+green APPROVED/Done remain. No new poll/timer/observer or earlier ready. Project
+calculation percentages use shared accent purple and weight700; timing stays.
+Scope/scenarios/rollback: LABOR_V3_10_TRANSITIONS_2026_11_28.md.
+
 ## Labor V3.9 Last Estimate restore
 
 Only Last Estimate's single-use company/run receipt opts into bounded parallel

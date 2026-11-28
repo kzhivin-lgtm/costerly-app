@@ -10,6 +10,102 @@ from ui import objects_pricing
 from state.session import invalidate_object_detail_cache
 
 
+def test_unchanged_back_opens_project_without_price_or_cost_reads(monkeypatch):
+    st.session_state.clear()
+    data = {"rows": [{"quantity": 3, "sale_price_unit": 77, "reviewed": True}]}
+    st.session_state.current_estimate_id = "e"
+    st.session_state.objects_estimation_data_cache = {"e": data}
+    monkeypatch.setattr(objects, "load_objects_estimation_data", lambda *a, **kw: pytest.fail("Unchanged Back rebuilt costs"))
+    monkeypatch.setattr(objects, "refresh_objects_estimation_prices", lambda *a, **kw: pytest.fail("Unchanged Back read prices"))
+    object_detail._return_to_objects()
+    assert objects._load_objects_screen_data("e") == (data, None)
+    assert st.session_state.screen == "objects"
+
+
+def test_saved_back_keeps_invalidation_and_loads_acknowledged_values(monkeypatch):
+    st.session_state.clear()
+    st.session_state.current_estimate_id = "e"
+    st.session_state.objects_estimation_data_cache = {"e": {"rows": [{"self_cost_unit": 100}]}}
+    object_detail._mark_objects_estimation_dirty("e")
+    fresh = {"rows": [{"self_cost_unit": 200, "reviewed": False}]}
+    monkeypatch.setattr(objects, "load_objects_estimation_data", lambda *a, **kw: fresh)
+    object_detail._return_to_objects()
+    assert "e" in st.session_state.objects_estimation_cache_dirty
+    assert objects._load_objects_screen_data("e", parallel_reads=True, company_id="c") == (fresh, None)
+
+
+def test_approval_overhead_inputs_overlap_without_changing_context(monkeypatch):
+    from screens import estimation_labor_v1 as labor
+    import pandas as pd
+    from threading import Barrier
+    barrier = Barrier(3, timeout=2)
+    parallel = False
+    def read(value):
+        if parallel: barrier.wait()
+        return value
+    monkeypatch.setattr(labor, "fetch_company_overhead_settings", lambda *a: read(pd.DataFrame([{"vat_percent": 18, "production_monthly_hours": 12}])))
+    monkeypatch.setattr(labor, "fetch_company_overhead_monthly", lambda *a: read(pd.DataFrame([{"rent": 5}])))
+    monkeypatch.setattr(labor, "with_production_capacity", lambda c, co, s: {**s, **read({"production_monthly_hours": 40})})
+    expected = labor._load_overhead_context(object(), "c")
+    parallel = True
+    assert labor._load_overhead_context(object(), "c", parallel_reads=True) == expected
+
+
+def test_approval_labor_read_join_matches_sequential_and_reuses_committed_plan(monkeypatch):
+    from use_cases import estimation_labor_v1 as labor
+    import pandas as pd
+    from threading import Barrier
+    import json
+    parallel = False
+    barrier = Barrier(3, timeout=2)
+    plan = {"status": "planned"}
+    def read(value):
+        if parallel: barrier.wait()
+        return value
+    parts = lambda **kw: read({"status": "ready", "payload": json.dumps({"objects": {"one": {}}})})
+    plans = lambda *a: read(pd.DataFrame([{"plan_payload": plan}]))
+    machines = lambda *a: read({"availability": {}})
+    monkeypatch.setattr("use_cases.block_assembly.calculate_block_assembly", lambda *a, **kw: {"hours": 2})
+    monkeypatch.setattr("use_cases.preparation_packing.calculate_preparation_packing", lambda *a, **kw: {"hours": 1})
+    monkeypatch.setattr("use_cases.additional_assembly.calculate_additional_assembly", lambda *a, **kw: {})
+    def sheet(client, report, *, machinery_loader, plan_loader, plan=None, **kw):
+        if plan is None: plan = plan_loader(client, "e").iloc[0]["plan_payload"]
+        return {"status": "ready", "plan": plan, "machinery": machinery_loader(client, "c")}
+    monkeypatch.setattr(labor, "_load_object_sheet", sheet)
+    args = dict(identity=("c", "r", "e", "one"), parts_loader=parts, plan_loader=plans, machinery_loader=machines)
+    expected = labor.load_object_labor(object(), **args)
+    parallel = True
+    assert labor.load_object_labor(object(), **args, parallel_reads=True) == expected
+    parallel = False
+    args["plan_loader"] = lambda *a: pytest.fail("Approval reread its committed plan")
+    assert labor.load_object_labor(object(), **args, plan=plan, parallel_reads=True) == expected
+
+
+def test_parallel_approved_price_refresh_keeps_canonical_plan_and_pdf_basis(monkeypatch):
+    from use_cases import estimation as e
+    import pandas as pd
+    from threading import Barrier
+    barrier = Barrier(5, timeout=2)
+    parallel = False
+    def read(value):
+        if parallel: barrier.wait()
+        return value
+    monkeypatch.setattr(e, "get_supabase_client", object)
+    monkeypatch.setattr(e, "_assert_screen_estimate_access", lambda *a, **kw: None)
+    monkeypatch.setattr(e, "fetch_rfq_object_estimates", lambda *a: read(pd.DataFrame([{"object_id": "one", "company_id": "c", "quantity": 3, "approved": True, "self_cost_ex_vat": 123}])) )
+    monkeypatch.setattr(e, "fetch_rfq_estimate_pricing_overrides", lambda *a: read(pd.DataFrame([])))
+    monkeypatch.setattr(e, "fetch_company_overhead_settings", lambda *a: read(pd.DataFrame([{"vat_percent": 18}])))
+    monkeypatch.setattr(e, "fetch_rfq_estimate_material_plan", lambda *a: read(pd.DataFrame([{"plan_status": "planned", "plan_payload": {}, "updated_at": "committed"}])))
+    monkeypatch.setattr(e, "fetch_rfq_estimate_lines", lambda *a: read(pd.DataFrame([{"object_id": "one", "source": e._FULL_COST_SOURCE, "raw_agent_json": {"basis_sha256": "new-basis", "partial": False}}])))
+    cached = {"company_id": "c", "rows": [{"object_key": "one", "status": "completed"}]}
+    expected = e.refresh_objects_estimation_prices("e", cached, refresh_inputs=True)
+    parallel = True
+    actual = e.refresh_objects_estimation_prices("e", cached, refresh_inputs=True, parallel_reads=True, company_id="c")
+    assert actual == expected
+    assert actual["rows"][0]["proposal_input_basis"] == "new-basis"
+    assert actual["proposal_source"]["material_plan_updated_at"] == "committed"
+
+
 def test_review_waits_for_its_own_snapshot_and_failed_preparation_can_retry(monkeypatch):
     st.session_state.clear()
     future = Future()
@@ -281,14 +377,15 @@ def test_post_save_approval_restores_labor_readiness_before_project_done(monkeyp
     st.session_state.objects_estimation_data_cache = {"e": {"rows": [{"object_key": "one", "status": "completed"}]}}
     st.session_state.objects_estimation_cache_dirty = {"e"}
     calls = []
-    def calculate(client, *, identity):
+    def calculate(client, *, identity, parallel_reads=False):
         assert st.session_state.screen == "object_detail"
+        assert parallel_reads is True
         calls.append(identity)
         return {"status": "ready", "assembly": {}, "preparation": {}}
     monkeypatch.setattr(object_detail, "get_supabase_client", object)
     monkeypatch.setattr(object_detail, "approve_object_estimate", lambda **kw: {"costs_changed": False})
     monkeypatch.setattr(labor, "_calculate", calculate)
-    monkeypatch.setattr(labor, "_load_overhead_context", lambda *a: {"status": "ready"})
+    monkeypatch.setattr(labor, "_load_overhead_context", lambda *a, **kw: {"status": "ready"})
     monkeypatch.setattr(object_detail, "refresh_objects_estimation_prices", lambda e, data, **kw: {
         **data, "rows": [{"object_key": "one", "status": "completed", "reviewed": True}]})
     object_detail._approve_current_object_and_return(estimate_id="e", object_id="one")

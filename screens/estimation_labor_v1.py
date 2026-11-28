@@ -1,6 +1,7 @@
 """Sheet Processing comparison for the open Object Detail card."""
 
 from html import escape
+from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 import json
 import logging
@@ -32,10 +33,11 @@ from use_cases.sheet_processing import calculate_sheet_processing
 _LOG = logging.getLogger(__name__)
 
 
-def _calculate(client, *, identity):
+def _calculate(client, *, identity, parallel_reads=False, plan=None):
     return load_object_labor(client, identity=identity, parts_loader=load_parts_check,
                              plan_loader=fetch_rfq_estimate_material_plan,
-                             machinery_loader=load_sheet_processing_machinery)
+                             machinery_loader=load_sheet_processing_machinery,
+                             **({"parallel_reads": True, "plan": plan} if parallel_reads else {}))
 
 
 
@@ -490,8 +492,17 @@ def _overhead_html(state, *, identity, material_cost, material_partial=False, qu
     return overhead_section_html({**overhead, "estimate_id": estimate_id, "run_id": run_id})
 
 
-def _load_overhead_context(client, company_id):
+def _load_overhead_context(client, company_id, *, parallel_reads=False):
     """Read the existing company inputs within the existing parallel fragment."""
+    if parallel_reads:
+        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="approval-overhead-read") as pool:
+            settings = pool.submit(fetch_company_overhead_settings, client, company_id)
+            monthly = pool.submit(fetch_company_overhead_monthly, client, company_id)
+            capacity = pool.submit(with_production_capacity, client, company_id, {})
+            settings, monthly, capacity = settings.result(), monthly.result(), capacity.result()
+        return {"status": "ready", "settings": {
+            **(settings.iloc[0].to_dict() if not settings.empty else {}), **capacity},
+            "monthly": monthly.iloc[0].to_dict() if not monthly.empty else {}}
     settings = fetch_company_overhead_settings(client, company_id)
     monthly = fetch_company_overhead_monthly(client, company_id)
     return {"status": "ready", "settings": with_production_capacity(client, company_id, settings.iloc[0].to_dict() if not settings.empty else {}),

@@ -450,6 +450,10 @@ await materialRowGeometry();
  for(const name of ['fresh-active','fresh-done','fresh-shell-ready','fresh-allocated',...Object.keys(progressStages).map(stage=>'fresh-stage-'+stage),'labor-hours.json','full-cost-totals.json','full-cost-lines.json','object-quantities.json','auth-expired'])rmSync(statePath(name),{force:true});
  const fresh=await boot({fresh_calculation:true,fresh_progress:true,objects_v2:true,objects_refresh_delay:1.2});
  await fresh.core.locator('.objects-pricing-table').waitFor();
+ await fresh.core.locator('.objects-progress-percent').waitFor();
+ assert.deepEqual(await fresh.core.locator('.objects-progress-percent').first().evaluate(n=>({
+  color:getComputedStyle(n).color,weight:getComputedStyle(n).fontWeight})),
+  {color:'rgb(128, 73, 198)',weight:'700'});
  await fresh.frame.evaluate(()=>{
   window.calculationFrames=[];window.calculationSample=true;
   const sample=()=>{

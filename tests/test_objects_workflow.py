@@ -13,18 +13,19 @@ def data():
             "summary": {"project_price": 134, "vat": 24.12, "total": 158.12}}
 
 
-def test_back_refreshes_only_current_estimate_without_dropping_detail_cache(monkeypatch):
+@pytest.mark.parametrize("saved", [False, True])
+def test_back_preserves_valid_cache_and_existing_save_invalidation(monkeypatch, saved):
     from screens import object_detail
     cache={'saved':'unchanged'}
     class Session(dict):
         __getattr__=dict.__getitem__
         __setattr__=dict.__setitem__
     session=Session(current_estimate_id='e',current_object_id='one',object_detail_data_cache=cache,
-                    objects_estimation_cache_dirty={'another'})
+                    objects_estimation_cache_dirty={'another', 'e'} if saved else {'another'})
     monkeypatch.setattr(object_detail.st,'session_state',session)
     object_detail._return_to_objects()
-    assert session['objects_estimation_cache_dirty']=={'another'}
-    assert session['objects_estimation_pricing_dirty']=={'e'}
+    assert session['objects_estimation_cache_dirty']==({'another', 'e'} if saved else {'another'})
+    assert not session.get('objects_estimation_pricing_dirty')
     assert session['object_detail_data_cache']==cache
     assert session['screen']=='objects'
 
