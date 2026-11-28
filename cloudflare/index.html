@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="labor-v3.5-b20261128075537-progress-continuity-detection-v8.4.29" />
+    <meta name="costerly-wrapper-version" content="labor-v3.6-b20261128092213-prepared-navigation-detection-v8.4.29" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -72,6 +72,9 @@
         opacity: 1;
         pointer-events: none;
         transition: opacity 160ms ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .app-loading-mask.is-hidden {
@@ -124,7 +127,7 @@
   </head>
 
   <body>
-    <div class="app-loading-mask" id="app-loading-mask" aria-hidden="true"></div>
+    <div class="app-loading-mask" id="app-loading-mask" role="status"><span class="costerly-workflow-status">Loading…</span></div>
     <template id="connection-error-view">
       <div class="connection-message costerly-workflow-status">
         <div class="connection-heading">
@@ -145,7 +148,7 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "labor-v3.5-b20261128075537-progress-continuity-detection-v8.4.29";
+        const BUILD_VERSION = "labor-v3.6-b20261128092213-prepared-navigation-detection-v8.4.29";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -501,7 +504,9 @@
           }
           frame.inert = false;
           frame.classList.add("is-ready");
-          mask.style.cssText = "";
+          // Keep centering through the fade. Clearing flex first briefly moves
+          // Updating app to the top-left of a still-visible cover.
+          mask.style.pointerEvents = "none";
           mask.classList.add("is-hidden");
           mask.setAttribute("aria-hidden", "true");
           mask.removeAttribute("role");
@@ -1008,7 +1013,8 @@
         window.addEventListener("pagehide", () => persistTimeline(true), {once: true});
         fallbackTimer = window.setTimeout(() => {
           mark("browser.app_ready_timeout", {status: "timeout"});
-          revealApp("fallback");
+          // Keep truthful feedback until actual ready; elapsed time is not
+          // permission to expose Streamlit bootstrap/skeleton content.
         }, 8000);
       })();
     </script>

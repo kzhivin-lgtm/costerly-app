@@ -6,7 +6,172 @@ evidence and optimization proposals. Project-progress implementation was approve
 Exact accepted runtimea077dd84 and records25dd8bcf have independent immutable tags.
 The three-line PDF refinement3136a583 is separately published and verified.
 
-## Evidence and limits
+## Labor V3.6 implementation candidate,28November2026
+
+Owner approved the complete selected customer-loop package. Candidate builds on
+the V3.5 checkpoint; detailed scope, before/after, tests and rollback are in
+[V3.6 release record](LABOR_V3_6_TRANSITIONS_2026_11_28.md). Later triage/proposal
+sections below retain the analysis history, not current publication status.
+Object preparation now includes Labor/Overhead and gates Review per Object;
+pending work is reused, quantity/access/invalidation remain enforced. Existing
+Project/File Review prepared paths remain; cold File Review reads overlap only
+after ownership. Local pending Naming/Preview/Identity skip futile durable reads;
+canonical terminal publication is preserved. Startup shows Loading until actual
+ready; simple approval retains valid caches. No new AI run/schema/costing policy.
+Local focused checks and four network-blocked frozen controls passed. Full gate,
+publication and owner real production speed acceptance are still pending.
+
+## Current transition triage, owner clarification28November2026
+
+The V3.5 full accepted checkpoint is complete. Owner asks for the actionable
+list now, not further exhaustive measurement. No runtime optimization is applied
+by this report. Owner explicitly requests a visible loading screen in place of
+the blank grey startup mask. Show truthful immediate feedback using the existing
+shell through actual readiness, without invented percentages, premature reveal
+or extra polling. Include first entry, normal/hard reload, deploy refresh and
+session restoration. This expands historical recovery-only request3.15.26.
+
+[verified] Latest explicitly matching Core/wrapper observations: File Review to
+Project0.543s(V3.5,n1), Processing completion to File Review4.241s(V3.4,n1),
+Sign in to working screen4.581s(V3.3,n1). Most remaining ordinary-route values
+below are older observations, not fresh V3.5 guarantees. Historical raw526-event
+set contains383 explicit matches,88 mismatches and55 absent Core markers;
+missing Core must not be inferred from wrapper version. Profile aggregate
+timings cannot be attributed to each individual tab pair.
+
+| Decision | Route/family | Evidence | Bounded next action |
+|---|---|---|---|
+|Work first, P1|Initial entry, normal/hard reload, post-deploy refresh, session restore|V3.5 normal reload Login4.088s and Upload3.391s; older Project reload19.631s(V3.2)/27.741s(V3.3), each n1. True hard reload and linked deploy-refresh duration unknown.|Immediate visible loading feedback first. Separately split bootstrap/auth/context/render to reduce real delay.|
+|Work, P1|Last Estimate from Upload/Profile/All Projects; Project Back to File Review; Processing completion to File Review|Older Last Estimate14.450/11.688/4.602s; Project Back4.729s; latest Processing completion4.241s.|Shared File Review loader: ownership first, avoid duplicate reads, fetch only required fields and reuse valid scoped data; independent reads may overlap after ownership.|
+|Work, P2|Project Review to Object Detail|V3.2 3.969s,n1; server0.782s, much of remaining time after server.|Trace client delivery/component/ready chain. Existing parallel detail reads already exist. Preserve quantity freshness and complete-screen cover.|
+|Work, P2|Object Detail APPROVE to Project|V3.2 3.346s,n1; approximate2.313s before main rerun.|Split draft/save/cleanup/return; remove proven duplicate work while preserving atomic approval and existing committed receipt.|
+|Validate before repair, P2|Sign in; New Estimate from Object Detail/Profile; current All Projects page entry|Sign in4.581s,n1; slower New Estimate samples are older or missing build attribution; All Projects predates V3.3 redesign.|Obtain current route-specific breakdown before acceleration. No blanket navigation rewrite.|
+|Leave alone now|File Review Continue to Project; Project New Estimate; Object Detail Back|0.543s(V3.5),0.877s(V3.2),1.319s(V2.19), respectively, each n1.|Preserve accepted behavior.|
+|Leave alone now|Warm Profile tabs; usual Profile entry|Tab group20 observations0.548-1.505s,median0.715s(V2.21). Entry examples0.719-1.617s on older builds.|No new tab caching/lazy-loading system; these already exist.|
+|Leave alone now|All Projects native hierarchy expansion and existing PDF download|Hierarchy expansion is local, without server rerun. Persistent download slowdown not reproduced.|Preserve Partner/Project/File/Calculation/Version hierarchy and current download.|
+|Leave alone now|Project calculation progress|Owner accepted V3.5 real cycle, minor70/71 pauses and93-to-ready jump nonblocking.|Do not reopen accepted counter refinement.|
+|Lowest, P3 deferred|All Admin entries/tabs/returns|Historical entry6.395-8.345s; separate dashboard SQL probe5.228s.|Only after customer paths. Target expensive aggregates when resumed.|
+
+Complete supported route families, grouped rather than duplicating every pair:
+
+- Header: sources Upload, Processing, File Review, Project, Object Detail,
+  All Projects, Profile, Admin. Conditional actions Admin, Profile, All Projects,
+  New Estimate, Last Estimate, Sign out comprise41 source/action edges. The older
+ 106-row inventory below omitted five Processing header edges. Processing has
+  Admin/Profile/All Projects/Last Estimate/Sign out, with active-work protection.
+- Workflow: Upload to Processing; Processing to File Review; File Review Back to
+  Upload and Continue to Project; Project Back to File Review and Review to Object
+  Detail; Object Detail Back and APPROVE to Project. Processing/calculation job
+  duration is separate from the final page transition.
+- Profile: every ordered pair between Overhead Expenses, Labor Costs, Pricing
+  Cost, Machinery, Price Lists, Contacts, Bank Details and Users (56 pairs,
+  role-dependent). Save is a separate action wait, not page navigation.
+- All Projects: page entry, local Partner/Project/File/Calculation/Version
+  expansion, available saved-route opening and historical/latest PDF download.
+  Treat a saved-route opening as its actual File Review/Project/Object Detail
+  destination, not a new parallel navigation system.
+- Auth and links: Sign in/out, registration/invitation, confirmation, password
+  recovery, terms/company setup where required, saved File Review/Project/Object
+  Detail deep links, browser back/forward where supported, Privacy Policy.
+  No fresh attributable speed evidence for all exceptional auth routes; leave
+  them alone absent a defect, do not describe them as measured fast.
+- Startup/recovery: fresh entry, ordinary reload, Command-Shift-R cache-bypass,
+  safe post-deploy refresh, deferred refresh during active work/unsaved edits,
+  long-idle restoration, reconnect, expired/revoked session and retry after error.
+- Action waits retained separately: File Review metadata save, Profile Save,
+  Object Detail Preview/Save, Set Prices, Generate with first download, repeat
+  Download Proposal/red PDF action. No current evidence warrants changing their
+  accepted persistence/versioning behavior merely to shorten a cover.
+
+[verified] Blank startup is an empty outer app-loading-mask with hidden iframe.
+The8s fallback reveal is not actual readiness. Existing outerHTML revalidation,
+immutable cached/gzip Core assets, preconnect, lazy Profile and parallel Object
+Detail reads are already implemented. Adding them again is not an optimization.
+One Core-build event triggers safe/deferred deploy refresh; preserve this policy,
+authentication and pending-work guards. Do not introduce version polling.
+
+[hypothesis] Cold Project work is partly amplified by the full UI build being
+included in labor-basis identity. Exact contribution versus context I/O is unknown.
+Changing this cache/costing contract requires a separate owner-approved before/
+after proposal and full dependency/replay checks, not a quick startup-feedback fix.
+
+Fresh evidence is in /private/tmp/labor35-transition-analysis (aggregate technical
+timings and two own anonymous startup traces only). Anonymous reload is not an
+authenticated Project measurement or true Command-Shift-R. No paid calculation,
+new PDF, production input edit or database mutation was required.
+
+## Owner-selected customer loop,28November2026
+
+Latest owner refinement supersedes the broader triage order above. Active plan:
+Project -> Object Detail first; Project -> File Review; Last Estimate -> File
+Review; terminal Processing -> File Review; APPROVE -> Project. Ordinary Back
+to Project1.319s and File Review -> Project0.543s are excluded from current
+repairs and remain regression controls. Admin remains last. These are proposals;
+no runtime/cache/navigation patch is applied here.
+
+Owner-approved design requirement for the plan: complete and validate the
+object's presentation snapshot before Review becomes available, accepting a
+short additional preparation phase at the end of the long calculation instead
+of making every subsequent click wait. Target approximately0.5s from click to
+interactive Object Detail, not an already-proven guarantee. Prepare each object
+independently using existing bounded prefetch and refresh paths, consume
+in-flight work rather than duplicating it, and preserve current access, quantity,
+write-order/failure/retry and freshness checks. Data preparation alone does not
+prove that Streamlit DOM/ready delivery meets this target; measure both.
+
+Use immutable source/company/run identity for reusable File Review content;
+quantity and mutable calculation state remain dependent data with scoped
+invalidation. A quantity change must not redownload an unchanged source file.
+Optional progressive presentation loading is allowed only for noncritical
+elements, never incomplete price/quantity state or prematurely enabled actions.
+The plan does not introduce another cache, router, worker or polling system.
+
+[verified] Current Project -> Object Detail path already prefetches snapshots
+and loads independent projections concurrently. However,
+screens/object_detail.py:_load_object_detail_or_render_error pops an unfinished
+prefetch, calls cancel(), then starts load_object_detail_data again. Cancellation
+cannot stop an already-running Future. Thus a Review can overlap an existing
+read with a duplicate read. Proposal: consume the exact target's in-flight work
+instead of duplicating it, with existing ownership, quantity-write ordering,
+freshness validation, error recovery and invalidation. Never wait for other
+cards. Current evidence proves the code path, not its frequency or the seconds
+saved. The V3.2 ready total3.969s contains only0.782s server work; investigate
+client delivery/DOM completion too. Do not remove complete-screen ready guards.
+
+[verified] Processing seeds File Review from its just-persisted result already.
+Project Back already supplies a company/run-scoped File Review snapshot.
+File Review Continue already uses a prepared Project launch plan. Recommending
+these mechanisms as new fixes would duplicate accepted work. Latest final
+Processing -> File Review4.241s is a handoff after the job, not the job duration.
+Proposal: split remaining durable Naming/identity restoration, saved-estimate
+route/launch preparation, previews, complete rendering and ready delivery;
+reuse only still-valid accepted results in the existing paths. No earlier100,
+partial screen exposure or another polling system. Keep the fast Continue
+path0.543s and extend its current prepared-state behavior only where measured
+slow cases bypass it.
+
+Last Estimate cold entry still uses ownership followed by three serial run,
+object and usage reads. Proposal: preserve ownership first, overlap independent
+reads, narrow usage/preview projections and avoid repeated original-file download
+when immutable source identity is unchanged. Reuse existing ready snapshots for
+warm entry. Project Back's older4.729s cannot be assumed to represent today's
+already-cached return; current-code verification is required before changing it.
+
+Object Detail -> Project separates Back1.319s from APPROVE3.346s (older builds).
+Back should consume valid existing Project state. APPROVE must persist first;
+reuse the existing committed-result/cache merge approach for Project row and
+dependent totals, avoiding proven duplicate reloads. Shared material allocations
+must remain coherent. Existing atomic save/approve is not replaced by a new RPC.
+
+Rare top-left loading surface: owner rejected Please wait and defers further
+identification until screenshot/URL. Current Updating app surfaces are normally
+centered. releaseDeployCover clears flex styles before the160ms opacity fade;
+this may allow a brief top-left label during cover release, but no reproduction
+was completed before the owner stopped this investigation. Exact identity and
+font mismatch remain unknown. Owner permits a confirmed correction in the next
+deployment; do not claim this hypothesis is already fixed or ship it alone.
+
+## Evidence and limits (historical audit)
 
 [verified] Existing production app_runtime_events were read directly. The first
 seven-day extraction contained287 completed transitions; November history was then

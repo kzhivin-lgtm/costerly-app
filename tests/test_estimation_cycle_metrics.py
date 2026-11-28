@@ -65,6 +65,10 @@ def test_cycle_reports_first_active_review_per_object_and_total_cost(monkeypatch
     future = Future()
     monkeypatch.setattr(objects, "perf_counter", lambda: tick[0])
     monkeypatch.setattr(objects, "submit_prepared_estimation_job", lambda **_: future)
+    monkeypatch.setattr(objects, "submit_object_detail_prefetch", lambda **_: Future())
+    # This test injects prepared presentation snapshots independently of the
+    # synthetic worker. Real terminal invalidation has separate cache tests.
+    monkeypatch.setattr(objects, "invalidate_object_detail_cache", lambda *_: None)
     app = AppTest.from_function(_mount_objects_table)
     app.session_state.objects_estimation_launch_request = {
         "estimate_id": "estimate", "run_id": "run", "company_id": "company",
@@ -88,6 +92,9 @@ def test_cycle_reports_first_active_review_per_object_and_total_cost(monkeypatch
     tick[0] = 107.25
     a["status"] = "review_required"
     app.session_state["test_rows"] = [a, b]
+    waiting = render()
+    assert "R1 <strong>—" in waiting and 'href="?screen=object_detail' not in waiting
+    app.session_state["object_detail_data_cache"] = {("estimate", "a"): {"quantity": 1}}
     html = render()
     assert "R1 <strong>7.2s" in html
     assert "R2 <strong>—" in html
@@ -95,6 +102,9 @@ def test_cycle_reports_first_active_review_per_object_and_total_cost(monkeypatch
 
     tick[0] = 115.5
     b["status"] = "completed"
+    app.session_state["object_detail_data_cache"] = {
+        ("estimate", "a"): {"quantity": 1}, ("estimate", "b"): {"quantity": 1},
+    }
     app.session_state["test_rows"] = [a, b]
     future.set_result({"estimate_id": "estimate", "estimation": {"status": "completed"}, "cost_usd": 0.2119})
     html = render()

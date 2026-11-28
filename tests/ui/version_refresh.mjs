@@ -40,7 +40,7 @@ const coreServer=createServer((req,res)=>{
   const workflow=window.__costerlyWorkflowTransition||workflowTransitionController(window,receipt.traceId,'test-source',receipt);
   if(!workflow.ready(receipt)){top.postMessage(receipt,'*');workflow.announceBuild(receipt);}
  };
- render(${JSON.stringify(screen)});
+ ${scenario==='delayed_ready'?'setTimeout(()=>render('+JSON.stringify(screen)+'),9000);':'render('+JSON.stringify(screen)+');'}
  </script>`;
  res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}).end(markup);
 });
@@ -89,6 +89,14 @@ async function boot(mode='matching',initialScreen='upload'){
 }
 function passed(message){results.push(message);console.log('Passed scenario',results.length,message);}
 try{
+ let delayed=await browser.newPage();lastPage=delayed;scenario='delayed_ready';deliveries=0;publishedBuild=serverBuild=initialBuild;
+ await delayed.goto('http://127.0.0.1:8797/');
+ assert.equal(await delayed.locator('#app-loading-mask').getAttribute('role'),'status');
+ assert.equal(await delayed.locator('#app-loading-mask').innerText(),'Loading…');
+ await delayed.waitForTimeout(8150);
+ assert.equal(await delayed.locator('#app-loading-mask').getAttribute('class'),'app-loading-mask');
+ assert.equal(await delayed.locator('iframe.is-ready').count(),0,'Eight elapsed seconds cannot uncover an unready app');
+ await ready(delayed);await delayed.close();passed('Startup keeps visible shared loading feedback until actual ready, including beyond8s');
  let page=await boot();await matched(page);assert.equal(deliveries,1);
  let frame=await coreFrame(page);await frame.waitForFunction(()=>window.restoredSession!==undefined);
  const tokens={access_token:'synthetic-access',refresh_token:'synthetic-refresh',expires_at:4102444800};
@@ -155,7 +163,17 @@ try{
  assert.equal(updateStyle.size,'24px');assert.equal(updateStyle.weight,'400');
  assert.ok(updateStyle.family.includes('IBM Plex Mono'));assert.equal(updateStyle.color,'rgb(59, 46, 72)');
  await page.screenshot({path:reportPath('updating-app-shared.png')});
- passed('Unavailable reload-guard storage offered manual retry without a loop');await page.close();
+ passed('Unavailable reload-guard storage offered manual retry without a loop');
+ frame=await coreFrame(page);await frame.evaluate(()=>render('processing'));
+ await page.waitForFunction(()=>document.querySelector('#app-loading-mask').classList.contains('is-hidden'));
+ const fading=await page.locator('#app-loading-mask .costerly-workflow-status').evaluate(n=>{
+  const r=n.getBoundingClientRect(),mask=n.parentElement;
+  return {centerX:r.x+r.width/2,centerY:r.y+r.height/2,width:innerWidth,height:innerHeight,
+   display:getComputedStyle(mask).display,pointerEvents:getComputedStyle(mask).pointerEvents};
+ });
+ assert.equal(fading.display,'flex');assert.equal(fading.pointerEvents,'none');
+ assert(Math.abs(fading.centerX-fading.width/2)<1&&Math.abs(fading.centerY-fading.height/2)<1,JSON.stringify(fading));
+ passed('Deploy-cover label stays centered through fade and hidden cover cannot intercept input');await page.close();
  assert.equal(versionReads,0,'No periodic or startup version-file request');
  writeFileSync(reportPath('version-refresh.json'),JSON.stringify(results,null,2));console.log(JSON.stringify(results));
 }catch(error){

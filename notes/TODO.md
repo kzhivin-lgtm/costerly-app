@@ -1043,14 +1043,48 @@ full gate/artifact, source/records ZIPs/inventories/tags, manifest/verifier,
 applied migration/current PDF evidence and protected unrelated TODO patch retained.
 No runtime deployment or new paid run; accepted70/71 and93-to-ready observations
 are not reopened as repairs. Guide notes/LABOR_V3_5_PRODUCTION_CHECKPOINT_2026_11_28.md.
-PENDING AUTHORIZED ANALYSIS, P1, OWNER REQUEST28November2026, after checkpoint:
-Classify the complete transition inventory into no-current-work and optimization
-candidates, give evidence/unknowns and concrete options. Include Command-Shift-R
-hard reload and automatic post-deploy refresh/grey startup as first-class paths.
-Admin is the lowest optimization priority. Reuse existing telemetry and inspect
-current startup/auth/render/ready flow before proposals. No runtime repair or
-new cache/auth/navigation architecture is approved by this analysis request;
-implementation work/block/public number remains unassigned.
+COMPLETED TRANSITION TRIAGE, P1, OWNER REQUEST28November2026, after checkpoint:
+Current grouped inventory, leave-alone/work candidates, timing provenance and
+bounded solutions: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md, Current transition triage.
+Owner explicitly requests immediate visible startup feedback in place of the
+empty grey mask, including initial entry, reload, hard reload and post-deploy
+refresh. IMPLEMENTED CANDIDATE, FULL GATE/PUBLICATION PENDING, P1: use the existing loading shell, show a
+truthful loading message/indicator immediately and retain it until actual ready;
+do not fabricate percentages or expose incomplete screens. This broadens the
+previous deferred recovery-only3.15.26 request, which remains referenced below.
+Startup feedback remains pending alongside the owner-selected customer loop
+below; Admin is P3, lowest priority. Owner approved the whole packet28November.
+Candidate Labor V3.6 continues the existing3.17.4.6 reference, without allocating
+a new block/number. Published runtime remains V3.5 until the full exact gate passes.
+OWNER-REFINED PLAN28November2026, P1: prepare the selected object's authoritative
+Object Detail snapshot before exposing Review. Additional end-of-calculation
+presentation preparation is acceptable; an active Review that still requires a
+slow data load is not. Target approximately0.5s click to interactive card, to be
+verified rather than promised. Reuse existing bounded prefetch/fragment paths,
+do not restart in-flight work, preserve quantity/write/access/freshness guards.
+Prepare per object, without making one card wait for all other cards. Cache
+immutable source/run data; quantity and other dependency changes invalidate only
+affected state. Progressive loading may cover noncritical presentation only,
+never incomplete prices, edit readiness or unsafe actions. Active proposals:
+Project -> Object Detail first; Project -> File Review cached return; Last
+Estimate -> File Review cold/warm load; terminal Processing -> File Review;
+APPROVE -> Project committed result reuse. Remove ordinary Back -> Project
+(historical1.319s) and File Review -> Project(latest0.543s) from current repair
+scope, retain as regression controls. Do not confuse1.32seconds with minutes.
+Processing handoff means the interval after the job result, not Detection
+duration. Current-code proposals and existing optimizations are distinguished
+in the audit. Candidate now adds full Object/Labor/Overhead preparation before
+Review, selected-Future reuse, same-slot Retry, the existing fragment's bounded
+presentation refresh, parallel owned File Review reads and pending-local-worker
+read avoidance. Simple approval preserves unchanged caches; shared-cost changes
+retain invalidation. Four frozen network-blocked material controls passed.
+Scoped cache/quantity/ownership/readiness checks passed; full gate in progress.
+Scope/evidence: notes/LABOR_V3_6_TRANSITIONS_2026_11_28.md.
+Rare top-left Loading/Updating surface: DEFERRED pending owner screenshot/URL.
+Please wait is explicitly rejected by owner. Exact surface not identified;
+releaseDeployCover removes flex before160ms fade, a source-supported hypothesis,
+not a confirmed reproduction. Owner authorizes including a confirmed correction
+in the next deployment, not a separate speculative release or further hunt now.
 V3.4 PUBLISHED EVIDENCE (owner accepts improvement, long-pause refinement active):
 Labor V3.4, continuation3.17.4.6. Project calculation counter replaces the old
 post-Parts-Check70 with90; real geometry20/understanding45/locator60/inventory75/
@@ -8188,7 +8222,11 @@ accepted the live authenticated result. Preserved: the accepted `Object:` /
 navigation-controls axis, shared header component, callbacks, preview source,
 totals, table calculations and responsive behavior.
 
-DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
+MERGED SCOPE, historical reference3.15.26, USER REQUEST sleeping-session recovery
+feedback. Owner28November2026 now requires visible feedback on every startup,
+not only detected recovery. Active pending outcome is recorded with the current
+transition triage above; this is not a second implementation task. Original scope:
+when a
 user refreshes Costerly after a long idle period and the application or session
 must wake and restore authenticated state, replace the unexplained prolonged
 gray screen with an explicit recovery state such as `Restoring your session`.

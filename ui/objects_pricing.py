@@ -210,7 +210,8 @@ def object_detail_navigation_key(object_id: object) -> str:
 
 def review_action_ready(row: dict[str, object]) -> bool:
     """The row exposes an active link to the object preview."""
-    return not _is_project_cost_row(row) and _row_status(row) in {"completed", "review_required"}
+    return (not _is_project_cost_row(row) and _row_status(row) in {"completed", "review_required"}
+            and row.get("detail_navigation_ready") is not False)
 
 
 def cycle_metrics_html(rows, *, elapsed, ready_seconds, cost_usd, running):
@@ -245,8 +246,8 @@ def _review_action_html(
     run_id: str | None,
 ) -> str:
     status = _row_status(row)
-    if review_action_ready(row):
-        action_label = "Done" if row.get("reviewed") else "Review"
+    if review_action_ready(row) or row.get("detail_navigation_failed"):
+        action_label = "Retry" if row.get("detail_navigation_failed") else "Done" if row.get("reviewed") else "Review"
         action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
         object_id = quote(str(row.get("object_key") or ""))
         navigation_key = object_detail_navigation_key(row.get("object_key"))
@@ -266,7 +267,7 @@ def _review_action_html(
             f'target="_self">{action_label}</a>'
         )
 
-    action_label = "Estimating" if status == "running" else "Failed" if status == "failed" else "Pending"
+    action_label = "Estimating" if status == "running" or row.get("detail_navigation_ready") is False else "Failed" if status == "failed" else "Pending"
     return (
         '<span class="objects-pricing-review-button objects-pricing-review-button--disabled" '
         'aria-disabled="true">'

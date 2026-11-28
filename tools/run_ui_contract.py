@@ -27,6 +27,7 @@ UNIT_TESTS = [
     "tests/test_runtime_observability.py", "tests/test_ui_release_gate.py",
     "tests/test_presentation_previews.py",
     "tests/test_object_cost_hierarchy.py", "tests/test_object_detail_cache.py",
+    "tests/test_prepared_navigation.py",
     "tests/test_overhead_restore.py",
     "tests/test_isometric_attachment_policy.py",
     "tests/test_detection_explicit_pairs.py",

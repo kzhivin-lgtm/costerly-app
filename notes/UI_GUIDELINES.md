@@ -1033,6 +1033,34 @@ reuse, calculation completion during navigation, tenant isolation, pricing,
 proposal versions, layout and every prior protected workflow. No new timer,
 poll, model request, durable progress write or visible control is authorized.
 
+## Labor V3.6 prepared navigation, owner approved28November2026
+
+Owner approves the complete transition package after the accepted V3.5 checkpoint.
+Internal names are Project and Object; existing route/table identifiers persist.
+Before: a calculated row enabled Review while Object preparation could still be
+pending, and a click could abandon its Future and issue duplicate reads. After:
+Review requires this Object's prepared data, Labor and Overhead snapshot. Other
+Objects never gate it. The same action slot offers Retry after preparation failure.
+The existing bounded prefetch executor and1.5s Project fragment own preparation;
+saved-Project presentation refresh ends with one terminal app rerun, while active
+calculation retains its fragment-only completion path. Preserve quantity/access,
+pending-write ordering, failed-read handling and current invalidation. A target
+around0.5s requires actual click-to-interactive verification, not a promise.
+
+Project/File Review snapshot return and Continue remain read-free where already
+prepared. Cold File Review overlaps independent reads after ownership and retains
+all timing/cost/source metadata. Pending local Naming/Preview/Identity workers do
+not trigger redundant durable reads; terminal publication stays canonical to
+protect manual edits and late-worker CAS. Simple acknowledged approval preserves
+valid Object caches; cost/shared-allocation changes retain invalidation. Ordinary
+Back retains its existing small commercial refresh and all unsaved-edit behavior.
+
+Startup shows Loading immediately in the existing shared typography, and elapsed
+time alone cannot uncover an unready app. Keep the update label centered through
+cover fade and make hidden covers noninteractive. Existing deploy/auth/offline/
+active-work/recovery/old-wrapper protections and every earlier scenario remain.
+Scope, alternatives and rollback: LABOR_V3_6_TRANSITIONS_2026_11_28.md.
+
 ## Labor V3.5 Project continuity, owner requested28November2026
 
 Owner's real V3.4 cycle improved overall but paused at83, with early and50-to60

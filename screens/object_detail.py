@@ -123,6 +123,7 @@ def _load_object_detail_or_render_error(context: ObjectDetailContext) -> dict[st
     cache = st.session_state.setdefault("object_detail_data_cache", {})
     dirty_estimates = st.session_state.setdefault("object_detail_data_cache_dirty", set())
     prefetches = st.session_state.setdefault("object_detail_prefetch_futures", {})
+    quantity = None
     # Revalidate once on Review, not on editing/rerenders. The browser quantity
     # RPC cannot invalidate Python snapshots, including completed prefetches.
     if st.session_state.get("object_detail_quantity_check") == cache_key and (
@@ -150,17 +151,24 @@ def _load_object_detail_or_render_error(context: ObjectDetailContext) -> dict[st
 
     prefetch = prefetches.pop(cache_key, None)
     if prefetch is not None:
-        if prefetch.done():
-            try:
-                data = prefetch.result()
-            except Exception:
-                pass
-            else:
+        try:
+            data = prefetch.result(timeout=15)
+        except TimeoutError:
+            prefetches[cache_key] = prefetch
+            st.error("Object is still preparing. Return to Project and try again.")
+            _back_to_objects_button()
+            return None
+        except Exception:
+            pass
+        else:
+            if quantity is None or data.get("quantity") == quantity:
+                prepared_labor = data.pop("_prepared_labor", None)
+                if prepared_labor is not None:
+                    identity, labor = prepared_labor
+                    st.session_state.setdefault("labor_v1_comparisons", {})[identity] = labor
                 cache[cache_key] = data
                 dirty_estimates.discard(context.estimate_id)
                 return data
-        else:
-            prefetch.cancel()
     try:
         with st.spinner("Loading Object Detail"):
             data = load_object_detail_data(
@@ -475,7 +483,7 @@ def _approve_current_object_and_return(
             st.session_state.screen = "objects"
             return
     try:
-        approve_object_estimate(
+        approval = approve_object_estimate(
             estimate_id=estimate_id,
             object_id=object_id,
             recalculate=recalculate,
@@ -484,7 +492,13 @@ def _approve_current_object_and_return(
         _LOG.exception("Could not approve object %s in estimate %s", object_id, estimate_id)
         st.session_state.object_detail_approval_error = "Could not approve the object. Please try again."
         return
-    invalidate_object_detail_cache(estimate_id)
+    if isinstance(approval, dict) and approval.get("costs_changed") is False:
+        # Approval alone does not change the prepared Object. Refresh only the
+        # existing small Project commercial projection, including current qty.
+        st.session_state.setdefault("objects_estimation_pricing_dirty", set()).add(estimate_id)
+    else:
+        invalidate_object_detail_cache(estimate_id)
+        _mark_objects_estimation_dirty(estimate_id)
     approved_object_keys = st.session_state.setdefault("approved_object_keys", set())
     approved_object_keys.add(object_key or object_id)
     st.session_state.screen = "objects"

@@ -1003,9 +1003,13 @@ def load_file_review_data(run_id: str) -> dict[str, Any]:
     from state.company_auth import company_auth_enabled
     if company_auth_enabled():
         assert_run_owned(client, run_id, get_company_id())
-    run_df = read_with_retry(lambda: fetch_rfq_run(client, run_id))
-    objects_df = read_with_retry(lambda: fetch_rfq_detected_objects(client, run_id))
-    usage_df = read_with_retry(lambda: fetch_agent_usage_events(client, run_id))
+    # Ownership must be accepted before these independent projections start.
+    # Retain all usage events: timing/cost accounting needs more than the cycle.
+    with ThreadPoolExecutor(max_workers=3, thread_name_prefix="file-review-read") as executor:
+        run_future = executor.submit(read_with_retry, lambda: fetch_rfq_run(client, run_id))
+        objects_future = executor.submit(read_with_retry, lambda: fetch_rfq_detected_objects(client, run_id))
+        usage_future = executor.submit(read_with_retry, lambda: fetch_agent_usage_events(client, run_id))
+        run_df, objects_df, usage_df = run_future.result(), objects_future.result(), usage_future.result()
 
     if run_df.empty:
         raise RuntimeError(f"RFQ run not found in Supabase: {run_id}")

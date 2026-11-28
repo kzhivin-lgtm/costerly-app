@@ -458,7 +458,7 @@ def _sync_durable_document_identity_once(run_id: str) -> None:
     synced_key = f"file_review_document_identity_cache_synced.{run_id}"
     if st.session_state.get(synced_key):
         return
-    result = load_file_review_document_identity_publication(run_id)
+    result = _deferred_publication(run_id, "document_identity", load_file_review_document_identity_publication)
     if str(result.get("status") or "pending") == "pending":
         return
     _publish_persisted_document_identity(run_id, result)
@@ -475,7 +475,7 @@ def _render_file_review_metadata_inputs(
         if isinstance(work, dict) and work.get("run_id") == run_id and work.get("document_identity"):
             published = _publish_persisted_document_identity(
                 run_id,
-                load_file_review_document_identity_publication(run_id),
+                _deferred_publication(run_id, "document_identity", load_file_review_document_identity_publication),
             )
             if published:
                 _mark_deferred_work_complete(run_id, "document_identity")
@@ -778,6 +778,21 @@ def _publish_persisted_naming(
     return True
 
 
+def _deferred_publication(run_id: str, kind: str, loader: Callable) -> dict[str, object]:
+    """Do not query storage for a result our own worker has not finished yet.
+
+    Terminal reads remain canonical, preserving concurrent manual names and CAS.
+    Restored/foreign runs retain the durable path. The existing fragment owns
+    refresh frequency; this adds no poll or worker.
+    """
+    work = st.session_state.get("file_review_deferred_work")
+    future = st.session_state.get(f"current_{kind}_future")
+    if (isinstance(work, dict) and work.get("run_id") == run_id
+            and work.get(kind) and isinstance(future, Future) and not future.done()):
+        return {"status": "pending"}
+    return loader(run_id)
+
+
 def _sync_durable_naming_once(run_id: str) -> None:
     """Refresh a restored review cache from the durable naming result once.
 
@@ -788,7 +803,7 @@ def _sync_durable_naming_once(run_id: str) -> None:
     synced_key = f"file_review_naming_cache_synced.{run_id}"
     if st.session_state.get(synced_key):
         return
-    result = load_file_review_naming_publication(run_id)
+    result = _deferred_publication(run_id, "naming", load_file_review_naming_publication)
     if str(result.get("status") or "pending") == "pending":
         return
     _publish_persisted_naming(run_id, result, allow_refresh=True)
@@ -852,13 +867,17 @@ def _publish_persisted_preview(run_id: str, result: dict[str, object]) -> bool:
 
 def _publish_deferred_file_review_work(run_id: str) -> None:
     """Persist terminal Naming and Preview work without rerunning the app."""
-    naming_result = load_file_review_naming_publication(run_id)
-    naming_done = _publish_persisted_naming(run_id, naming_result)
-    if naming_done:
-        _mark_deferred_work_complete(run_id, "naming")
-    local_preview_result = _collect_completed_previews()
-    preview_result = local_preview_result or load_file_review_preview_publication(run_id)
-    preview_done = _publish_persisted_preview(run_id, preview_result)
+    work = st.session_state.get("file_review_deferred_work") or {}
+    if work.get("run_id") != run_id:
+        return
+    if work.get("naming"):
+        naming_result = _deferred_publication(run_id, "naming", load_file_review_naming_publication)
+        if _publish_persisted_naming(run_id, naming_result):
+            _mark_deferred_work_complete(run_id, "naming")
+    if work.get("preview"):
+        local_preview_result = _collect_completed_previews()
+        preview_result = local_preview_result or _deferred_publication(run_id, "preview", load_file_review_preview_publication)
+        _publish_persisted_preview(run_id, preview_result)
     # The enclosing fragment renders from the session cache on its next poll.
     # Do not issue an app rerun here: that briefly unmounts the global
     # navigation rail while Streamlit reconciles File Review.
@@ -940,17 +959,17 @@ def _poll_file_review_deferred_work(run_id: str) -> None:
     terminal = False
     if work.get("naming"):
         terminal = (
-            str(load_file_review_naming_publication(run_id).get("status") or "pending")
+            str(_deferred_publication(run_id, "naming", load_file_review_naming_publication).get("status") or "pending")
             != "pending"
         )
     if not terminal and work.get("document_identity"):
         terminal = (
-            str(load_file_review_document_identity_publication(run_id).get("status") or "pending")
+            str(_deferred_publication(run_id, "document_identity", load_file_review_document_identity_publication).get("status") or "pending")
             != "pending"
         )
     if not terminal and work.get("preview"):
         terminal = (
-            str(load_file_review_preview_publication(run_id).get("status") or "pending")
+            str(_deferred_publication(run_id, "preview", load_file_review_preview_publication).get("status") or "pending")
             != "pending"
         )
     if terminal:

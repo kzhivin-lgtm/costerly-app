@@ -1499,7 +1499,7 @@ def approve_object_estimate(
     estimate_id: str,
     object_id: str,
     recalculate: bool = False,
-) -> None:
+) -> dict[str, bool]:
     """Mark one object estimate approved in Supabase."""
     client = get_supabase_client()
     _assert_screen_estimate_access(client, estimate_id)
@@ -1521,6 +1521,8 @@ def approve_object_estimate(
         ).result(timeout=12)
     else:
         update_rfq_object_estimate_approved(client, estimate_id=estimate_id, object_id=object_id, approved=True)
+        return {"costs_changed": bool(recalculate)}
+    return {"costs_changed": True}
 
 
 def _object_material_context(client: Any, *, estimate_id: str, object_id: str) -> dict[str, Any]:

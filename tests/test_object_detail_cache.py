@@ -179,6 +179,7 @@ def test_completed_object_prefetch_runs_without_the_global_material_plan(monkeyp
 
     assert submitted == [{
         "estimate_id": "estimate-1", "object_id": "object-1", "company_id": "610",
+        "loader": objects._load_prepared_object_navigation,
     }]
 
     prefetch.set_result({"name": "Cabinet", "sections": []})
@@ -227,24 +228,31 @@ def test_failed_prefetch_falls_back_once_without_fragment_retry(monkeypatch):
     assert ("estimate-1", "object-1") in st.session_state.object_detail_prefetch_failed
     assert submitted == [{
         "estimate_id": "estimate-1", "object_id": "object-1", "company_id": "610",
+        "loader": objects._load_prepared_object_navigation,
     }]
 
 
-def test_open_second_object_after_return_uses_foreground_read_if_prefetch_is_pending(monkeypatch):
+def test_open_second_object_consumes_its_pending_prefetch_without_duplicate_read(monkeypatch):
     st.session_state.clear()
     st.session_state.current_estimate_id = "estimate-1"
-    running = Future()
+    class CompletingFuture(Future):
+        def result(self, timeout=None):
+            assert timeout == 15
+            if not self.done():
+                self.set_result({"name": "object-2", "quantity": 1})
+            return super().result(timeout=timeout)
+    running = CompletingFuture()
     running.set_running_or_notify_cancel()
     st.session_state.object_detail_prefetch_futures = {("estimate-1", "object-2"): running}
     st.session_state.object_detail_data_cache = {("estimate-1", "object-1"): {"name": "First", "quantity": 1}}
-    monkeypatch.setattr(object_detail, "load_object_detail_data", lambda **kw: {"name": kw["object_id"]})
+    monkeypatch.setattr(object_detail, "load_object_detail_data", lambda **kw: pytest.fail("Duplicate read while selected prefetch runs"))
     monkeypatch.setattr(object_detail, "load_object_detail_quantity", lambda **kw: 1)
     objects._open_object_detail("object-1")
     assert object_detail._load_object_detail_or_render_error(object_detail._current_object_detail_context()) == {"name": "First", "quantity": 1}
     object_detail._return_to_objects()
     objects._open_object_detail("object-2")
-    assert object_detail._load_object_detail_or_render_error(object_detail._current_object_detail_context()) == {"name": "object-2"}
-    assert not running.done()
+    assert object_detail._load_object_detail_or_render_error(object_detail._current_object_detail_context()) == {"name": "object-2", "quantity": 1}
+    assert running.done()
 
 
 def test_material_save_uses_committed_receipt_without_a_fallible_second_read(monkeypatch):

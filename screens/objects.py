@@ -22,7 +22,7 @@ from ui import objects_workflow
 from ui.screen_transition import (
     OBJECTS_MARKER_ID,
 )
-from use_cases.estimation import load_objects_estimation_data, refresh_objects_estimation_prices
+from use_cases.estimation import load_objects_estimation_data, refresh_objects_estimation_prices, load_object_detail_data
 from use_cases.estimation_runtime import submit_prepared_estimation_job
 from use_cases.estimation_parts_check_runtime import load_estimation_cycle_cost, load_parts_check
 from use_cases.object_detail_runtime import submit_object_detail_prefetch
@@ -646,6 +646,12 @@ def _cache_routed_objects_data(
 
 
 def _open_object_detail(object_id: str) -> None:
+    key = (str(st.session_state.get("current_estimate_id") or ""), str(object_id))
+    failed = st.session_state.setdefault("object_detail_prefetch_failed", set())
+    if key in failed:
+        # Retry uses the normal covered Object read/error path. It never
+        # presents an old snapshot as a successfully prepared Review.
+        failed.discard(key)
     st.session_state.object_detail_quantity_check = (str(st.session_state.get("current_estimate_id") or ""), str(object_id))
     st.session_state.current_object_id = str(object_id)
     st.session_state.screen = "object_detail"
@@ -680,6 +686,19 @@ def _render_object_detail_navigation_bridges(data: dict[str, object]) -> None:
             )
 
 
+def _load_prepared_object_navigation(**kwargs) -> dict[str, object]:
+    """Prepare the existing Object/Labor/Overhead payload in the owned executor."""
+    from screens.estimation_labor_v1 import _calculate, _load_overhead_context
+
+    data = load_object_detail_data(**kwargs)
+    identity = (str(data.get("company_id") or kwargs["company_id"]), str(data.get("run_id") or ""),
+                kwargs["estimate_id"], kwargs["object_id"])
+    client = get_supabase_client()
+    labor = _calculate(client, identity=identity) if identity[1] else {"status": "unavailable"}
+    labor["overhead_context"] = _load_overhead_context(client, identity[0])
+    return {**data, "_prepared_labor": (identity, labor)}
+
+
 def _prefetch_completed_object_details(
     *, estimate_id: str | None, company_id: str, data: dict[str, object],
 ) -> None:
@@ -697,7 +716,10 @@ def _prefetch_completed_object_details(
             continue
         cache_key = (estimate_key, object_id)
         if cache_key in cache and estimate_key not in dirty_estimates:
-            continue
+            expected_quantity = row.get("quantity")
+            if expected_quantity is None or cache[cache_key].get("quantity") == expected_quantity:
+                continue
+            cache.pop(cache_key, None)
 
         prefetch = futures.get(cache_key)
         if prefetch is None:
@@ -706,14 +728,42 @@ def _prefetch_completed_object_details(
                     estimate_id=estimate_key,
                     object_id=object_id,
                     company_id=str(company_id),
+                    loader=_load_prepared_object_navigation,
                 )
         elif prefetch.done():
             futures.pop(cache_key, None)
             try:
-                cache[cache_key] = prefetch.result()
+                snapshot = prefetch.result()
+                prepared_labor = snapshot.pop("_prepared_labor", None)
+                if prepared_labor is not None:
+                    identity, labor = prepared_labor
+                    st.session_state.setdefault("labor_v1_comparisons", {})[identity] = labor
+                cache[cache_key] = snapshot
                 dirty_estimates.discard(estimate_key)
             except Exception:
                 failed_prefetches.add(cache_key)
+
+
+def _with_object_navigation_readiness(data: dict[str, object], estimate_id: str | None) -> dict[str, object]:
+    """Expose Review only for this Object's successfully prepared snapshot."""
+    cache = st.session_state.get("object_detail_data_cache", {})
+    dirty = st.session_state.get("object_detail_data_cache_dirty", set())
+    failed = st.session_state.get("object_detail_prefetch_failed", set())
+    rows = []
+    for original in data.get("rows") or []:
+        row = dict(original)
+        if objects_pricing.row_status(row) in {"completed", "review_required"}:
+            key = (str(estimate_id or ""), str(row.get("object_key") or ""))
+            row["detail_navigation_ready"] = key in cache and str(estimate_id) not in dirty
+            row["detail_navigation_failed"] = key in failed
+        rows.append(row)
+    return {**data, "rows": rows}
+
+
+def _object_navigation_pending(data: dict[str, object], estimate_id: str | None) -> bool:
+    prepared = _with_object_navigation_readiness(data, estimate_id)
+    return any(row.get("detail_navigation_ready") is False and not row.get("detail_navigation_failed")
+               for row in prepared.get("rows") or [])
 
 
 def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) -> None:
@@ -898,6 +948,8 @@ def _render_objects_table_content(
         cache_warning=screen_state.cache_warning,
     )
     data = _data_with_progress(screen_state.data, estimate_id)
+    _prefetch_completed_object_details(estimate_id=estimate_id, company_id=str(company_id or ""), data=data)
+    data = _with_object_navigation_readiness(data, estimate_id)
     _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id, company_id=company_id, header_slots=header_slots)
 
 
@@ -905,8 +957,11 @@ def _render_live_objects_content(
     *, estimate_id: str | None, run_id: str | None, company_id: str,
     initial_state: ObjectsScreenState, live: bool,
     header_slots: objects_workflow.ObjectsHeaderSlots | None = None,
+    preparing_details: bool = False,
 ) -> None:
     """Safely refresh persisted Estimation rows without mutating React-owned DOM."""
+    if st.session_state.get("screen") not in {None, "objects"}:
+        return
     future_before = st.session_state.get("estimation_batch_future")
     _consume_estimation_future()
     if isinstance(future_before, Future) and not isinstance(
@@ -958,6 +1013,9 @@ def _render_live_objects_content(
         company_id=company_id,
         data=_data_with_progress(routed_data, estimate_id),
     )
+    if preparing_details and not live and not _object_navigation_pending(routed_data, estimate_id):
+        # Stop the existing fragment interval once saved-project preparation ends.
+        st.rerun()
 
 
 def _worktop_area_rows(report):
@@ -1073,14 +1131,17 @@ def render_objects_screen(
     # The timed fragment can enable Review without a full app rerun. Its
     # native buttons must already exist for all objects in the prepared batch.
     action_data = _data_with_progress(screen_state.data, estimate_id)
+    _prefetch_completed_object_details(estimate_id=estimate_id, company_id=company_id, data=action_data)
+    preparing_details = not live and _object_navigation_pending(action_data, estimate_id)
     _render_object_detail_navigation_bridges(action_data)
     # One fragment and delta path for both running and saved estimates. A
     # full rerun must replace the same subtree, rather than moving a stale
     # pricing table between a fragment and the app root.
-    st.fragment(_render_live_objects_content, run_every=1.5 if live else None)(
+    st.fragment(_render_live_objects_content, run_every=1.5 if live or preparing_details else None)(
         estimate_id=estimate_id, run_id=run_id, company_id=company_id,
         initial_state=screen_state, live=live,
         header_slots=header_slots,
+        preparing_details=preparing_details,
     )
 
     # Actions and JavaScript runtimes remain outside the timed fragment. They

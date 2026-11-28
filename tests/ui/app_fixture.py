@@ -209,9 +209,18 @@ objects._data_with_object_routes = lambda data, **_: data
 objects.submit_prepared_estimation_job = no_estimation
 _original_detail_prefetch = objects._prefetch_completed_object_details
 def prefetch_details(*args, **kwargs):
- if scenario().get('detail_prefetch'):
-  return _original_detail_prefetch(*args, **kwargs)
+ return _original_detail_prefetch(*args, **kwargs)
 objects._prefetch_completed_object_details = prefetch_details
+_original_object_navigation_loader = objects._load_prepared_object_navigation
+def prepared_object_navigation(**kwargs):
+ record('prepare Object '+kwargs['object_id'])
+ from time import monotonic
+ deadline=monotonic()+20
+ while (STATE/'hold-object-preparation').exists():
+  if monotonic()>deadline:raise TimeoutError('Test did not release Object preparation')
+  sleep(.02)
+ return _original_object_navigation_loader(**kwargs)
+objects._load_prepared_object_navigation=prepared_object_navigation
 estimation.fetch_rfq_object_quantity = lambda client, *, estimate_id, object_id: float(
  read_objects(client, estimate_id).set_index('object_id').loc[object_id, 'quantity'])
 objects.load_parts_check = lambda **_: {'status':'ready'}

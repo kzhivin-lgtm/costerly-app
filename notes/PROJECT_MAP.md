@@ -13,6 +13,13 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
+- Candidate Labor V3.6: [prepared Project/Object navigation](LABOR_V3_6_TRANSITIONS_2026_11_28.md).
+  Owner approved the complete packet. Existing detail executor prepares the full
+  Object/Labor/Overhead snapshot; Review waits per Object. Cold File Review reads
+  overlap after ownership; pending local jobs avoid redundant publication reads.
+  Simple approval keeps valid snapshots; startup has visible shared feedback.
+  Full exact release gate/publication and production speed acceptance pending.
+
 - Latest accepted full preservation: [Labor V3.5 checkpoint](LABOR_V3_5_PRODUCTION_CHECKPOINT_2026_11_28.md),
   runtime4f11834c,882 exact files, restored1198 checks/four controls. Owner accepts
   the real counter cycle; startup/navigation latency remains the next analysis.

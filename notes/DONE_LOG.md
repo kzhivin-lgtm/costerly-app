@@ -1,5 +1,17 @@
 # Done Log
 
+[verified] Labor V3.6 implementation candidate,28November2026, continuing
+reference3.17.4.6. Owner approved the entire selected transition packet and
+internal names Project/Object. Prepared Object now includes Labor/Overhead;
+Review waits per Object, selected in-flight work is reused, retry remains
+actionable and quantity/access/write guards are retained. Cold File Review
+overlaps owned reads; local pending deferred jobs avoid futile storage reads.
+Simple approval keeps unchanged snapshots; startup has shared visible feedback.
+Local1208 checks and four frozen network-blocked material controls passed.
+Browser gate, exact candidate publication and owner production speed acceptance
+pending. V3.5 is still published and its checkpoint is immutable.
+[Scope and evidence](LABOR_V3_6_TRANSITIONS_2026_11_28.md).
+
 [verified] Owner-accepted full Labor V3.5 checkpoint,28November2026,
 continuing work3.17.4.6. Owner's real Project cycle is very smooth overall;
 brief70/71 pauses and93-to100/ready jump are accepted residual observations.

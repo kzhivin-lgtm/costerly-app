@@ -1,5 +1,17 @@
 # Persistent UI release contract
 
+Labor V3.6 holds actual Object preparation in the Objects suite: no Review link
+before the complete Object/Labor/Overhead snapshot is ready, then normal covered
+navigation and all prior quantity/write/error/reopen scenarios. Correlated
+click-to-ready observations are saved, not used as production performance claims.
+New Python cases cover pending selected-Future reuse, canonical quantity changing
+during preparation, timeout without duplicate reads, per-Object readiness/retry,
+ownership-before-parallel File Review reads and pending local deferred work.
+The existing Project fragment also observes pending saved-Object preparation;
+one terminal rerun stops that interval, never during active calculation.
+Version-refresh checks retain the existing safe/deferred/auth/loop guards and
+add visible startup feedback past8s plus centered deployment-cover fade.
+
 Labor V3.5 adds pending-progress reads that deliberately fail if attempted,
 held material phase movement, smooth confirmation catch-up and a real accepted
 quantity edit retained across multiple progress-only renders and final reload.

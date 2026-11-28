@@ -1,3 +1,16 @@
+[verified] Labor V3.6 implementation candidate,28November2026, continuation
+reference3.17.4.6. Owner approved all selected transitions in one packet; internal
+names Project/Object, stored routes unchanged. Full Object/Labor/Overhead
+preparation gates Review; selected Future reused, pending/quantity/access/retry
+guards retained. Existing fragment observes preparation and stops its interval
+after completion. Cold File Review overlaps owned reads; still-running local
+deferred jobs avoid redundant durable reads; terminal names remain canonical.
+Simple approval retains valid caches; startup Loading stays until actual ready.
+1208 local checks and four frozen controls passed. Browser/remote exact gate,
+publication and owner production-speed acceptance pending. Existing V3.5 baseline
+and unrelated71-line TODO changes remain protected.
+[Release record](LABOR_V3_6_TRANSITIONS_2026_11_28.md).
+
 [verified] Owner-accepted full Labor V3.5 checkpoint,28November2026,
 continuing work3.17.4.6. Owner's real Project cycle is very smooth overall;
 brief70/71 pauses and93-to100/ready jump are accepted residual observations.

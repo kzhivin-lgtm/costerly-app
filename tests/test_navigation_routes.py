@@ -846,7 +846,7 @@ def test_objects_screen_does_not_install_the_react_mutating_live_progress_runtim
 def test_objects_screen_refreshes_active_estimation_in_a_server_fragment():
     source = Path("screens/objects.py").read_text()
 
-    assert "st.fragment(_render_live_objects_content, run_every=1.5 if live else None)" in source
+    assert "st.fragment(_render_live_objects_content, run_every=1.5 if live or preparing_details else None)" in source
     assert "def _render_live_objects_content" in source
     assert "_persisted_objects_state(estimate_id)" in source
     assert 'st.container(key="objects_live_pricing")' in source
@@ -856,7 +856,10 @@ def test_objects_screen_refreshes_active_estimation_in_a_server_fragment():
         "def render_objects_screen", 1
     )[0]
     assert "_render_objects_table_content" in fragment_source
-    assert "st.rerun()" not in fragment_source
+    # Owner V3.6 permits one terminal presentation rerun to stop its interval,
+    # while active calculation must retain the original fragment-only path.
+    assert fragment_source.count("st.rerun()") == 1
+    assert "if preparing_details and not live and not _object_navigation_pending" in fragment_source
     assert "_render_objects_actions" not in fragment_source
     assert "_install_objects_price_input_runtime" not in fragment_source
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
+from typing import Callable
 
 from use_cases.estimation import load_object_detail_data
 
@@ -14,11 +15,11 @@ _OBJECT_DETAIL_PREFETCH_EXECUTOR = ThreadPoolExecutor(
 
 
 def submit_object_detail_prefetch(
-    *, estimate_id: str, object_id: str, company_id: str,
+    *, estimate_id: str, object_id: str, company_id: str, loader: Callable | None = None,
 ) -> Future:
     """Prepare one completed Object Detail snapshot without touching session state."""
     return _OBJECT_DETAIL_PREFETCH_EXECUTOR.submit(
-        load_object_detail_data,
+        loader or load_object_detail_data,
         estimate_id=estimate_id,
         object_id=object_id,
         company_id=company_id,

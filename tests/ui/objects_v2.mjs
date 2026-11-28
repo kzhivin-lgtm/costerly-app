@@ -7,6 +7,7 @@ const config=statePath('scenario.json'),prices=statePath('objects-prices.json');
 let priceDelay=0,priceFailure=false,quantityDelay=0,quantityFailure=false;
 for(const file of ['object-approvals.json','object-names.json','objects-prices.json','object-quantities.json','generated-proposal.json','generated-proposal-history.json','generation-failure','proposal-delay','browser-journal'])rmSync(statePath(file),{force:true});
 writeFileSync(config,JSON.stringify({objects_v2:true,detail_prefetch:true}));
+writeFileSync(statePath('hold-object-preparation'),'hold');
 
 const server=createServer(async(req,res)=>{
  if(/^\/generated-proposal(?:-v\d+)?\.pdf$/.test(req.url)){
@@ -41,10 +42,12 @@ await new Promise(resolve=>server.listen(8798,'127.0.0.1',resolve));
 const browser=await chromium.launch(chromeOptions),report={};
 try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}});page.setDefaultTimeout(15000);
- await page.addInitScript(()=>{if(window!==top)return;window.objectsReady=[];addEventListener('message',event=>{if(event.data?.type==='costerly:app-ready')objectsReady.push({screen:event.data.screen,id:event.data.transitionId});});});
+ await page.addInitScript(()=>{if(window!==top)return;window.objectsReady=[];addEventListener('message',event=>{if(event.data?.type==='costerly:app-ready')objectsReady.push({screen:event.data.screen,id:event.data.transitionId,at:Date.now()});});});
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
  await page.goto('http://127.0.0.1:8798/');await page.locator('iframe.is-ready').waitFor();
  const core=page.frameLocator('#costerly-app-frame');const frame=await(await page.locator('#costerly-app-frame').elementHandle()).contentFrame();
+ report.transitions=[];
+ await frame.evaluate(()=>document.addEventListener('click',()=>{window.lastNavigationClickAt=Date.now();},true));
  async function move(control,screen){
   const before=await page.evaluate(()=>objectsReady.length);
   const previous=await core.locator('[data-costerly-render-id]').last().getAttribute('data-costerly-render-id');
@@ -52,11 +55,18 @@ try{
   await core.locator(`[data-costerly-screen="${screen}"]:not([data-costerly-render-id="${previous}"])`).waitFor({state:'attached'});
   await page.waitForFunction(({before,screen})=>objectsReady.slice(before).some(event=>event.id&&event.screen===screen),{before,screen});
   await core.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
+  const clickAt=await frame.evaluate(()=>window.lastNavigationClickAt);
+  const ready=await page.evaluate(()=>objectsReady.at(-1));
+  report.transitions.push({target:screen,clickToReadyMs:ready.at-clickAt});
  }
  await move(core.getByRole('button',{name:'Last Estimate',exact:true}),'file_review');
  await move(core.getByRole('button',{name:/^continue to project$/i}),'objects');
  await core.locator('.objects-pricing-table').waitFor();
  await page.locator('iframe.is-ready').waitFor();
+ assert.equal(await core.getByRole('link',{name:/^(Done|Review)$/i}).count(),0,'Review is not available before Object preparation');
+ rmSync(statePath('hold-object-preparation'));
+ await core.getByRole('link',{name:/^(Done|Review)$/i}).waitFor();
+ report.preparedBeforeReview=true;
  const set=()=>core.getByRole('button',{name:'Set Prices',exact:true});
  const generate=()=>core.getByRole('button',{name:'GENERATE PROPOSAL',exact:true});
  assert(await set().isDisabled());assert(await generate().isDisabled());
