@@ -735,7 +735,9 @@ try{
      })};
    });
   });
-  assert.ok(workGeometry.length>=14,JSON.stringify(workGeometry));
+  assert.deepEqual(workGeometry.map(row=>row.key),['part-production','sheet-processing','cnc',
+   'cnc-operator','file-preparation','edge-banding','assembly-stage','assembly','hardware-fitting',
+   'additional-assembly','preparation-packing','trial-fit','packing'],JSON.stringify(workGeometry));
   assert.ok(workGeometry.every(row=>Math.abs(row.height-workGeometry[0].height)<1 && row.cells.every(c=>c.x<1&&c.y<2)),JSON.stringify(workGeometry));
   console.log('editable work geometry',width,JSON.stringify(workGeometry));
   const body=await core.locator('body').innerText();
@@ -785,6 +787,22 @@ try{
  await unknown.page.close();
  console.log(JSON.stringify({freshFrames:report.fresh.length,...report[1280],mobile:report[390]}));
  writeFileSync(reportPath('calculation.json'),JSON.stringify(report,null,2));
+}catch(error){
+ let index=0;
+ for(const context of browser.contexts())for(const page of context.pages()){
+  try{
+   const frames=[];
+   for(const frame of page.frames())frames.push({url:frame.url(),dom:await frame.evaluate(()=>({
+    text:document.body.innerText,render:document.querySelector('[data-costerly-render-id]')?.outerHTML,
+    cover:document.querySelector('#costerly-workflow-transition')?.outerHTML,
+    actions:[...document.querySelectorAll('.objects-pricing-review-button,a.objects-pricing-review-button')].map(n=>n.outerHTML),
+    rows:[...document.querySelectorAll('.objects-pricing-row')].map(n=>({...n.dataset})),
+   }))});
+   writeFileSync(reportPath('calculation-failure-'+index+'.json'),JSON.stringify(frames,null,2));
+   await page.screenshot({path:reportPath('calculation-failure-'+index+'.png'),fullPage:true});index++;
+  }catch(captureError){console.error('Failure capture:',captureError.message);}
+ }
+ throw error;
 }finally{
  rmSync(config,{force:true});
  await browser.close();await new Promise(resolve=>server.close(resolve));

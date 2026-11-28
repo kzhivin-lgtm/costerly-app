@@ -43,3 +43,14 @@ commercial refresher now has an approval-only durable-input projection, without
 rerunning costs. Same-price changed-input regression coverage is mandatory.
 Candidate35d62744 was not published; its local full run was intentionally stopped
 for this correction. It is not recorded as passing or as a checkpoint.
+
+
+Candidate154d8e22 was rejected by the mandatory GitHub gate46137564580/
+140956239340. All1222 Python checks and navigation passed; Calculation's
+geometry assertion still required14 visible work rows after owner-approved LDSP
+coating removal left13. The correction asserts the complete exact13-key list,
+retaining every geometry tolerance and eligible-finish coating test. Local full
+run also observed one Review-wait timeout after completion-away; cause is not
+established from its old logs. Calculation now captures DOM/route/readiness on
+failure, without changing application behavior, waits, retries or thresholds.
+The failed candidate is not published or recorded as passing.
