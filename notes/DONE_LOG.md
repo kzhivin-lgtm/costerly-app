@@ -1,3 +1,23 @@
+[verified] Labor V3.10 published 28 November 2026, work 3.17.4.6.
+Runtime0a99c988d7c4e6da2863d855e3e267c286634779, build
+labor-v3.10-b20261128172554-reload-approve-back-detection-v8.4.29.
+Owned File Review full reload and cold Project use bounded restore reads.
+Unchanged Object Back preserves valid Project cache; Save/input invalidation
+still refreshes canonical data. APPROVE reuses its acknowledged plan and joins
+independent Labor/Overhead/commercial reads, retaining writes, formulas, readiness,
+APPROVING/green APPROVED/Done/PDF semantics. Progress percentages use shared
+purple/700 weight; counter timing stays. No schema, model or polling change.
+Exact clean GitHub1247/all10 passed550.484s, run46170656590/job141058101839;
+exact clean full local1247/all10 passed623.977s, four frozen controls unchanged.
+Official artifact15273797699 digest/CRC/exact clean SHA verified. Controlled
+V3.9 reload exceeds15s, same read work V3.10 takes8.427s CI/8.973s local.
+These are synthetic results; authenticated production speed acceptance pending.
+Normal publisher, actual strict/trusted/no-bypass main rule and served/executed
+Core/wrapper/version/health parity verified. Railway d680888d/Pages succeeded.
+V3.8 remains last owner-accepted full checkpoint. Last timeout hunt deferred;
+unexplained browser-ready delivery gap not speculatively changed. Protected71
+TODO lines and node_modules remain untouched. [Release/evidence](LABOR_V3_10_TRANSITIONS_2026_11_28.md).
+
 [verified] Labor V3.9 published 28 November 2026, continuation work 3.17.4.6.
 Runtime a38d727879ca9bf5fb236ffdead6963be2d308d3, build
 labor-v3.9-b20261128164457-last-estimate-reads-detection-v8.4.29.

@@ -1,9 +1,24 @@
 # Labor timing audit, Project progress and navigation
 
-Current scope: published Last Estimate-only V3.9 repair, owner-accepted V3.8
-checkpoint and remaining proposals. Earlier measurements remain dated history.
+Current scope: published owner-approved V3.10 reload/return package, V3.9
+measurements and owner-accepted V3.8 checkpoint. Earlier measurements remain dated history.
 Costing formulas are unchanged. Historical V3.3 runtimea077dd84/records25dd8bcf,
 three-line PDF refinement3136a583 and V3.5 checkpoint retain their separate refs.
+
+## Labor V3.10 published reload/return package
+
+[verified] Runtime0a99c988: full File Review document restore reuses owned bounded
+publication/Project reads; cold Project reads also overlap. Unchanged Back no
+longer dirties current pricing, while actual Save/input invalidation remains.
+Approval reuses its committed plan for Labor and overlaps independent Labor,
+Overhead and canonical commercial/plan/summary reads. Write order, math, auth,
+readiness and all approval/PDF semantics stay. Percent appearance only changes.
+Exact full clean CI1247/all10 and local1247/all10 passed, actual served/executed
+Core/wrapper/version/health verified. Controlled same-read reload exceeds15s
+under V3.9 and finishes8.427s CI/8.973s local under V3.10. These do not establish
+new production timings. Owner-cycle speed acceptance remains pending; immutable
+last full accepted checkpoint remains V3.8. Timeout hunt remains deferred and
+unexplained browser delivery gap unchanged. [Scope/evidence](LABOR_V3_10_TRANSITIONS_2026_11_28.md).
 
 ## Labor V3.9 Last Estimate-only repair
 

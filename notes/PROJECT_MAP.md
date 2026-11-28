@@ -13,6 +13,13 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
+- Latest published runtime: [Labor V3.10 transitions](LABOR_V3_10_TRANSITIONS_2026_11_28.md),
+  0a99c988. Owned document restoration uses bounded reads; unchanged Back keeps
+  valid Project cache, saved edits still refresh. Approval reuses its committed
+  plan and overlaps independent context/commercial reads. Percent color/weight
+  only. Exact clean1247/all10 CI/full local, controls and actual production
+  Core/wrapper parity passed. Owner speed acceptance pending; V3.8 preserved.
+
 - Latest published runtime: [Labor V3.9 Last Estimate](LABOR_V3_9_LAST_ESTIMATE_2026_11_28.md),
   a38d7278. Only the existing Last Estimate receipt opts into bounded independent
   restore reads. Same access/canonical data/readiness/15s deadline, all other
