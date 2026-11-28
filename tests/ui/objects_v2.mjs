@@ -218,12 +218,21 @@ try{
  assert.equal(arrowBefore.x,arrowAfter.x);assert.equal(arrowBefore.y,arrowAfter.y);
  assert.equal(readFileSync(statePath('browser-journal'),'utf8'),beforeJournal,'Dashboard toggle must not rerun/read/write');
  const zeroService=core.locator('[data-object-key="delivery"] .objects-pricing-price-input');
- const previousZero=await zeroService.innerText();
- await zeroService.evaluate(n=>{n.textContent='₪0';});
+ const previousZero=await zeroService.evaluate(n=>{
+  const row=n.closest('[data-estimate-id]'),key=row.dataset.estimateId;
+  const prices=window.__costerlyObjectsManualSalePrices[key];
+  const previous={text:n.textContent,had:Object.hasOwn(prices,'delivery'),value:prices.delivery};
+  prices.delivery=0;n.textContent='₪0';return previous;
+ });
  await zeroService.focus();assert.equal(await zeroService.innerText(),'');
- await zeroService.press('Tab');assert.match(await zeroService.innerText(),/0/);
+ await zeroService.press('Tab');assert.equal(await zeroService.innerText(),'₪0');
  assert(!existsSync(prices),'Zero focus and untouched blur must not write a price');
- await zeroService.evaluate((n,value)=>{n.textContent=value;},previousZero);
+ await zeroService.evaluate((n,previous)=>{
+  const prices=window.__costerlyObjectsManualSalePrices[n.closest('[data-estimate-id]').dataset.estimateId];
+  if(previous.had)prices.delivery=previous.value;else delete prices.delivery;
+  n.textContent=previous.text;
+ },previousZero);
+ await zeroService.focus();await zeroService.press('Tab');
  assert(!existsSync(prices),'Focus-only interactions must not write prices');
  for(const field of [core.locator('.objects-pricing-sale-cell .objects-pricing-price-input').first(),core.locator('[data-object-key="delivery"] .objects-pricing-price-input')]){
   for(const x of [8,50,100]){

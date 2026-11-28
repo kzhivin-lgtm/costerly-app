@@ -66,3 +66,13 @@ and Profile optional0 ->NULL scenario stay unchanged. A focused production-scree
 replay passed12.901s, and complete Profile Save suite passed91.708s, total107.167s.
 The isolated earlier Review timeout remains unexplained, not claimed repaired;
 final complete gates and failure captures remain required.
+
+
+Candidate3a4f4cc1 passed1222 Python checks, navigation123.928s and complete
+Calculation155.967s locally, but its new Project-zero fixture incorrectly
+changed only displayed delivery0 while its canonical local price remained39.
+GitHub46138814685/140959981479 rejected the same invalid fixture. The correction
+sets both the existing manual-price cache and DOM to0, verifies focus/untouched
+blur without a write, then restores both and the derived summary. Runtime code
+and waits are unchanged. Complete Project/Proposal suite then passed77.078s,
+gate78.272s. The final exact-commit full gate is still required before publication.
