@@ -1100,24 +1100,21 @@ in the next deployment, not a separate speculative release or further hunt now.
 V3.6 preserves centering through deploy-cover fade and verifies it in browser
 tests. The exact rare surface described by owner is still unidentified; do not
 claim that this proves the identity of the earlier top-left message.
-CURRENT TRANSITION FOLLOW-UP, PENDING PROPOSALS, P1,28November2026:
-After the accepted V3.8 checkpoint, owner approves ONLY the Last Estimate repair,
-Labor V3.9 publication after checks. APPROVE/Back/startup remain proposals.
-Existing continuation context3.17.4.6, no new implementation block.
-ACTIVE, P1, LAST ESTIMATE ONLY: bounded read joins via the existing one-shot
-company/run receipt. Required canonical publication, cold/warm Project and cost
-context inputs stay unchanged; independent reads overlap only for this entry.
-The real15s restore timeout is reproduced on V3.8 and passes with the same reads
-on the candidate. No larger timeout or early-ready shortcut. Full retained gates,
-normal publisher and actual served Core/wrapper V3.9 parity are required.
+CURRENT TRANSITION FOLLOW-UP, P1, 28 November 2026, work 3.17.4.6:
+IMPLEMENTATION/DEPLOYMENT VERIFIED, PRODUCTION SPEED ACCEPTANCE PENDING,
+LAST ESTIMATE ONLY, Labor V3.9 runtime a38d7278. Existing one-shot company/run
+receipt opts into bounded independent publication/Project/cost-input read joins.
+Ownership, canonical data, cost math/write order, readiness and 15s deadline
+stay. Controlled V3.8 times out; same read work finishes in 8.481s locally and
+7.617s in CI. Exact clean GitHub 1241/all10, every local contract stage and four
+saved controls passed. Actual strict main rule/normal publisher/Core/wrapper
+parity verified. The first local full run's unchanged version_refresh timing
+assertion failure and passing isolated remainder are retained explicitly.
+Baseline: four production successes 2.672-7.486s, median 2.951s; one 14.999s
+failure with 14.214s server/13.176s File Review preparation. Specific query
+attribution and new production speed acceptance remain unknown.
 Scope/evidence: notes/LABOR_V3_9_LAST_ESTIMATE_2026_11_28.md.
-Fresh15 successful paths and one failed Last Estimate, own anonymous probe excluded:
-- P1, pending proposal: make Last Estimate reliable and reduce its server-side
-  preparation. Successful2.672-7.486s(n4), median2.951s; one15s failure with14.214s
-  server/13.176s File Review preparation. Individual slow reads are not timed.
-  First identify repeated critical reads/preparation and retain ownership, names,
-  canonical quantities and safe Continue readiness. Raising the limit alone is
-  not the proposed outcome. Start here because one attempt actually failed.
+APPROVE/Back/startup remain proposals, no broader repair is approved:
 - P1, pending proposal: reduce APPROVE return preparation.7.067s(n1) includes
   accepted write1.951s and4.085s after-write preparation. Existing allocation
   receipt reuse is implemented; locate remaining Labor/canonical refresh work
@@ -1133,7 +1130,12 @@ Startup diagnostic only: one156.954s wrapper->reveal interval despite server
 ready in1.193s, followed by3.427s normal startup. Foreground visibility unknown;
 do not call it157s of active waiting or repair startup speculatively. Other paths
 have no fresh sample here; prior dated results stay historical, Admin lowest.
-Evidence/current analysis: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md, V3.8 section.
+Evidence/current analysis: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md, V3.9/V3.8 sections.
+DEFERRED AGENT PROPOSAL, P2, UI VALIDATION ONLY: investigate the fixed8150ms
+observation versus synthetic9000ms ready in version_refresh. One local V3.9 run
+saw the mask already hidden; the unchanged isolated retry and complete CI passed.
+Browser timestamps for the first failure are unavailable. Preserve the original
+startup-ready contract/assertions; no test/runtime change is approved here.
 HISTORICAL V3.6 REAL-CYCLE FEEDBACK28November2026, PARTIAL ACCEPTANCE, P1:
 Accepted fast paths: File Review/Project, repeat Project/Object, ordinary Back,
 Profile/tabs and New Estimate. APPROVE and Last Estimate remain unaccepted.

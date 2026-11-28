@@ -1,3 +1,23 @@
+[verified] Labor V3.9 published 28 November 2026, continuation work 3.17.4.6.
+Runtime a38d727879ca9bf5fb236ffdead6963be2d308d3, build
+labor-v3.9-b20261128164457-last-estimate-reads-detection-v8.4.29.
+Only Last Estimate's existing one-shot company/run receipt opts into bounded
+independent publication/Project/cost-input read joins. Ownership, canonical
+quantities/names/prices, cost math/write order, readiness and the 15s timeout
+remain. Default paths, APPROVE/Back and accepted V3.8 behavior are unchanged.
+Controlled unchanged V3.8 times out; identical delayed reads finish in 8.481s
+locally and 7.617s in CI. These are synthetic, not new production timings.
+Exact clean GitHub 1241/all10 passed 514.087s, run 46167549798/job 141048334124.
+Official artifact 15272278772,1717028 bytes, digest/CRC/exact clean SHA verified.
+All local stages passed across the original run and unchanged isolated remainder;
+first full run's version_refresh time-window failure remains recorded, not hidden.
+Four saved network-blocked controls passed; no paid calls or schema changes.
+Normal publisher, actual strict/trusted/no-bypass main rule and actual served/
+executed Core/wrapper/version/health parity verified. Railway 389d9e48/Pages
+succeeded. Authenticated production speed acceptance remains pending. V3.8 is
+still the last owner-accepted full checkpoint. APPROVE/Back/startup proposals
+are outside this repair. [Release/evidence](LABOR_V3_9_LAST_ESTIMATE_2026_11_28.md).
+
 [verified] Owner-accepted Labor V3.8 checkpoint,28November2026, work3.17.4.6.
 Runtimecb70b113, buildlabor-v3.8-b20261128150031-project-render-state-detection-v8.4.29.
 Owner accepts the tested cycle, including approximately5-6s Estimating -> Review

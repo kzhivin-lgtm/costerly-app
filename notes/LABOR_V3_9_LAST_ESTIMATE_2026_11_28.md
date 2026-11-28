@@ -68,11 +68,36 @@ business-data writes are used for testing. Fixture reload/ready fixes accepted
 in V3.8 remain; no further Profile changes are included.
 
 Build: labor-v3.9-b20261128164457-last-estimate-reads-detection-v8.4.29.
-Full local gate, exact clean GitHub gate, official artifact verification, actual
-strict main enforcement, normal publisher and served/executed Core/wrapper parity
-are required before claiming delivery. Current production speed acceptance is
-pending. Rollback is a newly stamped forward revert to V3.8 through the same
+Runtime candidate: a38d727879ca9bf5fb236ffdead6963be2d308d3.
+Exact clean GitHub gate passed all 1241 Python tests and all ten browser suites
+in 514.087s, run 46167549798/job 141048334124. The added restore case completed
+in 7.617s against the original 15s deadline. Official artifact 15272278772,
+1717028 bytes, SHA256 a6f4619054a481d1c3998230e68184bf54ca587922af08680f5a8403829cb599:
+digest/size/CRC, exact clean SHA, unit count and every suite exit verified.
+
+Local exact-clean verification retained successful unit/navigation/calculation/
+Object/Profile save/Profile recovery/screen recovery stages. The first full run
+failed the unchanged version_refresh initial Loading assertion, with the mask
+already hidden. [likely] The fixed 8150ms observation arrived after the synthetic
+9000ms ready; the first run did not retain browser timestamps to prove that cause.
+Wrapper/controller/test sources equal V3.8 except build stamps. The unchanged
+version_refresh and remaining auth/compatibility/Prices suites then passed in
+79.870s. This is full local stage coverage across two runs, not a claim that the
+first full run passed. No assertion/limit/runtime change hid the failure.
+The initial sandbox-only socket-bind failure is retained separately. Four saved
+material controls passed with network blocked and zero paid calls.
+
+Actual strict/trusted/no-bypass main ruleset 27499066 was verified. Normal
+publisher accepted the exact gate and advanced main to the candidate. Railway/
+Pages rollout succeeded. Railway 389d9e48-1c2e-4680-9eb5-c8c82a899d93
+serves core.costerly.ai; Pages check 141052552767 succeeded. Fresh anonymous
+browser at 17:09:40 UTC verified visible initial Loading, then Login: actual
+Core DOM, wrapper metadata, executed telemetry, version.json and health200/ok
+all agree with V3.9. This verifies deployment, not authenticated restore latency.
+Current authenticated production speed acceptance is pending.
+Rollback is a newly stamped forward revert to V3.8 through the same
 full gate/publisher, preserving saved estimates and issued proposals.
 
 Private focused evidence: /private/tmp/labor39-before/,
 /private/tmp/labor39-after-bound-company/ and /private/tmp/labor39-versioned-focused/.
+Permanent evidence: /Users/qb/Documents/ChatGPT/Costerly/outputs/labor-v3.9-last-estimate-20261128/.

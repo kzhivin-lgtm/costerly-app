@@ -13,6 +13,13 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
+- Latest published runtime: [Labor V3.9 Last Estimate](LABOR_V3_9_LAST_ESTIMATE_2026_11_28.md),
+  a38d7278. Only the existing Last Estimate receipt opts into bounded independent
+  restore reads. Same access/canonical data/readiness/15s deadline, all other
+  callers unchanged. Exact clean 1241/all10 CI, full local stage coverage,
+  four controls and actual Core/wrapper parity verified. Production speed
+  acceptance pending; last accepted full checkpoint remains V3.8 below.
+
 - Latest owner-accepted preservation: [Labor V3.8 checkpoint](LABOR_V3_8_PRODUCTION_CHECKPOINT_2026_11_28.md),
   runtimecb70b113,888 exact files, independently restored1231 checks/four controls.
   Late File Review field ACKs no longer clear Project; accepted restored

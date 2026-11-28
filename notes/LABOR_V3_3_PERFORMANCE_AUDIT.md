@@ -1,9 +1,25 @@
 # Labor timing audit, Project progress and navigation
 
-Current scope: owner-accepted V3.8 checkpoint and read-only review of remaining
-transition delays. Earlier V3.3-V3.7 measurements/proposals remain dated history.
+Current scope: published Last Estimate-only V3.9 repair, owner-accepted V3.8
+checkpoint and remaining proposals. Earlier measurements remain dated history.
 Costing formulas are unchanged. Historical V3.3 runtimea077dd84/records25dd8bcf,
 three-line PDF refinement3136a583 and V3.5 checkpoint retain their separate refs.
+
+## Labor V3.9 Last Estimate-only repair
+
+[verified] Owner approved only Last Estimate delay/timeout repair. Published
+runtime a38d7278 joins independent canonical restore reads only for the existing
+single-use tenant/run Last Estimate receipt. It retains all required data,
+ownership, calculations/writes, Continue readiness and the original 15s deadline.
+A controlled unchanged V3.8 run fails at that real deadline; identical read work
+under V3.9 finishes in 8.481s locally and 7.617s in CI. This verifies the avoidable
+serial critical-path mechanism, without attributing the old production 13.176s
+to a specific uninstrumented query or claiming a new production latency.
+Exact full clean CI 1241/all10 and all local stages passed. Core/wrapper rollout
+and actual served/executed version parity verified. Authenticated owner-cycle
+speed acceptance remains pending; last accepted full checkpoint is V3.8.
+[Scope, evidence and retained local timing-test failure](LABOR_V3_9_LAST_ESTIMATE_2026_11_28.md).
+APPROVE, unchanged Back and startup remain unapproved optimization proposals.
 
 ## Labor V3.8 owner-accepted checkpoint and fresh transition review
 
@@ -62,7 +78,8 @@ remove proven duplicate work and preserve ownership/canonical quantities, names,
 proposal invalidation, atomic writes and current loading/approval behavior.
 Cold ownership-first parallel File Review reads already exist from V3.6; do not
 present them as a newly unimplemented improvement. No new router/cache system,
-worker, polling loop, UI notice or runtime optimization is authorized here.
+worker, polling loop or UI notice is authorized by this read-only V3.8 review.
+The later Last Estimate-only V3.9 approval/repair is recorded above.
 
 Startup diagnostic, separate from normal transitions: one wrapper started
 17:41:54.752, Core queued ready17:41:57.803 after1.193s server work, browser
