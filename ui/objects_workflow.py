@@ -9,10 +9,26 @@ from typing import Any, Callable
 
 import streamlit as st
 import streamlit.components.v1 as components
+from streamlit.proto.ForwardMsg_pb2 import ForwardMsg
+from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from ui.layout import post_upload_title_html
 from ui.screen_transition import OBJECTS_MARKER_ID
 from use_cases.proposal_basis import pricing_signature
+
+
+def stop_completed_preparation_refresh() -> None:
+    """Cancel only this fragment's interval without rerunning the application.
+
+    Streamlit1.64 uses this same message when evicting a timed child fragment.
+    Keep the pinned protocol covered: a full rerun here breaks old-tab recovery.
+    """
+    context = get_script_run_ctx(suppress_warning=True)
+    if context is None or not context.current_fragment_id:
+        return
+    message = ForwardMsg()
+    message.stop_auto_rerun.fragment_ids.append(context.current_fragment_id)
+    context.enqueue(message)
 
 
 @dataclass(frozen=True)

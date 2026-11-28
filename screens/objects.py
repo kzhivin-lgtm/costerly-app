@@ -1013,8 +1013,7 @@ def _render_live_objects_content(
         data=_data_with_progress(routed_data, estimate_id),
     )
     if preparing_details and not live and not _object_navigation_pending(routed_data, estimate_id):
-        # Stop the existing fragment interval once saved-project preparation ends.
-        st.rerun()
+        objects_workflow.stop_completed_preparation_refresh()
 
 
 def _worktop_area_rows(report):

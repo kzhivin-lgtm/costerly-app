@@ -1042,8 +1042,9 @@ pending, and a click could abandon its Future and issue duplicate reads. After:
 Review requires this Object's prepared data, Labor and Overhead snapshot. Other
 Objects never gate it. The same action slot offers Retry after preparation failure.
 The existing bounded prefetch executor and1.5s Project fragment own preparation;
-saved-Project presentation refresh ends with one terminal app rerun, while active
-calculation retains its fragment-only completion path. Preserve quantity/access,
+saved-Project presentation refresh ends with a fragment-scoped native timer
+cancellation, without an app rerun. Active calculation retains its fragment-only
+completion path. Preserve quantity/access,
 pending-write ordering, failed-read handling and current invalidation. A target
 around0.5s requires actual click-to-interactive verification, not a promise.
 

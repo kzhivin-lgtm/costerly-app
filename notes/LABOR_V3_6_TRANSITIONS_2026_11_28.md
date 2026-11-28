@@ -23,8 +23,8 @@ and production speed are pending verification, not established by this plan.
 
 Use existing bounded detail executor and existing Project fragment. Preparation
 starts only for terminal Objects; the existing1.5s refresh also observes pending
-presentation work after a saved Project first paints. It ends with one full
-rerun once preparations are terminal, then has no interval. No separate worker,
+presentation work after a saved Project first paints. Its native interval is cancelled once preparations are terminal, without an
+app rerun or changing the current screen. No separate worker,
 observer, polling mechanism or write is introduced. Pending-only presentation refresh
 uses the existing Project snapshot and must not reread the whole estimate.
 
@@ -39,3 +39,23 @@ normal publisher; actual main enforcement and deployed Core/wrapper parity.
 Synthetic performance and owner real-cycle acceptance are reported separately.
 Rollback is a newly stamped, fully gated forward revert to V3.5, preserving all
 issued PDFs and database history. The original checkpoint is never rewritten.
+
+## Intermediate verification and discarded experiment
+
+The first full local unit runs exposed a metrics fixture that had not modelled
+presentation readiness. It now explicitly holds preparation, asserts no Review,
+and retains all original first-ready/cost/later-running assertions with injected
+ready snapshots. Cache invalidation remains covered independently.
+
+The new fade test initially compared the label alone to the viewport center,
+ignoring its existing Retry sibling. Its corrected invariant compares label
+position before/after cover release and preserves shared-font/noninteractive
+checks. It passes locally.
+
+The original experimental completion app rerun caused a real old-wrapper
+recovery regression (changed render ID during blocked navigation). It was
+discarded, the original no-app-rerun assertion restored, and the pinned
+Streamlit1.64 stop_auto_rerun message now cancels only the owned fragment's
+interval. This is the same protocol used by the installed framework for timed
+child eviction. Scoped/absent-context Python checks and unchanged old-wrapper
+recovery passed. Full final local/remote integration gates remain mandatory.

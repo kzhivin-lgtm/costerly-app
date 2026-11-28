@@ -8,7 +8,7 @@ New Python cases cover pending selected-Future reuse, canonical quantity changin
 during preparation, timeout without duplicate reads, per-Object readiness/retry,
 ownership-before-parallel File Review reads and pending local deferred work.
 The existing Project fragment also observes pending saved-Object preparation;
-one terminal rerun stops that interval, never during active calculation.
+a scoped native timer cancellation stops that interval, without an app rerun.
 Version-refresh checks retain the existing safe/deferred/auth/loop guards and
 add visible startup feedback past8s plus centered deployment-cover fade.
 
