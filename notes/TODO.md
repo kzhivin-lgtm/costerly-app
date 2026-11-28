@@ -1114,6 +1114,24 @@ Baseline: four production successes 2.672-7.486s, median 2.951s; one 14.999s
 failure with 14.214s server/13.176s File Review preparation. Specific query
 attribution and new production speed acceptance remain unknown.
 Scope/evidence: notes/LABOR_V3_9_LAST_ESTIMATE_2026_11_28.md.
+FRESH OWNER-CYCLE REVIEW, 28 November 2026, checked19:16:37 Israel:
+New Estimate n5 0.528-1.248s, median0.745s; Last Estimate successful n6
+2.788-5.906s, median3.327s. Owner says repeated Last feels faster but does not
+give full speed acceptance. Small noncontrolled samples do not prove a speedup.
+DEFERRED BY OWNER, P1, timeout-specific investigation: one14.999s failure on
+the first entry after browser build update, followed by six successes. Owner
+prioritizes full reload instead. Trigger to reopen: failure repeats in ordinary
+use independent of a deployment. Deployment-only cause remains unknown; retain
+the witness and unchanged15s deadline, do not mark the defect fully resolved.
+PENDING IMPLEMENTATION PROPOSAL, P1, FULL RELOAD TO FILE REVIEW:19:15 reload
+took11.517s; server8.441s includes File Review6.491s and auth0.714s. Next bounded
+scope should optimize owned canonical restore, preserving auth, current data and
+readiness. First after-update Upload reload12.456s instead had server1.470s plus
+8.923s browser ready-component delivery gap, exact cause unknown. Investigate
+that gap separately before changing browser guards. Runtime fix is not approved
+by this timing-review request. New/Last repeated paths stay unchanged for now.
+Navigation telemetry distinguishes reload/navigate, not hard/ordinary reload.
+Evidence: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md, V3.9 owner-cycle subsection.
 APPROVE/Back/startup remain proposals, no broader repair is approved:
 - P1, pending proposal: reduce APPROVE return preparation.7.067s(n1) includes
   accepted write1.951s and4.085s after-write preparation. Existing allocation

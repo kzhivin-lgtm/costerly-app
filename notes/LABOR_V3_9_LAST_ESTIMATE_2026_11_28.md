@@ -94,7 +94,13 @@ serves core.costerly.ai; Pages check 141052552767 succeeded. Fresh anonymous
 browser at 17:09:40 UTC verified visible initial Loading, then Login: actual
 Core DOM, wrapper metadata, executed telemetry, version.json and health200/ok
 all agree with V3.9. This verifies deployment, not authenticated restore latency.
-Current authenticated production speed acceptance is pending.
+Fresh owner-cycle review checked 19:16:37 Israel: six successful Last Estimate
+entries 2.788-5.906s, median 3.327s; one 14.999s failure on the first entry after
+the browser's build update. Owner defers the timeout hunt and prioritizes full
+reload (11.517/12.456s), without asserting that deployment is its only cause.
+Small noncontrolled samples do not prove V3.9 speed improvement. Full speed/
+reliability acceptance remains pending. See the V3.9 owner-cycle section in the
+existing timing audit; this review makes no runtime change.
 Rollback is a newly stamped forward revert to V3.8 through the same
 full gate/publisher, preserving saved estimates and issued proposals.
 

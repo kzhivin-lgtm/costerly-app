@@ -7,6 +7,45 @@ three-line PDF refinement3136a583 and V3.5 checkpoint retain their separate refs
 
 ## Labor V3.9 Last Estimate-only repair
 
+### Fresh owner-cycle review, checked 19:16:37 Israel, 28 November 2026
+
+[verified] Matching-build owner events, own anonymous rollout trace excluded:
+
+| Path | n | Seconds, range | Median seconds | Recommendation |
+| --- | ---: | ---: | ---: | --- |
+| New Estimate | 5 | 0.528-1.248 | 0.745 | Leave for now |
+| Last Estimate successes | 6 | 2.788-5.906 | 3.327 | Leave repeated path for now |
+| Full reload to Upload, first after build update | 1 | 12.456 | 12.456 | Separate startup investigation |
+| Full reload to File Review | 1 | 11.517 | 11.517 | Highest current optimization proposal |
+
+One 14.999s Last Estimate failure occurred on the first entry after the browser
+updated V3.8 -> V3.9. Six later Last Estimate entries succeeded. [unknown] This
+does not prove the failure occurs only after deployment or identify its exact
+cause. Owner explicitly defers the timeout investigation unless ordinary repeated
+use reproduces it. Keep the witness; do not increase the timeout or claim full
+resolution. Small noncontrolled V3.8/V3.9 samples do not establish a speedup.
+
+[verified] The File Review reload at 19:15:13 Israel reached visible ready in
+11.517s. Server work was 8.441s, including 6.491s File Review preparation, auth
+access 0.714s, platform/latest lookup waits 0.464s/0.042s. Browser ready-component
+to-wrapper delay was 16ms. This concrete slow reload is mostly server-side
+restoration, not an 11s authentication wait. Last-only parallel reads intentionally
+do not apply to ordinary reload, so extending them would be a new approved scope.
+
+The first reload at 19:12:38 took 12.456s while server work was only 1.470s;
+the ready-component-to-wrapper interval was 8.923s, measured on the browser clock.
+Its exact browser scheduling/readiness cause and foreground visibility are
+unknown. Do not diagnose this separate gap as slow database queries. Wrapper
+document TTFB was 101-175ms; iframe load 0.578-1.027s on the two reloads. The
+intermediate fresh navigation opened Upload in 3.586s. Navigation entries identify
+reload versus navigate, not Command Shift R versus ordinary reload.
+
+Next proposal: first optimize the measured full File Review reload's owned
+canonical restoration, preserving auth and truthful readiness. Separately
+reproduce the browser ready-delivery gap before changing its guards. No runtime
+change, release, schema change, paid call or new instrumentation in this review.
+Evidence: /Users/qb/Documents/ChatGPT/Costerly/outputs/labor-v3.9-owner-transitions-20261128/.
+
 [verified] Owner approved only Last Estimate delay/timeout repair. Published
 runtime a38d7278 joins independent canonical restore reads only for the existing
 single-use tenant/run Last Estimate receipt. It retains all required data,
