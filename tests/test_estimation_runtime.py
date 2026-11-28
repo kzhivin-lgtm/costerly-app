@@ -298,7 +298,7 @@ def test_estimation_prices_the_saved_parts_check_and_reports_stage_failures(monk
     )
 
     assert result["cost_usd"] == 0.0789
-    assert checkpoints == ([15] if stage == "parts_check" else [15, 90])
+    assert checkpoints == ([5] if stage == "parts_check" else [5, 90])
     if stage == "planned":
         assert events == ["parts_check", "material_plan"]
         assert result["estimation"]["status"] == "completed"
@@ -332,6 +332,19 @@ def test_material_publish_reports_only_completed_writes_and_never_100(monkeypatc
         assert publish() is snapshot
     assert events == ["lines", "demand_published", "assumptions", "assumptions_checked",
                       "allocations", "allocations_published", "save"] + ([] if save_fails else ["plan_published"])
+
+
+def test_material_context_and_selection_receipts_follow_actual_work(monkeypatch):
+    events = []
+    monkeypatch.setattr(runtime, "build_estimation_material_context", lambda *_, **kw: events.append("catalog") or {})
+    monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_norm_overrides", lambda *_: _Frame([]))
+    monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_purchase_overrides", lambda *_: _Frame([]))
+    calculation = {"material_plan": {"status": "planned"}, "facts_by_object": {"a": {"quantity": 3}}}
+    monkeypatch.setattr(runtime, "calculate_cb_materials", lambda **kw: events.append("calculate") or calculation)
+    result = runtime._calculate_material_plan(client=object(), estimate_id="e", company_id="c",
+                                              parts_report={}, input_rows=[], review_order=(), on_stage=events.append)
+    assert events == ["catalog", "material_context_ready", "calculate", "material_plan_ready"]
+    assert result is calculation and result["material_plan"]["object_quantities"] == {"a": 3.0}
 
 
 def test_handoff_failure_ends_known_objects_instead_of_leaving_progress_running(monkeypatch):

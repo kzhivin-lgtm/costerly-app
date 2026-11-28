@@ -20,7 +20,7 @@ logger.setLevel(logging.INFO)
 
 OBSERVABILITY_SCHEMA_VERSION = "runtime_v1"
 DEFAULT_BUILD_VERSION = "3.2.3"
-LABOR_BUILD_VERSION = "labor-v3.4-b20261128072035-project-progress-detection-v8.4.29"
+LABOR_BUILD_VERSION = "labor-v3.5-b20261128075537-progress-continuity-detection-v8.4.29"
 _QUEUE: queue.Queue[dict[str, object]] = queue.Queue(maxsize=1000)
 _SINK_LOCK = threading.Lock()
 _SINK_URL: str | None = None

@@ -309,6 +309,7 @@ def _data_with_progress(data: dict[str, object], estimate_id: str | None) -> dic
                 row["status"] = str(current.get("status") or "running")
                 row["progress_percent"] = current.get("percent")
                 row["progress_updated_at"] = current.get("updated_at")
+                row["progress_display_from"] = current.get("display_from")
 
     # A worker can fail after its first optimistic progress update. Preserve
     # that terminal state in this session even if the same infrastructure
@@ -447,6 +448,18 @@ def _persisted_objects_state(estimate_id: str | None) -> ObjectsScreenState:
             st.session_state.get("objects_estimation_seed_rows") or []
         ))
     cache = st.session_state.setdefault("objects_estimation_data_cache", {})
+    progress = get_estimate_progress(estimate_id)
+    if (isinstance(future, Future) and not future.done()
+            and st.session_state.get("objects_estimation_future_id") == estimate_id):
+        # This owned batch exposes no usable result before the final plan save.
+        # Its existing fragment can render in-memory progress without waiting
+        # for unrelated ownership/pricing/catalog reads on every tick. The
+        # terminal Future still invalidates caches and uses the normal scoped read.
+        seed_rows = st.session_state.get("objects_estimation_seed_rows") or []
+        if seed_rows:
+            return ObjectsScreenState(data=prepared_objects_data_from_seed_rows(seed_rows))
+        if progress and progress.get("active") and estimate_id in cache:
+            return ObjectsScreenState(data=cache[estimate_id])
     dirty = st.session_state.setdefault("objects_estimation_cache_dirty", set())
     if estimate_id in cache and estimate_id not in dirty and not isinstance(future, Future):
         st.session_state.setdefault("objects_estimation_pricing_dirty", set()).add(estimate_id)

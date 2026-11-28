@@ -1032,3 +1032,21 @@ Reject old-generation, duplicate and backwards stage receipts. Retain saved
 reuse, calculation completion during navigation, tenant isolation, pricing,
 proposal versions, layout and every prior protected workflow. No new timer,
 poll, model request, durable progress write or visible control is authorized.
+
+## Labor V3.5 Project continuity, owner requested28November2026
+
+Owner's real V3.4 cycle improved overall but paused at83, with early and50-to60
+jumps. This supersedes V3.4 numeric phase weights/interpolation, retaining its
+90 post-Parts-Check boundary, real callbacks,99 running ceiling and immediate
+usable completion. Reweight initial stages5/8/40/50/65/66/67, add completed
+material context74 and deterministic material-plan82 before layout88. Catch up
+to confirmed receipts at2 points/s on the existing fragment; spend the variable
+material bands gradually. No new timer/poll/observer/model request/progress write.
+During the same owned pending worker, reuse accepted seeds for percent renders
+instead of waiting for unrelated result reads. Missing/foreign worker ownership,
+no usable projection and terminal state retain the existing scoped read/error
+path. Never delay terminal readiness to finish animation. Existing quantity
+writes stay actionable and retain the latest accepted edit across fragment
+renders until actual server-rendered quantity acknowledges it. A locally
+restored text value alone cannot clear its durable-write receipt. Preserve all
+previous price/quantity/failure/reopen/auth/navigation/PDF and release checks.

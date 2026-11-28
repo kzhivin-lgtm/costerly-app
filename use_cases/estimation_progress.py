@@ -14,12 +14,47 @@ _PROGRESS: dict[str, dict[str, Any]] = {}
 # Completed work, shared by the worker and the existing display interpolator.
 # No elapsed-time interpolation may reach the next unconfirmed milestone.
 ESTIMATION_STAGES = {
-    "inputs_ready": 15, "geometry_ready": 20, "understanding_ready": 45,
-    "locators_ready": 60, "inventory_ready": 75, "block_geometry_ready": 80,
-    "parts_ready": 85, "materials_ready": 88, "parts_check_ready": 90,
+    "inputs_ready": 5, "geometry_ready": 8, "understanding_ready": 40,
+    "locators_ready": 50, "inventory_ready": 65, "block_geometry_ready": 66,
+    "parts_ready": 67, "material_context_ready": 74, "material_plan_ready": 82,
+    "materials_ready": 88, "parts_check_ready": 90,
     "demand_published": 94, "assumptions_checked": 96,
     "allocations_published": 98, "plan_published": 99,
 }
+
+
+def progress_display_curve(base: int) -> tuple[int, float]:
+    cap = next((mark - 1 for mark in ESTIMATION_STAGES.values() if mark > base), 99)
+    return cap, 6.0 if base >= 98 else 3.0 if base >= 90 else 1.0
+
+
+def progress_display_value(base: int, elapsed: float, display_from: int | None = None) -> int:
+    """Catch up to real receipts at two points/second, then interpolate their band.
+
+    The existing fragment drives this pure function. Completion never waits
+    for animation, and elapsed time cannot confirm an unfinished milestone.
+    """
+    base = max(0, min(99, base))
+    cap, seconds = progress_display_curve(base)
+    start = base if display_from is None else max(0, min(base, display_from))
+    catchup = (base - start) * .5
+    elapsed = max(0.0, elapsed)
+    if elapsed < catchup:
+        return min(base, start + int(elapsed / .5))
+    pending_age = elapsed - catchup
+    if 67 <= base < 90:
+        # Catalog reads, material selection and nesting have variable duration.
+        # Approach the next real receipt gradually instead of spending their
+        # short band in a few seconds and sitting at its last integer.
+        band = cap - base + 1
+        return min(cap, base + int(band * pending_age / (pending_age + 6.0)))
+    return min(cap, base + int(pending_age / seconds))
+
+
+def _advance_progress(row: dict[str, Any], percent: int, now: datetime) -> None:
+    previous_age = max(0.0, (now - datetime.fromisoformat(row["updated_at"])).total_seconds())
+    visible = progress_display_value(row["percent"], previous_age, row.get("display_from"))
+    row.update(percent=percent, display_from=visible, updated_at=now.isoformat())
 
 
 def report_estimation_stage(callback, stage: str) -> None:
@@ -36,7 +71,7 @@ def begin_estimate_progress(estimate_id: str, object_ids: list[str]) -> str:
     token = uuid4().hex
     with _LOCK:
         _PROGRESS[estimate_id] = {"token": token, "active": True, "objects": {
-            oid: {"object_id": oid, "percent": 15, "status": "running",
+            oid: {"object_id": oid, "percent": ESTIMATION_STAGES["inputs_ready"], "status": "running",
                   "updated_at": datetime.now(UTC).isoformat()} for oid in object_ids
         }}
     return token
@@ -51,7 +86,7 @@ def set_estimate_stage(estimate_id: str, token: str, stage: str) -> None:
             return
         for row in current["objects"].values():
             if row["status"] == "running" and percent > row["percent"]:
-                row.update(percent=percent, updated_at=datetime.now(UTC).isoformat())
+                _advance_progress(row, percent, datetime.now(UTC))
 
 
 def finish_estimate_progress(estimate_id: str, token: str) -> None:
@@ -103,6 +138,9 @@ def set_object_progress(
         percent = max(0, min(99 if status == "running" else 100, int(percent)))
         if previous and (previous["status"] != "running" or (
                 status == "running" and percent <= previous["percent"])):
+            return
+        if previous and status == "running":
+            _advance_progress(previous, percent, datetime.now(UTC))
             return
         current["objects"][object_id] = {
             "object_id": object_id,

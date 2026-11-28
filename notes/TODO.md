@@ -1013,7 +1013,26 @@ format applies to next Generate, existing PDF bytes unchanged. First remote
 screenshot; original-preserving diagnostics added, final full gate passed.
 All failed/passed evidence retained, no assertion/deadline weakened. Baseline
 a077dd84 remains accepted/immutable; later visual acceptance pending.
-PUBLISHED, P1, OWNER REAL-CYCLE ACCEPTANCE PENDING, OWNER REQUEST28November2026,
+ACTIVE FOLLOW-UP, P1, OWNER REQUEST28November2026, Labor V3.5,
+continuation3.17.4.6. Owner reports V3.4 feels materially smoother but jumps
+from1/2/3 to20+, later50-to60, then pauses a long time at83. Prioritize liveness
+through the long phase; short forward jumps are less harmful than a static
+number. Last real estimate run_de1804c81e2a4a39bc1def6e222a4f56_estimate_20261128073548:
+80.347s seed-to-plan, Parts Check66.252s, latest provider request ends19.763s
+before aggregate completion, then11.012s until plan creation. Exact83 paint/
+phase timing is unknown because V3.4 stores only the latest in-memory receipt.
+Existing fragment synchronously reloads ownership/objects/pricing/plan/settings
+before rendering a percent already held in process memory. Narrow pending
+projection reuses the accepted same-worker seeds, terminal uses normal scoped
+reads. Quantity receipts must survive these progress renders until the server
+projection acknowledges them, not just locally restored input text.
+Reweight early phases5/8/40/50/65/66/67, expose actual catalog74/material-plan82/
+layout88 boundaries, keep Parts Check90 and final save99. Catch up confirmed
+jumps at2 points/s within the existing1.5s fragment; gradually spend long bands
+instead of exhausting them in a few seconds. No added poll/timer/worker/model/
+progress write or new UI control. Full pending-quantity and terminal/auth/failure/
+saved-reuse gates remain required. Public V3.5 increment follows owner rule.
+V3.4 PUBLISHED EVIDENCE (owner accepts improvement, long-pause refinement active):
 Labor V3.4, continuation3.17.4.6. Project calculation counter replaces the old
 post-Parts-Check70 with90; real geometry20/understanding45/locator60/inventory75/
 block geometry80/Parts85/materials88/demand94/assumption-check96/allocations98/
@@ -1029,7 +1048,8 @@ browser refresh passed. Four frozen material controls unchanged/network blocked.
 Railway89aa6b9a and target Pages succeeded; served Core/executed wrapper/meta/
 version.json match V3.4 at07:34:57UTC, health200/ok. No new production calculation,
 paid model run, quote or schema mutation. Source backup882files/5164658bytes
-validated. Owner's next actual Project cycle is the remaining acceptance check.
+validated. Owner then tested a real cycle and accepted overall improvement;
+the long83 pause and jumps are the active V3.5 follow-up above.
 Evidence/limits: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md. Older unissued3.3 candidate
 was superseded/cancelled; public increment explicitly requested by owner.
 DIAGNOSED OBSERVATION, P1, OWNER OBSERVATION27November2026:

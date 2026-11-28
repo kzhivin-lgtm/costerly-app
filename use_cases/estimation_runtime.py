@@ -116,12 +116,13 @@ def _publish_material_demand_lines(client, *, estimate_id, facts_by_object, repl
 
 
 def _calculate_material_plan(*, client, estimate_id, company_id, parts_report, input_rows, review_order,
-                             front_panel_choices=None, norm_edits=None, purchase_edits=None):
+                             front_panel_choices=None, norm_edits=None, purchase_edits=None, on_stage=None):
     catalog_context = build_estimation_material_context(client, company_id, parts_report=parts_report)
     norms = _material_norm_overrides_by_requirement(fetch_rfq_estimate_material_norm_overrides(client, estimate_id))
     purchases = _material_purchase_overrides_by_selection_key(fetch_rfq_estimate_material_purchase_overrides(client, estimate_id))
     norms.update(norm_edits or {})
     purchases.update({key: {"purchase_quantity": value} for key, value in (purchase_edits or {}).items()})
+    report_estimation_stage(on_stage, "material_context_ready")
     calculation = calculate_cb_materials(
         parts_report=parts_report, input_rows=input_rows, catalog_context=catalog_context,
         material_norm_overrides=norms, material_purchase_overrides=purchases, material_review_order=review_order,
@@ -130,6 +131,7 @@ def _calculate_material_plan(*, client, estimate_id, company_id, parts_report, i
     calculation["material_plan"]["object_quantities"] = {
         oid: float(facts["quantity"]) for oid, facts in calculation["facts_by_object"].items()
     }
+    report_estimation_stage(on_stage, "material_plan_ready")
     return calculation
 
 
@@ -946,7 +948,7 @@ def _run_estimation_job(
             nonlocal prepared_calculation
             prepared_calculation = _calculate_material_plan(
                 client=client, estimate_id=estimate_id, company_id=company_id, parts_report=parts,
-                input_rows=created_inputs, review_order=(),
+                input_rows=created_inputs, review_order=(), on_stage=on_stage,
             )
             layout = build_sheet_layout(parts, prepared_calculation["material_plan"])
             on_stage("materials_ready")
@@ -955,13 +957,14 @@ def _run_estimation_job(
         stage = "parts_check"
         progress_token = None
         try:
-            for object_id in object_ids:
-                _set_object_progress(client, estimate_id=estimate_id, object_id=object_id,
-                                     percent=15, label="building_parts_check")
             progress_token = begin_estimate_progress(estimate_id, object_ids)
 
             def on_stage(completed_stage):
                 set_estimate_stage(estimate_id, progress_token, completed_stage)
+
+            for object_id in object_ids:
+                _set_object_progress(client, estimate_id=estimate_id, object_id=object_id,
+                                     percent=5, label="building_parts_check")
 
             report = run_parts_check_for_estimate(
                 client=client, estimate_id=estimate_id, run_id=run_id, company_id=company_id,

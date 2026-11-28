@@ -1,5 +1,14 @@
 # Persistent UI release contract
 
+Labor V3.5 adds pending-progress reads that deliberately fail if attempted,
+held material phase movement, smooth confirmation catch-up and a real accepted
+quantity edit retained across multiple progress-only renders and final reload.
+Existing fixtures reject all nonlocal sockets. Python additionally checks20s
+late-phase liveness, same-worker-only pending projection, normal terminal reads,
+monotonic interpolation and unchanged failed/old-generation semantics. V3.4
+phase numbers below are historical; V3.5 reweights them as specified in the UI
+contract while retaining90/99/final usable completion and all earlier scenarios.
+
 Labor V3.4 Project progress adds controlled real-worker stage receipts in the
 existing Calculation browser suite:20/45/60/75/85/90/98/99, monotonic visible
 percentages, no premature100 or Review, and allocations already durable before

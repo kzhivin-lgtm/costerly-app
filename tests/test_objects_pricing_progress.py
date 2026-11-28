@@ -11,11 +11,11 @@ def test_unconfirmed_geometry_progress_cannot_visually_reach_bom_checkpoint():
         "progress_updated_at": (datetime.now(UTC) - timedelta(minutes=10)).isoformat(),
     }
 
-    assert smooth_progress_percent(row) == 14
+    assert smooth_progress_percent(row) == 4
 
 
-@pytest.mark.parametrize("base,next_mark", [(1, 15), (15, 20), (20, 45), (45, 60), (60, 75),
-                                         (75, 80), (80, 85), (85, 88), (88, 90), (90, 94),
+@pytest.mark.parametrize("base,next_mark", [(1, 5), (5, 8), (8, 40), (40, 50), (50, 65),
+                                         (65, 66), (66, 67), (67, 74), (74, 82), (82, 88), (88, 90), (90, 94),
                                          (94, 96), (96, 98), (98, 99), (99, 100)])
 def test_interpolation_stays_below_next_real_completed_stage(base, next_mark):
     row = {"progress_percent": base,
@@ -39,14 +39,14 @@ def test_batch_progress_is_monotonic_and_rejects_duplicate_stale_and_terminal_re
         progress.set_estimate_stage(estimate, token, "understanding_ready")
         progress.set_estimate_stage(estimate, token, "inventory_ready")
         assert progress.get_estimate_progress(estimate) == before  # timestamp must not restart smoothing
-        assert {row["percent"] for row in before["objects"].values()} == {75}
+        assert {row["percent"] for row in before["objects"].values()} == {65}
         progress.set_object_progress(estimate_id=estimate, object_id="a", percent=100, status="failed")
         progress.set_estimate_stage(estimate, token, "plan_published")
         rows = progress.get_estimate_progress(estimate)["objects"]
         assert rows["a"]["status"] == "failed" and rows["b"]["percent"] == 99
         replacement = progress.begin_estimate_progress(estimate, ["a"])
         progress.set_estimate_stage(estimate, token, "plan_published")
-        assert progress.get_estimate_progress(estimate)["objects"]["a"]["percent"] == 15
+        assert progress.get_estimate_progress(estimate)["objects"]["a"]["percent"] == 5
         progress.clear_estimate_progress(estimate)
         progress.set_estimate_stage(estimate, replacement, "plan_published")
         assert progress.get_estimate_progress(estimate) is None
@@ -86,3 +86,38 @@ def test_progress_callback_failure_is_isolated_from_calculation(caplog):
         raise RuntimeError("display unavailable")
     progress.report_estimation_stage(broken, "geometry_ready")
     assert "Could not report estimation stage geometry_ready" in caplog.text
+
+
+def test_real_checkpoint_catches_up_without_an_instant_jump_or_backwards_step():
+    # The user's50-to60 jump is covered by a new confirmed boundary from a
+    # lower visible value. At each existing1.5s refresh it catches up gradually.
+    values = [progress.progress_display_value(50, tick * 1.5, 40) for tick in range(10)]
+    assert values[:4] == [40, 43, 46, 49]
+    assert values == sorted(values) and values[-1] < 65
+
+
+@pytest.mark.parametrize("base", [67, 74, 82])
+def test_twenty_second_material_phase_keeps_moving_before_its_cap(base):
+    values = [progress.progress_display_value(base, tick * 1.5) for tick in range(14)]
+    assert len(set(values)) >= 5
+    assert values == sorted(values)
+    cap, _ = progress.progress_display_curve(base)
+    assert values[-1] < cap  # the narrow old band was spent in2.4-4.8 seconds
+
+
+@pytest.mark.parametrize("finished,owned", [(False, True), (False, False), (True, True)])
+def test_only_owned_pending_worker_can_render_progress_without_result_reads(monkeypatch, finished, owned):
+    from concurrent.futures import Future
+    from screens import objects
+    future = Future()
+    if finished:
+        future.set_result({})
+    state = {"estimation_batch_future": future, "objects_estimation_future_id": "e" if owned else "other",
+             "objects_estimation_seed_rows": [{"object_key": "one", "status": "running", "progress_percent": 1}]}
+    monkeypatch.setattr(objects.st, "session_state", state)
+    reads = []
+    monkeypatch.setattr(objects, "_load_objects_screen_data", lambda _: reads.append("scoped read") or ({"rows": []}, None))
+    result = objects._persisted_objects_state("e")
+    assert reads == ([] if owned and not finished else ["scoped read"])
+    if owned and not finished:
+        assert result.data["rows"][0]["object_key"] == "one"

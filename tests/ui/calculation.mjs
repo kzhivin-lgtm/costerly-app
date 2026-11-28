@@ -5,7 +5,16 @@ import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 const config=statePath('scenario.json'), journal=statePath('browser-journal');
 const settings=value=>writeFileSync(config,JSON.stringify(value));
-const server=createServer((req,res)=>{
+const server=createServer(async(req,res)=>{
+ if(req.url.startsWith('/rest/v1/rpc/save_rfq_object_quantity')){
+  const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,apikey,content-type,prefer','Access-Control-Allow-Methods':'POST,OPTIONS'};
+  if(req.method==='OPTIONS')return res.writeHead(204,headers).end();
+  let body='';for await(const chunk of req)body+=chunk;
+  const row=JSON.parse(body),file=statePath('object-quantities.json');
+  const saved=existsSync(file)?JSON.parse(readFileSync(file)):{};
+  saved[row.p_estimate_id+':'+row.p_object_id]=row.p_quantity;writeFileSync(file,JSON.stringify(saved));
+  return res.writeHead(200,{...headers,'Content-Type':'application/json'}).end(JSON.stringify({quantity:row.p_quantity}));
+ }
  if(req.url.startsWith('/api/'))return res.writeHead(202).end();
  const html=readFileSync('cloudflare/index.html','utf8').replace('data-src="https://core.costerly.ai/?embed=true"','data-src="http://127.0.0.1:8789/?embed=true"');
  res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}).end(html);
@@ -410,10 +419,11 @@ await frontPanelChecks();
 await coatingChecks();
 await materialRowGeometry();
 try{
- const progressStages={geometry_ready:20,understanding_ready:45,locators_ready:60,inventory_ready:75,
-  parts_ready:85,parts_check_ready:90,allocations_published:98,plan_published:99};
- for(const name of ['fresh-active','fresh-done','fresh-shell-ready','fresh-allocated',...Object.keys(progressStages).map(stage=>'fresh-stage-'+stage),'labor-hours.json','full-cost-totals.json','full-cost-lines.json','auth-expired'])rmSync(statePath(name),{force:true});
- const fresh=await boot({fresh_calculation:true,fresh_progress:true,objects_refresh_delay:1.2});
+ const progressStages={geometry_ready:8,understanding_ready:40,locators_ready:50,inventory_ready:65,
+  parts_ready:67,material_context_ready:74,material_plan_ready:82,materials_ready:88,
+  parts_check_ready:90,allocations_published:98,plan_published:99};
+ for(const name of ['fresh-active','fresh-done','fresh-shell-ready','fresh-allocated',...Object.keys(progressStages).map(stage=>'fresh-stage-'+stage),'labor-hours.json','full-cost-totals.json','full-cost-lines.json','object-quantities.json','auth-expired'])rmSync(statePath(name),{force:true});
+ const fresh=await boot({fresh_calculation:true,fresh_progress:true,objects_v2:true,objects_refresh_delay:1.2});
  await fresh.core.locator('.objects-pricing-table').waitFor();
  await fresh.frame.evaluate(()=>{
   window.calculationFrames=[];window.calculationSample=true;
@@ -438,11 +448,22 @@ try{
   assert.equal(await fresh.core.getByRole('link',{name:/^(Done|Review)$/i}).count(),0,'No actionable result before final plan readiness');
   assert.ok(!existsSync(statePath('fresh-done')));
   report.progressStages.push({stage,percent});
+  if(stage==='material_plan_ready'){
+   const quantity=fresh.core.locator('[data-object-quantity-input]').first();
+   await quantity.fill('2');await quantity.press('Tab');
+   for(let i=0;i<50&&!existsSync(statePath('object-quantities.json'));i++)await new Promise(resolve=>setTimeout(resolve,100));
+   assert.ok(existsSync(statePath('object-quantities.json')),'Pending calculation quantity was durably accepted');
+   const start=Number((await fresh.core.locator('.objects-progress-percent').innerText()).replace('%',''));
+   await fresh.frame.waitForFunction(start=>Number(document.querySelector('.objects-progress-percent')?.textContent.replace('%',''))>=start+3,start,{timeout:12000});
+   report.heldMaterialProgress={start,end:Number((await fresh.core.locator('.objects-progress-percent').innerText()).replace('%','')),unrelatedReadsRejected:true};
+   assert.equal(await quantity.innerText(),'2','Accepted quantity survives progress-only fragment renders');
+  }
   writeFileSync(statePath('fresh-stage-'+stage),'release');
  }
  await fresh.frame.waitForFunction(()=>document.querySelector('.objects-pricing-table')?.innerText.includes('₪1\u202f000'),null,{timeout:16000});
  await fresh.core.getByRole('button',{name:'Fixture rerender',exact:true}).click();
  await fresh.core.getByRole('link',{name:/^(Done|Review)$/i}).waitFor();
+ assert.equal(await fresh.core.locator('[data-object-quantity-input]').first().innerText(),'2');
  report.fresh=await fresh.frame.evaluate(()=>{window.calculationSample=false;return calculationFrames;});
  assert.ok(report.fresh.every(row=>row.tables<=1&&!row.error));
  const displayed=report.fresh.map(row=>row.percent).filter(value=>value!==null);
@@ -451,8 +472,10 @@ try{
  assert.ok(report.fresh.every(row=>['headerOpacity','metricsOpacity','stagesOpacity','footerOpacity'].every(key=>row[key]===null||row[key]===1)),JSON.stringify(report.fresh.filter(row=>Object.keys(row).some(key=>key.endsWith('Opacity')&&row[key]!==null&&row[key]<1)).slice(0,4)));
  assert.equal((readFileSync(journal,'utf8').match(/fresh worker started/g)||[]).length,1);
  assert.ok(!readFileSync(journal,'utf8').includes('ERROR ownership read before shell'));
+ assert.ok(!readFileSync(journal,'utf8').includes('ERROR active progress waited for object reads'));
  assert.equal(await fresh.core.locator('[data-testid="stException"]').count(),0);
  await fresh.page.close();
+ rmSync(statePath('object-quantities.json'),{force:true});
  // Complete the same worker while File Review is mounted. Returning must
  // discard its prepared progress snapshot and reveal the persisted result.
  for(const name of ['fresh-active','fresh-done','fresh-shell-ready','fresh-release','fresh-allocated'])rmSync(statePath(name),{force:true});

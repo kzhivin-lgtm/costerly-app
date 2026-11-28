@@ -1848,7 +1848,10 @@ def install_objects_price_input_guard(
                     const input = rowForObject(objectKey)?.querySelector("[data-object-quantity-input]");
                     if (!input) continue;
                     if (input === parentDoc.activeElement) continue;
-                    if (write.done && quantityValue(input) === write.value) {quantityWrites.delete(key);continue;}
+                    // A locally restored input is not a server render receipt.
+                    // Retain an accepted edit across pending-progress rerenders
+                    // until the server projection itself contains that quantity.
+                    if (write.done && Number(input.dataset.renderedQuantity) === write.value) {quantityWrites.delete(key);continue;}
                     input.textContent = String(write.value);
                     if (write.failed) {
                         input.setAttribute("aria-invalid", "true");

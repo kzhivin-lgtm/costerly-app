@@ -315,3 +315,65 @@ from redacted target-tab metadata.
 |offline page|Network recovery|restored page|n/a|0|
 |current page|Session expired / revoked|Login|n/a|0|
 |current page|Read failure / retry|same target or recovery|n/a|0|
+
+## Labor V3.5 continuity refinement, owner requested28November2026
+
+Owner accepts that V3.4 feels materially smoother, reports early1/2/3-to20+
+and later50-to60 jumps, but a long visible83 plateau. Pauses are the priority;
+forward jumps are less harmful. Existing work3.17.4.6 continues, public V3.5.
+
+[verified] Read-only latest persisted cycle at07:46UTC:
+run_de1804c81e2a4a39bc1def6e222a4f56_estimate_20261128073548,
+object seed07:40:07.695468UTC, first plan07:41:28.041999UTC,80.346531s.
+Parts aggregate starts07:40:10.777644UTC, lasts66.252232s; provider island-map
+25.551s, front21.087s and front-components16.336s run in parallel, then front-role
+review7.810s and original-page review11.673s. Last provider finishes07:40:57.266UTC,
+about19.763s before aggregate completion, then11.012s to first plan creation.
+Source: private latest-cycle.json, no new paid model or production calculation.
+[likely] This is the owner's reported cycle based on timing; source/paint were
+not independently correlated. [unknown] Exact duration/phase of83: V3.4 keeps
+only the latest in-process receipt, not a durable phase or paint history.
+The prior80-to85 band could spend its four pending integers in4.8s; that is a
+verified cap mechanism, not proof that the literal83 pause was its final cap.
+
+[verified] Each running Project fragment waited for a fresh scoped object read,
+pricing overrides, material plan and company settings before rendering progress
+already present in memory. Full-load cost restoration can add dependent work.
+These reads are unrelated to pending percentage display. V3.5 uses the same
+worker-owned accepted seed projection for pending refreshes, then the original
+scoped terminal reload/error/cache invalidation. Foreign/no-owned worker and no
+usable projection retain the durable path. No timer/poll/background reader is
+added; the existing1.5s fragment remains. This removes a supported blocking
+dependency; old telemetry does not prove its exact contribution to the83 pause.
+
+Implementation: real weights5/8/40/50/65/66/67 then material-context74 and priced
+material-plan82 before CNC layout88, saved Parts90, demand94, follow-up96,
+allocations98 and final plan99. New optional material callbacks occur after
+actual catalog/override reads and actual deterministic calculation. Progress
+interpolation is shared and pure: real receipts catch up at2 points/second,
+then variable material bands approach their next unconfirmed bound gradually.
+Completion never waits for this catch-up and running percent never reaches100.
+Duplicate, backwards and old/closed worker receipts retain V3.4 protections.
+
+Pending quantities remain editable. Source inspection found that the client
+could discard an accepted quantity receipt when locally restored text matched,
+without a server-rendered acknowledgement. Existing polling often masked this.
+The quantity renderer now carries its rendered value and the unchanged write
+handler clears a receipt only when that projection matches. No new input event,
+observer, writer, RPC, price math or business persistence is added. Tests retain
+all earlier quantity/failure/latest-write/reopen scenarios and add an actual
+accepted quantity during held progress, multiple seed renders and final reload.
+
+Checks in progress:1198 Python checks passed22.81s. The browser fixture rejects
+any result read while its owned worker is active, holds a real material stage,
+requires its visible count to advance and retains quantity2 to terminal reload.
+Four frozen material controls passed with network blocked, unchanged purchase
+signatures, unresolved requirements and immutable report inputs. An illustrative
+80s profile using observed provider times and assumed internal splits displayed
+1,2,4,5,8,...99 with largest3-point change per1.5s sample. This simulation is not
+a fresh production measurement. Full local/remote gates and rollout pending.
+Candidate build labor-v3.5-b20261128075537-progress-continuity-detection-v8.4.29.
+Owner acceptance on the next real cycle remains required. V3.4 runtime997a4a33
+and the earlier PDF/checkpoint remain valid preserved baselines. Rollback is a
+forward gated revert of only this refinement with a fresh build, preserving
+issued versions, costing and all accepted behavior. No schema mutation.

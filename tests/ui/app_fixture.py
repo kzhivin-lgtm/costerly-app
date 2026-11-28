@@ -75,6 +75,9 @@ class Client:
   record('lookup saved estimate')
   return SimpleNamespace(data=sample['routes'])
 def read_objects(_client, estimate_id):
+ if scenario().get('fresh_progress') and (STATE / 'fresh-active').exists() and not (STATE / 'fresh-done').exists():
+  record('ERROR active progress waited for object reads')
+  raise AssertionError('Pending progress must not wait for unrelated result reads')
  if ((STATE / 'fresh-active').exists() and not (STATE / 'fresh-done').exists()
      and not (STATE / 'fresh-allocated').exists()):
   return pd.DataFrame([{**row, 'status':'running', 'self_cost_ex_vat':None,
@@ -372,7 +375,7 @@ def approve_saved_object(**kwargs):
  (STATE / 'object-approvals.json').write_text(json.dumps({'object-001':True}))
 object_detail.approve_object_estimate=approve_saved_object
 if scenario().get('objects_v2'):
- objects._objects_price_input_config=lambda:('http://127.0.0.1:8798','fixture-anon','fixture-token')
+ objects._objects_price_input_config=lambda:('http://127.0.0.1:'+('8796' if scenario().get('fresh_progress') else '8798'),'fixture-anon','fixture-token')
  def generate_proposal(**kwargs):
   assert kwargs['company_id']==company_id and kwargs['estimate_id']==estimate_id and kwargs['run_id']==run_id
   current=estimation.load_objects_estimation_data(estimate_id)
@@ -607,7 +610,8 @@ if scenario().get('fresh_calculation'):
     from use_cases.estimation_progress import begin_estimate_progress, set_estimate_stage, finish_estimate_progress
     token=begin_estimate_progress(estimate_id,['object-001'])
     for stage in ['geometry_ready','understanding_ready','locators_ready','inventory_ready',
-                  'parts_ready','parts_check_ready','allocations_published','plan_published']:
+                  'parts_ready','material_context_ready','material_plan_ready','materials_ready',
+                  'parts_check_ready','allocations_published','plan_published']:
      if stage=='plan_published':(STATE / 'fresh-allocated').touch()
      set_estimate_stage(estimate_id,token,stage)
      for _ in range(300):

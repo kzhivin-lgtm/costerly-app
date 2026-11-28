@@ -145,6 +145,7 @@ def _row_html(
         '</div>'
         '<div class="objects-pricing-number objects-pricing-quantity-input" '
         'data-object-quantity-input="true" contenteditable="true" inputmode="decimal" '
+        f'data-rendered-quantity="{_escape(row.get("quantity"))}" '
         f'tabindex="0">{_quantity(row.get("quantity"))}</div>'
         f'<div class="objects-pricing-price objects-pricing-self-cost-cell">{self_cost_html}</div>'
         '<div class="objects-pricing-sale-cell">'
@@ -307,10 +308,8 @@ def _parse_datetime(value: object) -> datetime | None:
 
 def _smooth_progress_curve(base: int) -> tuple[int, float]:
     """Return the display cap and seconds per visual progress point."""
-    from use_cases.estimation_progress import ESTIMATION_STAGES
-
-    cap = next((mark - 1 for mark in ESTIMATION_STAGES.values() if mark > base), 99)
-    return cap, 6.0 if base >= 98 else 3.0 if base >= 90 else 1.2
+    from use_cases.estimation_progress import progress_display_curve
+    return progress_display_curve(base)
 
 
 def _smooth_progress_percent(row: dict[str, object]) -> int:
@@ -320,10 +319,10 @@ def _smooth_progress_percent(row: dict[str, object]) -> int:
     if updated_at is None:
         return base
 
-    cap, seconds_per_percent = _smooth_progress_curve(base)
+    from use_cases.estimation_progress import progress_display_value
     elapsed = max(0.0, (datetime.now(UTC) - updated_at).total_seconds())
-    visual_increment = int(elapsed / seconds_per_percent)
-    return max(base, min(cap, base + visual_increment))
+    display_from = row.get("progress_display_from")
+    return progress_display_value(base, elapsed, _safe_int(display_from, default=base))
 
 
 def _self_cost_unit_html(row: dict[str, object]) -> str:
