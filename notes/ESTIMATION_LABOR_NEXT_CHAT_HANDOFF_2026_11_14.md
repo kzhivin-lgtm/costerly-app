@@ -1,3 +1,43 @@
+[verified] Labor V3.4 Project progress published28November2026, existing work
+3.17.4.6. Owner requested the public version increment before publication.
+Runtime997a4a33558dcd9aea809453e613ff6655b7b7ad, build
+labor-v3.4-b20261128072035-project-progress-detection-v8.4.29.
+Former post-Parts-Check70 is now90. Completed geometry/understanding/locator/
+inventory/Parts/materials and publishing stages feed the existing progress path.
+Interpolation stays below the next real milestone; all active objects remain
+below100 until the final plan and usable terminal result. Duplicate, backwards,
+old-generation and finished-worker receipts cannot revive or regress progress.
+No new timer/poll/model request/durable progress write; cost math, pricing,
+proposal versions, navigation and accepted checkpoints are retained.
+Local full1188/all10 passed551.732s, then version-only60 checks/real browser
+refresh22.683s passed after the owner requested V3.4. Exact clean final GitHub
+run46120888622/job140904985107 passed1188/6subtests/all10 in485.604s. Artifact
+15253569006 SHA2568a43d2e3c70ff0513bc904f32397ffbd4efdd5acabcb9fac2c1884f8b9a076be
+verified against ZIP bytes, CRC, exact SHA, clean tree and all suite results.
+Four frozen material controls passed with network blocked and unchanged purchase
+signatures/input reports. New Chrome witness988 frames checks real local worker
+stages20/45/60/75/85/90/98/99, monotonic display, no early100/Review, and completed
+allocations held until final readiness. Completion away still starts one worker.
+Normal publisher verified actual active strict/trusted Actions app15368/no-bypass
+ruleset27499066; actual main is the exact runtime. Railway provider89aa6b9a-9857-
+4897-921a-3afb464f80fc and deployment8126262000 succeeded, Pages140907471437
+succeeded. Real Chrome07:34:57UTC Core/executed wrapper/meta parity and HTTP
+version/health200/ok verified. Anonymous deployment smoke is distinct from
+owner-authenticated real-cycle acceptance, which remains pending. No paid run,
+new quote, production calculation or schema migration was made. Separate legacy
+Workers Builds integration was still in_progress07:34:30UTC, not a claimed fix.
+Source backup882files/5164658bytes, unchanged5MiB cap/CRC/every source byte
+verified, SHA256a42ac761de5139d158a7380ea1e27cf119d1163ce1454883e764cd160f63d929.
+This working-source backup retains71 unrelated TODO lines, which are excluded
+from runtime/records commits and remain protected in the working tree.
+Earlier unissued3.3 candidate1d095933 gate was cancelled when the V3.4 candidate
+superseded it. No assertion/deadline was weakened. Previous published3136a583
+PDF terms and full accepteda077dd84/25dd8bcf checkpoint remain preserved.
+Rollback of progress requires a forward, newly stamped gated revert preserving
+3136a583 PDF behavior and issued history, never a force-push over main.
+Evidence: /Users/qb/Documents/ChatGPT/Costerly/outputs/labor-v3.4-project-progress-20261128/.
+[Progress and timings](LABOR_V3_3_PERFORMANCE_AUDIT.md).
+
 [verified] Labor V3.3 three-line production terms published28November2026
 Israel, work3.17.4.6, runtime3136a583. Owner retained Installation in row3,
 no final full stop; three EN/three HE rows share18pt pitch/right edge. Existing
@@ -10,7 +50,8 @@ assertion or timeout weakened. Baselinea077dd84/25dd8bcf full checkpoint remains
 immutable, owner new-format acceptance pending. No paid run/DB migration/new
 quote or old PDF rewrite. Performance audit reads526 historical transitions,
 with106 path/classes and281 distinct Core/wrapper cohorts. Counter90/stage and
-latency optimizations are proposals, no progress/navigation implementation.
+latency optimizations were proposals at that PDF checkpoint; later V3.4 progress
+is recorded above, navigation remains a separate proposal.
 [Release](LABOR_V3_PDF_2026_11_27.md), [audit](LABOR_V3_3_PERFORMANCE_AUDIT.md).
 
 [verified] Full Labor V3.3 checkpoint requested27November2026, work3.17.4.6.

@@ -1,4 +1,4 @@
-# Labor V3.3: cycle progress, downloads and navigation timing audit
+# Labor V3.3 timing audit and Labor V3.4 Project progress
 
 Scope: owner request after the full accepted V3.3 checkpoint. Historical timing
 evidence and optimization proposals. Project-progress implementation was approved
@@ -95,7 +95,7 @@ boundaries, not a captured exact70%-paint timestamp or complete UI-ready time.
 
 Owner approved28November2026: move the current70 boundary to90, not95,
 and add completed internal-stage receipts. Continuing work3.17.4.6 within Labor
-V3.4 (owner requested version increment), no new hierarchical work block. Candidate build:
+V3.4 (owner requested version increment), no new hierarchical work block. Published build:
 labor-v3.4-b20261128072035-project-progress-detection-v8.4.29.
 
 Implementation: existing Parts Check/pipeline/material publisher receive an
@@ -124,15 +124,30 @@ Old in-process snapshots cannot replace a completed saved result after finish.
 Errors retain Failed and technical-failure behavior, never a false success.
 Cache-hit reports skip completed extraction phases rather than replaying them.
 
-Candidate checks:1188 Python checks passed22.660s; four frozen material controls
+Initial local checks:1188 Python checks passed22.660s; four frozen material controls
 Lev1/Lev2/Adda/Fresh Lev2 V3.3 passed with network blocked and identical purchase
 signatures, unresolved requirements and immutable input reports. Existing browser
 Calculation now drives20/45/60/75/85/90/98/99 through a real local worker, checks
 monotonic painted frames, no premature100/Review and final saved readiness. The
 fixture intentionally makes allocations durable while holding the final result.
-Full local/remote UI gate and actual rollout are still pending. No paid model run,
-production calculation or schema mutation has been made. Owner acceptance on
-an actual next calculation remains separate from fixture evidence.
+[verified] Publication completed28November2026. Runtime997a4a33, exact clean
+GitHub run46120888622/job140904985107:1188checks/6subtests/all10 suites485.604s.
+Artifact15253569006 digest8a43d2e3c70ff0513bc904f32397ffbd4efdd5acabcb9fac2c1884f8b9a076be
+matched downloaded ZIP/CRC/clean SHA and every suite. Local full551.732s preceded
+the owner-requested public increment; version-only60 checks and browser refresh
+22.683s then passed. Actual strict/trusted/no-bypass ruleset27499066 and publisher
+verified, main997a4a33. Railway89aa6b9a/deployment8126262000 and target Pages
+140907471437 succeeded. Real Chrome07:34:57UTC Core/executed wrapper/meta/version
+all match V3.4, health200/ok, zero exceptions. Existing legacy Workers Builds
+integration was still in_progress07:34:30UTC, outside this repair. All evidence:
+/Users/qb/Documents/ChatGPT/Costerly/outputs/labor-v3.4-project-progress-20261128/.
+Working-source882files/5164658bytes backup CRC/every-byte/5MiB-cap verified.
+Its71 unrelated TODO lines remain excluded from runtime/records commits. No paid model
+run, production calculation, new quote or schema mutation. Owner acceptance on
+an actual next calculation remains pending, distinct from fixture and deployment
+evidence. Earlier unissued3.3 candidate was superseded/cancelled for the explicit
+public V3.4 increment. Counter rollback must be a forward gated revert preserving
+the3136a583 PDF refinement and issued history. No force-push or test weakening.
 
 ## Download observation
 

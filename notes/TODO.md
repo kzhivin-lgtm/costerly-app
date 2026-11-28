@@ -1013,19 +1013,25 @@ format applies to next Generate, existing PDF bytes unchanged. First remote
 screenshot; original-preserving diagnostics added, final full gate passed.
 All failed/passed evidence retained, no assertion/deadline weakened. Baseline
 a077dd84 remains accepted/immutable; later visual acceptance pending.
-ACTIVE, P1, OWNER APPROVED28November2026, continuation3.17.4.6:
-Project calculation counter: move the former post-Parts-Check70 checkpoint to90.
-Add actual geometry20/parallel-understanding45/locator60/inventory75/geometry80/
-Parts85/material-layout88 milestones, then demand94/assumption-check96/
-allocations98/final-plan99. Existing interpolation stays below the next real
-milestone and never reaches100 while running. Use the existing fragment and
-percentage interpolation, no added polling, timers, model calls or durable writes.
-Batch overlay covers every active object, including allocations persisted before
-final plan readiness. Duplicate/out-of-order/old-worker receipts cannot regress
-or revive progress. Preserve failures, saved reuse, navigation-away completion,
-pricing/approval/PDF/history and all accepted checkpoints. Full gate and actual
-rollout verification pending; no new production calculation or DB schema change.
-Evidence: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md. Current build labor-v3.4-b20261128072035-project-progress-detection-v8.4.29.
+PUBLISHED, P1, OWNER REAL-CYCLE ACCEPTANCE PENDING, OWNER REQUEST28November2026,
+Labor V3.4, continuation3.17.4.6. Project calculation counter replaces the old
+post-Parts-Check70 with90; real geometry20/understanding45/locator60/inventory75/
+block geometry80/Parts85/materials88/demand94/assumption-check96/allocations98/
+final plan99 receipts. Existing interpolation stays below the next milestone,
+all active objects wait for final persisted readiness. Failed stays Failed;
+old/duplicate/backwards/finished-worker receipts cannot regress or revive it.
+No added polling/timer/model call/durable progress write; existing proposal,
+pricing, history, costing, navigation-away and saved reuse remain protected.
+Exact997a4a33 published through normal publisher after clean GitHub1188checks/
+6subtests/all10 gate485.604s; artifact digest/CRC/SHA and actual strict/trusted/
+no-bypass main verified. Local full551.732s plus version-only60checks/22.683s
+browser refresh passed. Four frozen material controls unchanged/network blocked.
+Railway89aa6b9a and target Pages succeeded; served Core/executed wrapper/meta/
+version.json match V3.4 at07:34:57UTC, health200/ok. No new production calculation,
+paid model run, quote or schema mutation. Source backup882files/5164658bytes
+validated. Owner's next actual Project cycle is the remaining acceptance check.
+Evidence/limits: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md. Older unissued3.3 candidate
+was superseded/cancelled; public increment explicitly requested by owner.
 DIAGNOSED OBSERVATION, P1, OWNER OBSERVATION27November2026:
 Repeat Download Proposal briefly appeared slow/strange, then fast. Distinguish
 signed-link expiry/redirect/network/storage/browser opening from Generate freeze,

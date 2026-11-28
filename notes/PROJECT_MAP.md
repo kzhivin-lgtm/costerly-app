@@ -13,10 +13,16 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
+- Published Labor V3.4 runtime997a4a33 replaces the Project counter's70 boundary
+  with90 and adds completed stage receipts. `use_cases/estimation_progress.py`
+  owns bounded batch/generation state; optional pipeline/material callbacks do
+  no extra durable I/O. Existing fragment/elapsed interpolation hold all active
+  rows below100 until final persisted readiness. [Evidence and limits](LABOR_V3_3_PERFORMANCE_AUDIT.md).
+
 - Current PDF refinement3136a583 keeps three physical production-term rows per
   language,18pt pitch and the accepted proposal/version workflow. [Release](LABOR_V3_PDF_2026_11_27.md).
-  [Performance audit](LABOR_V3_3_PERFORMANCE_AUDIT.md) is read-only evidence and
-  proposals, not changed progress/navigation behavior.
+  [Performance audit](LABOR_V3_3_PERFORMANCE_AUDIT.md) preserves historical timings,
+  published V3.4 progress and separate unimplemented navigation proposals.
 
 - Latest full preservation: [Labor V3.3 checkpoint](LABOR_V3_3_PRODUCTION_CHECKPOINT_2026_11_27.md), exact
   runtimea077dd84. Owner accepts the working proposal/version mechanism; the
