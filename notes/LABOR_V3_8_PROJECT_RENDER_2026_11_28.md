@@ -14,8 +14,11 @@ publisher accepted main; actual strict Actions15368-only/no-bypass main ruleset
 (GitHub deployment8131699083) and target Pages check141028394158 succeeded.
 Fresh anonymous browser confirmed executed wrapper telemetry, Core DOM,
 version.json and health200/ok all match V3.8. Authenticated owner reproduction
-acceptance is pending; no new production speed or full owner checkpoint claim.
-The earlier accepted V3.5 checkpoint is preserved. The separate Workers Builds
+acceptance was pending at publication. The owner subsequently accepted the
+tested cycle and requested the [V3.8 preservation checkpoint](LABOR_V3_8_PRODUCTION_CHECKPOINT_2026_11_28.md),
+allowing approximately5-6s restored Estimating -> Review. Remaining transition
+latencies and the separately logged Last Estimate timeout are not accepted as
+normal performance. The earlier V3.5 checkpoint is preserved. The separate Workers Builds
 failure/pending check remains the existing deferred P2, outside this repair.
 
 Evidence: /Users/qb/Documents/ChatGPT/Costerly/outputs/labor-v3.8-project-render-20261128/.

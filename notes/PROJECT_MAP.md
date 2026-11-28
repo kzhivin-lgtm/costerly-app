@@ -13,6 +13,12 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## UI Layer
 
+- Latest owner-accepted preservation: [Labor V3.8 checkpoint](LABOR_V3_8_PRODUCTION_CHECKPOINT_2026_11_28.md),
+  runtimecb70b113,888 exact files, independently restored1231 checks/four controls.
+  Late File Review field ACKs no longer clear Project; accepted restored
+  Estimating -> Review delay remains. Fresh remaining transition priorities are
+  in the existing [timing audit](LABOR_V3_3_PERFORMANCE_AUDIT.md#labor-v38-owner-accepted-checkpoint-and-fresh-transition-review).
+
 - Published Labor V3.7 runtime d9177eb2: [approval and Last Estimate](LABOR_V3_7_APPROVAL_2026_11_28.md).
   APPROVING/green APPROVED, canonical committed-cost/PDF identity handoff and
   missing post-Save Labor readiness. Harvest precedes readiness paint and scoped
@@ -32,7 +38,7 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
   four frozen controls unchanged, Railway/Pages and actual served version verified.
   Owner real-cycle speed acceptance pending; V3.5 checkpoint preserved.
 
-- Latest accepted full preservation: [Labor V3.5 checkpoint](LABOR_V3_5_PRODUCTION_CHECKPOINT_2026_11_28.md),
+- Previous accepted full preservation: [Labor V3.5 checkpoint](LABOR_V3_5_PRODUCTION_CHECKPOINT_2026_11_28.md),
   runtime4f11834c,882 exact files, restored1198 checks/four controls. Owner accepts
   the real counter cycle; startup/navigation latency remains the next analysis.
 

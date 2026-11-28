@@ -1,3 +1,16 @@
+[verified] Owner-accepted Labor V3.8 checkpoint,28November2026, work3.17.4.6.
+Runtimecb70b113, buildlabor-v3.8-b20261128150031-project-render-state-detection-v8.4.29.
+Owner accepts the tested cycle, including approximately5-6s Estimating -> Review
+on restored calculations. Exact888-file/5217532byte source ZIP, independent
+restore1231 checks24.978s/four network-blocked controls, exact clean1231/all10
+CI576.231s and local601.522s, normal publisher, actual remote main rule and
+Core/wrapper parity retained. Runtime and all previous checkpoints unchanged.
+Separate fresh15-success/one-failure transition analysis: Last Estimate2.67-7.49s
+plus15s timeout; APPROVE7.07s including4.08s return preparation; Back4.58s.
+These remain proposals, not implemented optimizations or accepted performance.
+[Checkpoint/restore](LABOR_V3_8_PRODUCTION_CHECKPOINT_2026_11_28.md),
+[current timing analysis](LABOR_V3_3_PERFORMANCE_AUDIT.md#labor-v38-owner-accepted-checkpoint-and-fresh-transition-review).
+
 [verified] Labor V3.7 published28November2026, continuation work3.17.4.6.
 Runtimed9177eb2ffda4adaca00a6c57e7499a4d25935b2, build
 labor-v3.7-b20261128113121-approval-last-estimate-detection-v8.4.29.

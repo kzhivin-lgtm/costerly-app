@@ -1100,21 +1100,47 @@ in the next deployment, not a separate speculative release or further hunt now.
 V3.6 preserves centering through deploy-cover fade and verifies it in browser
 tests. The exact rare surface described by owner is still unidentified; do not
 claim that this proves the identity of the earlier top-left message.
-OWNER REAL-CYCLE FEEDBACK28November2026, PARTIAL ACCEPTANCE, P1:
+CURRENT TRANSITION FOLLOW-UP, PENDING PROPOSALS, P1,28November2026:
+Owner requests analysis after the accepted V3.8 checkpoint, not another runtime
+optimization package. Existing continuation context3.17.4.6; no new block/version.
+Fresh15 successful paths and one failed Last Estimate, own anonymous probe excluded:
+- P1, pending proposal: make Last Estimate reliable and reduce its server-side
+  preparation. Successful2.672-7.486s(n4), median2.951s; one15s failure with14.214s
+  server/13.176s File Review preparation. Individual slow reads are not timed.
+  First identify repeated critical reads/preparation and retain ownership, names,
+  canonical quantities and safe Continue readiness. Raising the limit alone is
+  not the proposed outcome. Start here because one attempt actually failed.
+- P1, pending proposal: reduce APPROVE return preparation.7.067s(n1) includes
+  accepted write1.951s and4.085s after-write preparation. Existing allocation
+  receipt reuse is implemented; locate remaining Labor/canonical refresh work
+  before removing duplicates. Preserve APPROVING/green APPROVED and truthful Done.
+- P1, pending proposal: fast unchanged Object Back -> Project.4.578s(n1),3.406s
+  in Project preparation. Back currently marks pricing dirty even without edits.
+  A safe correction depends on reliable browser-write acknowledgement, retaining
+  canonical refresh after real Save/qty/price changes. No blind dirty-flag removal.
+Recommended no-current-work: Project/Object1.047-1.329s(n2), File Review/Project
+0.866-1.485s(n4), New Estimate0.531-0.966s(n3). Owner explicitly accepts the
+approximately5-6s restored Estimating -> Review delay, not separately instrumented.
+Startup diagnostic only: one156.954s wrapper->reveal interval despite server
+ready in1.193s, followed by3.427s normal startup. Foreground visibility unknown;
+do not call it157s of active waiting or repair startup speculatively. Other paths
+have no fresh sample here; prior dated results stay historical, Admin lowest.
+Evidence/current analysis: notes/LABOR_V3_3_PERFORMANCE_AUDIT.md, V3.8 section.
+HISTORICAL V3.6 REAL-CYCLE FEEDBACK28November2026, PARTIAL ACCEPTANCE, P1:
 Accepted fast paths: File Review/Project, repeat Project/Object, ordinary Back,
 Profile/tabs and New Estimate. APPROVE and Last Estimate remain unaccepted.
 Read-only matching-build logs: APPROVE2.062/4.965/6.848s; Upload Last Estimate
 4.973/6.137s; Project/Object median1.381s(n7), not the synthetic0.2s result.
-PUBLISHED REPAIR, P0, OWNER REAL-CYCLE ACCEPTANCE PENDING, work3.17.4.6:
-After editing, New Estimate -> Last Estimate -> File Review -> Project remains
+COMPLETED REPAIR, OWNER-ACCEPTED V3.8 CHECKPOINT, work3.17.4.6:
+After editing, New Estimate -> Last Estimate -> File Review -> Project had remained
 blank except navigation/actions (owner screenshot14:01:59 Israel). Owner confirms
 it persists and cannot scroll in either direction, not an off-screen table.
 Matching V3.7
 telemetry marked that last transition ready at14:01:53 in930.4ms; source/server
 errors were not logged. Ready receipt alone does not prove retained visible UI.
-Preserve saved calculations. Reproduce full sequence and idle fragment ticks,
-identify the first clearing/hiding event, then repair within the accepted UI
-contract. No new cache/router architecture, no speed claim or checkpoint.
+Repair preserved saved calculations and the accepted UI contract. Full sequence
+and native idle fragment ticks identified the clearing event. No new cache/router
+architecture or additional performance claim was introduced.
 Separate live-speed review: APPROVE4.68-7.00s includes3.35-3.61s return preparation;
 Back4.16-5.12s, Last Estimate2.48-5.37s after more interactions. Performance remains
 unaccepted. Diagnosis and sample limits: notes/LABOR_V3_7_APPROVAL_2026_11_28.md,
@@ -1135,8 +1161,11 @@ official artifact digest/CRC/SHA/clean tree verified. Normal publisher, actual
 strict/trusted/no-bypass main rule, Railway/Pages and actual executed V3.8
 Core/wrapper/version/health parity verified. Profile runtime is unchanged; only
 the existing reload test now awaits its normal startup-ready prerequisites.
-Owner will repeat edits -> New/Last Estimate -> File Review -> Project and wait
-through subsequent ticks. This is pending owner acceptance, not a full checkpoint.
+Owner tested the cycle, permits approximately5-6s Estimating -> Review after
+New/Last Estimate and requests a checkpoint. Full source/restore/records/tags/
+gate evidence is preserved in notes/LABOR_V3_8_PRODUCTION_CHECKPOINT_2026_11_28.md.
+Earlier V3.5/V3.3/Objects/V1.3.3 checkpoints remain immutable. Remaining latency
+work is the separate pending proposal block above, not an uncompleted blank-page fix.
 Evidence/verification: notes/LABOR_V3_8_PROJECT_RENDER_2026_11_28.md.
 PUBLISHED, OWNER REAL-CYCLE ACCEPTANCE PENDING, P1, LABOR V3.7, work3.17.4.6:
 Runtime d9177eb2 restores APPROVING/green unchanged APPROVED/no repeat write;

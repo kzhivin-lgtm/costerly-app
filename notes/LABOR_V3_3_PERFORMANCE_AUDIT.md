@@ -1,11 +1,80 @@
 # Labor timing audit, Project progress and navigation
 
-Scope: owner request after the full accepted V3.3 checkpoint. Historical timing
-evidence and optimization proposals. Project-progress implementation was approved
-28November2026 and is tracked below. Later V3.6/V3.7 navigation/cache changes
-are recorded separately below; costing formulas remain unchanged.
-Exact accepted runtimea077dd84 and records25dd8bcf have independent immutable tags.
-The three-line PDF refinement3136a583 is separately published and verified.
+Current scope: owner-accepted V3.8 checkpoint and read-only review of remaining
+transition delays. Earlier V3.3-V3.7 measurements/proposals remain dated history.
+Costing formulas are unchanged. Historical V3.3 runtimea077dd84/records25dd8bcf,
+three-line PDF refinement3136a583 and V3.5 checkpoint retain their separate refs.
+
+## Labor V3.8 owner-accepted checkpoint and fresh transition review
+
+Owner28November2026 accepts the tested current cycle and requests a checkpoint.
+Approximately5-6s Estimating -> Review after New/Last Estimate is accepted for
+now. This is separate from the File Review -> Project screen transition. Its
+exact terminal Review timestamp is not instrumented; do not invent a measured
+5-6s interval. Source/restore/acceptance boundaries:
+[checkpoint](LABOR_V3_8_PRODUCTION_CHECKPOINT_2026_11_28.md).
+
+[verified] Fresh matching-build production sample checked17:55:39 Israel,
+15 completed transitions during17:51:19-17:53:18 plus one failed Last Estimate
+at17:51:01. Own anonymous rollout probe is excluded. Small, noncontrolled samples
+are not p95 or a before/after benchmark. Runtime cb70b113, buildV3.8.
+
+| Path | n | Seconds, range | Median seconds | Current decision |
+| --- | ---: | ---: | ---: | --- |
+| Last Estimate -> File Review | 4 | 2.672-7.486 | 2.951 | P1, investigate failure/slow preparation |
+| APPROVE -> Project | 1 | 7.067 | 7.067 | P1, reduce return preparation |
+| Object Back -> Project | 1 | 4.578 | 4.578 | P1, inspect unnecessary refresh on unchanged Back |
+| Project -> Object | 2 | 1.047-1.329 | 1.188 | Leave for now, no new repair |
+| File Review -> Project | 4 | 0.866-1.485 | 1.176 | Leave for now |
+| New Estimate -> Upload | 3 | 0.531-0.966 | 0.866 | Leave for now |
+| Project Estimating -> Review after restore | owner observation | approximately5-6 | not logged | Owner accepts, leave for now |
+
+[verified] The failed Last Estimate click was17:50:46.375. Its server run
+completed in14.214s, with13.176s in File Review rendering/preparation and ready
+component enqueued at17:51:00.665. Browser timed out at17:51:01.374,14.999s after
+click, without a correlated ready completion. The handler did run; this is not
+proof of a lost click. No specific slow read inside that13.176s is instrumented.
+Do not label it a false timeout or solve it only by raising the15s limit.
+The next cold success took7.486s, server6.754s/render6.561s. Three repeated warm
+entries took2.672-2.983s, server1.915-2.311s/render1.711-2.088s. Authentication
+was cached and negligible for these entries, so this sample points at server
+File Review preparation, not auth as the main bottleneck.
+
+[verified] APPROVE7.067s includes6.229s in callback: draft0.193s, accepted
+write1.951s, return preparation4.085s. V3.7 already reuses allocation receipts;
+that improvement is not a new proposal. Remaining preparation can run Labor /
+Overhead restoration and canonical Project commercial/input refresh. Existing
+spans cannot attribute the4.085s between those subcalls. Proposed next bounded
+step: identify repeated reads/rebuilds there and reuse current acknowledged
+results, retaining APPROVING until truthful completion and canonical Done/PDF.
+
+[verified] Back4.578s includes3.434s server/3.406s Project preparation. Code
+_return_to_objects unconditionally marks cached pricing dirty on ordinary Back,
+then _get_objects_data_cached refreshes prices. [likely] This contributes to the
+slow unchanged return; current spans do not prove all3.406s belongs to that read.
+Proposal: distinguish unchanged navigation from acknowledged browser Save/price/
+quantity changes, and retain narrow canonical refresh for actual writes. Removing
+that dirty mark without a reliable write receipt is not an approved shortcut.
+
+Proposal order:1) Last Estimate, because one attempt actually failed;2) APPROVE
+return preparation;3) unchanged Back. Use existing scoped caches/prepared state,
+remove proven duplicate work and preserve ownership/canonical quantities, names,
+proposal invalidation, atomic writes and current loading/approval behavior.
+Cold ownership-first parallel File Review reads already exist from V3.6; do not
+present them as a newly unimplemented improvement. No new router/cache system,
+worker, polling loop, UI notice or runtime optimization is authorized here.
+
+Startup diagnostic, separate from normal transitions: one wrapper started
+17:41:54.752, Core queued ready17:41:57.803 after1.193s server work, browser
+received/revealed only17:44:31.700 (156.954s from wrapper start). A subsequent
+fresh startup revealed in3.427s. [unknown] The long gap may involve delivery,
+client execution or an inactive tab; foreground visibility was not retained.
+Do not claim157s of foreground waiting or another confirmed auth/DB defect.
+Retain as a diagnostic only, no speculative repair. Profile, Processing, Project
+-> File Review, PDF download and Admin have no fresh measured path in this small
+sample. Earlier dated measurements remain historical; Admin is lowest priority.
+
+Private evidence: /Users/qb/Documents/ChatGPT/Costerly/outputs/labor-v3.8-owner-transitions-20261128/.
 
 ## Labor V3.7 published28November2026
 
@@ -110,7 +179,7 @@ network-blocked frozen controls passed. Normal publisher, actual main enforcemen
 Railway/Pages and served Core/executed-wrapper parity verified. Owner real
 production speed acceptance remains pending.
 
-## Current transition triage, owner clarification28November2026
+## Historical transition triage before V3.6/V3.8, owner clarification28November2026
 
 The V3.5 full accepted checkpoint is complete. Owner asks for the actionable
 list now, not further exhaustive measurement. No runtime optimization is applied
