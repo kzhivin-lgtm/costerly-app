@@ -1,0 +1,36 @@
+# Labor V3.7: approval state and last-view reuse
+
+Owner approved28November2026, continuing reference3.17.4.6. Published baseline
+V3.6 runtime9ce04226; last fully accepted checkpoint remains V3.5/4f11834c.
+Keep all accepted fast paths and protection. Only the following package changes.
+
+|Scenario|Required result|
+|---|---|
+|Unapproved Object, unchanged|APPROVE remains actionable.|
+|Approval pending|Immediate APPROVING feedback, duplicate submission blocked.|
+|Approval acknowledged|Project Done, no false Estimating while preparing the same Object again.|
+|Reopen approved Object, no edits|Green APPROVED, no repeated approval write.|
+|Edit / successful Save|Existing Save/Back/discard rules; changed saved data requires Review/APPROVE.|
+|Approval/save failure|No false success, keep actionable data/retry. Accepted approval and return-load failure remain distinct.|
+|Shared allocation changes|Keep canonical allocation and dependent costs; merge committed receipts, preserve source/schema/preview.|
+|New Estimate -> Last Estimate|Retain one valid last Project read snapshot; clear active worker/upload/confirmation identities. Canonical names and tenant checks stay.|
+|Actual new upload, even same bytes|Fresh run/widget identity, no old worker or source reuse.|
+|Numeric zero focused|Visually blank; untouched blur restores zero with no write or proposal invalidation. Nonzero/text/NULL semantics stay.|
+|LDSP with no coating demand|Hide Part Coating; preserve calculations and genuinely eligible mixed/wood finishes.|
+
+Extend existing caches, callbacks, input guards and transition shield. No new
+worker, timer, polling, data schema, model call, material formula or navigation
+system. Approval and return-preparation phases use the existing completed-action
+telemetry. Baseline UI release gate, all earlier scenarios and four frozen
+material controls remain required. Publish only the exact successful SHA through
+the normal publisher, then verify actual Core/wrapper versions and main ruleset.
+Rollback is a newly stamped, gated forward revert, never rewriting old checkpoints.
+
+Implementation prepared. Build: labor-v3.7-b20261128104923-approval-last-estimate-detection-v8.4.29.
+Verification/publishing are pending. Earlier focused cases confirmed approval
+pending/reopen/changed Save, committed receipt preservation and cache/access
+boundaries. The retained LDSP all-work edit scenario now omits coating, with
+its expected totals reduced by the same existing150ILS labor/12ILS overhead;
+separate eligible-finish coating override/payroll/reopen checks stay mandatory.
+No existing gate/check was removed or weakened. Production speed/owner acceptance
+remain unverified until the owner repeats the real cycle.

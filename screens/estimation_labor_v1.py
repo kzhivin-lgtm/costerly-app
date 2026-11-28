@@ -86,7 +86,7 @@ _pay_metrics = labor_pay_metrics
 _sheet_pay_metrics = sheet_pay_metrics
 
 
-def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False, aggregate=False, cost_quantity=1, explicit_keys=(), detail_key=None, coating=None, has_details=None, edit_key=None):
+def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editable=True, fixed_leaf=False, aggregate=False, cost_quantity=1, explicit_keys=(), detail_key=None, coating=None, has_details=None, edit_key=None, hidden=False):
     is_row = key != 'labor'
 
     def metric(label, value, column, *, total=False):
@@ -144,6 +144,7 @@ def _cost_band(title, body, metrics=None, *, key, open_by_default=False, editabl
     leaf_class = ' object-detail-leaf-summary' if heading == 'div' else ''
     return (
         f'<{tag} class="{classes}" data-cost-band="{key}"'
+        + (' hidden' if hidden else '')
         + (f' data-coating-batches="{escape(json.dumps(coating.get("batches", [])), quote=True)}"' if coating else '')
         + f' data-labor-hourly-rate="{100 if key == "part-coating" else 50}"'
         + (f' data-labor-detail="{detail_key}"' if detail_key else '')
@@ -455,9 +456,13 @@ def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, 
                        f'{row["quantity"] * quantity:g} × {row["minutes_per_unit"]} min'}
                        for index, row in enumerate((state.get('additional_assembly') or {}).get('rows', ()))]
     additional = _cost_band('Additional Assembly', work_details_html(additional_rows), work['additional-assembly'], key='additional-assembly')
+    coating = state.get('coating')
+    coating_hidden = coating is not None and not (
+        coating.get('parts') or coating.get('batches') or coating.get('partial') or coating.get('issues')
+        or float(coating.get('hours') or 0) > 0 or float((work['part-coating'] or {}).get('total') or 0) > 0)
     body = (
         _cost_band('Part Production', sheet, sheet_metrics, key='part-production', editable=False, aggregate=True)
-        + _cost_band('Part Coating', _coating_html(state.get('coating')), work['part-coating'], key='part-coating', coating=state.get('coating'), has_details=bool((state.get('coating') or {}).get('batches')))
+        + _cost_band('Part Coating', _coating_html(state.get('coating')), work['part-coating'], key='part-coating', coating=state.get('coating'), has_details=bool((state.get('coating') or {}).get('batches')), hidden=coating_hidden)
         + _cost_band('Assembly', block_assembly + hardware_html + additional, work['assembly-stage'],
                      key='assembly-stage', editable=False, aggregate=True)
         + _preparation_html(state, quantity=quantity, overrides=overrides)

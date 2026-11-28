@@ -280,3 +280,29 @@ def test_material_save_uses_committed_receipt_without_a_fallible_second_read(mon
     assert cached['name']=='Preserved name' and cached['preview_url']=='preserved-preview'
     assert cached['self_cost']['vat_percent']==18 and cached['self_cost']['batch_excl_vat']==600
     assert st.session_state.screen=='object_detail'
+
+
+@pytest.mark.parametrize("invalid", [None, "dirty", "worker", "wrong_run", "running"])
+def test_new_estimate_retains_only_valid_last_project_read_snapshot(monkeypatch, invalid):
+    st.session_state.clear()
+    st.session_state.current_run_id = "r"
+    st.session_state.current_estimate_id = "e"
+    project = {"run_id": "other" if invalid == "wrong_run" else "r", "rows": [
+        {"object_key": "one", "status": "running" if invalid == "running" else "completed"}]}
+    st.session_state.objects_estimation_data_cache = {"e": project, "unrelated": {}}
+    if invalid == "dirty": st.session_state.objects_estimation_cache_dirty = {"e"}
+    if invalid == "worker": st.session_state.estimation_batch_future = Future()
+    st.session_state.objects_set_price_basis = {"e": "old-confirmation"}
+    st.session_state.validated_workflow_access = {"e"}
+    reset_new_estimate_session(clear_upload_widget=True)
+    assert st.session_state.current_estimate_id is None and st.session_state.current_run_id is None
+    assert "objects_set_price_basis" not in st.session_state and "validated_workflow_access" not in st.session_state
+    if invalid is None:
+        assert st.session_state.objects_estimation_data_cache == {"e": project}
+        calls = []
+        monkeypatch.setattr(objects, "refresh_objects_estimation_prices", lambda e, cached: calls.append(e) or {**cached, "canonical": True})
+        monkeypatch.setattr(objects, "load_objects_estimation_data", lambda *_: pytest.fail("Last Estimate rebuilt the heavy Project snapshot"))
+        assert objects._load_objects_screen_data("e")[0]["canonical"]
+        assert calls == ["e"]
+    else:
+        assert st.session_state.objects_estimation_data_cache == {}

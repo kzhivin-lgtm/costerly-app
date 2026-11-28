@@ -173,6 +173,17 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
         and previous_run_id in previous_review_cache
         else {}
     )
+    previous_estimate_id = str(st.session_state.get("current_estimate_id") or "")
+    project = st.session_state.get("objects_estimation_data_cache", {}).get(previous_estimate_id)
+    worker = st.session_state.get("estimation_batch_future")
+    retained_project_cache = (
+        {previous_estimate_id: project}
+        if project and str(project.get("run_id") or "") == previous_run_id
+        and previous_estimate_id not in st.session_state.get("objects_estimation_cache_dirty", set())
+        and not (worker is not None and not worker.done())
+        and all(row.get("status") in {"completed", "review_required", "failed"} for row in project.get("rows", []))
+        else {}
+    )
     retained_object_ids = {
         str(item.get("object_id") or "")
         for item in (
@@ -207,7 +218,8 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
     st.session_state.uploaded_file_name = None
     st.session_state.uploaded_file_bytes = None
     st.session_state.file_review_data_cache = retained_file_review_cache
-    st.session_state.objects_estimation_data_cache = {}
+    st.session_state.objects_estimation_data_cache = retained_project_cache
+    st.session_state.objects_estimation_pricing_dirty = set(retained_project_cache)
     st.session_state.objects_estimation_cache_dirty = set()
     st.session_state.object_detail_data_cache = {}
     st.session_state.object_detail_data_cache_dirty = set()

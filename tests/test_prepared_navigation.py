@@ -112,20 +112,61 @@ def test_cold_file_review_reads_overlap_only_after_ownership_is_accepted(monkeyp
 
 
 @pytest.mark.parametrize("costs_changed", [False, True])
-def test_approval_keeps_snapshots_only_when_costs_are_unchanged(monkeypatch, costs_changed):
+def test_approval_handoff_uses_committed_receipt_and_canonical_commercial_projection(monkeypatch, costs_changed):
+    from screens import estimation_labor_v1 as labor
     st.session_state.clear()
-    st.session_state.object_detail_data_cache = {("e", "one"): {"quantity": 1}}
-    st.session_state.labor_v1_comparisons = {("c", "r", "e", "one"): {"status": "ready"}}
-    monkeypatch.setattr(object_detail, "approve_object_estimate", lambda **_: {"costs_changed": costs_changed})
+    identity = ("c", "r", "e", "one")
+    base = {"quantity": 1, "approved": False, "preview_url": "owned-preview",
+            "sections": [{"key": "material", "columns": ["Material"], "rows": ["old"]}]}
+    st.session_state.object_detail_data_cache = {("e", "one"): base, ("e", "two"): {"approved": True}}
+    st.session_state.labor_v1_comparisons = {identity: {"status": "ready", "overhead_context": {"status": "ready"}}}
+    st.session_state.objects_estimation_data_cache = {"e": {"rows": [{"object_key": "one", "status": "completed"}]}}
+    receipt = {"sections": [{"key": "material", "rows": ["committed"]}], "cost_quantity": 3, "self_cost": {"excl_vat": 42}}
+    monkeypatch.setattr(object_detail, "approve_object_estimate", lambda **_: {
+        "costs_changed": costs_changed, **({"material_plan": {"revision": "new", "_object_detail_receipts": {"one": receipt}}} if costs_changed else {})})
+    monkeypatch.setattr(object_detail, "load_object_detail_material_receipt", lambda **_: pytest.fail("Receipt was already returned"))
+    monkeypatch.setattr(object_detail, "get_supabase_client", object)
+    monkeypatch.setattr(labor, "_calculate", lambda *a, **kw: {"status": "ready", "assembly": {}, "preparation": {}})
+    monkeypatch.setattr(object_detail, "refresh_objects_estimation_prices", lambda e, cached: {**cached, "rows": [
+        {"object_key": "one", "quantity": 3, "status": "completed", "reviewed": True},
+        {"object_key": "two", "status": "completed", "reviewed": not costs_changed}]})
     object_detail._approve_current_object_and_return(estimate_id="e", object_id="one")
     assert st.session_state.screen == "objects"
+    data = st.session_state.object_detail_data_cache[("e", "one")]
+    assert data["approved"] is True and data["preview_url"] == "owned-preview"
+    assert data["sections"][0]["columns"] == ["Material"]
     if costs_changed:
-        assert not st.session_state.object_detail_data_cache
-        assert "e" in st.session_state.objects_estimation_cache_dirty
+        assert data["sections"][0]["rows"] == ["committed"] and data["cost_quantity"] == 3
+        assert ("e", "two") not in st.session_state.object_detail_data_cache
+        assert st.session_state.objects_estimation_data_cache["e"]["material_plan"] == {"revision": "new"}
+    assert identity in st.session_state.labor_v1_comparisons
+    assert "e" not in st.session_state.objects_estimation_cache_dirty
+    assert "e" not in st.session_state.objects_estimation_pricing_dirty
+    row = objects._with_object_navigation_readiness(st.session_state.objects_estimation_data_cache["e"], "e")["rows"][0]
+    assert '>Done</a>' in objects_pricing._review_action_html(row, estimate_id="e", run_id="r")
+    monkeypatch.setattr(object_detail, "approve_object_estimate", lambda **_: pytest.fail("Unchanged approved Object wrote again"))
+    object_detail._approve_current_object_and_return(estimate_id="e", object_id="one")
+
+
+@pytest.mark.parametrize("write_fails", [False, True])
+def test_approval_failure_is_distinct_from_preparation_failure(monkeypatch, write_fails):
+    st.session_state.clear()
+    st.session_state.screen = "object_detail"
+    st.session_state.object_detail_data_cache = {("e", "one"): {"approved": False}}
+    def fail(*a, **kw):
+        raise ConnectionError("controlled failure")
+    monkeypatch.setattr(object_detail, "approve_object_estimate", fail if write_fails else lambda **_: {"costs_changed": True})
+    monkeypatch.setattr(object_detail, "load_object_detail_material_receipt", fail)
+    monkeypatch.setattr(object_detail, "report_runtime_failure", lambda *a, **kw: None)
+    object_detail._approve_current_object_and_return(estimate_id="e", object_id="one")
+    if write_fails:
+        assert st.session_state.screen == "object_detail"
+        assert st.session_state.object_detail_approval_error
+        assert not st.session_state.object_detail_data_cache[("e", "one")]["approved"]
     else:
-        assert ("e", "one") in st.session_state.object_detail_data_cache
-        assert ("c", "r", "e", "one") in st.session_state.labor_v1_comparisons
-        assert "e" in st.session_state.objects_estimation_pricing_dirty
+        assert st.session_state.screen == "objects" and "one" in st.session_state.approved_object_keys
+        assert not st.session_state.get("object_detail_approval_error")
+        assert not st.session_state.object_detail_data_cache
 
 
 def test_completed_preparation_seeds_existing_labor_cache_once(monkeypatch):
@@ -185,3 +226,22 @@ def test_preparation_refresh_stops_with_real_streamlit_fragment_context():
     app = AppTest.from_function(_real_preparation_fragment).run()
     assert not app.exception
     assert app.markdown[0].value == "Prepared Object"
+
+
+def test_first_approval_returns_committed_allocation_receipts(monkeypatch):
+    from use_cases import estimation, estimation_runtime
+    client = object()
+    committed = {"revision": "accepted", "_object_detail_receipts": {"one": {"self_cost": {"excl_vat": 42}}}}
+    future = Future(); future.set_result(committed)
+    calls = []
+    monkeypatch.setattr(estimation, "get_supabase_client", lambda: client)
+    monkeypatch.setattr(estimation, "_assert_screen_estimate_access", lambda *a: None)
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_material_plan", lambda *a: pd.DataFrame([
+        {"plan_payload": {"material_review_order": []}}]))
+    monkeypatch.setattr(estimation, "_object_material_context", lambda *a, **kw: {"run_id": "r", "company_id": "c"})
+    monkeypatch.setattr(estimation_runtime, "queue_material_plan_recalculation", lambda **kw: calls.append(kw) or future)
+    monkeypatch.setattr(estimation, "update_rfq_object_estimate_approved", lambda *a, **kw: pytest.fail("Allocation approval bypassed"))
+    result = estimation.approve_object_estimate(estimate_id="e", object_id="one")
+    assert result == {"costs_changed": True, "material_plan": committed}
+    assert calls == [{"estimate_id": "e", "run_id": "r", "company_id": "c",
+                     "purchase_keys": frozenset(), "approve_objects": ("one",)}]

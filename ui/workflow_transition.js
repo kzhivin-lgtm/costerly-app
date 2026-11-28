@@ -375,7 +375,8 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         const status = doc.createElement("span");
         status.className = "costerly-workflow-status";
         status.setAttribute("role", "status");
-        status.textContent = local ? "Loading…" : "Opening " + names[target] + "…";
+        status.textContent = name === "object_detail_approve_to_objects" ? "Approving…"
+            : local ? "Loading…" : "Opening " + names[target] + "…";
         cover.append(status);
         doc.body.append(cover);
 

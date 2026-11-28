@@ -153,3 +153,16 @@ def test_cnc_is_readonly_rollup_before_reference_elements_and_keeps_source_cost(
     assert html.index('data-cost-band="cnc"') < html.index('class="object-detail-cnc-elements"')
     assert labor_work_metrics(state,overrides={'file-preparation':'2'})['labor']['hours']==Decimal('9.75')
     assert state==original
+
+
+def test_coating_visibility_retains_real_finishes_mixed_parts_and_positive_overrides():
+    state = labor_state()
+    state['coating'] = {'parts': [], 'batches': [], 'issues': [], 'partial': False, 'hours': '0'}
+    def hidden(overrides=None):
+        import re
+        return bool(re.search(r'data-cost-band="part-coating"[^>]*\bhidden\b', _labor_html(state, overrides=overrides)))
+    assert hidden()
+    assert not hidden({'part-coating': '2'})
+    for applicable in ({'parts': [{}]}, {'partial': True}, {'issues': ['finish unknown']}):
+        state['coating'] = {**{'parts': [], 'batches': [], 'issues': [], 'partial': False, 'hours': '0'}, **applicable}
+        assert not hidden()

@@ -410,8 +410,8 @@ def install_company_metrics_input_guard() -> None:
                 const pricing = pricingInput(event.target);
                 if (pricing) {
                     const cleaned = cleanNumber(pricing.textContent);
-                    if (pricing.dataset.optionalPercent) pricing.textContent = cleaned;
-                    else pricing.textContent = Number(cleaned) === 0 ? "" : cleaned;
+                    if (pricing.dataset.optionalPercent && cleaned && Number(cleaned) === 0) pricing.dataset.focusZero = cleaned;
+                    pricing.textContent = Number(cleaned) === 0 ? "" : cleaned;
                 }
                 moveCaretToEnd(metricsInput(event.target) || metricsTotalInput(event.target) || pricing || percent);
             }
@@ -425,6 +425,8 @@ def install_company_metrics_input_guard() -> None:
             }
 
             function handleInput(event) {
+                const pricing = pricingInput(event.target);
+                if (pricing) delete pricing.dataset.focusZero;
                 const input = metricsInput(event.target);
                 if (input) updateRow(input);
                 const total = metricsTotalInput(event.target);
@@ -453,6 +455,10 @@ def install_company_metrics_input_guard() -> None:
                 const percent = percentInput(event.target);
                 if (percent) percent.value = formatPercent(percent.value);
                 const pricing = pricingInput(event.target);
+                if (pricing?.dataset.focusZero != null) {
+                    if (!cleanNumber(pricing.textContent)) pricing.textContent = pricing.dataset.focusZero;
+                    delete pricing.dataset.focusZero;
+                }
                 if (pricing?.dataset.optionalPercent && !cleanNumber(pricing.textContent)) pricing.textContent = "";
                 else if (pricing) pricing.textContent = formatPercent(pricing.textContent);
             }
@@ -2121,7 +2127,7 @@ def install_objects_price_input_guard(
                 const digits = inputDigits(saleInputValue(ctx.input));
                 ctx.input.dataset.editStartDigits = digits;
                 ctx.input.dataset.editDirty = "false";
-                setSaleInputValue(ctx.input, digits);
+                setSaleInputValue(ctx.input, digits && Number(digits) === 0 ? "" : digits);
                 moveCaretToEnd(ctx.input);
             }
 
@@ -2219,6 +2225,8 @@ def install_objects_price_input_guard(
                 }
                 const ctx = context(event);
                 if (!ctx || isDisabled(ctx.input)) return;
+                if (ctx.input.dataset.editDirty !== "true" && ctx.input.dataset.editStartDigits === "0"
+                    && !saleInputValue(ctx.input)) setSaleInputValue(ctx.input, "0");
                 const digits = sanitizeActive(ctx.input);
                 const changed = ctx.input.getAttribute("aria-invalid") === "true" ||
                     ctx.input.dataset.editDirty === "true" || digits !== (ctx.input.dataset.editStartDigits || "");
@@ -2375,6 +2383,15 @@ def install_object_detail_input_guard(
                     event.preventDefault();event.stopImmediatePropagation();
                 }
             }
+            const updateApprovalControl = () => {
+                const button = parentDoc.querySelector('[data-object-detail-approve]');
+                if (!button || parentWindow[SUBMITTING_KEY]) return;
+                const approved = button.dataset.approved === 'true' && !draft.size && !snapshotEdits().length && !invalidMaterial();
+                button.classList.toggle('object-detail-approved', approved);
+                if (approved) button.setAttribute('aria-disabled', 'true');
+                else if (!button.hasAttribute('data-save-locked')) button.removeAttribute('aria-disabled');
+                button.textContent = approved ? 'APPROVED' : 'APPROVE';
+            };
             const updateSaveControls = message => {
                 lockSaveNavigation(Boolean(activeSave && !activeSave.preview));
                 let changing = parentDoc.querySelector(".object-detail-material-changing");
@@ -2391,6 +2408,7 @@ def install_object_detail_input_guard(
                         parentDoc.body.appendChild(changing);
                     }
                 } else changing?.remove();
+                updateApprovalControl();
                 const button = saveButton();
                 if (!button) return;
                 const invalid = invalidMaterial();
@@ -2944,6 +2962,9 @@ def install_object_detail_input_guard(
                 const nextCostQuantity = Number(result.cost_quantity ?? result.quantity);
                 const coatingRow = parentDoc.querySelector('[data-cost-band="part-coating"]');
                 if (coatingRow && result.part_coating) {
+                    const audit = result.part_coating;
+                    coatingRow.hidden = !(audit.parts?.length || audit.batches?.length || audit.partial || audit.issues?.length
+                        || Number(audit.hours) > 0 || Number(result.labor_hours_overrides?.['part-coating']) > 0);
                     coatingRow.dataset.coatingBatches = JSON.stringify(result.part_coating.batches || []);
                     coatingRow.dataset.costUnknown = String(result.part_coating.hours == null && result.labor_hours_overrides?.['part-coating'] == null);
                 }
@@ -3016,7 +3037,11 @@ def install_object_detail_input_guard(
                     if (Number(current.value) === Number(current.input.dataset.originalValue)) draft.delete(editKey(current));
                     else draft.set(editKey(current), {field: current.field, lineId: current.lineId, value: current.value});
                 }
-                if (!result.preview) saveButton()?.setAttribute("data-saved", "");
+                if (!result.preview) {
+                    saveButton()?.setAttribute("data-saved", "");
+                    const approve = parentDoc.querySelector('[data-object-detail-approve]');
+                    if (approve && result.approved === false) approve.dataset.approved = 'false';
+                }
                 previewMaterials();
                 previewLabor();
                 updateSaveControls();
@@ -3268,12 +3293,18 @@ def install_object_detail_input_guard(
                     }
                     if (ctx.field === 'labor_hours' && exact == null && editableValue(ctx.input) === '—') setEditableValue(ctx.input, '');
                     ctx.input.dataset.editStartValue = materialValue(ctx.input);
+                    if (ctx.input.dataset.editStartValue && Number(ctx.input.dataset.editStartValue) === 0) {
+                        ctx.input.dataset.focusZero = ctx.input.dataset.editStartValue;
+                        setEditableValue(ctx.input, '');
+                    }
                     moveCaretToEnd(ctx.input);
                     return;
                 }
                 ctx.input.dataset.editStartValue = normalizeInputValue(ctx.input);
                 if (!ctx.input.classList.contains("object-detail-cell-input--text")) {
-                    setEditableValue(ctx.input, ctx.input.dataset.editStartValue);
+                    const value = ctx.input.dataset.editStartValue;
+                    if (value && Number(value) === 0) ctx.input.dataset.focusZero = value;
+                    setEditableValue(ctx.input, value && Number(value) === 0 ? '' : value);
                     moveCaretToEnd(ctx.input);
                 }
             }
@@ -3337,9 +3368,12 @@ def install_object_detail_input_guard(
                     return;
                 }
                 const ctx = inputContext(event);
-                if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
+                if (!ctx) return;
+                if (ctx.input.classList.contains("object-detail-cell-input--text")) { updateApprovalControl(); return; }
+                delete ctx.input.dataset.focusZero;
                 if (materialField(ctx.field)) stageMaterialEdit(ctx);
                 else updateRowCost(ctx.input.closest(".object-detail-table-row"));
+                updateApprovalControl();
             }
 
             function handlePaste(event) {
@@ -3359,6 +3393,10 @@ def install_object_detail_input_guard(
                 }
                 const ctx = inputContext(event);
                 if (!ctx) return;
+                if (ctx.input.dataset.focusZero != null) {
+                    if (!editableValue(ctx.input)) setEditableValue(ctx.input, ctx.input.dataset.focusZero);
+                    delete ctx.input.dataset.focusZero;
+                }
                 if (materialField(ctx.field)) {
                     stageMaterialEdit(ctx, true);
                     return;
@@ -3451,6 +3489,9 @@ def install_object_detail_input_guard(
 
             async function prepareApproveSnapshot(event) {
                 const button = findApproveButton(event.target);
+                if (button && (parentWindow[SUBMITTING_KEY] || button.classList.contains('object-detail-approved'))) {
+                    event.preventDefault();event.stopImmediatePropagation();return;
+                }
                 if (button && (activeSave || draft.size || invalidMaterial())) {
                     event.preventDefault();
                     event.stopImmediatePropagation();
@@ -3461,16 +3502,17 @@ def install_object_detail_input_guard(
                 }
                 if (!button || parentWindow[SUBMITTING_KEY]) return;
                 const edits = snapshotEdits();
+                button.textContent = "APPROVING";
                 if (!edits.length) return;
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
                 parentWindow[SUBMITTING_KEY] = true;
                 button.setAttribute("aria-disabled", "true");
-                button.textContent = "SAVING...";
+                button.textContent = "APPROVING";
                 window.top.postMessage({
                     type: "costerly:transition-click",
-                    transition: "object_detail_to_objects",
+                    transition: "object_detail_approve_to_objects",
                     transitionId: crypto.randomUUID(),
                     sourceScreen: "object_detail",
                     targetScreen: "objects",
@@ -3563,6 +3605,7 @@ def install_object_detail_input_guard(
             };
             seedInputBaselines();
             seedRowBaselines();
+            updateApprovalControl();
             if (overheadHost() && draft.size) { previewMaterials(); previewLabor(); }
             else if (!overheadHost(false) || overheadHost(false).dataset.overheadStatus === "loading") {
                 overheadReady.observe(parentDoc.body, {childList: true, subtree: true});

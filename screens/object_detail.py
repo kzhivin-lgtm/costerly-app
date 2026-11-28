@@ -29,6 +29,7 @@ from use_cases.estimation import (
     load_object_detail_material_receipt,
     front_material_preview_receipt,
     save_object_detail_material_edits,
+    refresh_objects_estimation_prices,
 )
 from state.company_auth import company_auth_enabled
 from state.session import invalidate_object_detail_cache
@@ -353,16 +354,11 @@ def _material_editor(context: ObjectDetailContext) -> None:
             st.session_state.pop("approved_object_keys", None)
             _mark_objects_estimation_dirty(context.estimate_id)
             if base:
-                # A write receipt carries new rows, not the section's column schema.
-                incoming = {section['key']: section for section in data.get('sections', [])}
-                sections = [{**section, **incoming.pop(section['key'], {})}
-                            for section in base.get('sections', [])]
-                sections.extend(incoming.values())
-                st.session_state.setdefault("object_detail_data_cache", {})[key] = {
-                    **base, **data, "sections": sections,
-                    "self_cost": {**base.get("self_cost", {}), **data["self_cost"]}}
+                # Preserve the section schema and source/preview fields.
+                st.session_state.setdefault("object_detail_data_cache", {})[key] = _merge_detail_receipt(base, data, approved=False)
                 st.session_state.setdefault("object_detail_data_cache_dirty", set()).discard(context.estimate_id)
         result.update(
+            **({"approved": False} if not preview else {}),
             rows=object_detail_view.material_preview_rows(data),
             self_cost=data["self_cost"],
             cost_quantity=data.get("cost_quantity", data.get("quantity", 1)),
@@ -440,68 +436,107 @@ def _consume_pending_object_detail_snapshot() -> bool:
     return bool(edits)
 
 
+def _merge_detail_receipt(base: dict, receipt: dict, *, approved: bool) -> dict:
+    incoming = {section["key"]: section for section in receipt.get("sections", [])}
+    sections = [{**section, **incoming.pop(section["key"], {})} for section in base.get("sections", [])]
+    sections.extend(incoming.values())
+    return {**base, **receipt, "approved": approved, "sections": sections,
+            "self_cost": {**base.get("self_cost", {}), **receipt.get("self_cost", {})}}
+
+
+def _prepare_approved_return(estimate_id: str, object_id: str, approval: dict) -> None:
+    """Reuse committed allocation receipts and the existing commercial projection.
+
+    Approval has already been acknowledged. A failed read must never turn that
+    accepted write into a claimed failure, or expose an old allocation as ready.
+    """
+    key = (estimate_id, object_id)
+    base = st.session_state.get("object_detail_data_cache", {}).get(key)
+    comparisons = st.session_state.get("labor_v1_comparisons", {})
+    identity = next((identity for identity in comparisons if identity[2:] == key), None)
+    previous_labor = comparisons.get(identity) if identity else None
+    changed = approval.get("costs_changed") is not False
+    plan = approval.get("material_plan") or {}
+    if changed:
+        _mark_objects_estimation_dirty(estimate_id)
+        if base:
+            receipt = (plan.get("_object_detail_receipts") or {}).get(object_id)
+            if receipt is None:
+                receipt = load_object_detail_material_receipt(estimate_id=estimate_id, object_id=object_id)
+            base = _merge_detail_receipt(base, receipt, approved=True)
+            # Sheet allocation may change on the first approval. Prepare its
+            # existing Labor projection before making Done available again.
+            if identity and previous_labor:
+                from screens.estimation_labor_v1 import _calculate
+                labor = _calculate(get_supabase_client(), identity=identity)
+                if "overhead_context" in previous_labor:
+                    labor["overhead_context"] = previous_labor["overhead_context"]
+                st.session_state.setdefault("labor_v1_comparisons", {})[identity] = labor
+    if base:
+        st.session_state.setdefault("object_detail_data_cache", {})[key] = {**base, "approved": True}
+        st.session_state.setdefault("object_detail_data_cache_dirty", set()).discard(estimate_id)
+    project = st.session_state.get("objects_estimation_data_cache", {}).get(estimate_id)
+    if project:
+        project = refresh_objects_estimation_prices(estimate_id, project)
+        if plan:
+            project = {**project, "material_plan": {k: v for k, v in plan.items() if k != "_object_detail_receipts"}}
+        st.session_state.objects_estimation_data_cache[estimate_id] = project
+        st.session_state.setdefault("objects_estimation_cache_dirty", set()).discard(estimate_id)
+        st.session_state.setdefault("objects_estimation_pricing_dirty", set()).discard(estimate_id)
+    elif not changed:
+        st.session_state.setdefault("objects_estimation_pricing_dirty", set()).add(estimate_id)
+
+
 def _approve_current_object_and_return(
-    *,
-    estimate_id: str,
-    object_id: str,
-    run_id: str | None = None,
-    object_key: str | None = None,
-    recalculate: bool = False,
+    *, estimate_id: str, object_id: str, run_id: str | None = None,
+    object_key: str | None = None, recalculate: bool = False,
 ) -> None:
-    user_id = str(st.session_state.get("auth_user_id") or "")
-    if user_id:
-        client = get_supabase_client()
-        edits = fetch_rfq_object_detail_draft(
-            client,
-            user_id=user_id,
-            estimate_id=estimate_id,
-            object_id=object_id,
-        )
+    started = perf_counter()
+    phases = {}
+    try:
+        user_id = str(st.session_state.get("auth_user_id") or "")
+        client = get_supabase_client() if user_id else None
+        edits = fetch_rfq_object_detail_draft(client, user_id=user_id,
+                    estimate_id=estimate_id, object_id=object_id) if user_id else []
+        phases["draft_ms"] = (perf_counter() - started) * 1000
         if edits:
             approved = apply_object_detail_snapshot(
-                estimate_id=estimate_id,
-                object_id=object_id,
+                estimate_id=estimate_id, object_id=object_id,
                 run_id=str(run_id or st.session_state.get("current_run_id") or ""),
-                edits=edits,
-                approve=True,
-            )
-            delete_rfq_object_detail_draft(
-                client,
-                user_id=user_id,
-                estimate_id=estimate_id,
-                object_id=object_id,
-            )
+                edits=edits, approve=True)
+            delete_rfq_object_detail_draft(client, user_id=user_id,
+                                          estimate_id=estimate_id, object_id=object_id)
             if not approved:
                 st.session_state.object_detail_approval_error = (
-                    "Saving the updated material quantities. Approve once the totals are ready."
-                )
+                    "Saving the updated material quantities. Approve once the totals are ready.")
                 _mark_objects_estimation_dirty(estimate_id)
                 return
-            recalculate = False
-            _mark_objects_estimation_dirty(estimate_id)
-            approved_object_keys = st.session_state.setdefault("approved_object_keys", set())
-            approved_object_keys.add(object_key or object_id)
-            st.session_state.screen = "objects"
-            return
-    try:
-        approval = approve_object_estimate(
-            estimate_id=estimate_id,
-            object_id=object_id,
-            recalculate=recalculate,
-        )
-    except Exception:
+            approval = {"costs_changed": True}
+        else:
+            cached = st.session_state.get("object_detail_data_cache", {}).get((estimate_id, object_id), {})
+            if cached.get("approved") and not recalculate:
+                return
+            approval = approve_object_estimate(estimate_id=estimate_id, object_id=object_id,
+                                               recalculate=recalculate)
+        phases["write_ms"] = (perf_counter() - started) * 1000 - phases["draft_ms"]
+    except Exception as exc:
         _LOG.exception("Could not approve object %s in estimate %s", object_id, estimate_id)
+        report_runtime_failure("object_detail.approve", exc, estimate_id=estimate_id, object_id=object_id)
         st.session_state.object_detail_approval_error = "Could not approve the object. Please try again."
         return
-    if isinstance(approval, dict) and approval.get("costs_changed") is False:
-        # Approval alone does not change the prepared Object. Refresh only the
-        # existing small Project commercial projection, including current qty.
-        st.session_state.setdefault("objects_estimation_pricing_dirty", set()).add(estimate_id)
-    else:
-        invalidate_object_detail_cache(estimate_id)
+    prepared = perf_counter()
+    try:
+        _prepare_approved_return(estimate_id, object_id, approval if isinstance(approval, dict) else {})
+    except Exception as exc:
+        # The approval write succeeded. Keep canonical refresh/retry semantics.
+        _LOG.exception("Approval saved; could not prepare Project for %s", estimate_id)
+        report_runtime_failure("object_detail.approve_return", exc, estimate_id=estimate_id, object_id=object_id)
         _mark_objects_estimation_dirty(estimate_id)
-    approved_object_keys = st.session_state.setdefault("approved_object_keys", set())
-    approved_object_keys.add(object_key or object_id)
+    phases["return_prepare_ms"] = (perf_counter() - prepared) * 1000
+    st.session_state["_runtime_completed_action"] = {
+        "action": "approve_object", "status": "ok", "phase_durations_ms": phases,
+        "duration_ms": (perf_counter() - started) * 1000}
+    st.session_state.setdefault("approved_object_keys", set()).add(object_key or object_id)
     st.session_state.screen = "objects"
 
 

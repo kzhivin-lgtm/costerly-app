@@ -661,6 +661,7 @@ def _footer_html(
     run_id: object,
     estimate_id: object,
     object_id: object,
+    approved: bool = False,
 ) -> str:
     back_params = (
         f"screen=objects&run_id={html.escape(str(run_id or ''))}"
@@ -681,9 +682,11 @@ def _footer_html(
         '</a>'
         '<button type="button" class="object-detail-footer-button object-detail-footer-button--secondary '
         'object-detail-material-save" disabled>Save changes</button>'
-        f'<a class="object-detail-footer-button object-detail-footer-button--primary" href="?{approve_params}" '
+        f'<a class="object-detail-footer-button object-detail-footer-button--primary'
+        f'{" object-detail-approved" if approved else ""}" href="?{approve_params}" '
         'data-streamlit-bridge-key="object_detail_approve_bridge" '
-        'target="_self" data-object-detail-approve="true">APPROVE</a>'
+        f'target="_self" data-object-detail-approve="true" data-approved="{str(approved).lower()}" '
+        + ('aria-disabled="true"' if approved else "") + f'>{"APPROVED" if approved else "APPROVE"}</a>'
         '</div>'
         '<p class="object-detail-material-edit-status" role="status" aria-live="polite"></p>'
     )
@@ -788,5 +791,6 @@ def detail_summary_html(
             run_id=run_id,
             estimate_id=estimate_id,
             object_id=object_id,
+            approved=bool(data.get("approved")),
         ) + "</div>"
     )

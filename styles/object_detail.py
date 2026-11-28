@@ -1092,6 +1092,16 @@ def apply_object_detail_css() -> None:
 
         .object-detail-footer-button[hidden] { display: none; }
 
+        .object-detail-footer-button.object-detail-approved,
+        .object-detail-footer-button.object-detail-approved:hover {
+            background: #2f8d48;
+            border-color: #2f8d48;
+            color: white !important;
+            cursor: default;
+        }
+
+        [data-cost-band="part-coating"][hidden] { display: none !important; }
+
         @media (max-width: 760px) {
             .object-detail-hero,
             .object-detail-section-header,

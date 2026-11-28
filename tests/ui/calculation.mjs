@@ -170,6 +170,7 @@ async function coatingChecks(){
   await core.locator('.object-detail-materials-band > summary').click();
   await core.locator('[data-cost-band="labor"] > summary').click();
   assert.equal(await core.locator('[data-cost-band="part-coating"]').evaluate(n=>n.tagName),'DIV');
+  assert.equal(await core.locator('[data-cost-band="part-coating"]').isVisible(),false,'LDSP has no Part Coating stage');
   assert.equal(await core.locator('[data-cost-band="edge-banding"]').count(),0,'No edge operation means no Edge Banding row');
   const picker=core.getByRole('combobox',{name:'Front panels',exact:true});
   const hours=core.getByRole('textbox',{name:'Part Coating hours',exact:true});
@@ -179,6 +180,7 @@ async function coatingChecks(){
   await picker.selectOption('veneered_mdf');
   await core.getByRole('button',{name:'Save changes',exact:true}).waitFor();
   await frame.waitForFunction(()=>!document.querySelector('.object-detail-material-save')?.disabled);
+  assert.equal(await core.locator('[data-cost-band="part-coating"]').isVisible(),true,'Finishing becomes visible after the existing material preview receipt');
   assert.equal(await hours.innerText(),'5.1');
   await core.locator('.object-detail-materials-band').getByText('Wood lacquer',{exact:true}).waitFor();
   await core.locator('[data-cost-band="part-coating"] > .object-detail-cost-summary .object-detail-cost-title').click();
@@ -377,9 +379,32 @@ async function detailSaveChecks(){
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('.object-detail-materials-band > summary').click();
   assert.equal(await picker.inputValue(),'mdf');
-  await core.getByRole('link',{name:'APPROVE',exact:true}).click();
+  settings({front_panels:true,front_delay:0.15,approval_delay:0.6});
+  const pending=await core.getByRole('link',{name:'APPROVE',exact:true}).evaluate(n=>{
+   n.click();return {button:n.textContent,status:document.querySelector('#costerly-workflow-transition [role="status"]')?.textContent};
+  });
+  assert.equal(pending.button,'APPROVING');assert.equal(pending.status,'Approving…');
   await core.locator('.objects-pricing-table').waitFor();
+  await core.locator('#costerly-workflow-transition').waitFor({state:'hidden'});
+  assert.equal(await core.getByRole('link',{name:'Done',exact:true}).count(),1,'Acknowledged approval has a ready Done snapshot immediately on return');
   assert.equal(JSON.parse(readFileSync(statePath('object-approvals.json')))['object-001'],true);
+  await core.getByRole('link',{name:'Done',exact:true}).click();
+  const approved=core.getByRole('link',{name:'APPROVED',exact:true});
+  await approved.waitFor();
+  assert.equal(await approved.evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(47, 141, 72)');
+  const approvalCount=(readFileSync(journal,'utf8').match(/approve object/g)||[]).length;
+  await approved.evaluate(n=>n.click());
+  assert.equal(await core.locator('.object-detail-title--name').count(),1);
+  assert.equal((readFileSync(journal,'utf8').match(/approve object/g)||[]).length,approvalCount,'Unchanged APPROVED does not submit another write');
+  await core.locator('.object-detail-materials-band > summary').click();
+  await picker.selectOption('plywood');
+  await core.getByRole('button',{name:'Save changes',exact:true}).waitFor();
+  await core.getByRole('link',{name:'APPROVE',exact:true}).waitFor();
+  await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
+  assert.equal(await core.getByRole('link',{name:'APPROVED',exact:true}).count(),0);
+  await core.getByRole('link',{name:'Back to Project',exact:true}).click();
+  await core.getByRole('link',{name:'Review',exact:true}).waitFor();
+  report['approvalReopen'+width]={greenApproved:true,noDuplicateWrite:true,changedSaveReturnsReview:true};
   await page.close();
  }
  for(const name of ['front-choice','object-quantities.json','full-cost-totals.json','full-cost-lines.json','labor-hours.json','object-approvals.json'])rmSync(statePath(name),{force:true});
@@ -515,7 +540,13 @@ try{
   await core.locator('[data-cost-band="labor"] > summary').click();
   const stages=core.locator('[data-cost-band="labor"] > .object-detail-labor-body > .object-detail-work-row');
   assert.deepEqual(await stages.evaluateAll(nodes=>nodes.map(n=>n.dataset.costBand)),['part-production','part-coating','assembly-stage','preparation-packing']);
-  assert.equal(await core.locator('[data-cost-band="part-coating"] > .object-detail-cost-summary [data-labor-column="total"]').innerText(),'₪0');
+  assert.equal(await core.locator('[data-cost-band="part-coating"]').isVisible(),false,'No coating demand in LDSP fixture');
+  const zero=core.getByRole('textbox',{name:'Additional Assembly hours',exact:true});
+  await core.locator('[data-cost-band="assembly-stage"] > summary').click();
+  await zero.focus();assert.equal(await zero.innerText(),'');
+  await zero.press('Tab');assert.equal(await zero.innerText(),'0.0');
+  assert.equal(await core.getByRole('button',{name:'Save changes',exact:true}).isDisabled(),true,'Focus and untouched blur do not create a material draft');
+  await core.locator('[data-cost-band="assembly-stage"] > summary').click();
   const preparation=core.locator('[data-cost-band="preparation-packing"]');
   assert.equal(await preparation.locator(':scope > summary [data-labor-column="total"]').innerText(),'₪16');
   await preparation.locator(':scope > summary').click();
@@ -666,28 +697,29 @@ try{
   await overhead.waitFor();
   await assertSharedHours(100.25);
   await core.locator('[data-cost-band="preparation-packing"] > summary').click();
-  const extraHours={'File Preparation': '1.0','Edge Banding':'2.0','Part Coating':'1.2',
+  // LDSP has no coating editor; coatingChecks above retains coating overrides/payroll/reopen coverage.
+  const extraHours={'File Preparation': '1.0','Edge Banding':'2.0',
     'Additional Assembly':'0.4','Trial Installation':'0.5','Packing':'0.7'};
   for(const [title,value] of Object.entries(extraHours)){
    const input=core.getByRole('textbox',{name:title+' hours',exact:true});
    await input.fill(value);await input.press('Tab');
   }
-  await assertSharedHours(105.8);
+  await assertSharedHours(104.6);
   await assertCncRollup();
-  assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪6\u202f688');
-  assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f058');
-  assert.equal(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪8\u202f746');
+  assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪6\u202f538');
+  assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f046');
+  assert.equal(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪8\u202f584');
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
-  await assertSharedHours(105.8);
+  await assertSharedHours(104.6);
   await core.getByRole('link',{name:'Back to Project',exact:true}).click();
-  await core.getByText('₪8\u202f746',{exact:true}).first().waitFor();
+  await core.getByText('₪8\u202f584',{exact:true}).first().waitFor();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await core.locator('[data-cost-band="labor"] > summary').click();
   for(const key of ['part-production','assembly-stage','preparation-packing'])await core.locator(`[data-cost-band="${key}"] > summary`).click();
   await openCnc();
   for(const [title,value] of Object.entries(extraHours))
    assert.equal(await core.getByRole('textbox',{name:title+' hours',exact:true}).innerText(),value);
-  await overhead.waitFor();await assertSharedHours(105.8);await assertCncRollup();
+  await overhead.waitFor();await assertSharedHours(104.6);await assertCncRollup();
   await frame.evaluate(()=>{document.querySelector('[data-cost-band="labor"]').scrollLeft=0;});
   await frame.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   const workGeometry=await frame.evaluate(()=>{

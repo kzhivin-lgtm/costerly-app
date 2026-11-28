@@ -1,5 +1,14 @@
 # Persistent UI release contract
 
+Labor V3.7 extends Calculation with immediate APPROVING, acknowledged Done,
+unchanged green APPROVED reopening/no duplicate write, changed Save returning
+Review, zero focus/untouched blur without a draft, LDSP coating hidden and
+eligible finish preview becoming visible. All prior scenarios stay. Python
+checks shared allocation receipts/schema/source retention, canonical commercial
+refresh, failure separation and bounded Last Estimate read-cache reuse while
+new-upload/access/confirmation state is cleared. No production speed claim is
+inferred from these synthetic results.
+
 Labor V3.6 holds actual Object preparation in the Objects suite: no Review link
 before the complete Object/Labor/Overhead snapshot is ready, then normal covered
 navigation and all prior quantity/write/error/reopen scenarios. Correlated

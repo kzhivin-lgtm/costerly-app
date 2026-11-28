@@ -332,6 +332,8 @@ def save_materials(**kwargs):
    return result
   plan=front_plan(sample['plans'][0]['plan_payload'],choice)
   if not preview:
+   if (STATE / 'object-approvals.json').exists():
+    (STATE / 'object-approvals.json').write_text(json.dumps({'object-001':False}))
    (STATE/'front-choice').write_text(choice)
    if scenario().get('coating'):
     hours={edit['lineId']:estimation.validate_hours(edit['value']) for edit in kwargs['edits'] if edit['field']=='labor_hours'}
@@ -381,7 +383,10 @@ object_detail.get_supabase_client=Client
 object_detail.fetch_rfq_object_detail_draft=lambda *a,**kw:[]
 def approve_saved_object(**kwargs):
  assert kwargs['estimate_id']==estimate_id and kwargs['object_id']=='object-001'
+ sleep(float(scenario().get('approval_delay',0)))
+ record('approve object')
  (STATE / 'object-approvals.json').write_text(json.dumps({'object-001':True}))
+ return {'costs_changed':False}
 object_detail.approve_object_estimate=approve_saved_object
 if scenario().get('objects_v2'):
  objects._objects_price_input_config=lambda:('http://127.0.0.1:'+('8796' if scenario().get('fresh_progress') else '8798'),'fixture-anon','fixture-token')

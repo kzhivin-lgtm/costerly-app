@@ -3,6 +3,18 @@
 These rules apply to every Costerly AI screen and workflow. A missing interaction
 state is a product defect, not optional polish.
 
+## Labor V3.7 bounded owner-approved correction
+
+Owner approved28November2026: restore immediate APPROVING and green APPROVED
+for unchanged approved Objects, reuse acknowledged allocation receipts before
+Project Done, retain one valid last Project read snapshot across New Estimate.
+Fresh upload/worker/confirmation IDs and canonical quantity/access checks stay.
+Numeric zero clears visually on focus and restores on untouched blur without a
+write. Hide Part Coating only when the known effective audit has no coating demand
+or positive saved work; eligible/mixed/unknown finish work remains visible. Existing
+material preview receipts reconcile this visibility without replacing the card.
+All other accepted interactions remain unchanged. [Scenario matrix](LABOR_V3_7_APPROVAL_2026_11_28.md).
+
 ## Accepted workflow reference
 
 The owner requested a full preservation checkpoint of current Objects V2.6 on
