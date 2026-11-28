@@ -26,7 +26,7 @@ material controls remain required. Publish only the exact successful SHA through
 the normal publisher, then verify actual Core/wrapper versions and main ruleset.
 Rollback is a newly stamped, gated forward revert, never rewriting old checkpoints.
 
-Implementation prepared. Build: labor-v3.7-b20261128111248-approval-last-estimate-detection-v8.4.29.
+Implementation prepared. Build: labor-v3.7-b20261128113121-approval-last-estimate-detection-v8.4.29.
 Verification/publishing are pending. Earlier focused cases confirmed approval
 pending/reopen/changed Save, committed receipt preservation and cache/access
 boundaries. The retained LDSP all-work edit scenario now omits coating, with
@@ -76,3 +76,18 @@ sets both the existing manual-price cache and DOM to0, verifies focus/untouched
 blur without a write, then restores both and the derived summary. Runtime code
 and waits are unchanged. Complete Project/Proposal suite then passed77.078s,
 gate78.272s. The final exact-commit full gate is still required before publication.
+
+
+Final readiness diagnosis confirmed the intermittent Estimating strand: the
+fragment painted before harvesting its completed Future, then cancelled its
+interval after updating only the Python cache. A deterministic Future completing
+during paint failed before the change (stopped after its sole false/Estimating
+frame), then passed after moving the existing harvest before projection/paint.
+No interval, callback, request, or app rerun was added. Post-Save approval now
+also derives the owned current Object identity and prepares missing existing
+Labor/Overhead state, because Save invalidates that Python cache while updating
+the browser metrics in-place. Unchanged complete snapshots still avoid reads.
+Both changes have focused Python coverage. Desktop/mobile explicit Save/approval/
+reopen scenarios passed25.069s, gate26.173s. Candidatefcdb092a was not published;
+its local full run was stopped for this proven correction, not marked passing.
+This supersedes the earlier unknown Review-timeout diagnosis.

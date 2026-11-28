@@ -270,3 +270,59 @@ def test_approval_refresh_preserves_pdf_input_identity_even_when_prices_are_unch
     old_identity = {**fresh, "rows": [{**fresh["rows"][0], "proposal_input_basis": "old-inputs"}],
                     "proposal_source": {**fresh["proposal_source"], "material_plan_updated_at": "old-revision"}}
     assert pricing_signature(fresh) != pricing_signature(old_identity)
+
+
+def test_post_save_approval_restores_labor_readiness_before_project_done(monkeypatch):
+    from screens import estimation_labor_v1 as labor
+    st.session_state.clear()
+    st.session_state.screen = "object_detail"
+    st.session_state.object_detail_data_cache = {("e", "one"): {
+        "company_id": "c", "run_id": "r", "approved": False, "quantity": 1}}
+    st.session_state.objects_estimation_data_cache = {"e": {"rows": [{"object_key": "one", "status": "completed"}]}}
+    st.session_state.objects_estimation_cache_dirty = {"e"}
+    calls = []
+    def calculate(client, *, identity):
+        assert st.session_state.screen == "object_detail"
+        calls.append(identity)
+        return {"status": "ready", "assembly": {}, "preparation": {}}
+    monkeypatch.setattr(object_detail, "get_supabase_client", object)
+    monkeypatch.setattr(object_detail, "approve_object_estimate", lambda **kw: {"costs_changed": False})
+    monkeypatch.setattr(labor, "_calculate", calculate)
+    monkeypatch.setattr(labor, "_load_overhead_context", lambda *a: {"status": "ready"})
+    monkeypatch.setattr(object_detail, "refresh_objects_estimation_prices", lambda e, data, **kw: {
+        **data, "rows": [{"object_key": "one", "status": "completed", "reviewed": True}]})
+    object_detail._approve_current_object_and_return(estimate_id="e", object_id="one")
+    assert calls == [("c", "r", "e", "one")]
+    assert st.session_state.screen == "objects"
+    assert st.session_state.labor_v1_comparisons[("c", "r", "e", "one")]["overhead_context"] == {"status": "ready"}
+    assert st.session_state.object_detail_data_cache[("e", "one")]["approved"]
+
+
+def test_preparation_completion_is_painted_before_its_interval_is_stopped(monkeypatch):
+    from contextlib import nullcontext
+    st.session_state.clear()
+    st.session_state.screen = "objects"
+    future = Future()
+    st.session_state.object_detail_prefetch_futures = {("e", "one"): future}
+    data = {"rows": [{"object_key": "one", "status": "completed"}]}
+    rendered = []
+    stopped = []
+    monkeypatch.setattr(objects, "_consume_estimation_future", lambda: None)
+    monkeypatch.setattr(objects, "_data_with_object_routes", lambda data, **kw: data)
+    monkeypatch.setattr(objects, "_cache_routed_objects_data", lambda **kw: None)
+    monkeypatch.setattr(st, "container", lambda **kw: nullcontext())
+    monkeypatch.setattr(objects.objects_workflow, "stop_completed_preparation_refresh", lambda: stopped.append(len(rendered)))
+    def render(**kw):
+        row = objects._with_object_navigation_readiness(kw["screen_state"].data, "e")["rows"][0]
+        rendered.append(objects_pricing.review_action_ready(row))
+        # Complete during this paint, after readiness has been projected.
+        if not future.done(): future.set_result({"quantity": 1})
+    monkeypatch.setattr(objects, "_render_objects_table_content", render)
+    arguments = dict(estimate_id="e", run_id="r", company_id="c",
+                     initial_state=objects.ObjectsScreenState(data=data), live=False, preparing_details=True)
+    objects._render_live_objects_content(**arguments)
+    assert rendered == [False]
+    assert stopped == [], "The only painted frame is still Estimating; cancelling now strands it"
+    objects._render_live_objects_content(**arguments)
+    assert rendered == [False, True]
+    assert stopped == [2]

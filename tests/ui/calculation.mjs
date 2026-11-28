@@ -438,12 +438,12 @@ async function specialAssemblyChecks(){
  }
  report.specialAssembly={viewports:[1280,390],automaticHours:14,hardwareSeparate:true,savedReopen:true};
 }
+try{
 await specialAssemblyChecks();
 await detailSaveChecks();
 await frontPanelChecks();
 await coatingChecks();
 await materialRowGeometry();
-try{
  const progressStages={geometry_ready:8,understanding_ready:40,locators_ready:50,inventory_ready:65,
   parts_ready:67,material_context_ready:74,material_plan_ready:82,materials_ready:88,
   parts_check_ready:90,allocations_published:98,plan_published:99};

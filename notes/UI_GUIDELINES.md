@@ -13,7 +13,10 @@ Numeric zero clears visually on focus and restores on untouched blur without a
 write. Hide Part Coating only when the known effective audit has no coating demand
 or positive saved work; eligible/mixed/unknown finish work remains visible. Existing
 material preview receipts reconcile this visibility without replacing the card.
-All other accepted interactions remain unchanged. [Scenario matrix](LABOR_V3_7_APPROVAL_2026_11_28.md).
+The existing preparation interval stops only after the ready frame is painted;
+completion during an earlier paint must retain its next scheduled refresh. No
+new polling or app rerun is introduced. All other accepted interactions remain
+unchanged. [Scenario matrix](LABOR_V3_7_APPROVAL_2026_11_28.md).
 
 ## Accepted workflow reference
 

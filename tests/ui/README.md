@@ -6,7 +6,10 @@ Review, zero focus/untouched blur without a draft, LDSP coating hidden and
 eligible finish preview becoming visible. All prior scenarios stay. Python
 checks shared allocation receipts/schema/source retention, canonical commercial
 refresh, failure separation and bounded Last Estimate read-cache reuse while
-new-upload/access/confirmation state is cleared. No production speed claim is
+new-upload/access/confirmation state is cleared. A Future completing during
+paint must not stop the interval while its only painted frame is Estimating;
+the next frame must expose Review/Done before cancellation. Post-Save approval
+also restores invalidated Labor/Overhead readiness before returning. No production speed claim is
 inferred from these synthetic results.
 
 Labor V3.6 holds actual Object preparation in the Objects suite: no Review link

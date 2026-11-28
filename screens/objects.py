@@ -995,6 +995,13 @@ def _render_live_objects_content(
             data=routed_data,
             data_error=screen_state.data_error,
         )
+    # Harvest before projecting readiness. Cancelling the interval after a
+    # post-paint harvest would leave its last visible frame on Estimating.
+    _prefetch_completed_object_details(
+        estimate_id=estimate_id,
+        company_id=company_id,
+        data=_data_with_progress(routed_data, estimate_id),
+    )
     with st.container(key="objects_live_pricing"):
         _render_objects_table_content(
             estimate_id=estimate_id,
@@ -1007,11 +1014,6 @@ def _render_live_objects_content(
                 cache_warning=screen_state.cache_warning,
             ),
         )
-    _prefetch_completed_object_details(
-        estimate_id=estimate_id,
-        company_id=company_id,
-        data=_data_with_progress(routed_data, estimate_id),
-    )
     if preparing_details and not live and not _object_navigation_pending(routed_data, estimate_id):
         objects_workflow.stop_completed_preparation_refresh()
 

@@ -455,6 +455,8 @@ def _prepare_approved_return(estimate_id: str, object_id: str, approval: dict) -
     comparisons = st.session_state.get("labor_v1_comparisons", {})
     identity = next((identity for identity in comparisons if identity[2:] == key), None)
     previous_labor = comparisons.get(identity) if identity else None
+    if identity is None and base and base.get("company_id") and base.get("run_id"):
+        identity = (str(base["company_id"]), str(base["run_id"]), estimate_id, object_id)
     changed = approval.get("costs_changed") is not False
     refresh_inputs = changed or estimate_id in st.session_state.get("objects_estimation_cache_dirty", set())
     plan = approval.get("material_plan") or {}
@@ -465,14 +467,17 @@ def _prepare_approved_return(estimate_id: str, object_id: str, approval: dict) -
             if receipt is None:
                 receipt = load_object_detail_material_receipt(estimate_id=estimate_id, object_id=object_id)
             base = _merge_detail_receipt(base, receipt, approved=True)
-            # Sheet allocation may change on the first approval. Prepare its
-            # existing Labor projection before making Done available again.
-            if identity and previous_labor:
-                from screens.estimation_labor_v1 import _calculate
-                labor = _calculate(get_supabase_client(), identity=identity)
-                if "overhead_context" in previous_labor:
-                    labor["overhead_context"] = previous_labor["overhead_context"]
-                st.session_state.setdefault("labor_v1_comparisons", {})[identity] = labor
+    # Save invalidates the Python Labor cache even though the browser receives
+    # updated metrics in-place. Prepare that missing state before exposing Done.
+    if base and identity and (changed or not previous_labor or not
+                              {"assembly", "preparation", "overhead_context"}.issubset(previous_labor)):
+        from screens.estimation_labor_v1 import _calculate, _load_overhead_context
+        client = get_supabase_client()
+        labor = _calculate(client, identity=identity)
+        labor["overhead_context"] = (previous_labor["overhead_context"]
+            if previous_labor and "overhead_context" in previous_labor
+            else _load_overhead_context(client, identity[0]))
+        st.session_state.setdefault("labor_v1_comparisons", {})[identity] = labor
     if base:
         st.session_state.setdefault("object_detail_data_cache", {})[key] = {**base, "approved": True}
         st.session_state.setdefault("object_detail_data_cache_dirty", set()).discard(estimate_id)
