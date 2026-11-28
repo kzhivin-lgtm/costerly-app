@@ -155,6 +155,7 @@ def _load_object_detail_or_render_error(context: ObjectDetailContext) -> dict[st
             data = prefetch.result(timeout=15)
         except TimeoutError:
             prefetches[cache_key] = prefetch
+            st.session_state.object_detail_quantity_check = cache_key
             st.error("Object is still preparing. Return to Project and try again.")
             _back_to_objects_button()
             return None

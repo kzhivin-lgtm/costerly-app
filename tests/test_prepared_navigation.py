@@ -53,6 +53,7 @@ def test_pending_timeout_never_duplicates_read_or_exposes_stale_card(monkeypatch
     monkeypatch.setattr(object_detail, "_back_to_objects_button", lambda: None)
     assert object_detail._load_object_detail_or_render_error(object_detail.ObjectDetailContext("e", "one", "r")) is None
     assert st.session_state.object_detail_prefetch_futures[("e", "one")] is pending
+    assert st.session_state.object_detail_quantity_check == ("e", "one")
 
 
 def test_quantity_changed_while_prefetch_ran_rejects_old_snapshot(monkeypatch):

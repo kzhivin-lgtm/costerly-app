@@ -24,8 +24,8 @@ and production speed are pending verification, not established by this plan.
 Use existing bounded detail executor and existing Project fragment. Preparation
 starts only for terminal Objects; the existing1.5s refresh also observes pending
 presentation work after a saved Project first paints. It ends with one full
-rerun once preparations are terminal, then has no interval. No new worker,
-observer, network poll or write is introduced. Pending-only presentation refresh
+rerun once preparations are terminal, then has no interval. No separate worker,
+observer, polling mechanism or write is introduced. Pending-only presentation refresh
 uses the existing Project snapshot and must not reread the whole estimate.
 
 Alternative rejected by owner: enable Review on calculation completion and make

@@ -96,7 +96,8 @@ try{
  await delayed.waitForTimeout(8150);
  assert.equal(await delayed.locator('#app-loading-mask').getAttribute('class'),'app-loading-mask');
  assert.equal(await delayed.locator('iframe.is-ready').count(),0,'Eight elapsed seconds cannot uncover an unready app');
- await ready(delayed);await delayed.close();passed('Startup keeps visible shared loading feedback until actual ready, including beyond8s');
+ await ready(delayed);assert.equal(await delayed.locator('#app-loading-mask').getAttribute('aria-hidden'),'true');
+ await delayed.close();passed('Startup keeps visible shared loading feedback until actual ready, including beyond8s');
  let page=await boot();await matched(page);assert.equal(deliveries,1);
  let frame=await coreFrame(page);await frame.waitForFunction(()=>window.restoredSession!==undefined);
  const tokens={access_token:'synthetic-access',refresh_token:'synthetic-refresh',expires_at:4102444800};
