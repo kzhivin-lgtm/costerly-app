@@ -59,3 +59,12 @@ Streamlit1.64 stop_auto_rerun message now cancels only the owned fragment's
 interval. This is the same protocol used by the installed framework for timed
 child eviction. Scoped/absent-context Python checks and unchanged old-wrapper
 recovery passed. Full final local/remote integration gates remain mandatory.
+
+Candidate843f4d75 was blocked by exact GitHub run46132019215/job140939117240.
+Its Objects closing-gap failure325px was secondary to a Streamlit exception:
+the fragment ID belongs to ThreadState, not ScriptRunContext. Official artifact
+15258148413 digest d7eef5dd207f52dab46f7e18856a03291eaf9dc6711363d5ccfceea96e1f5196
+and local server logs confirm the same cause. The helper now reads the installed
+framework's ThreadState API; a real AppTest fragment additionally covers this
+boundary instead of relying on a mock context shape. No geometry assertion or
+timeout was weakened. This candidate was never published.

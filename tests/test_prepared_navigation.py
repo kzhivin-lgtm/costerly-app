@@ -155,13 +155,33 @@ def test_newer_cached_quantity_is_not_replaced_from_an_older_project_render(monk
 def test_preparation_refresh_cancellation_is_scoped_and_never_reruns_app(monkeypatch, fragment_id):
     from types import SimpleNamespace
     from ui import objects_workflow
+    from streamlit.runtime.scriptrunner_utils.script_run_context import ThreadState
     messages = []
     monkeypatch.setattr(objects_workflow, "get_script_run_ctx", lambda **_: SimpleNamespace(
-        current_fragment_id=fragment_id, enqueue=messages.append))
-    objects_workflow.stop_completed_preparation_refresh()
+        enqueue=messages.append))
+    ThreadState.initialize()
+    with ThreadState.scoped(fragment_id=fragment_id):
+        objects_workflow.stop_completed_preparation_refresh()
     if fragment_id is None:
         assert messages == []
     else:
         assert len(messages) == 1
         assert messages[0].WhichOneof("type") == "stop_auto_rerun"
         assert list(messages[0].stop_auto_rerun.fragment_ids) == [fragment_id]
+
+
+def _real_preparation_fragment():
+    import streamlit as st
+    from ui.objects_workflow import stop_completed_preparation_refresh
+    @st.fragment(run_every=1.5)
+    def prepared():
+        st.markdown("Prepared Object")
+        stop_completed_preparation_refresh()
+    prepared()
+
+
+def test_preparation_refresh_stops_with_real_streamlit_fragment_context():
+    from streamlit.testing.v1 import AppTest
+    app = AppTest.from_function(_real_preparation_fragment).run()
+    assert not app.exception
+    assert app.markdown[0].value == "Prepared Object"

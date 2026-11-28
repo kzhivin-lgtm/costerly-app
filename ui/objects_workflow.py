@@ -11,6 +11,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from streamlit.proto.ForwardMsg_pb2 import ForwardMsg
 from streamlit.runtime.scriptrunner import get_script_run_ctx
+from streamlit.runtime.scriptrunner_utils.script_run_context import ThreadState
 
 from ui.layout import post_upload_title_html
 from ui.screen_transition import OBJECTS_MARKER_ID
@@ -24,10 +25,13 @@ def stop_completed_preparation_refresh() -> None:
     Keep the pinned protocol covered: a full rerun here breaks old-tab recovery.
     """
     context = get_script_run_ctx(suppress_warning=True)
-    if context is None or not context.current_fragment_id:
+    if context is None:
+        return
+    fragment_id = ThreadState.get().fragment_id
+    if not fragment_id:
         return
     message = ForwardMsg()
-    message.stop_auto_rerun.fragment_ids.append(context.current_fragment_id)
+    message.stop_auto_rerun.fragment_ids.append(fragment_id)
     context.enqueue(message)
 
 
