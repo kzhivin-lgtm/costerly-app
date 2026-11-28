@@ -326,3 +326,182 @@ def test_preparation_completion_is_painted_before_its_interval_is_stopped(monkey
     objects._render_live_objects_content(**arguments)
     assert rendered == [False, True]
     assert stopped == [2]
+
+
+def test_last_estimate_receipt_is_scoped_and_single_use(monkeypatch):
+    from state import company_auth, session
+    st.session_state.clear()
+    monkeypatch.setattr(session, "get_company_id", lambda: pytest.fail("Callback must leave auth validation to app"))
+    company_auth._open_last_estimate({"run_id": "r", "estimate_id": "e"}, company_id="c")
+    receipt = st.session_state.file_review_navigation_ready
+    assert receipt == {"company_id": "c", "run_id": "r", "last_estimate": True}
+    assert file_review._consume_prepared_file_review_navigation(company_id="other", run_id="r") is None
+    assert st.session_state.file_review_navigation_ready == receipt
+    assert file_review._consume_prepared_file_review_navigation(company_id="c", run_id="r") is None
+    assert "file_review_navigation_ready" not in st.session_state
+    assert st.session_state.screen == "file_review"
+
+
+def test_last_estimate_publications_overlap_without_worker_state_access(monkeypatch):
+    from threading import current_thread, main_thread
+    st.session_state.clear()
+    st.session_state.screen = "file_review"
+    barrier = Barrier(2)
+    calls = []
+    client = object()
+    monkeypatch.setattr(file_review, "get_supabase_client", lambda: client)
+    def read(kind):
+        def loader(run_id, **kwargs):
+            assert kwargs == {"client": client, "company_id": "c"}
+            assert run_id == "r" and current_thread() != main_thread()
+            barrier.wait(timeout=2)
+            return {"status": "succeeded", "kind": kind}
+        return loader
+    monkeypatch.setattr(file_review, "load_file_review_naming_publication", read("naming"))
+    monkeypatch.setattr(file_review, "load_file_review_document_identity_publication", read("identity"))
+    def publish(kind):
+        def record(*args, **kwargs):
+            assert current_thread() == main_thread()
+            calls.append(kind)
+        return record
+    monkeypatch.setattr(file_review, "_publish_persisted_naming", publish("naming"))
+    monkeypatch.setattr(file_review, "_publish_persisted_document_identity", publish("identity"))
+    file_review._sync_last_estimate_publications("r", "c")
+    assert calls == ["naming", "identity"]
+    assert st.session_state.screen == "file_review"
+    assert st.session_state["file_review_naming_cache_synced.r"]
+    assert st.session_state["file_review_document_identity_cache_synced.r"]
+    file_review._sync_last_estimate_publications("r", "c")
+    assert calls == ["naming", "identity"], "Terminal publication must not be read twice"
+
+
+def test_last_estimate_keeps_local_pending_work_read_free(monkeypatch):
+    st.session_state.clear()
+    st.session_state.file_review_deferred_work = {"run_id": "r", "naming": True}
+    st.session_state.current_naming_future = Future()
+    st.session_state["file_review_document_identity_cache_synced.r"] = True
+    monkeypatch.setattr(file_review, "get_supabase_client", lambda: pytest.fail("Pending local work must not read"))
+    file_review._sync_last_estimate_publications("r", "c")
+    assert "file_review_naming_cache_synced.r" not in st.session_state
+
+
+def test_last_estimate_owned_project_reads_overlap_and_preserve_output(monkeypatch):
+    from use_cases import estimation as e
+    barrier = Barrier(3)
+    parallel = False
+    owned = []
+    monkeypatch.setattr(e, "get_supabase_client", object)
+    monkeypatch.setattr(e, "_assert_screen_estimate_access", lambda *a, **kw: owned.append(kw))
+    objects_frame = pd.DataFrame([{"object_id": "one", "company_id": "c", "run_id": "r",
+        "object_name": "Bench", "status": "completed", "quantity": 2, "self_cost_ex_vat": 100, "approved": True}])
+    def read(value):
+        assert owned
+        if parallel:
+            barrier.wait(timeout=2)
+        return value.copy(deep=True)
+    monkeypatch.setattr(e, "fetch_rfq_object_estimates", lambda *a: read(objects_frame))
+    monkeypatch.setattr(e, "fetch_rfq_estimate_pricing_overrides", lambda *a: read(pd.DataFrame()))
+    monkeypatch.setattr(e, "fetch_rfq_estimate_material_plan", lambda *a: read(pd.DataFrame()))
+    monkeypatch.setattr(e, "fetch_company_overhead_settings", lambda *a: pd.DataFrame([{"vat_percent": 18, "sale_price_markup_percent": 30}]))
+    monkeypatch.setattr(e, "fetch_rfq_run", lambda *a: pd.DataFrame([{"project_name": "Current title"}]))
+    sequential = e.load_objects_estimation_data("e")
+    parallel = True
+    overlapping = e.load_objects_estimation_data("e", parallel_reads=True, company_id="c")
+    assert overlapping == sequential
+    assert owned == [{}, {"company_id": "c"}]
+    assert overlapping["rows"][0]["reviewed"] is True
+    assert overlapping["rows"][0]["sale_price_total"] == 260
+
+
+def test_last_estimate_cost_context_reads_overlap_but_keep_identical_inputs(monkeypatch):
+    from use_cases import estimation as e
+    barrier = Barrier(4)
+    parallel = False
+    client = object()
+    def read(value):
+        if parallel:
+            barrier.wait(timeout=2)
+        return value
+    monkeypatch.setattr(e, "with_production_capacity", lambda *a: read({"workers": 12}))
+    monkeypatch.setattr(e, "fetch_company_overhead_monthly", lambda *a: read(pd.DataFrame([{"rent": 20}])))
+    monkeypatch.setattr(e, "load_sheet_processing_machinery", lambda *a: read({"machine": "current"}))
+    monkeypatch.setattr(e, "load_parts_check", lambda **kw: read({"status": "ready", "report_sha256": "current"}))
+    obj = {"company_id": "c", "run_id": "r", "estimate_id": "e"}
+    plan = {"current": True}
+    original = e._full_cost_context(client, obj, plan, {})
+    parallel = True
+    assert e._full_cost_context(client, obj, plan, {}, parallel_reads=True) == original
+
+
+def test_last_estimate_parallel_reads_never_start_before_ownership(monkeypatch):
+    from use_cases import estimation as e
+    monkeypatch.setattr(e, "get_supabase_client", object)
+    def reject(*a, **kw):
+        raise PermissionError("not owned")
+    monkeypatch.setattr(e, "_assert_screen_estimate_access", reject)
+    monkeypatch.setattr(e, "fetch_rfq_object_estimates", lambda *a: pytest.fail("Read before ownership"))
+    with pytest.raises(PermissionError, match="not owned"):
+        e.load_objects_estimation_data("e", parallel_reads=True, company_id="other")
+
+
+@pytest.mark.parametrize("kind", ["naming", "document_identity"])
+def test_last_estimate_publication_uses_captured_owned_client(monkeypatch, kind):
+    from use_cases import rfq_processing as r
+    from state import company_auth
+    client = object()
+    calls = []
+    monkeypatch.setattr(company_auth, "company_auth_enabled", lambda: True)
+    monkeypatch.setattr(r, "get_supabase_client", lambda: pytest.fail("No worker session/client lookup"))
+    monkeypatch.setattr(r, "get_company_id", lambda: pytest.fail("No worker auth state lookup"))
+    monkeypatch.setattr(r, "assert_run_owned", lambda *a: calls.append(("owned", a)))
+    def terminal(*args):
+        assert calls == [("owned", (client, "r", "c"))]
+        calls.append(("terminal", args))
+        return {"status": "succeeded"}
+    monkeypatch.setattr(r, "fetch_deferred_naming_status", terminal)
+    monkeypatch.setattr(r, "fetch_deferred_document_identity_status", terminal)
+    monkeypatch.setattr(r, "fetch_rfq_detected_object_names", lambda *a: [{"object_id": "one", "object_name": "Current manual name"}])
+    monkeypatch.setattr(r, "fetch_rfq_run", lambda *a: pd.DataFrame([{"project_name": "Current title"}]))
+    loader = r.load_file_review_naming_publication if kind == "naming" else r.load_file_review_document_identity_publication
+    result = loader("r", client=client, company_id="c")
+    assert result["status"] == "succeeded"
+    assert result.get("names", {}).get("one") == "Current manual name" if kind == "naming" else result["metadata"]["project_name"] == "Current title"
+
+
+def test_last_estimate_warm_prices_overlap_without_changing_canonical_result(monkeypatch):
+    from use_cases import estimation as e
+    parallel = False
+    barrier = Barrier(3)
+    monkeypatch.setattr(e, "get_supabase_client", object)
+    monkeypatch.setattr(e, "_assert_screen_estimate_access", lambda *a, **kw: None)
+    objects_frame = pd.DataFrame([{"object_id": "one", "company_id": "c", "quantity": 3,
+        "self_cost_ex_vat": 120, "approved": False}])
+    def read(value):
+        if parallel:
+            barrier.wait(timeout=2)
+        return value.copy(deep=True)
+    monkeypatch.setattr(e, "fetch_rfq_object_estimates", lambda *a: read(objects_frame))
+    monkeypatch.setattr(e, "fetch_rfq_estimate_pricing_overrides", lambda *a: read(pd.DataFrame()))
+    monkeypatch.setattr(e, "fetch_company_overhead_settings", lambda *a: read(pd.DataFrame([{"vat_percent": 18, "sale_price_markup_percent": 30}])))
+    cached = {"company_id": "c", "rows": [{"object_key": "one", "name": "Bench", "status": "completed"}]}
+    expected = e.refresh_objects_estimation_prices("e", cached)
+    parallel = True
+    actual = e.refresh_objects_estimation_prices("e", cached, parallel_reads=True, company_id="c")
+    assert actual == expected
+    assert actual["rows"][0]["quantity"] == 3 and actual["rows"][0]["sale_price_total"] == 468
+    assert actual["rows"][0]["reviewed"] is False
+
+
+def test_last_estimate_context_failure_never_starts_cost_writes(monkeypatch):
+    from use_cases import estimation as e
+    monkeypatch.setattr(e, "with_production_capacity", lambda *a: {})
+    monkeypatch.setattr(e, "fetch_company_overhead_monthly", lambda *a: pd.DataFrame())
+    monkeypatch.setattr(e, "load_sheet_processing_machinery", lambda *a: {})
+    def fail(**kwargs):
+        raise ConnectionError("owned parts read failed")
+    monkeypatch.setattr(e, "load_parts_check", fail)
+    monkeypatch.setattr(e, "_recalculate_object_estimate_totals", lambda *a, **kw: pytest.fail("Write before complete input reads"))
+    objects_frame = pd.DataFrame([{"object_id": "one", "company_id": "c", "run_id": "r", "status": "completed"}])
+    with pytest.raises(ConnectionError, match="owned parts read failed"):
+        e._ensure_full_object_costs(object(), estimate_id="e", objects=objects_frame,
+                                  plan={"parts_check_source": {"current": True}}, settings={}, parallel_reads=True)

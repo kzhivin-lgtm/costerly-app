@@ -58,8 +58,22 @@ from use_cases.part_coating import calculate_part_coating, coating_material_rows
 _FULL_COST_SOURCE = "object_costs_v3_1"
 
 
-def _full_cost_context(client, obj, plan, settings=None, *, preserve_labor=False):
+def _full_cost_context(client, obj, plan, settings=None, *, preserve_labor=False, parallel_reads=False):
     company = str(obj["company_id"])
+    if parallel_reads:
+        # Last Estimate only: identical canonical inputs, bounded local read join.
+        # No state/widget access or writes occurs in these workers. Cost math
+        # and persistence still run afterwards on the caller, in existing order.
+        with ThreadPoolExecutor(max_workers=4, thread_name_prefix="last-estimate-cost-read") as pool:
+            capacity = pool.submit(with_production_capacity, client, company,
+                settings if settings is not None else _first_row(fetch_company_overhead_settings(client, company)))
+            monthly = pool.submit(fetch_company_overhead_monthly, client, company)
+            machinery = None if preserve_labor else pool.submit(load_sheet_processing_machinery, client, company)
+            parts = None if preserve_labor else pool.submit(load_parts_check, client=client, company_id=company,
+                run_id=str(obj["run_id"]), estimate_id=str(obj["estimate_id"]), include_payload=False)
+            return {"settings": capacity.result(), "monthly": _first_row(monthly.result()),
+                    "machinery": machinery.result() if machinery else {}, "plan": plan,
+                    "parts": parts.result() if parts else {}, "preserve_labor": preserve_labor}
     return {
         "settings": with_production_capacity(client, company, settings if settings is not None else _first_row(fetch_company_overhead_settings(client, company))),
         "monthly": _first_row(fetch_company_overhead_monthly(client, company)),
@@ -185,14 +199,16 @@ def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, conte
     return summary, True
 
 
-def _ensure_full_object_costs(client, *, estimate_id, objects, plan, settings):
+def _ensure_full_object_costs(client, *, estimate_id, objects, plan, settings, parallel_reads=False):
     if objects.empty or not plan.get("parts_check_source"):
         return
     eligible = objects[objects["status"].isin(["completed", "review_required"])]
     if eligible.empty:
         return
     obj = {**eligible.iloc[0].to_dict(), "estimate_id": estimate_id}
-    context = _full_cost_context(client, obj, plan, settings)
+    context = _full_cost_context(client, obj, plan, settings, **(
+        {"parallel_reads": True} if parallel_reads else {}
+    ))
     all_lines = fetch_rfq_estimate_lines(client, estimate_id)
     for _, row in eligible.iterrows():
         obj = {**row.to_dict(), "estimate_id": estimate_id}
@@ -394,16 +410,28 @@ def _object_visible_materials(plan: dict[str, Any], checked: dict[str, Any], obj
     return " · ".join(labels)
 
 
-def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
+def load_objects_estimation_data(estimate_id: str, *, parallel_reads: bool = False,
+                                  company_id: str | None = None) -> dict[str, Any]:
     """Load current object estimate statuses for the Objects Estimation screen."""
     client = get_supabase_client()
-    _assert_screen_estimate_access(client, estimate_id)
-    objects_df = read_with_retry(lambda: fetch_rfq_object_estimates(client, estimate_id))
-    overrides_df = read_with_retry(lambda: fetch_rfq_estimate_pricing_overrides(client, estimate_id))
-    try:
-        material_plan_df = read_with_retry(lambda: fetch_rfq_estimate_material_plan(client, estimate_id))
-    except Exception:
-        material_plan_df = None
+    _assert_screen_estimate_access(client, estimate_id, **({"company_id": company_id} if parallel_reads else {}))
+    if parallel_reads:
+        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="last-estimate-project-read") as pool:
+            objects_future = pool.submit(read_with_retry, lambda: fetch_rfq_object_estimates(client, estimate_id))
+            overrides_future = pool.submit(read_with_retry, lambda: fetch_rfq_estimate_pricing_overrides(client, estimate_id))
+            plan_future = pool.submit(read_with_retry, lambda: fetch_rfq_estimate_material_plan(client, estimate_id))
+            objects_df, overrides_df = objects_future.result(), overrides_future.result()
+            try:
+                material_plan_df = plan_future.result()
+            except Exception:
+                material_plan_df = None
+    else:
+        objects_df = read_with_retry(lambda: fetch_rfq_object_estimates(client, estimate_id))
+        overrides_df = read_with_retry(lambda: fetch_rfq_estimate_pricing_overrides(client, estimate_id))
+        try:
+            material_plan_df = read_with_retry(lambda: fetch_rfq_estimate_material_plan(client, estimate_id))
+        except Exception:
+            material_plan_df = None
     material_plan_row = (
         material_plan_df.iloc[0].to_dict()
         if material_plan_df is not None and not material_plan_df.empty
@@ -419,7 +447,8 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     vat_percent = _number(settings.get("vat_percent"), 18)
     markup_percent = _number(settings.get("sale_price_markup_percent"), 30)
     _ensure_full_object_costs(client, estimate_id=estimate_id, objects=objects_df,
-                             plan=material_plan, settings=settings)
+                             plan=material_plan, settings=settings,
+                             **({"parallel_reads": True} if parallel_reads else {}))
     delivery_percent = _number(settings.get("delivery_percent"), 3)
     installation_percent = _number(settings.get("installation_percent"), 10)
     checked_objects = material_plan.get("parts_check") or {}
@@ -496,16 +525,30 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     }
 
 
-def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any], *, refresh_inputs: bool = False) -> dict[str, Any]:
+def refresh_objects_estimation_prices(estimate_id: str, cached: dict[str, Any], *, refresh_inputs: bool = False,
+                                     parallel_reads: bool = False, company_id: str | None = None) -> dict[str, Any]:
     """Refresh saved commercial inputs without rebuilding costs or materials."""
     client = get_supabase_client()
-    _assert_screen_estimate_access(client, estimate_id)
-    objects = fetch_rfq_object_estimates(client, estimate_id)
-    saved_overrides = fetch_rfq_estimate_pricing_overrides(client, estimate_id)
+    _assert_screen_estimate_access(client, estimate_id, **({"company_id": company_id} if parallel_reads else {}))
+    settings = None
+    if parallel_reads:
+        if company_id and cached.get("company_id") not in (None, "", company_id):
+            raise PermissionError("The saved Project belongs to another company")
+        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="last-estimate-price-read") as pool:
+            objects_future = pool.submit(fetch_rfq_object_estimates, client, estimate_id)
+            overrides_future = pool.submit(fetch_rfq_estimate_pricing_overrides, client, estimate_id)
+            settings_future = pool.submit(fetch_company_overhead_settings, client, company_id) if company_id else None
+            objects, saved_overrides = objects_future.result(), overrides_future.result()
+            if settings_future is not None:
+                settings = _first_row(settings_future.result())
+    else:
+        objects = fetch_rfq_object_estimates(client, estimate_id)
+        saved_overrides = fetch_rfq_estimate_pricing_overrides(client, estimate_id)
     overrides = _pricing_overrides_by_object(saved_overrides)
     if objects.empty:
         raise ValueError("The saved estimate is unavailable")
-    settings = _first_row(fetch_company_overhead_settings(client, str(objects.iloc[0]["company_id"])))
+    if settings is None:
+        settings = _first_row(fetch_company_overhead_settings(client, str(objects.iloc[0]["company_id"])))
     saved = {str(row["object_id"]): row for row in objects.to_dict("records")}
     plan_row = _first_row(fetch_rfq_estimate_material_plan(client, estimate_id)) if refresh_inputs else None
     plan = (plan_row or {}).get("plan_payload") or {}

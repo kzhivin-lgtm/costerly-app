@@ -3,6 +3,17 @@
 These rules apply to every Costerly AI screen and workflow. A missing interaction
 state is a product defect, not optional polish.
 
+## Labor V3.9 Last Estimate restore
+
+Only Last Estimate's single-use company/run receipt opts into bounded parallel
+reads during File Review restoration and existing Project preparation. Every
+read group retains ownership/dependency checks; all required data is joined
+before the original readiness, calculation or persistence step. No earlier
+Continue/Review, extra polling/requests, longer transition timeout, pricing/math,
+approval or other navigation change. Workers receive the captured owned client
+and identifiers; session/widget reconciliation stays on the caller. Default
+paths remain sequential. [Evidence/scope](LABOR_V3_9_LAST_ESTIMATE_2026_11_28.md).
+
 ## Labor V3.8 blank Project regression repair
 
 File Review metadata/name field callbacks persist accepted changes and reject

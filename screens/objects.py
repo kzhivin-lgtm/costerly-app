@@ -82,6 +82,7 @@ def prepare_objects_navigation_state(
     run_id: str,
     estimate_id: str,
     seed_rows: list[dict[str, object]] | None = None,
+    parallel_reads: bool = False,
 ) -> dict[str, object] | None:
     """Return the full Objects state required before File Review enables Continue.
 
@@ -98,7 +99,9 @@ def prepare_objects_navigation_state(
             "cache_warning": None,
         }
 
-    state = _current_objects_state(estimate_id)
+    state = _current_objects_state(estimate_id, **(
+        {"parallel_reads": True, "company_id": company_id} if parallel_reads else {}
+    ))
     if state.data_error:
         return None
     return {
@@ -252,7 +255,8 @@ def _objects_price_input_config() -> tuple[str | None, str | None, str | None]:
     )
 
 
-def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str | None]:
+def _load_objects_screen_data(estimate_id: str, *, parallel_reads: bool = False,
+                              company_id: str | None = None) -> tuple[dict[str, object], str | None]:
     """Load Objects data from session cache first, then Supabase when needed."""
     cache = st.session_state.setdefault("objects_estimation_data_cache", {})
     dirty_estimates = st.session_state.setdefault("objects_estimation_cache_dirty", set())
@@ -261,7 +265,9 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
         pricing_dirty = st.session_state.setdefault("objects_estimation_pricing_dirty", set())
         if estimate_id in pricing_dirty:
             try:
-                cache[estimate_id] = refresh_objects_estimation_prices(estimate_id, cache[estimate_id])
+                cache[estimate_id] = refresh_objects_estimation_prices(estimate_id, cache[estimate_id], **(
+                    {"parallel_reads": True, "company_id": company_id} if parallel_reads else {}
+                ))
                 pricing_dirty.discard(estimate_id)
                 st.session_state.pop("approved_object_keys", None)
             except Exception as exc:
@@ -269,7 +275,9 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
         return cache[estimate_id], None
 
     try:
-        data = load_objects_estimation_data(estimate_id)
+        data = load_objects_estimation_data(estimate_id, **(
+            {"parallel_reads": True, "company_id": company_id} if parallel_reads else {}
+        ))
     except Exception as exc:
         cached = cache.get(estimate_id)
         if cached is not None:
@@ -411,7 +419,8 @@ def _mark_objects_cache_dirty_when_estimation_runs(estimate_id: str | None) -> N
         st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
 
 
-def _current_objects_state(estimate_id: str | None) -> ObjectsScreenState:
+def _current_objects_state(estimate_id: str | None, *, parallel_reads: bool = False,
+                           company_id: str | None = None) -> ObjectsScreenState:
     """Return Project data plus user-visible error/warning strings."""
     if not estimate_id:
         return ObjectsScreenState(data=_empty_objects_data())
@@ -425,7 +434,9 @@ def _current_objects_state(estimate_id: str | None) -> ObjectsScreenState:
         return ObjectsScreenState(data=prepared_objects_data_from_seed_rows(seed_rows))
 
     try:
-        data, cache_warning = _load_objects_screen_data(estimate_id)
+        data, cache_warning = _load_objects_screen_data(estimate_id, **(
+            {"parallel_reads": True, "company_id": company_id} if parallel_reads else {}
+        ))
         return ObjectsScreenState(data=data, cache_warning=cache_warning)
     except Exception as exc:
         report_runtime_failure("objects.load", exc, rfq_run_id=st.session_state.get("current_run_id"), estimate_id=estimate_id)

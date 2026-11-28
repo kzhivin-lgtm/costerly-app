@@ -1768,7 +1768,7 @@ def _open_projects() -> None:
     set_screen("projects")
 
 
-def _open_last_estimate(latest_route: dict[str, str] | None) -> None:
+def _open_last_estimate(latest_route: dict[str, str] | None, *, company_id: str | None = None) -> None:
     """Restore the newest durable estimate at its File Review entry point."""
     from state.session import set_screen
 
@@ -1781,6 +1781,13 @@ def _open_last_estimate(latest_route: dict[str, str] | None) -> None:
     st.session_state.current_estimate_id = estimate_id or None
     st.session_state.current_estimate_run_id = latest_route["run_id"] if estimate_id else None
     st.session_state.current_object_id = None
+    # Reuse the existing one-shot, tenant/run-scoped navigation receipt.
+    # Only this click opts into overlapping independent restore reads.
+    if company_id:
+        st.session_state.file_review_navigation_ready = {
+            "company_id": company_id, "run_id": latest_route["run_id"],
+            "last_estimate": True,
+        }
     # File Review is the one consistent entry point. Its Continue action starts
     # unfinished work or reopens an already durable Objects estimate.
     set_screen("file_review")
@@ -1807,7 +1814,7 @@ def render_account_control(
         on_sign_out=sign_out,
         on_admin=_open_platform_admin,
         on_new_estimate=_open_new_estimate,
-        on_last_estimate=lambda: _open_last_estimate(latest_route),
+        on_last_estimate=lambda: _open_last_estimate(latest_route, company_id=str(access.company_id)),
         on_projects=_open_projects,
         show_admin=platform_access is not None,
         show_projects=active_screen != "projects",

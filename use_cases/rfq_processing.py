@@ -1094,17 +1094,17 @@ def record_file_review_first_render(
     _DIAGNOSTICS_EXECUTOR.submit(_persist_runtime_event, event)
 
 
-def load_file_review_naming_publication(run_id: str) -> dict[str, Any]:
+def load_file_review_naming_publication(run_id: str, *, client=None, company_id=None) -> dict[str, Any]:
     """Read the durable deferred-Naming result without reloading File Review.
 
     The Naming worker saves object names before it writes its terminal ledger
     entry.  A terminal event therefore makes the narrow name query safe and
     avoids invalidating the Detection result or the preview cache.
     """
-    client = get_supabase_client()
+    client = client if client is not None else get_supabase_client()
     from state.company_auth import company_auth_enabled
     if company_auth_enabled():
-        assert_run_owned(client, run_id, get_company_id())
+        assert_run_owned(client, run_id, company_id if company_id is not None else get_company_id())
 
     event = fetch_deferred_naming_status(client, run_id)
     if not event:
@@ -1149,12 +1149,12 @@ def load_file_review_naming_publication(run_id: str) -> dict[str, Any]:
     }
 
 
-def load_file_review_document_identity_publication(run_id: str) -> dict[str, Any]:
+def load_file_review_document_identity_publication(run_id: str, *, client=None, company_id=None) -> dict[str, Any]:
     """Read the terminal document-identity result for the live review card."""
-    client = get_supabase_client()
+    client = client if client is not None else get_supabase_client()
     from state.company_auth import company_auth_enabled
     if company_auth_enabled():
-        assert_run_owned(client, run_id, get_company_id())
+        assert_run_owned(client, run_id, company_id if company_id is not None else get_company_id())
 
     event = fetch_deferred_document_identity_status(client, run_id)
     if not event:

@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { chromium } from 'playwright';
 import { checkLateFileReviewAcknowledgements } from './late_review_ack.mjs';
+import { checkLastEstimateRestore } from './last_estimate_restore.mjs';
 const lag=statePath('slow-objects-read');
 const journal=statePath('browser-journal');
 const config=statePath('scenario.json');
@@ -377,6 +378,7 @@ try {
   await page.close();
  }
  report.late_file_review_ack=await checkLateFileReviewAcknowledgements(browser,'http://127.0.0.1:8797/');
+ report.last_estimate_restore=await checkLastEstimateRestore(browser,'http://127.0.0.1:8797/');
  const calls=readFileSync(journal,'utf8');
  assert.ok(calls.includes('objects '+expected));
  assert.ok(!calls.includes('ERROR'));

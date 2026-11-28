@@ -1,5 +1,14 @@
 # Persistent UI release contract
 
+Labor V3.9 adds a Last Estimate restore case to Navigation. Required canonical
+source/publication/Project reads have controlled latency that takes unchanged
+V3.8 past the native15s deadline. The Last-only path must complete every read,
+produce correlated ready and enable Continue before that same deadline, without
+launching Parts Check. Existing scenarios and limits remain. Python verifies
+scope, captured owned clients, ordered access gates, read overlap with identical
+DTO/cost inputs, pending work and error/write ordering. Ordinary callers keep
+their accepted paths; no Profile behavior or fixture startup rule changes.
+
 Labor V3.8 adds a native late-widget ACK regression to Navigation. After
 Object -> New Estimate -> Last Estimate -> File Review -> Project, two real
 Project auto-reruns carry empty unmounted metadata/name widget values. Header,

@@ -1101,8 +1101,16 @@ V3.6 preserves centering through deploy-cover fade and verifies it in browser
 tests. The exact rare surface described by owner is still unidentified; do not
 claim that this proves the identity of the earlier top-left message.
 CURRENT TRANSITION FOLLOW-UP, PENDING PROPOSALS, P1,28November2026:
-Owner requests analysis after the accepted V3.8 checkpoint, not another runtime
-optimization package. Existing continuation context3.17.4.6; no new block/version.
+After the accepted V3.8 checkpoint, owner approves ONLY the Last Estimate repair,
+Labor V3.9 publication after checks. APPROVE/Back/startup remain proposals.
+Existing continuation context3.17.4.6, no new implementation block.
+ACTIVE, P1, LAST ESTIMATE ONLY: bounded read joins via the existing one-shot
+company/run receipt. Required canonical publication, cold/warm Project and cost
+context inputs stay unchanged; independent reads overlap only for this entry.
+The real15s restore timeout is reproduced on V3.8 and passes with the same reads
+on the candidate. No larger timeout or early-ready shortcut. Full retained gates,
+normal publisher and actual served Core/wrapper V3.9 parity are required.
+Scope/evidence: notes/LABOR_V3_9_LAST_ESTIMATE_2026_11_28.md.
 Fresh15 successful paths and one failed Last Estimate, own anonymous probe excluded:
 - P1, pending proposal: make Last Estimate reliable and reduce its server-side
   preparation. Successful2.672-7.486s(n4), median2.951s; one15s failure with14.214s

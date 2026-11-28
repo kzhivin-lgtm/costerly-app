@@ -810,6 +810,43 @@ def _sync_durable_naming_once(run_id: str) -> None:
     st.session_state[synced_key] = True
 
 
+def _sync_last_estimate_publications(run_id: str, company_id: str) -> None:
+    """Read independent restore publications together, then publish on this thread.
+
+    One accepted Last Estimate click owns this bounded two-read join. No worker
+    touches session state or widgets; both reads retain their ownership checks.
+    Ordinary File Review, Processing and Back keep their existing read paths.
+    """
+    reads = {}
+    for kind, loader, prefix in (
+        ("naming", load_file_review_naming_publication, "file_review_naming_cache_synced"),
+        ("document_identity", load_file_review_document_identity_publication,
+         "file_review_document_identity_cache_synced"),
+    ):
+        future = st.session_state.get(f"current_{kind}_future")
+        work = st.session_state.get("file_review_deferred_work") or {}
+        local_pending = (work.get("run_id") == run_id and work.get(kind)
+                         and isinstance(future, Future) and not future.done())
+        if not st.session_state.get(f"{prefix}.{run_id}") and not local_pending:
+            reads[kind] = (loader, prefix)
+    if not reads:
+        return
+    client = get_supabase_client()
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="last-estimate-publication") as pool:
+        pending = {kind: pool.submit(loader, run_id, client=client, company_id=company_id)
+                   for kind, (loader, _prefix) in reads.items()}
+        results = {kind: future.result() for kind, future in pending.items()}
+    for kind, result in results.items():
+        if str(result.get("status") or "pending") == "pending":
+            continue
+        if kind == "naming":
+            _publish_persisted_naming(run_id, result, allow_refresh=True)
+        else:
+            _publish_persisted_document_identity(run_id, result)
+        _mark_deferred_work_complete(run_id, kind)
+        st.session_state[f"{reads[kind][1]}.{run_id}"] = True
+
+
 def _collect_completed_previews() -> dict[str, object] | None:
     future = st.session_state.get("current_preview_future")
     if not isinstance(future, Future) or not future.done():
@@ -1177,6 +1214,14 @@ def render_file_review_screen(
         _render_missing_run_state(render_header_controls)
         return
 
+    navigation = st.session_state.get("file_review_navigation_ready") or {}
+    if not isinstance(navigation, dict):
+        navigation = {}
+    last_estimate = bool(
+        navigation.get("last_estimate")
+        and str(navigation.get("company_id") or "") == str(company_id)
+        and str(navigation.get("run_id") or "") == str(run_id)
+    )
     prepared_data = _consume_prepared_file_review_navigation(
         company_id=company_id,
         run_id=str(run_id),
@@ -1202,7 +1247,9 @@ def render_file_review_screen(
     # narrow, durable name snapshot before object edits and widgets are
     # initialized, so a stale blank browser value cannot compete with the
     # canonical saved name on a later Last Estimate restore.
-    if prepared_data is None:
+    if last_estimate:
+        _sync_last_estimate_publications(str(run_id), company_id)
+    elif prepared_data is None:
         _sync_durable_naming_once(run_id)
     _sync_object_edit_state(run_id, data["objects"])
     saved_estimate_checked = _restore_saved_objects_route(
@@ -1234,6 +1281,7 @@ def render_file_review_screen(
         run_id=str(run_id),
         objects=data["objects"],
         source=data.get("source"),
+        **({"parallel_reads": True} if last_estimate else {}),
     ) if saved_estimate_checked else None
 
     with st.container(key="file_review_actions"):
@@ -1495,6 +1543,7 @@ def _prepare_objects_launch_plan(
     run_id: str,
     objects: list[dict[str, object]],
     source: object = None,
+    parallel_reads: bool = False,
 ) -> dict[str, object] | None:
     """Create the complete Objects readiness bundle used by the next screen.
 
@@ -1538,6 +1587,8 @@ def _prepare_objects_launch_plan(
             "run_id": run_id,
             "estimate_id": estimate_id,
         }
+        if parallel_reads:
+            prepare_kwargs["parallel_reads"] = True
         if active_worker or launch_pending:
             # There is no durable shell during a worker/request handoff.  The
             # reviewed rows are the complete first paint in that short window.

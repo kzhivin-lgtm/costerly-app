@@ -162,6 +162,11 @@ file_review.get_supabase_client = Client
 file_review.get_company_id = lambda: company_id
 file_review.evidence_signed_url = lambda **kw: preview_url if kw['storage_ref'] == preview_ref else None
 file_review._record_first_file_review_render = lambda *_: None
+if not hasattr(file_review,'_fixture_original_sync_naming'):
+ file_review._fixture_original_sync_naming=file_review._sync_durable_naming_once
+ file_review._fixture_original_sync_identity=file_review._sync_durable_document_identity_once
+_real_sync_naming=file_review._fixture_original_sync_naming
+_real_sync_identity=file_review._fixture_original_sync_identity
 file_review._sync_durable_naming_once = lambda *_: None
 file_review._sync_durable_document_identity_once = lambda *_: None
 def fixture_project_metadata():
@@ -194,6 +199,10 @@ file_review.load_file_review_data = lambda _: {
  'objects':review_objects(),
  'timings':{}, 'source':None,
 }
+file_review.load_file_review_naming_publication=lambda _run,**_kwargs:{
+ 'status':'succeeded','names':{item['object_id']:item['name'] for item in review_objects()}}
+file_review.load_file_review_document_identity_publication=lambda _run,**_kwargs:{
+ 'status':'succeeded','metadata':fixture_project_metadata()}
 file_review._source_bytes_for_objects_plan = no_estimation
 estimation.get_supabase_client = Client
 estimation._assert_screen_estimate_access = lambda *a, **kw: None
@@ -680,6 +689,24 @@ if scenario().get('front_panels') and not derived_path.exists():
  estimation._full_cost_summary(Client(),estimate_id=estimate_id,obj=obj,
   lines=read_lines(Client(),estimate_id=estimate_id,object_id='object-001'),material_batch=0,
   context=full_cost_context(Client(),obj,plan))
+if scenario().get('last_estimate_latency'):
+ # Independent, fixed-latency reads. The old serial route exceeds the real
+ # unchanged15s transition deadline; the Last-only joins must retain all data.
+ file_review._sync_durable_naming_once=_real_sync_naming
+ file_review._sync_durable_document_identity_once=_real_sync_identity
+ def delayed_read(fn,seconds,label):
+  def read(*args,**kwargs):
+   record('restore-read-start '+label)
+   sleep(seconds)
+   value=fn(*args,**kwargs)
+   record('restore-read-end '+label)
+   return value
+  return read
+ file_review.load_file_review_data=delayed_read(file_review.load_file_review_data,2.4,'source')
+ file_review.load_file_review_naming_publication=delayed_read(file_review.load_file_review_naming_publication,2,'naming')
+ file_review.load_file_review_document_identity_publication=delayed_read(file_review.load_file_review_document_identity_publication,2,'identity')
+ for name in ['fetch_rfq_object_estimates','fetch_rfq_estimate_pricing_overrides','fetch_rfq_estimate_material_plan']:
+  setattr(estimation,name,delayed_read(getattr(estimation,name),3,name))
 app.main()
 if scenario().get('late_review_ack'):
  from streamlit.runtime.scriptrunner import get_script_run_ctx
